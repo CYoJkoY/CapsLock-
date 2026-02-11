@@ -53,22 +53,18 @@ IsAutoStartEnabled() {
 ; =========================== Custom =========================== ;
 #HotIf GetKeyState("CapsLock", "P")
 
-; --- ① 方向移动 ---
 Left:: Send "^{Left}"
 Right:: Send "^{Right}"
 Up:: Send "{Home}"
 Down:: Send "{End}"
 
-; --- ② 文本选择 (配合 Shift) ---
 +Left:: Send "^+{Left}"
 +Right:: Send "^+{Right}"
 +Up:: Send "+{Home}"
 +Down:: Send "+{End}"
 
-; --- ③ & ④ 单词选择 ---
 Space:: Send "^{Left}^+{Right}"
 
-; --- ⑤ 删除操作 ---
 ,:: Send "{Backspace}"
 .:: Send "{Delete}"
 m:: Send "^{Backspace}"
@@ -76,11 +72,9 @@ m:: Send "^{Backspace}"
 Backspace:: Send "{Home}+{End}{Delete}"
 Delete:: Send "{Home}+{End}{Delete}"
 
-; --- ⑥ 标签页切换 (滚轮) ---
 E:: Send "^{PgDn}"
 Q:: Send "^{PgUp}"
 
-; --- ⑦ 透明度控制 (支持单击与长按) ---
 LButton:: {
     AdjustOpacity(20)
     if KeyWait("LButton", "T0.3")
@@ -114,7 +108,6 @@ MButton:: {
     }
 }
 
-; --- ⑧ 窗口管理 ---
 8::
 Numpad8:: {
     if WinGetMinMax("A") = 1
