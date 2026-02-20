@@ -1,7 +1,3 @@
-Understood! Here is the revised, professional **README.md** in pure English, including all your latest features like the Clipboard History and the Resizable Preview GUI. You can copy and paste this directly into your GitHub repository.
-
----
-
 # CapsLock-Extension 🚀
 
 A high-performance system enhancement tool built with **AutoHotkey v2**. This script transforms the underutilized `CapsLock` key into a versatile **Super-Modifier (Mod-key)**, streamlining text navigation, window management, and introducing a unique **Clipboard-to-File** workflow—all without losing the native CapsLock functionality.
