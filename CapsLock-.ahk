@@ -138,7 +138,7 @@ v:: {
 
     targetText := (LastManualClipboard != "") ? LastManualClipboard : currentClip
     if (targetText == "") {
-        ToolTip "剪贴板内容为空，请先复制内容"
+        ToolTip "Clipboard is empty, please copy content first"
         SetTimer () => ToolTip(), -2000
         return
     }
@@ -150,21 +150,16 @@ v:: {
 
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
 
-    try {
-        FileAppend targetText, tempFile, "UTF-8"
-        SetClipboardFile(tempFile)
-        Send "^v"
+    FileAppend targetText, tempFile, "UTF-8"
+    SetClipboardFile(tempFile)
+    Send "^v"
 
-        SetTimer () => (
-            FileExist(tempFile) ? FileDelete(tempFile) : "",
-            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-        ), -10000
+    SetTimer () => (
+        FileExist(tempFile) ? FileDelete(tempFile) : "",
+        (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+    ), -10000
 
-        SetTimer () => ToolTip(), -2000
-    } catch Error as e {
-        ToolTip "操作失败: " e.Message
-        SetTimer () => ToolTip(), -2000
-    }
+    SetTimer () => ToolTip(), -2000
 }
 
 +v:: ShowHistoryMenu()
@@ -173,18 +168,14 @@ v:: {
 
 ; =========================== Method =========================== ;
 AdjustOpacity(step) {
-    try {
-        hwnd := WinExist("A")
-        currentTrans := WinGetTransparent(hwnd)
+    hwnd := WinExist("A")
+    currentTrans := WinGetTransparent(hwnd)
 
-        if (currentTrans = "")
-            currentTrans := 255
+    if (currentTrans = "")
+        currentTrans := 255
 
-        newTrans := Clamp(currentTrans + step, 20, 255)
-        WinSetTransparent(newTrans, hwnd)
-    } catch {
-        return
-    }
+    newTrans := Clamp(currentTrans + step, 20, 255)
+    WinSetTransparent(newTrans, hwnd)
 }
 
 Clamp(val, min, max) => (val < min) ? min : (val > max) ? max : val
@@ -233,7 +224,7 @@ HandleHistoryUpdate(DataType) {
 ShowHistoryMenu(isReturning := false) {
     global ClipboardHistory, MenuPosX, MenuPosY
     if (ClipboardHistory.Length = 0) {
-        ToolTip "剪贴板历史为空"
+        ToolTip "No manual copy history"
         SetTimer () => ToolTip(), -1500
         return
     }
@@ -259,12 +250,12 @@ ActionPickerHandler(ItemName, ItemPos, MyMenu) {
     global MenuPosX, MenuPosY
 
     ActionMenu := Menu()
-    ActionMenu.Add("📄 粘贴为 .txt 文件", (*) => PasteAsFile(SelectedText))
-    ActionMenu.Add("🔍 预览全文", (*) => ShowPreviewGui(SelectedText))
-    ActionMenu.Add("❌ 从历史中删除", DeleteHistoryItem)
+    ActionMenu.Add("📄 Paste as .txt file", (*) => PasteAsFile(SelectedText))
+    ActionMenu.Add("🔍 Preview Content", (*) => ShowPreviewGui(SelectedText))
+    ActionMenu.Add("❌ Delete from History", DeleteHistoryItem)
     ActionMenu.Add()
 
-    ActionMenu.Add("⬅️ 返回列表", (*) => SetTimer(() => ShowHistoryMenu(true), -10))
+    ActionMenu.Add("⬅️ Back to List", (*) => SetTimer(() => ShowHistoryMenu(true), -10))
 
     ActionMenu.Show()
 }
@@ -279,28 +270,23 @@ PasteAsFile(textContent) {
 
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
 
-    try {
-        FileAppend textContent, tempFile, "UTF-8"
-        SetClipboardFile(tempFile)
-        Send "^v"
+    FileAppend textContent, tempFile, "UTF-8"
+    SetClipboardFile(tempFile)
+    Send "^v"
 
-        SetTimer () => (
-            FileExist(tempFile) ? FileDelete(tempFile) : "",
-            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-        ), -10000
-    } catch Error as e {
-        ToolTip "写入失败: " e.Message
-        SetTimer () => ToolTip(), -2000
-    }
+    SetTimer () => (
+        FileExist(tempFile) ? FileDelete(tempFile) : "",
+        (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+    ), -10000
 }
 
 ShowPreviewGui(text) {
-    PreviewGui := Gui("+AlwaysOnTop +Resize", "内容预览")
+    PreviewGui := Gui("+AlwaysOnTop +Resize", "Preview Content")
     PreviewGui.SetFont("s10", "Microsoft YaHei")
 
     EditCtrl := PreviewGui.Add("Edit", "ReadOnly VScroll Wrap w600 h400", text)
 
-    BtnClose := PreviewGui.Add("Button", "Default w80", "关闭")
+    BtnClose := PreviewGui.Add("Button", "Default w80", "Close")
     BtnClose.OnEvent("Click", (*) => PreviewGui.Destroy())
 
     PreviewGui.OnEvent("Size", (guiObj, windowMinMax, width, height) => (
