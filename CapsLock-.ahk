@@ -3,7 +3,7 @@
 
 global LastManualClipboard := ""
 global ClipboardHistory := []
-global MaxHistory := 50
+global MaxHistory := 15
 global MenuPosX := 0
 global MenuPosY := 0
 
