@@ -73,10 +73,10 @@ Down:: Send "{End}"
 
 Space:: Send "^{Left}^+{Right}"
 
-,:: Send "{Backspace}"
-.:: Send "{Delete}"
-m:: Send "^{Backspace}"
-/:: Send "^{Delete}"
+a:: Send "{Backspace}"
+d:: Send "{Delete}"
++a:: Send "^{Backspace}"
++d:: Send "^{Delete}"
 Backspace:: Send "{Home}+{End}{Delete}"
 Delete:: Send "{Home}+{End}{Delete}"
 
