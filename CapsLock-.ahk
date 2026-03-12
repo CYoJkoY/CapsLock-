@@ -293,10 +293,16 @@ PasteAsFile(textContent) {
     FileAppend textContent, tempFile, "UTF-8"
     SetClipboardFile(tempFile)
 
-    if TargetWindow && WinExist("ahk_id " TargetWindow)
+    if TargetWindow && WinExist("ahk_id " TargetWindow) {
         WinActivate("ahk_id " TargetWindow)
-    else
+    } else {
+        if !WinExist("A") {
+            ToolTip "No target window to paste into. Please click on the desired window and try again."
+            SetTimer () => ToolTip(), -2000
+            return
+        }
         WinActivate("A")
+    }
     Sleep 100
 
     Send "^v"
@@ -410,7 +416,7 @@ ShowFullHistoryGui(ItemName, ItemPos, MyMenu) {
     FullHistoryGui.OnEvent("Escape", (*) => (FullHistoryGui.Destroy(), FullHistoryGui := ""))
     FullHistoryGui.OnEvent("Size", _ResizeFullHistoryGui)
 
-    lv := FullHistoryGui.Add("ListView", "r20 w600 Checked Multi Grid", ["#", "Content (first 100 chars)", "Actions"])
+    lv := FullHistoryGui.Add("ListView", "r20 w600 Checked Multi Grid", ["#", "Content (first 100 chars)"])
     lv.OnEvent("DoubleClick", _OnFullHistoryDoubleClick)
     lv.OnEvent("ContextMenu", _OnFullHistoryContextMenu)
     lv.OnEvent("ItemCheck", _OnItemCheck)
@@ -444,11 +450,10 @@ _RefreshFullHistoryList() {
         display := StrReplace(SubStr(content, 1, 100), "`n", " ")
         if (StrLen(content) > 100)
             display .= "..."
-        lv.Add(, idx, display, "Double-click paste | Right-click menu")
+        lv.Add(, idx, display)
     }
     lv.ModifyCol(1, "AutoHdr")
     lv.ModifyCol(2, "AutoHdr")
-    lv.ModifyCol(3, 120)
     FullHistoryGui.chkSelectAll.Value := 0
 }
 
@@ -554,12 +559,22 @@ _PasteSingleFile(textContent, activate := true) {
     SetClipboardFile(tempFile)
 
     if activate {
+        if !WinExist("ahk_id " TargetWindow) {
+            ToolTip "Target window not found, paste cancelled."
+            SetTimer () => ToolTip(), -1500
+            return
+        }
         local state := ""
         WinGetMinMax("ahk_id " TargetWindow, state)
         if state = -1
             WinRestore("ahk_id " TargetWindow)
+
         WinActivate("ahk_id " TargetWindow)
-        WinWaitActive("ahk_id " TargetWindow, , 1)
+        if !WinWaitActive("ahk_id " TargetWindow, , 1) {
+            ToolTip "Cannot activate target window, please try manually."
+            SetTimer () => ToolTip(), -2000
+            return
+        }
     }
 
     ToolTip "Pasting: " SubStr(textContent, 1, 40) "..."
@@ -662,10 +677,16 @@ _PasteAsMultipleFiles(textArray) {
 
     SetClipboardFiles(tempFiles)
 
-    if TargetWindow && WinExist("ahk_id " TargetWindow)
+    if TargetWindow && WinExist("ahk_id " TargetWindow) {
         WinActivate("ahk_id " TargetWindow)
-    else
+    } else {
+        if !WinExist("A") {
+            ToolTip "No target window to paste into."
+            SetTimer () => ToolTip(), -1500
+            return
+        }
         WinActivate("A")
+    }
     Sleep 100
     Send "^v"
 
