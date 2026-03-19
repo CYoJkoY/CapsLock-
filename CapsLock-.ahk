@@ -377,7 +377,7 @@ LoadHistory() {
 
 SaveHistory() {
     global ClipboardHistory, HistoryFile
-    file := FileOpen(HistoryFile, "w")
+    file := FileOpen(HistoryFile, "wb")
     if !IsObject(file)
         return
 
@@ -386,10 +386,8 @@ SaveHistory() {
     for text in ClipboardHistory {
         buf := Buffer(StrPut(text, "UTF-8") - 1)
         StrPut(text, buf, "UTF-8")
-
         file.WriteInt(buf.Size)
-
-        file.RawWrite(buf, buf.Size)
+        file.RawWrite(buf)
     }
     file.Close()
 }
