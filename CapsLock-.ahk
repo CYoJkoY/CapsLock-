@@ -1,6 +1,9 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 
+A_HotkeyInterval := 2000
+A_MaxHotkeysPerInterval := 200
+
 global LastManualClipboard := ""
 global ClipboardHistory := []
 global MaxHistory := 10000
@@ -377,7 +380,7 @@ LoadHistory() {
 
 SaveHistory() {
     global ClipboardHistory, HistoryFile
-    file := FileOpen(HistoryFile, "wb")
+    file := FileOpen(HistoryFile, "w")
     if !IsObject(file)
         return
 
@@ -387,7 +390,7 @@ SaveHistory() {
         buf := Buffer(StrPut(text, "UTF-8") - 1)
         StrPut(text, buf, "UTF-8")
         file.WriteInt(buf.Size)
-        file.RawWrite(buf)
+        file.RawWrite(buf, buf.Size)
     }
     file.Close()
 }
