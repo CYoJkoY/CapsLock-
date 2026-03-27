@@ -13,8 +13,20 @@ global MenuPosX := 0
 global MenuPosY := 0
 global HistoryFile := A_ScriptDir "\ClipHistory.bin"
 global TargetWindow := 0
+global ENCRYPT_KEY := 0x5A
 
 LoadHistory()
+
+; =========================== Encryption =========================== ;
+CryptBuffer(buf) {
+    local key := ENCRYPT_KEY
+    local len := buf.Size
+    loop len {
+        local offset := A_Index - 1
+        NumPut("UChar", NumGet(buf, offset, "UChar") ^ key, buf, offset)
+    }
+    return buf
+}
 
 ; =========================== TrayIcon =========================== ;
 A_IconTip := "CapsLock-"
@@ -347,32 +359,36 @@ LoadHistory() {
     global ClipboardHistory, MaxHistory, HistoryFile
     if !FileExist(HistoryFile)
         return
-
     file := FileOpen(HistoryFile, "r")
     if !IsObject(file)
         return
-
     arrayLen := file.ReadInt()
     if (arrayLen = "" || arrayLen < 0) {
         file.Close()
         return
     }
-
     history := []
     loop arrayLen {
         strLenBytes := file.ReadInt()
         if (strLenBytes = "" || strLenBytes <= 0)
             break
-
         buf := Buffer(strLenBytes)
         if (file.RawRead(buf, strLenBytes) != strLenBytes)
             break
-
-        text := StrGet(buf, "UTF-8")
-        history.Push(text)
+        CryptBuffer(buf)
+        try {
+            text := StrGet(buf, "UTF-8")
+            history.Push(text)
+        } catch {
+            try {
+                text := StrGet(buf, "UTF-8")
+                history.Push(text)
+            } catch {
+                break
+            }
+        }
     }
     file.Close()
-
     while history.Length > MaxHistory
         history.Pop()
     ClipboardHistory := history
@@ -383,12 +399,11 @@ SaveHistory() {
     file := FileOpen(HistoryFile, "w")
     if !IsObject(file)
         return
-
     file.WriteInt(ClipboardHistory.Length)
-
     for text in ClipboardHistory {
         buf := Buffer(StrPut(text, "UTF-8") - 1)
         StrPut(text, buf, "UTF-8")
+        CryptBuffer(buf)
         file.WriteInt(buf.Size)
         file.RawWrite(buf, buf.Size)
     }
