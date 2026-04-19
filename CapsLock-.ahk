@@ -169,9 +169,23 @@ v:: {
         DllCall("CloseClipboard")
     }
 
+    sourceInfo := ""
+    for item in ClipboardHistory {
+        if (item["text"] = targetText) {
+            sourceInfo := "Copied from: " item["source"] " (at " item["time"] ")"
+            break
+        }
+    }
+
+    if (sourceInfo = "") {
+        sourceInfo := "Source: (Direct Paste via Hotkey) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    }
+
+    fullContent := "; " sourceInfo "`n`n" targetText
+
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
 
-    FileAppend targetText, tempFile, "UTF-8"
+    FileAppend fullContent, tempFile, "UTF-8"
     SetClipboardFile(tempFile)
     Send "^v"
 
@@ -229,13 +243,24 @@ HandleHistoryUpdate(DataType) {
 
         LastManualClipboard := text
 
-        for index, value in ClipboardHistory {
-            if (value == text) {
+        sourceTitle := WinGetTitle("A")
+        sourceProcess := WinGetProcessName("A")
+        timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+
+        historyItem := Map()
+        historyItem["text"] := text
+        historyItem["source"] := sourceTitle
+        historyItem["process"] := sourceProcess
+        historyItem["time"] := timestamp
+
+        for index, item in ClipboardHistory {
+            if (item["text"] == text) {
                 ClipboardHistory.RemoveAt(index)
                 break
             }
         }
-        ClipboardHistory.InsertAt(1, text)
+
+        ClipboardHistory.InsertAt(1, historyItem)
 
         if (ClipboardHistory.Length > MaxHistory)
             ClipboardHistory.Pop()
@@ -264,7 +289,8 @@ ShowHistoryMenu(isReturning := false) {
     displayCount := total > MAX_VISIBLE_MENU ? MAX_VISIBLE_MENU : total
     loop displayCount {
         index := A_Index
-        content := ClipboardHistory[index]
+        item := ClipboardHistory[index]
+        content := item["text"]
         display := StrReplace(SubStr(content, 1, 50), "`n", " ")
         if (StrLen(content) > 50)
             display .= "..."
@@ -281,31 +307,32 @@ ShowHistoryMenu(isReturning := false) {
 
 ActionPickerHandler(ItemName, ItemPos, MyMenu) {
     global SelectedIndex := ItemPos
-    global SelectedText := ClipboardHistory[ItemPos]
+    global SelectedItem := ClipboardHistory[ItemPos]
     global MenuPosX, MenuPosY
 
     ActionMenu := Menu()
-    ActionMenu.Add("📄 Paste as .txt file", (*) => PasteAsFile(SelectedText))
-    ActionMenu.Add("🔍 Preview Content", (*) => ShowPreviewGui(SelectedText))
+    ActionMenu.Add("📄 Paste as .txt file", (*) => PasteAsFile(SelectedItem))
+    ActionMenu.Add("🔍 Preview Content", (*) => ShowPreviewGui(SelectedItem["text"]))
     ActionMenu.Add("❌ Delete from History", DeleteHistoryItem)
     ActionMenu.Add()
-
     ActionMenu.Add("⬅️ Back to List", (*) => SetTimer(() => ShowHistoryMenu(true), -10))
-
     ActionMenu.Show()
 }
 
-PasteAsFile(textContent) {
+PasteAsFile(historyItem) {
     global LastManualClipboard
+
+    textContent := historyItem["text"]
+    sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
 
     if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
         DllCall("EmptyClipboard")
         DllCall("CloseClipboard")
     }
 
+    fullContent := "; " sourceInfo "`n`n" textContent
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-
-    FileAppend textContent, tempFile, "UTF-8"
+    FileAppend fullContent, tempFile, "UTF-8"
     SetClipboardFile(tempFile)
 
     if TargetWindow && WinExist("ahk_id " TargetWindow) {
@@ -377,12 +404,40 @@ LoadHistory() {
             break
         CryptBuffer(buf)
         try {
-            text := StrGet(buf, "UTF-8")
-            history.Push(text)
+            line := StrGet(buf, "UTF-8")
+            pos1 := InStr(line, " | ")
+
+            if (pos1 > 0) {
+                timeStr := SubStr(line, 1, pos1 - 1)
+                rest := SubStr(line, pos1 + 3)
+                pos2 := InStr(rest, " | ")
+
+                if (pos2 > 0) {
+                    sourceStr := SubStr(rest, 1, pos2 - 1)
+                    textStr := SubStr(rest, pos2 + 3)
+                } else {
+                    sourceStr := "Unkown Source"
+                    textStr := rest
+                }
+            } else {
+                timeStr := ""
+                sourceStr := "Unknown Source"
+                textStr := line
+            }
+
+            item := Map()
+            item["time"] := timeStr
+            item["source"] := sourceStr
+            item["text"] := textStr
+            history.Push(item)
         } catch {
             try {
                 text := StrGet(buf, "UTF-8")
-                history.Push(text)
+                item := Map()
+                item["time"] := ""
+                item["source"] := "Legacy Entry"
+                item["text"] := text
+                history.Push(item)
             } catch {
                 break
             }
@@ -400,9 +455,11 @@ SaveHistory() {
     if !IsObject(file)
         return
     file.WriteInt(ClipboardHistory.Length)
-    for text in ClipboardHistory {
-        buf := Buffer(StrPut(text, "UTF-8") - 1)
-        StrPut(text, buf, "UTF-8")
+    for item in ClipboardHistory {
+        line := item["time"] " | " item["source"] " | " item["text"]
+
+        buf := Buffer(StrPut(line, "UTF-8") - 1)
+        StrPut(line, buf, "UTF-8")
         CryptBuffer(buf)
         file.WriteInt(buf.Size)
         file.RawWrite(buf, buf.Size)
@@ -462,7 +519,18 @@ _RefreshFullHistoryList() {
     global ClipboardHistory, FullHistoryGui
     lv := FullHistoryGui.ListView
     lv.Delete()
-    for idx, content in ClipboardHistory {
+    for idx, item in ClipboardHistory {
+        local display, content
+        try {
+            if (Type(item) = "Map" and item.Has("text")) {
+                content := item["text"]
+            } else {
+                content := String(item ?? "")
+            }
+        } catch as err {
+            content := "[Invalid History Entry]"
+        }
+
         display := StrReplace(SubStr(content, 1, 100), "`n", " ")
         if (StrLen(content) > 100)
             display .= "..."
@@ -492,18 +560,18 @@ _ResizeFullHistoryGui(guiObj, windowMinMax, width, height) {
 _OnFullHistoryDoubleClick(lv, row) {
     if (row = 0)
         return
-    selectedText := ClipboardHistory[row]
-    _PasteAsMultipleFiles([selectedText])
+    selectedItem := ClipboardHistory[row]
+    _PasteAsMultipleFiles([selectedItem])
 }
 
 _OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
     if (row = 0)
         return
-    selectedText := ClipboardHistory[row]
+    selectedItem := ClipboardHistory[row]
 
     ContextMenu := Menu()
-    ContextMenu.Add("📄 Paste as File", (*) => _PasteAsMultipleFiles([selectedText]))
-    ContextMenu.Add("🔍 Preview", (*) => ShowPreviewGui(selectedText))
+    ContextMenu.Add("📄 Paste as File", (*) => _PasteAsMultipleFiles([selectedItem]))
+    ContextMenu.Add("🔍 Preview", (*) => ShowPreviewGui(selectedItem["text"]))
     ContextMenu.Add("❌ Delete", (*) => _DeleteFromFullHistory(row))
     ContextMenu.Show(x, y)
 }
@@ -559,8 +627,8 @@ _PasteSelectedFromFullHistory() {
 
     Sleep 100
 
-    for text in fileList {
-        _PasteSingleFile(text, false)
+    for item in fileList {
+        _PasteSingleFile(item["text"], false)
         Sleep 200
     }
 
@@ -570,8 +638,33 @@ _PasteSelectedFromFullHistory() {
 
 _PasteSingleFile(textContent, activate := true) {
     global TargetWindow
+
+    if (Type(textContent) = "Map") {
+        textToPaste := HasProp(textContent, "text") ? textContent["text"] : ""
+        sourceInfo := "Copied from: "
+            . (HasProp(textContent, "source") ? textContent["source"] : "Unknown Source")
+            . " (at "
+            . (HasProp(textContent, "time") ? textContent["time"] : FormatTime(, "yyyy-MM-dd HH:mm:ss"))
+            . ")"
+    } else {
+        textToPaste := textContent
+        sourceInfo := ""
+        for item in ClipboardHistory {
+            if (item["text"] = textContent) {
+                sourceInfo := "Copied from: " item["source"] " (at " item["time"] ")"
+                break
+            }
+        }
+
+        if (sourceInfo = "") {
+            sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        }
+    }
+
+    fullContent := "; " sourceInfo "`n`n" textContent
+
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend textContent, tempFile, "UTF-8"
+    FileAppend fullContent, tempFile, "UTF-8"
     SetClipboardFile(tempFile)
 
     if activate {
@@ -685,9 +778,22 @@ SetClipboardFiles(fileArray) {
 _PasteAsMultipleFiles(textArray) {
     global TargetWindow
     tempFiles := []
-    for text in textArray {
+    for item in textArray {
+        local textToWrite, sourceInfo, fullContent
+        if (Type(item) = "Map") {
+            textToWrite := HasProp(item, "text") ? item["text"] : ""
+            sourceInfo := "Copied from: "
+                . (HasProp(item, "source") ? item["source"] : "Unknown Source")
+                . " (at "
+                . (HasProp(item, "time") ? item["time"] : FormatTime(, "yyyy-MM-dd HH:mm:ss"))
+                . ")"
+        } else {
+            textToWrite := item
+            sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        }
+        fullContent := "; " sourceInfo "`n`n" textToWrite
         tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_Index ".txt"
-        FileAppend text, tempFile, "UTF-8"
+        FileAppend fullContent, tempFile, "UTF-8"
         tempFiles.Push(tempFile)
     }
 
@@ -728,4 +834,16 @@ _UpdateSelectAllCheckbox() {
 
 _OnItemCheck(lv, row, checked) {
     _UpdateSelectAllCheckbox()
+}
+
+GetSourceInfo() {
+    try {
+        title := WinGetTitle("A")
+        if (title = "")
+            title := "Unknown Window"
+    } catch {
+        title := "Unknown Window"
+    }
+    timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    return "Source: " title " | Time: " timestamp
 }
