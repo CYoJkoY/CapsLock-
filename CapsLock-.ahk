@@ -14,6 +14,9 @@ global MenuPosY := 0
 global HistoryFile := A_ScriptDir "\ClipHistory.bin"
 global TargetWindow := 0
 global ENCRYPT_KEY := 0x5A
+global ImageMagickPath := A_ScriptDir "\ImageMagickPath.txt"
+global ImageMagickExe := ""
+global ImageFormats := ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]
 
 LoadHistory()
 
@@ -33,6 +36,7 @@ A_IconTip := "CapsLock-"
 Tray := A_TrayMenu
 Tray.Delete()
 Tray.Add("Load on start up", ToggleAutoStart)
+Tray.Add("Set ImageMagick Path...", (*) => SetImPath())
 Tray.Add("Reload", (*) => Reload())
 Tray.Add("Exit", (*) => ExitApp())
 
@@ -62,6 +66,46 @@ IsAutoStartEnabled() {
         return false
     }
 }
+
+SetImPath(*) {
+    SelectedFile := FileSelect(1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)")
+    if (SelectedFile = "")
+        return
+
+    try {
+        FileDelete ImageMagickPath
+        FileAppend SelectedFile, ImageMagickPath, "UTF-8-RAW"
+    } catch as err {
+        MsgBox "Failed to save path: " err.Message, "Error", "Iconx"
+        return
+    }
+
+    if !FileExist(SelectedFile) {
+        MsgBox "Selected file does not exist!", "Error", "Iconx"
+        return
+    }
+
+    if !InStr(SelectedFile, "magick.exe") {
+        MsgBox "Please select the correct file: magick.exe", "Error", "Iconx"
+        return
+    }
+
+    ImageMagickExe := SelectedFile
+    MsgBox "ImageMagick path set to: `n" SelectedFile, "Success", "Iconi T2"
+}
+
+LoadImPath() {
+    global ImageMagickExe
+    if !FileExist(ImageMagickPath)
+        return
+    try {
+        ImageMagickExe := FileRead(ImageMagickPath, "UTF-8")
+    } catch {
+        ImageMagickExe := ""
+    }
+}
+
+LoadImPath()
 
 ; =========================== Extension =========================== ;
 *CapsLock:: {
@@ -151,6 +195,20 @@ Numpad2:: WinMinimize "A"
 v:: {
     global LastManualClipboard
 
+    if (IsClipboardImagePaths()) {
+        tempPDFPath := ProcessImagePathsToPDF()
+        if (tempPDFPath = "") {
+            ToolTip "Failed to create PDF"
+            SetTimer () => ToolTip(), -2000
+            return
+        }
+
+        recordPDFToHistory(tempPDFPath)
+
+        PasteFile(tempPDFPath, "pdf")
+        return
+    }
+
     currentClip := A_Clipboard
 
     if (currentClip != "" && !InStr(currentClip, A_Temp "\ClipTemp_")) {
@@ -172,7 +230,7 @@ v:: {
     sourceInfo := ""
     for item in ClipboardHistory {
         if (item["text"] = targetText) {
-            sourceInfo := "Copied from: " item["source"] " (at " item["time"] ")"
+            sourceInfo := "Copied from: " item["source"] " (at " item["time"] ") "
             break
         }
     }
@@ -323,17 +381,38 @@ PasteAsFile(historyItem) {
     global LastManualClipboard
 
     textContent := historyItem["text"]
-    sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
 
-    if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
-        DllCall("EmptyClipboard")
-        DllCall("CloseClipboard")
+    if (IsFilePath(textContent) && FileExist(textContent)) {
+        filePath := textContent
+        fileType := GetFileType(filePath)
+
+        if (fileType = "pdf") {
+            if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
+                DllCall("EmptyClipboard")
+                DllCall("CloseClipboard")
+            }
+
+            SetClipboardFile(filePath)
+        } else {
+            sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
+            fullContent := "; " sourceInfo "`n`n" FileRead(filePath, "UTF-8")
+            tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
+            FileAppend fullContent, tempFile, "UTF-8"
+            SetClipboardFile(tempFile)
+        }
+    } else {
+        sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
+
+        if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
+            DllCall("EmptyClipboard")
+            DllCall("CloseClipboard")
+        }
+
+        fullContent := "; " sourceInfo "`n`n" textContent
+        tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
+        FileAppend fullContent, tempFile, "UTF-8"
+        SetClipboardFile(tempFile)
     }
-
-    fullContent := "; " sourceInfo "`n`n" textContent
-    tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend fullContent, tempFile, "UTF-8"
-    SetClipboardFile(tempFile)
 
     if TargetWindow && WinExist("ahk_id " TargetWindow) {
         WinActivate("ahk_id " TargetWindow)
@@ -348,10 +427,24 @@ PasteAsFile(historyItem) {
     Sleep 100
 
     Send "^v"
-    SetTimer () => (
-        FileExist(tempFile) ? FileDelete(tempFile) : "",
-        (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-    ), -10000
+
+    if (InStr(tempFile, A_Temp "\ClipTemp_")) {
+        SetTimer () => (
+            FileExist(tempFile) ? FileDelete(tempFile) : "",
+            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+        ), -10000
+    } else {
+        if (fileType = "pdf") {
+            SetTimer () => (
+                (FileExist(filePath) && InStr(filePath, A_Temp "\ClipTemp_")) ? FileDelete(filePath) : "",
+                (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+            ), -10000
+        } else {
+            SetTimer () => (
+                (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+            ), -10000
+        }
+    }
 }
 
 ShowPreviewGui(text) {
@@ -846,4 +939,208 @@ GetSourceInfo() {
     }
     timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
     return "Source: " title " | Time: " timestamp
+}
+
+IsClipboardImagePaths() {
+    if !A_Clipboard is String
+        return false
+
+    text := A_Clipboard
+    if InStr(text, A_Temp "\ClipTemp_")
+        return false
+
+    lines := StrSplit(text, "`n", "`r")
+    if lines.Length < 2
+        return false
+
+    for idx, line in lines {
+        line := Trim(line)
+        if (line = "")
+            continue
+
+        if !FileExist(line) {
+            return false
+        }
+
+        ext := SubStr(line, InStr(line, ".", , -1) + 1)
+        ext := StrLower(ext)
+
+        isImage := false
+        for format in ImageFormats {
+            if (ext = format) {
+                isImage := true
+                break
+            }
+        }
+
+        if !isImage {
+            return false
+        }
+    }
+
+    return true
+}
+
+ProcessImagePathsToPDF() {
+    global ImageMagickExe
+
+    if (ImageMagickExe = "") {
+        MsgBox "Please set ImageMagick path first via tray icon menu.", "Error", "Iconx 4096"
+        return ""
+    }
+    if !FileExist(ImageMagickExe) {
+        MsgBox "ImageMagick executable not found at: `n" ImageMagickExe "`nPlease set the correct path.", "Error",
+            "Iconx 4096"
+        return ""
+    }
+
+    imgPaths := StrSplit(A_Clipboard, "`n", "`r")
+    validPaths := []
+    for idx, line in imgPaths {
+        line := Trim(line)
+        if (line = "")
+            continue
+        if FileExist(line) {
+            validPaths.Push('"' line '"')
+        }
+    }
+
+    if (validPaths.Length = 0) {
+        ToolTip "No valid image files found in clipboard."
+        SetTimer () => ToolTip(), -2000
+        return ""
+    }
+
+    OutputPDF := A_Temp "\ClipTemp_" A_TickCount ".pdf"
+
+    command := '"' ImageMagickExe '" '
+    for path in validPaths
+        command .= path " "
+    command .= '-density 150 -quality 100 "' OutputPDF '"'
+
+    ToolTip "Merging " validPaths.Length " images to PDF..."
+    try {
+        RunWait(command, , "Hide")
+        if (FileExist(OutputPDF)) {
+            ToolTip "PDF created successfully!"
+            SetTimer () => ToolTip(), -2000
+            return OutputPDF
+        } else {
+            ToolTip "Failed to create PDF"
+            SetTimer () => ToolTip(), -2000
+            return ""
+        }
+    } catch as err {
+        ToolTip "Failed to create PDF: " err.Message
+        SetTimer () => ToolTip(), -3000
+        return ""
+    }
+}
+
+recordPDFToHistory(pdfPath) {
+    global ClipboardHistory, MaxHistory
+
+    historyItem := Map()
+    historyItem["text"] := pdfPath
+    historyItem["source"] := "Generated PDF from ImageMagick"
+    historyItem["process"] := A_ScriptName
+    historyItem["time"] := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    historyItem["type"] := "pdf"
+
+    ClipboardHistory.InsertAt(1, historyItem)
+
+    if (ClipboardHistory.Length > MaxHistory)
+        ClipboardHistory.Pop()
+
+    SaveHistory()
+
+    ToolTip "PDF path saved to history"
+    SetTimer () => ToolTip(), -1500
+}
+
+IsFilePath(text) {
+    if (InStr(text, ":\") || InStr(text, "\\")) {
+        ext := SubStr(text, InStr(text, ".", , -1) + 1)
+        if (ext != "" && StrLen(ext) < 12) {
+            return true
+        }
+    }
+    return false
+}
+
+GetFileType(filePath) {
+    ext := SubStr(filePath, InStr(filePath, ".", , -1) + 1)
+    ext := StrLower(ext)
+
+    if (ext = "pdf") {
+        return "pdf"
+    } else if (ext = "txt" || ext = "ini" || ext = "ahk" || ext = "js" || ext = "py" || ext = "cpp" || ext = "h") {
+        return "text"
+    } else {
+        for format in ImageFormats {
+            if (ext = format) {
+                return "image"
+            }
+        }
+        return "unknown"
+    }
+}
+
+PasteFile(filePath, fileType := "auto") {
+    global LastManualClipboard
+
+    if (fileType = "auto") {
+        fileType := GetFileType(filePath)
+    }
+
+    if (fileType = "pdf" || fileType = "image") {
+        if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
+            DllCall("EmptyClipboard")
+            DllCall("CloseClipboard")
+        }
+        SetClipboardFile(filePath)
+    } else {
+        sourceInfo := "Copied from: " (fileType = "pdf" ? "PDF file" : "File") " | Time: " FormatTime(,
+            "yyyy-MM-dd HH:mm:ss")
+        try {
+            content := FileRead(filePath, "UTF-8")
+            fullContent := "; " sourceInfo "`n`n" content
+        } catch {
+            fullContent := "; " sourceInfo "`n`n[File content could not be read]"
+        }
+
+        tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
+        FileAppend fullContent, tempFile, "UTF-8"
+
+        if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
+            DllCall("EmptyClipboard")
+            DllCall("CloseClipboard")
+        }
+        SetClipboardFile(tempFile)
+
+        SetTimer () => (
+            FileExist(tempFile) ? FileDelete(tempFile) : "",
+            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+        ), -10000
+    }
+
+    if TargetWindow && WinExist("ahk_id " TargetWindow) {
+        WinActivate("ahk_id " TargetWindow)
+    } else {
+        WinActivate("A")
+    }
+    Sleep 100
+    Send "^v"
+
+    if (fileType = "pdf" && InStr(filePath, A_Temp "\ClipTemp_")) {
+        SetTimer () => (
+            FileExist(filePath) ? FileDelete(filePath) : "",
+            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+        ), -10000
+    } else if (LastManualClipboard != "") {
+        SetTimer () => (A_Clipboard := LastManualClipboard), -10000
+    }
+
+    ToolTip "Pasted " fileType " file"
+    SetTimer () => ToolTip(), -1500
 }
