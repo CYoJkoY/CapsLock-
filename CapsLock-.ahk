@@ -195,15 +195,13 @@ Numpad2:: WinMinimize "A"
 v:: {
     global LastManualClipboard
 
-    if (IsClipboardImagePaths()) {
+    if (IsImagePathsText(A_Clipboard)) {
         tempPDFPath := ProcessImagePathsToPDF()
         if (tempPDFPath = "") {
             ToolTip "Failed to create PDF"
             SetTimer () => ToolTip(), -2000
             return
         }
-
-        recordPDFToHistory(tempPDFPath)
 
         PasteFile(tempPDFPath, "pdf")
         return
@@ -369,7 +367,7 @@ ActionPickerHandler(ItemName, ItemPos, MyMenu) {
     global MenuPosX, MenuPosY
 
     ActionMenu := Menu()
-    ActionMenu.Add("📄 Paste as .txt file", (*) => PasteAsFile(SelectedItem))
+    ActionMenu.Add("📄 Paste as File", (*) => PasteAsFile(SelectedItem))
     ActionMenu.Add("🔍 Preview Content", (*) => ShowPreviewGui(SelectedItem["text"]))
     ActionMenu.Add("❌ Delete from History", DeleteHistoryItem)
     ActionMenu.Add()
@@ -379,8 +377,27 @@ ActionPickerHandler(ItemName, ItemPos, MyMenu) {
 
 PasteAsFile(historyItem) {
     global LastManualClipboard
+    local tempFile := "", filePath := "", fileType := ""
 
     textContent := historyItem["text"]
+
+    if (IsImagePathsText(textContent)) {
+        originalClipboard := A_Clipboard
+        A_Clipboard := textContent
+
+        tempPDFPath := ProcessImagePathsToPDF()
+        A_Clipboard := originalClipboard
+
+        if (tempPDFPath = "") {
+            ToolTip "Failed to create PDF from image paths."
+            SetTimer () => ToolTip(), -2000
+            return
+        }
+
+        PasteFile(tempPDFPath, "pdf")
+        tempFile := ""
+        return
+    }
 
     if (IsFilePath(textContent) && FileExist(textContent)) {
         filePath := textContent
@@ -393,6 +410,7 @@ PasteAsFile(historyItem) {
             }
 
             SetClipboardFile(filePath)
+            tempFile := ""
         } else {
             sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
             fullContent := "; " sourceInfo "`n`n" FileRead(filePath, "UTF-8")
@@ -731,6 +749,31 @@ _PasteSelectedFromFullHistory() {
 
 _PasteSingleFile(textContent, activate := true) {
     global TargetWindow
+    global LastManualClipboard
+
+    if (Type(textContent) = "Map") {
+        textToPaste := HasProp(textContent, "text") ? textContent["text"] : ""
+    } else {
+        textToPaste := textContent
+    }
+
+    if (IsImagePathsText(textToPaste)) {
+        originalClipboard := A_Clipboard
+        A_Clipboard := textToPaste
+
+        tempPDFPath := ProcessImagePathsToPDF()
+
+        A_Clipboard := originalClipboard
+
+        if (tempPDFPath = "") {
+            ToolTip "Failed to create PDF from image paths in Full History."
+            SetTimer () => ToolTip(), -2000
+            return
+        }
+
+        PasteFile(tempPDFPath, "pdf")
+        return
+    }
 
     if (Type(textContent) = "Map") {
         textToPaste := HasProp(textContent, "text") ? textContent["text"] : ""
@@ -941,46 +984,6 @@ GetSourceInfo() {
     return "Source: " title " | Time: " timestamp
 }
 
-IsClipboardImagePaths() {
-    if !A_Clipboard is String
-        return false
-
-    text := A_Clipboard
-    if InStr(text, A_Temp "\ClipTemp_")
-        return false
-
-    lines := StrSplit(text, "`n", "`r")
-    if lines.Length < 2
-        return false
-
-    for idx, line in lines {
-        line := Trim(line)
-        if (line = "")
-            continue
-
-        if !FileExist(line) {
-            return false
-        }
-
-        ext := SubStr(line, InStr(line, ".", , -1) + 1)
-        ext := StrLower(ext)
-
-        isImage := false
-        for format in ImageFormats {
-            if (ext = format) {
-                isImage := true
-                break
-            }
-        }
-
-        if !isImage {
-            return false
-        }
-    }
-
-    return true
-}
-
 ProcessImagePathsToPDF() {
     global ImageMagickExe
 
@@ -1035,27 +1038,6 @@ ProcessImagePathsToPDF() {
         SetTimer () => ToolTip(), -3000
         return ""
     }
-}
-
-recordPDFToHistory(pdfPath) {
-    global ClipboardHistory, MaxHistory
-
-    historyItem := Map()
-    historyItem["text"] := pdfPath
-    historyItem["source"] := "Generated PDF from ImageMagick"
-    historyItem["process"] := A_ScriptName
-    historyItem["time"] := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-    historyItem["type"] := "pdf"
-
-    ClipboardHistory.InsertAt(1, historyItem)
-
-    if (ClipboardHistory.Length > MaxHistory)
-        ClipboardHistory.Pop()
-
-    SaveHistory()
-
-    ToolTip "PDF path saved to history"
-    SetTimer () => ToolTip(), -1500
 }
 
 IsFilePath(text) {
@@ -1143,4 +1125,46 @@ PasteFile(filePath, fileType := "auto") {
 
     ToolTip "Pasted " fileType " file"
     SetTimer () => ToolTip(), -1500
+}
+
+IsImagePathsText(text) {
+    if !(text is String)
+        return false
+
+    if text = ""
+        return false
+
+    if InStr(text, A_Temp "\ClipTemp_")
+        return false
+
+    lines := StrSplit(text, "`n", "`r")
+    if lines.Length < 2
+        return false
+
+    for idx, line in lines {
+        line := Trim(line)
+        if (line = "")
+            continue
+
+        if !FileExist(line) {
+            return false
+        }
+
+        ext := SubStr(line, InStr(line, ".", , -1) + 1)
+        ext := StrLower(ext)
+
+        isImage := false
+        for format in ImageFormats {
+            if (ext = format) {
+                isImage := true
+                break
+            }
+        }
+
+        if !isImage {
+            return false
+        }
+    }
+
+    return true
 }
