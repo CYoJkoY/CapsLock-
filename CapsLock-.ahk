@@ -17,6 +17,7 @@ global ENCRYPT_KEY := 0x5A
 global ImageMagickPath := A_ScriptDir "\ImageMagickPath.txt"
 global ImageMagickExe := ""
 global ImageFormats := ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]
+global IgnoreNextClipChange := false
 
 LoadHistory()
 
@@ -145,8 +146,8 @@ d:: Send "{Delete}"
 Backspace:: Send "{Home}+{End}{Delete}"
 Delete:: Send "{Home}+{End}{Delete}"
 
-E:: Send "^{PgDn}"
-Q:: Send "^{PgUp}"
+e:: Send "^{PgDn}"
+q:: Send "^{PgUp}"
 
 LButton:: {
     AdjustOpacity(20)
@@ -255,6 +256,42 @@ v:: {
 
 +v:: ShowHistoryMenu()
 
+f:: {
+    global LastManualClipboard, IgnoreNextClipChange
+
+    sourceText := (LastManualClipboard != "") ? LastManualClipboard : A_Clipboard
+    if (sourceText = "") {
+        ToolTip "No text to paste. Please copy something first."
+        SetTimer () => ToolTip(), -1500
+        return
+    }
+
+    if !RegExMatch(sourceText, "[a-zA-Z]", &match) {
+        ToolTip "No English letters found"
+        SetTimer () => ToolTip(), -1500
+        return
+    }
+
+    firstChar := match[0]
+    newText := (firstChar ~= "[A-Z]") ? StrLower(sourceText) : StrUpper(sourceText)
+
+    prevCapsState := GetKeyState("CapsLock", "T")
+    if prevCapsState
+        SetCapsLockState("AlwaysOff")
+
+    IgnoreNextClipChange := true
+    A_Clipboard := newText
+    Send "^v"
+
+    Sleep 200
+
+    IgnoreNextClipChange := true
+    A_Clipboard := sourceText
+
+    if prevCapsState
+        SetCapsLockState("AlwaysOn")
+}
+
 #HotIf
 
 ; =========================== Method =========================== ;
@@ -291,7 +328,13 @@ SetClipboardFile(filePath) {
 }
 
 HandleHistoryUpdate(DataType) {
-    global ClipboardHistory, MaxHistory, LastManualClipboard
+    global ClipboardHistory, MaxHistory, LastManualClipboard, IgnoreNextClipChange
+
+    if (IgnoreNextClipChange) {
+        IgnoreNextClipChange := false
+        return
+    }
+
     if (DataType = 1) {
         text := A_Clipboard
         if InStr(text, A_Temp "\ClipTemp_")
