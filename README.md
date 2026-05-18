@@ -8,7 +8,6 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
 *   **Smart Paste as File (`CapsLock + V`)**:
     *   Instantly converts the last manually copied text (or the current clipboard if no manual history exists) into a `.txt` file and pastes it. Perfect for sending code snippets or text as files in IM apps or File Explorer.
     *   **Context‑Aware Headers**: Each generated `.txt` file includes a header comment (e.g., `; Copied from: CapsLock‑.ahk - Visual Studio Code [Administrator] (at 2026‑04‑23 00:46:39)`) recording the **source window title and timestamp**. When pasting from the history menu, it uses the original source stored in history. For direct `CapsLock+V` pasting, it attempts to match the clipboard content with history to retrieve the source; otherwise, it uses a generic descriptor.
-    *   **Auto Cleanup**: The temporary `.txt` file in `%TEMP%` is automatically deleted 10 seconds after pasting.
     *   **Clipboard Restoration**: The original manual clipboard content (if any) is restored 10 seconds after the paste operation.
 *   **Clipboard History with Encrypted Storage**:
     *   **History Menu (`CapsLock + Shift + V`)**: A lightweight, non‑blocking menu showing the 15 most recent entries (configurable via `MAX_VISIBLE_MENU`). Click **"📋 View full history (X items)..."** to open the full management GUI.
@@ -17,7 +16,7 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
         *   **Content Preview**: Double‑click an item or use the context menu to preview its full content in a separate read‑only, resizable window.
         *   **"Select All" Toggle**: A checkbox to quickly select/deselect all history entries.
     *   **Persistent & Encrypted Storage**: Clipboard history is automatically saved to `ClipHistory.bin` in the script directory. Storage uses simple XOR‑based encryption (controllable via the `ENCRYPT_KEY` global variable) to obfuscate text content. History persists across script reloads and system restarts.
-*   **Intelligent Source Tracking**: The script captures the active window title and timestamp at the moment of *copying* (`Ctrl+C`), not at pasting. This "copy‑time context" is stored with each history entry for accurate provenance.
+*   **Intelligent Source Tracking**: The script captures the active window title and timestamp at the moment of *copying* (`Ctrl+C`), not at pasting. This "copy‑time context" is stored with each history entry for accurate provenance. The source process name is also captured in memory for potential future use.
 
 ### 🔄 Quick Case Conversion
 *   **Instant Case Inversion (`CapsLock + F`)**:
@@ -28,6 +27,13 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
 *   **Image to PDF Conversion (`CapsLock + V`)**: When the clipboard contains a list of valid image file paths (one per line), the script automatically calls ImageMagick to merge them into a single PDF file and paste it.
 *   **Supported Image Formats**: PNG, JPG, JPEG, BMP, GIF, TIFF, TIF, WEBP, ICO, HEIC (configurable via the `ImageFormats` list).
 *   **ImageMagick Configuration**: Before first use, you must specify the full path to `magick.exe` via the system tray icon menu → **"Set ImageMagick Path..."**. The path is saved to `ImageMagickPath.txt`.
+
+### 🗑️ Temporary File Cleanup System
+All temporary files generated during paste operations are automatically cleaned up. You can choose from three cleanup strategies via the tray menu:
+*   **Mode 1 – Delete after delay** (default): Each temp file is deleted individually after a configurable delay (default: 10 seconds).
+*   **Mode 2 – Batch cleanup**: Temp files are collected and deleted together at a configurable interval (default: every 30 seconds).
+*   **Mode 3 – Never delete**: Temporary files are never automatically removed.
+Cleanup settings are persisted in `CleanupConfig.ini` and can be adjusted at any time through the tray menu.
 
 ### ⌨️ Efficient Text Navigation & Editing
 *   **Vim‑like Home Row Movement**: Navigate text efficiently without moving your hands off the home row.
@@ -55,8 +61,15 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
 
 ### ⚙️ System Integration
 *   **Tray Menu**: Right‑click the system tray icon for:
-    *   **Load on start up**: Toggle auto‑start with the system (modifies `HKCU\...\Run` registry).
     *   **Set ImageMagick Path...**: Set the path to `magick.exe` for the image‑to‑PDF feature.
+    *   **Open Temp Folder**: Open the system temporary folder where generated `.txt` files are stored.
+    *   **Delete Mode** (submenu):
+        *   `1 - Delete after delay`: Each temp file is deleted after a set delay.
+        *   `2 - Batch cleanup`: Temp files are deleted in batches at a set interval.
+        *   `3 - Never delete`: Temp files are kept indefinitely.
+    *   **Mode1: Set Delete Delay...**: Configure the delay (in seconds) for Mode 1.
+    *   **Mode2: Set Cleanup Interval...**: Configure the interval (in seconds) for Mode 2.
+    *   **Load on start up**: Toggle auto‑start with the system (modifies `HKCU\...\Run` registry).
     *   **Reload**: Reload the script.
     *   **Exit**: Exit the application.
 *   **Native CapsLock Toggle**: Double‑tap `CapsLock` (within 50‑300ms) to toggle the native CapsLock state (On/Off), while still allowing it to function as a modifier key when held.
@@ -87,13 +100,18 @@ The script’s behavior can be adjusted by modifying the global variables at the
 | `HistoryFile` | `A_ScriptDir "\ClipHistory.bin"` | Path for the persistent history file. |
 | `ImageMagickPath` | `A_ScriptDir "\ImageMagickPath.txt"` | Configuration file storing the path to the ImageMagick executable. |
 | `ImageFormats` | `["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]` | List of supported image formats for identifying image paths in the clipboard. |
+| `DeleteMode` | `1` | Temporary file cleanup strategy: `1` = delete after delay, `2` = batch cleanup, `3` = never delete. |
+| `DeleteDelay` | `10` | Delay in seconds before deleting temp files (used when `DeleteMode = 1`). |
+| `CleanupInterval` | `30` | Interval in seconds between batch cleanup runs (used when `DeleteMode = 2`). |
+| `ConfigFile` | `A_ScriptDir "\CleanupConfig.ini"` | Path to the INI file that persists cleanup settings across restarts. |
 
 **History File Format**: Entries are stored sequentially. Each entry is prefixed by its data length (4 bytes), followed by the XOR‑encrypted data. The data format for each entry is: `Timestamp | Window Title | Text Content`.  
-In memory, each history item is a Map object containing the keys `text`, `source` (window title), and `time` (timestamp). The `process` name is captured for potential future use but is **not** persisted to disk.
+In memory, each history item is a Map object containing the keys `text`, `source` (window title), `process` (executable name), and `time` (timestamp). The `process` name is captured for potential future use but is **not** persisted to disk.
 
 **Key Mechanisms**:
 *   **Clipboard Monitoring**: Uses `OnClipboardChange` to detect new copies. It ignores its own generated temp files (`ClipTemp_*.txt`).
 *   **Multiple File Paste**: The `SetClipboardFiles` function constructs a `DROPFILES` structure in memory, allowing the script to set multiple file paths to the clipboard at once, enabling batch paste operations from the Full History GUI.
+*   **Temporary File Cleanup**: The `ScheduleFileDeletion` function routes cleanup based on `DeleteMode`. Mode 1 uses `SetTimer` with a negative delay for one‑shot deletion. Mode 2 queues files and uses a periodic `SetTimer` to delete them in batches. Mode 3 keeps all files.
 *   **Error Handling & Compatibility**: The `LoadHistory()` function includes logic to handle and migrate from older, unencrypted, or malformed history file formats gracefully.
 
 **Note on Encryption**: The provided XOR encryption (`CryptBuffer` function) is a simple obfuscation and is **not cryptographically secure**. For sensitive data, consider using a stronger encryption library or setting `ENCRYPT_KEY` to `0` and relying on system file permissions.

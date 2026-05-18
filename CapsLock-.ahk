@@ -18,8 +18,15 @@ global ImageMagickPath := A_ScriptDir "\ImageMagickPath.txt"
 global ImageMagickExe := ""
 global ImageFormats := ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]
 global IgnoreNextClipChange := false
+global DeleteMode := 1
+global DeleteDelay := 10
+global CleanupInterval := 30
+global PendingCleanupFiles := []
+global ConfigFile := A_ScriptDir "\CleanupConfig.ini"
+global BatchCleanupTimer := ""
 
 LoadHistory()
+LoadConfig()
 
 ; =========================== Encryption =========================== ;
 CryptBuffer(buf) {
@@ -32,12 +39,76 @@ CryptBuffer(buf) {
     return buf
 }
 
+; =========================== Cleanup =========================== ;
+LoadConfig() {
+    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile
+    if !FileExist(ConfigFile)
+        return
+    try {
+        DeleteMode := IniRead(ConfigFile, "Cleanup", "DeleteMode", 1)
+        DeleteDelay := IniRead(ConfigFile, "Cleanup", "DeleteDelay", 10)
+        CleanupInterval := IniRead(ConfigFile, "Cleanup", "CleanupInterval", 30)
+    } catch {
+        ; Use default value if reading fails, do nothing
+    }
+}
+
+SaveConfig() {
+    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile
+    try {
+        IniWrite(DeleteMode, ConfigFile, "Cleanup", "DeleteMode")
+        IniWrite(DeleteDelay, ConfigFile, "Cleanup", "DeleteDelay")
+        IniWrite(CleanupInterval, ConfigFile, "Cleanup", "CleanupInterval")
+    }
+}
+
+ScheduleFileDeletion(filePath) {
+    global DeleteMode, DeleteDelay, PendingCleanupFiles, BatchCleanupTimer
+
+    if (DeleteMode = 1) {
+        SetTimer(() => (FileExist(filePath) ? FileDelete(filePath) : ""), -DeleteDelay * 1000)
+    }
+    else if (DeleteMode = 2) {
+        PendingCleanupFiles.Push(filePath)
+        if (BatchCleanupTimer = "") {
+            BatchCleanupTimer := SetTimer(PerformBatchCleanup, CleanupInterval * 1000)
+        }
+    }
+    ; Mode 3: Do nothing, never delete
+}
+
+PerformBatchCleanup() {
+    global PendingCleanupFiles, BatchCleanupTimer
+    newList := []
+    for path in PendingCleanupFiles {
+        if FileExist(path)
+            FileDelete(path)
+        else
+            newList.Push(path)
+    }
+    PendingCleanupFiles := newList
+    if (PendingCleanupFiles.Length = 0 && BatchCleanupTimer != "") {
+        SetTimer(BatchCleanupTimer, 0)
+        BatchCleanupTimer := ""
+    }
+}
+
 ; =========================== TrayIcon =========================== ;
 A_IconTip := "CapsLock-"
 Tray := A_TrayMenu
 Tray.Delete()
-Tray.Add("Load on start up", ToggleAutoStart)
 Tray.Add("Set ImageMagick Path...", (*) => SetImPath())
+Tray.Add()
+Tray.Add("Open Temp Folder", (*) => Run("explore " A_Temp))
+ModeMenu := Menu()
+ModeMenu.Add("1 - Delete after delay", SetDeleteMode1)
+ModeMenu.Add("2 - Batch cleanup", SetDeleteMode2)
+ModeMenu.Add("3 - Never delete", SetDeleteMode3)
+Tray.Add("Delete Mode", ModeMenu)
+Tray.Add("Mode1: Set Delete Delay...", SetDeleteDelay)
+Tray.Add("Mode2: Set Cleanup Interval...", SetCleanupInterval)
+Tray.Add()
+Tray.Add("Load on start up", ToggleAutoStart)
 Tray.Add("Reload", (*) => Reload())
 Tray.Add("Exit", (*) => ExitApp())
 
@@ -65,6 +136,67 @@ IsAutoStartEnabled() {
         return true
     } catch {
         return false
+    }
+}
+
+SetDeleteMode1(*) {
+    global DeleteMode
+    DeleteMode := 1
+    SaveConfig()
+    TrayMenuRefresh()
+    ToolTip "Mode: Delete after delay (" DeleteDelay "s)"
+    SetTimer(() => ToolTip(), -2000)
+}
+
+SetDeleteMode2(*) {
+    global DeleteMode
+    DeleteMode := 2
+    SaveConfig()
+    TrayMenuRefresh()
+    ToolTip "Mode: Batch cleanup every " CleanupInterval "s"
+    SetTimer(() => ToolTip(), -2000)
+}
+
+SetDeleteMode3(*) {
+    global DeleteMode
+    DeleteMode := 3
+    SaveConfig()
+    TrayMenuRefresh()
+    ToolTip "Mode: Never delete"
+    SetTimer(() => ToolTip(), -2000)
+}
+
+SetDeleteDelay(*) {
+    global DeleteDelay
+    input := InputBox("Enter delete delay in seconds:", "Delete Delay", "w300 h120", DeleteDelay)
+    if (input.Result = "OK" && IsNumber(input.Value) && input.Value > 0) {
+        DeleteDelay := Integer(input.Value)
+        SaveConfig()
+        ToolTip "Delete delay set to " DeleteDelay "s"
+        SetTimer(() => ToolTip(), -2000)
+    }
+}
+
+SetCleanupInterval(*) {
+    global CleanupInterval, BatchCleanupTimer
+    input := InputBox("Enter cleanup interval in seconds:", "Cleanup Interval", "w300 h120", CleanupInterval)
+    if (input.Result = "OK" && IsNumber(input.Value) && input.Value > 0) {
+        CleanupInterval := Integer(input.Value)
+        SaveConfig()
+        if (BatchCleanupTimer != "") {
+            SetTimer(BatchCleanupTimer, CleanupInterval * 1000)
+        }
+        ToolTip "Cleanup interval set to " CleanupInterval "s"
+        SetTimer(() => ToolTip(), -2000)
+    }
+}
+
+TrayMenuRefresh() {
+    global DeleteMode
+    try {
+        Tray.Check("1 - Delete after delay", DeleteMode = 1)
+        Tray.Check("2 - Batch cleanup", DeleteMode = 2)
+        Tray.Check("3 - Never delete", DeleteMode = 3)
     }
 }
 
@@ -246,8 +378,8 @@ v:: {
     SetClipboardFile(tempFile)
     Send "^v"
 
+    ScheduleFileDeletion(tempFile)
     SetTimer () => (
-        FileExist(tempFile) ? FileDelete(tempFile) : "",
         (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
     ), -10000
 
@@ -490,14 +622,14 @@ PasteAsFile(historyItem) {
     Send "^v"
 
     if (InStr(tempFile, A_Temp "\ClipTemp_")) {
+        ScheduleFileDeletion(tempFile)
         SetTimer () => (
-            FileExist(tempFile) ? FileDelete(tempFile) : "",
             (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
         ), -10000
     } else {
         if (fileType = "pdf") {
+            ScheduleFileDeletion(filePath)
             SetTimer () => (
-                (FileExist(filePath) && InStr(filePath, A_Temp "\ClipTemp_")) ? FileDelete(filePath) : "",
                 (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
             ), -10000
         } else {
@@ -869,7 +1001,8 @@ _PasteSingleFile(textContent, activate := true) {
     Send "^v"
     Sleep 50
 
-    SetTimer () => (FileExist(tempFile) ? FileDelete(tempFile) : "", ToolTip()), -10000
+    ScheduleFileDeletion(tempFile)
+    SetTimer () => ToolTip(), -10000
 }
 
 _OnSelectAllClicked(chk, info) {
@@ -991,12 +1124,8 @@ _PasteAsMultipleFiles(textArray) {
     Sleep 100
     Send "^v"
 
-    SetTimer (_DeleteTempFiles.Bind(tempFiles)), -10000
-}
-
-_DeleteTempFiles(files) {
-    for f in files
-        FileExist(f) ? FileDelete(f) : ""
+    for f in tempFiles
+        ScheduleFileDeletion(f)
 }
 
 _UpdateSelectAllCheckbox() {
@@ -1143,8 +1272,8 @@ PasteFile(filePath, fileType := "auto") {
         }
         SetClipboardFile(tempFile)
 
+        ScheduleFileDeletion(tempFile)
         SetTimer () => (
-            FileExist(tempFile) ? FileDelete(tempFile) : "",
             (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
         ), -10000
     }
@@ -1158,8 +1287,8 @@ PasteFile(filePath, fileType := "auto") {
     Send "^v"
 
     if (fileType = "pdf" && InStr(filePath, A_Temp "\ClipTemp_")) {
+        ScheduleFileDeletion(filePath)
         SetTimer () => (
-            FileExist(filePath) ? FileDelete(filePath) : "",
             (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
         ), -10000
     } else if (LastManualClipboard != "") {
