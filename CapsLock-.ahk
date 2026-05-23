@@ -14,7 +14,6 @@ global MenuPosY := 0
 global HistoryFile := A_ScriptDir "\ClipHistory.bin"
 global TargetWindow := 0
 global ENCRYPT_KEY := 0x5A
-global ImageMagickPath := A_ScriptDir "\ImageMagickPath.txt"
 global ImageMagickExe := ""
 global ImageFormats := ["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]
 global IgnoreNextClipChange := false
@@ -22,7 +21,7 @@ global DeleteMode := 1
 global DeleteDelay := 10
 global CleanupInterval := 30
 global PendingCleanupFiles := []
-global ConfigFile := A_ScriptDir "\CleanupConfig.ini"
+global ConfigFile := A_ScriptDir "\Config.ini"
 global BatchCleanupTimer := ""
 
 LoadHistory()
@@ -41,13 +40,32 @@ CryptBuffer(buf) {
 
 ; =========================== Cleanup =========================== ;
 LoadConfig() {
-    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile
+    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile, ImageMagickExe
+
+    ; Migrate old txt configuration to INI (execute only once)
+    oldPath := A_ScriptDir "\ImageMagickPath.txt"
+
+    if FileExist(oldPath) {
+        try {
+            legacyExe := FileRead(oldPath, "UTF-8")
+
+            if (legacyExe != "") {
+                IniWrite(legacyExe, ConfigFile, "ImageMagick", "Path")
+            }
+
+            FileDelete(oldPath)
+        } catch {
+            ; Migration failed, ignored.
+        }
+    }
+
     if !FileExist(ConfigFile)
         return
     try {
         DeleteMode := IniRead(ConfigFile, "Cleanup", "DeleteMode", 1)
         DeleteDelay := IniRead(ConfigFile, "Cleanup", "DeleteDelay", 10)
         CleanupInterval := IniRead(ConfigFile, "Cleanup", "CleanupInterval", 30)
+        ImageMagickExe := IniRead(ConfigFile, "ImageMagick", "Path", "")
     } catch {
         ; Use default value if reading fails, do nothing
     }
@@ -201,17 +219,10 @@ TrayMenuRefresh() {
 }
 
 SetImPath(*) {
-    SelectedFile := FileSelect(1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)")
+    SelectedFile := Trim(FileSelect(1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)"))
+
     if (SelectedFile = "")
         return
-
-    try {
-        FileDelete ImageMagickPath
-        FileAppend SelectedFile, ImageMagickPath, "UTF-8-RAW"
-    } catch as err {
-        MsgBox "Failed to save path: " err.Message, "Error", "Iconx"
-        return
-    }
 
     if !FileExist(SelectedFile) {
         MsgBox "Selected file does not exist!", "Error", "Iconx"
@@ -223,22 +234,16 @@ SetImPath(*) {
         return
     }
 
+    try {
+        IniWrite(SelectedFile, ConfigFile, "ImageMagick", "Path")
+    } catch as err {
+        MsgBox "Failed to save path: " err.Message, "Error", "Iconx"
+        return
+    }
+
     ImageMagickExe := SelectedFile
     MsgBox "ImageMagick path set to: `n" SelectedFile, "Success", "Iconi T2"
 }
-
-LoadImPath() {
-    global ImageMagickExe
-    if !FileExist(ImageMagickPath)
-        return
-    try {
-        ImageMagickExe := FileRead(ImageMagickPath, "UTF-8")
-    } catch {
-        ImageMagickExe := ""
-    }
-}
-
-LoadImPath()
 
 ; =========================== Extension =========================== ;
 *CapsLock:: {

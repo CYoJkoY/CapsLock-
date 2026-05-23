@@ -1,5 +1,15 @@
-ClipHistory.bin
-.vscode/settings.json
+# Local user configuration (contains absolute paths)
+Config.ini
+
+# Build artifact
 CapsLock-.exe
+
+# Runtime data
+ClipHistory.bin
+
+# IDE local settings
+.vscode/settings.json
+
+# Legacy config (migrated to Config.ini)
 ImageMagickPath.txt
 CleanupConfig.ini
