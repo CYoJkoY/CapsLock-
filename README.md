@@ -26,14 +26,14 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
 ### 🖼️ Integrated Image Processing & PDF Creation
 *   **Image to PDF Conversion (`CapsLock + V`)**: When the clipboard contains a list of valid image file paths (one per line), the script automatically calls ImageMagick to merge them into a single PDF file and paste it.
 *   **Supported Image Formats**: PNG, JPG, JPEG, BMP, GIF, TIFF, TIF, WEBP, ICO, HEIC (configurable via the `ImageFormats` list).
-*   **ImageMagick Configuration**: Before first use, you must specify the full path to `magick.exe` via the system tray icon menu → **"Set ImageMagick Path..."**. The path is saved to `ImageMagickPath.txt`.
+*   **ImageMagick Configuration**: Before first use, you must specify the full path to `magick.exe` via the system tray icon menu → **"Set ImageMagick Path..."**. The path is saved to the `[ImageMagick]` section of `Config.ini`.
 
 ### 🗑️ Temporary File Cleanup System
 All temporary files generated during paste operations are automatically cleaned up. You can choose from three cleanup strategies via the tray menu:
 *   **Mode 1 – Delete after delay** (default): Each temp file is deleted individually after a configurable delay (default: 10 seconds).
 *   **Mode 2 – Batch cleanup**: Temp files are collected and deleted together at a configurable interval (default: every 30 seconds).
 *   **Mode 3 – Never delete**: Temporary files are never automatically removed.
-Cleanup settings are persisted in `CleanupConfig.ini` and can be adjusted at any time through the tray menu.
+Cleanup settings are persisted in the `[Cleanup]` section of `Config.ini` and can be adjusted at any time through the tray menu.
 
 ### ⌨️ Efficient Text Navigation & Editing
 *   **Vim‑like Home Row Movement**: Navigate text efficiently without moving your hands off the home row.
@@ -85,7 +85,7 @@ Cleanup settings are persisted in `CleanupConfig.ini` and can be adjusted at any
     *   Download and install ImageMagick from the [official site](https://imagemagick.org/).
     *   Right‑click the tray icon → Select **"Set ImageMagick Path..."**.
     *   In the file selector, navigate to your ImageMagick installation directory and select the `magick.exe` file (typically under `C:\Program Files\ImageMagick‑<version>\`).
-    *   Click "Open" to save the path.
+    *   Click "Open" to save the path to `Config.ini`. If a legacy `ImageMagickPath.txt` exists in the script directory, it will be automatically migrated on next launch.
 
 ---
 
@@ -98,12 +98,12 @@ The script’s behavior can be adjusted by modifying the global variables at the
 | `MAX_VISIBLE_MENU` | `15` | Maximum items shown in the quick history menu (`CapsLock+Shift+V`). |
 | `ENCRYPT_KEY` | `0x5A` | Key used for XOR encryption of the history file. Change this to alter the encryption. Set to `0` to disable encryption (plain text storage). |
 | `HistoryFile` | `A_ScriptDir "\ClipHistory.bin"` | Path for the persistent history file. |
-| `ImageMagickPath` | `A_ScriptDir "\ImageMagickPath.txt"` | Configuration file storing the path to the ImageMagick executable. |
+| `ImageMagickExe` | (empty string) | Full path to ImageMagick `magick.exe`, read from the `[ImageMagick]` section of `Config.ini` at startup. |
 | `ImageFormats` | `["png", "jpg", "jpeg", "bmp", "gif", "tiff", "tif", "webp", "ico", "heic"]` | List of supported image formats for identifying image paths in the clipboard. |
 | `DeleteMode` | `1` | Temporary file cleanup strategy: `1` = delete after delay, `2` = batch cleanup, `3` = never delete. |
 | `DeleteDelay` | `10` | Delay in seconds before deleting temp files (used when `DeleteMode = 1`). |
 | `CleanupInterval` | `30` | Interval in seconds between batch cleanup runs (used when `DeleteMode = 2`). |
-| `ConfigFile` | `A_ScriptDir "\CleanupConfig.ini"` | Path to the INI file that persists cleanup settings across restarts. |
+| `ConfigFile` | `A_ScriptDir "\\Config.ini"` | Unified INI file storing cleanup settings (`[Cleanup]` section) and ImageMagick path (`[ImageMagick]` section). |
 
 **History File Format**: Entries are stored sequentially. Each entry is prefixed by its data length (4 bytes), followed by the XOR‑encrypted data. The data format for each entry is: `Timestamp | Window Title | Text Content`.  
 In memory, each history item is a Map object containing the keys `text`, `source` (window title), `process` (executable name), and `time` (timestamp). The `process` name is captured for potential future use but is **not** persisted to disk.
@@ -116,7 +116,7 @@ In memory, each history item is a Map object containing the keys `text`, `source
 
 **Note on Encryption**: The provided XOR encryption (`CryptBuffer` function) is a simple obfuscation and is **not cryptographically secure**. For sensitive data, consider using a stronger encryption library or setting `ENCRYPT_KEY` to `0` and relying on system file permissions.
 
-**Note on Image Processing**: The script relies on the external ImageMagick command‑line tool for image merging and PDF creation. If the path is not set or the file is not found, the related features will be unavailable and an error will be shown.
+**Note on Image Processing**: The script relies on the external ImageMagick command‑line tool for image merging and PDF creation. The path to `magick.exe` is configured via the tray menu and stored in `Config.ini`. On first launch, any legacy `ImageMagickPath.txt` is automatically migrated to the unified `Config.ini`. If the path is not set or the executable is not found, a prompt will appear.
 
 ---
 
