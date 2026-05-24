@@ -99,10 +99,11 @@ PerformBatchCleanup() {
     global PendingCleanupFiles, BatchCleanupTimer
     newList := []
     for path in PendingCleanupFiles {
-        if FileExist(path)
-            FileDelete(path)
-        else
-            newList.Push(path)
+        if FileExist(path) {
+            try FileDelete(path)
+            if FileExist(path)
+                newList.Push(path)
+        }
     }
     PendingCleanupFiles := newList
     if (PendingCleanupFiles.Length = 0 && BatchCleanupTimer != "") {
@@ -219,6 +220,8 @@ TrayMenuRefresh() {
 }
 
 SetImPath(*) {
+    global ImageMagickExe
+
     SelectedFile := Trim(FileSelect(1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)"))
 
     if (SelectedFile = "")
@@ -479,8 +482,18 @@ HandleHistoryUpdate(DataType) {
 
         LastManualClipboard := text
 
-        sourceTitle := WinGetTitle("A")
-        sourceProcess := WinGetProcessName("A")
+        try {
+            sourceTitle := WinGetTitle("A")
+        } catch {
+            sourceTitle := "Unknown Window"
+        }
+
+        try {
+            sourceProcess := WinGetProcessName("A")
+        } catch {
+            sourceProcess := "Unknown Process"
+        }
+
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
 
         historyItem := Map()
@@ -507,8 +520,10 @@ HandleHistoryUpdate(DataType) {
 }
 
 ShowHistoryMenu(isReturning := false) {
+    global ClipboardHistory, MenuPosX, MenuPosY, MAX_VISIBLE_MENU, TargetWindow
+
     TargetWindow := WinExist("A")
-    global ClipboardHistory, MenuPosX, MenuPosY, MAX_VISIBLE_MENU
+
     if (ClipboardHistory.Length = 0) {
         ToolTip "No manual copy history"
         SetTimer () => ToolTip(), -1500
@@ -707,7 +722,7 @@ LoadHistory() {
                     sourceStr := SubStr(rest, 1, pos2 - 1)
                     textStr := SubStr(rest, pos2 + 3)
                 } else {
-                    sourceStr := "Unkown Source"
+                    sourceStr := "Unknown Source"
                     textStr := rest
                 }
             } else {
@@ -759,7 +774,8 @@ SaveHistory() {
 }
 
 ShowFullHistoryGui(ItemName, ItemPos, MyMenu) {
-    global ClipboardHistory, FullHistoryGui
+    global ClipboardHistory, FullHistoryGui, TargetWindow
+
     TargetWindow := WinExist("A")
 
     if (FullHistoryGui) {
@@ -977,7 +993,7 @@ _PasteSingleFile(textContent, activate := true) {
         }
     }
 
-    fullContent := "; " sourceInfo "`n`n" textContent
+    fullContent := "; " sourceInfo "`n`n" textToPaste
 
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
     FileAppend fullContent, tempFile, "UTF-8"
@@ -1002,7 +1018,7 @@ _PasteSingleFile(textContent, activate := true) {
         }
     }
 
-    ToolTip "Pasting: " SubStr(textContent, 1, 40) "..."
+    ToolTip "Pasting: " SubStr(textToPaste, 1, 40) "..."
     Send "^v"
     Sleep 50
 
