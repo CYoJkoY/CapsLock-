@@ -12,7 +12,6 @@ A_MaxHotkeysPerInterval := 200
 #Include ClipboardUtils.ahk
 #Include History.ahk
 #Include Hotkeys.ahk
-#Include GUI.ahk
 #Include Tray.ahk
 
 LoadHistory()
