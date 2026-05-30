@@ -6,10 +6,3 @@ CapsLock-.exe
 
 # Runtime data
 ClipHistory.bin
-
-# IDE local settings
-.vscode/settings.json
-
-# Legacy config (migrated to Config.ini)
-ImageMagickPath.txt
-CleanupConfig.ini
