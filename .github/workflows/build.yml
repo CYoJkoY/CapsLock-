@@ -1,0 +1,112 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Syntax Check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AutoHotkey v2
+        run: choco install autohotkey --version=2.0.18 -y
+
+      - name: Validate Main.ahk syntax
+        run: |
+          $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          & $ahk /validate Main.ahk
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Syntax validation failed for Main.ahk"
+            exit 1
+          }
+          Write-Host "Main.ahk syntax OK"
+
+      - name: Validate all module files
+        run: |
+          $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          $errors = 0
+          Get-ChildItem -Path modules -Filter *.ahk | ForEach-Object {
+            Write-Host "Checking $($_.Name)..."
+            & $ahk /validate $_.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Syntax error in $($_.Name)"
+              $errors++
+            } else {
+              Write-Host "  $($_.Name) OK"
+            }
+          }
+          if ($errors -gt 0) {
+            Write-Error "$errors module(s) failed syntax check"
+            exit 1
+          }
+          Write-Host "All modules passed syntax check"
+
+  build:
+    name: Package & Compile
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AutoHotkey v2
+        run: choco install autohotkey --version=2.0.18 -y
+
+      - name: Create portable ZIP package
+        run: |
+          $zipName = "CapsLockPlus-${{ github.ref_name }}.zip"
+          Compress-Archive -Path Main.ahk, modules, README.md -DestinationPath $zipName -Force
+          Write-Host "Created $zipName"
+          Get-Item $zipName | Select-Object Name, Length
+
+      - name: Compile to EXE with Ahk2Exe
+        run: |
+          $compiler = "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe"
+          if (!(Test-Path $compiler)) {
+            Write-Warning "Ahk2Exe not found, skipping EXE compilation"
+            exit 0
+          }
+          & $compiler /in Main.ahk /out "CapsLockPlus.exe" /base "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Compiled CapsLockPlus.exe successfully"
+            Get-Item CapsLockPlus.exe | Select-Object Name, Length
+          } else {
+            Write-Warning "EXE compilation failed, continuing without it"
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapsLockPlus-${{ github.ref_name }}
+          path: |
+            CapsLockPlus-*.zip
+            CapsLockPlus.exe
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CapsLockPlus-${{ github.ref_name }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            CapsLockPlus-*.zip
+            CapsLockPlus.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
