@@ -271,3 +271,29 @@ IsImagePathsText(text) {
 
     return true
 }
+
+CopyAsPlainText() {
+    bak := ClipboardAll()
+    A_Clipboard := ""
+    Send "^c"
+
+    if !ClipWait(1) {
+        A_Clipboard := bak
+        return ""
+    }
+
+    text := A_Clipboard
+
+    if (text == "") {
+        A_Clipboard := bak
+        return ""
+    }
+
+    if (InStr(text, "`n") && FileExist(StrSplit(text, "`n", "`r")[1])) {
+        A_Clipboard := bak
+        return ""
+    }
+
+    A_Clipboard := text
+    return text
+}
