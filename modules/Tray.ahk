@@ -27,7 +27,7 @@ TraySetup() {
         Tray.Check("Load on start up")
 }
 
-; =========================== 自动启动 ===========================
+; =========================== Auto-start ===========================
 ToggleAutoStart(*) {
     global Tray
 
@@ -54,7 +54,7 @@ IsAutoStartEnabled() {
     }
 }
 
-; =========================== 删除模式切换 ===========================
+; =========================== Switch to delete mode ===========================
 SetDeleteMode1(*) {
     global DeleteMode
     DeleteMode := 1
@@ -82,7 +82,7 @@ SetDeleteMode3(*) {
     SetTimer(() => ToolTip(), -2000)
 }
 
-; =========================== 参数设置 ===========================
+; =========================== Parameter settings ===========================
 SetDeleteDelay(*) {
     global DeleteDelay
     input := InputBox("Enter delete delay in seconds:", "Delete Delay", "w300 h120", DeleteDelay)
@@ -121,7 +121,7 @@ TrayMenuRefresh() {
     }
 }
 
-; =========================== ImageMagick 路径设置 ===========================
+; =========================== Set the ImageMagick path===========================
 SetImPath(*) {
     global ImageMagickExe, ConfigFile
 
