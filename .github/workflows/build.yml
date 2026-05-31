@@ -21,15 +21,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install AutoHotkey v2
-        run: choco install autohotkey -y
+        run: choco install autohotkey.install -y
 
-      - name: Validate syntax via main.ahk entry point
+      - name: Validate syntax via Main.ahk entry point
         shell: pwsh
         run: |
           # Refresh PATH after choco install
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-          # Dynamically locate AutoHotkey.exe
+          # Dynamically locate AutoHotkey v2 executable
           $ahk = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
           if (-not $ahk) {
               $ahk = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
@@ -37,34 +37,35 @@ jobs:
           if (-not $ahk) {
               $candidates = @(
                   "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
-                  "C:\Program Files\AutoHotkey\AutoHotkey.exe"
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
               )
               foreach ($c in $candidates) {
                   if (Test-Path $c) { $ahk = $c; break }
               }
           }
           if (-not $ahk) {
-              Write-Error "AutoHotkey.exe not found after installation"
+              Write-Error "AutoHotkey v2 not found after installation"
               exit 1
           }
 
           Write-Host "Using AutoHotkey at: $ahk"
           & $ahk /version
-          
-          # Syntax check using /iLib (no script execution)
-          $tempLib = [System.IO.Path]::GetTempFileName() + ".ahk"
-          $syntaxOutput = & $ahk /ErrorStdOut * /iLib $tempLib main.ahk 2>&1
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Syntax validation failed with exit code $LASTEXITCODE"
-              if ($syntaxOutput) {
-                  Write-Host "AHK output:" $syntaxOutput
-              }
-              Remove-Item $tempLib -ErrorAction SilentlyContinue
-              exit 1
-          }
+
+          # Syntax check: /iLib parses all #Include directives without executing script
+          $tempLib = Join-Path $env:TEMP ("syntax_check_" + [guid]::NewGuid().ToString() + ".ahk")
+          Write-Host "Validating Main.ahk (includes all modules via #Include)..."
+          & $ahk /iLib $tempLib Main.ahk 2>&1 | Out-String
+          $exitCode = $LASTEXITCODE
+
+          # Clean up temp file
           Remove-Item $tempLib -ErrorAction SilentlyContinue
-          Write-Host "Syntax check passed. All modules validated through main.ahk."
+
+          if ($exitCode -ne 0) {
+              Write-Error "Syntax validation failed with exit code $exitCode"
+              exit $exitCode
+          }
+
+          Write-Host "Syntax check passed. All modules validated through Main.ahk."
 
   build:
     name: Package & Compile
@@ -74,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install AutoHotkey v2
-        run: choco install autohotkey -y
+        run: choco install autohotkey.install -y
 
       - name: Create portable ZIP package
         shell: pwsh
@@ -82,7 +83,7 @@ jobs:
           # Sanitize ref_name for safe filenames (replace / with -)
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $zipName = "CapsLock-${safeRef}.zip"
-          Compress-Archive -Path main.ahk, modules, README.md -DestinationPath $zipName -Force
+          Compress-Archive -Path Main.ahk, modules, Config.ini, LICENSE, README.md -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
           Get-Item $zipName | Select-Object Name, Length
 
@@ -130,7 +131,7 @@ jobs:
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
 
-          $compileArgs = @("/in", "main.ahk", "/out", $exeName)
+          $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
           if ($base) {
               $compileArgs += @("/base", $base)
           }
