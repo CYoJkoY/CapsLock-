@@ -83,7 +83,12 @@ jobs:
           # Sanitize ref_name for safe filenames (replace / with -)
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $zipName = "CapsLock-${safeRef}.zip"
-          Compress-Archive -Path Main.ahk, modules, Config.ini, LICENSE, README.md -DestinationPath $zipName -Force
+
+          # Core files that must exist in the repository
+          $filesToPack = @("Main.ahk", "modules", "README.md")
+
+          Write-Hostt "Packing files $($filesToPack -join ', ')"
+          Compress-Archive -Path $filesToPack -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
           Get-Item $zipName | Select-Object Name, Length
 
