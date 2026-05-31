@@ -103,7 +103,7 @@ c:: {
     IgnoreNextClipChange := false
 
     if (text != "")
-        AddToHistory(text, "text")
+        AddToHistory(text, "Plain Text Copy")
 }
 
 ; v — 粘贴为文件
