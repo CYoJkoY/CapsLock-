@@ -87,7 +87,7 @@ jobs:
           # Core files that must exist in the repository
           $filesToPack = @("Main.ahk", "modules", "README.md")
 
-          Write-Hostt "Packing files $($filesToPack -join ', ')"
+          Write-Host "Packing files $($filesToPack -join ', ')"
           Compress-Archive -Path $filesToPack -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
           Get-Item $zipName | Select-Object Name, Length
