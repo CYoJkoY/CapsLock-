@@ -5,6 +5,11 @@ A high‑performance system enhancement tool built with **AutoHotkey v2**. This 
 ## ✨ Core Features
 
 ### 📋 Advanced Clipboard Management
+*   **Plain Text Copy (`CapsLock + C`)**:
+    *   Copies selected content as **pure text**, stripping all rich formatting (HTML/RTF/styles/fonts/colors).
+    *   Internally backs up the clipboard via `ClipboardAll()`, sends `Ctrl+C`, reads the plain text version through `A_Clipboard`, and writes it back to overwrite all formatted data.
+    *   Automatically records the entry to clipboard history with source label `"Plain Text Copy"`.
+    *   File path lists are detected and skipped (original clipboard is restored).
 *   **Smart Paste as File (`CapsLock + V`)**:
     *   Instantly converts the last manually copied text (or the current clipboard if no manual history exists) into a `.txt` file and pastes it. Perfect for sending code snippets or text as files in IM apps or File Explorer.
     *   **Context‑Aware Headers**: Each generated `.txt` file includes a header comment (e.g., `; Copied from: CapsLock‑.ahk - Visual Studio Code [Administrator] (at 2026‑04‑23 00:46:39)`) recording the **source window title and timestamp**. When pasting from the history menu, it uses the original source stored in history. For direct `CapsLock+V` pasting, it attempts to match the clipboard content with history to retrieve the source; otherwise, it uses a generic descriptor.
@@ -103,7 +108,7 @@ The script’s behavior can be adjusted by modifying the global variables at the
 | `DeleteMode` | `1` | Temporary file cleanup strategy: `1` = delete after delay, `2` = batch cleanup, `3` = never delete. |
 | `DeleteDelay` | `10` | Delay in seconds before deleting temp files (used when `DeleteMode = 1`). |
 | `CleanupInterval` | `30` | Interval in seconds between batch cleanup runs (used when `DeleteMode = 2`). |
-| `ConfigFile` | `A_ScriptDir "\\Config.ini"` | Unified INI file storing cleanup settings (`[Cleanup]` section) and ImageMagick path (`[ImageMagick]` section). |
+| `ConfigFile` | `A_ScriptDir "\Config.ini"` | Unified INI file storing all settings. |
 
 **History File Format**: Entries are stored sequentially. Each entry is prefixed by its data length (4 bytes), followed by the XOR‑encrypted data. The data format for each entry is: `Timestamp | Window Title | Text Content`.  
 In memory, each history item is a Map object containing the keys `text`, `source` (window title), `process` (executable name), and `time` (timestamp). The `process` name is captured for potential future use but is **not** persisted to disk.
