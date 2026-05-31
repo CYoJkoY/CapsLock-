@@ -95,61 +95,87 @@ jobs:
       - name: Compile to EXE with Ahk2Exe
         shell: pwsh
         run: |
-          # Refresh PATH
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-          # ------------------------------------------------------------
-          # 1. Locate Ahk2Exe.exe (with robust fallback)
-          # ------------------------------------------------------------
+          # --- 1. 本地查找 Ahk2Exe ---
           function Find-Ahk2Exe {
-              # a) Check PATH via Get-Command
               $cmd = Get-Command Ahk2Exe.exe -ErrorAction SilentlyContinue
               if ($cmd) { return $cmd.Source }
-
-              # b) Recursive search in common install roots
               $roots = @(
                   "${env:ProgramFiles}\AutoHotkey",
                   "${env:ProgramFiles(x86)}\AutoHotkey",
                   "${env:LOCALAPPDATA}\Programs\AutoHotkey"
               )
-              foreach ($root in $roots) {
-                  if (Test-Path $root) {
-                      $found = Get-ChildItem -Path $root -Recurse -Filter "Ahk2Exe.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-                      if ($found) { return $found.FullName }
+              foreach ($r in $roots) {
+                  if (Test-Path $r) {
+                      $f = Get-ChildItem $r -Recurse -Filter Ahk2Exe.exe -ErrorAction SilentlyContinue | select -First 1
+                      if ($f) { return $f.FullName }
+                  }
+              }
+              return $null
+          }
+          $compiler = Find-Ahk2Exe
+
+          # --- 2. 下载 (使用 API + 固定回退) ---
+          if (-not $compiler) {
+              Write-Host "Ahk2Exe not found locally, downloading..."
+
+              $downloadUrl = $null
+              $fallbackUrls = @(
+                  "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip",
+                  "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a0a/Ahk2Exe1.1.37.02a0.zip",
+                  "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a0/Ahk2Exe1.1.37.02a0.zip",
+                  "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip"
+              )
+
+              # 优先通过 API 获取最新下载链接
+              try {
+                  $headers = @{}
+                  if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN" }
+                  $release = Invoke-RestMethod -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest" -Headers $headers -ErrorAction Stop
+                  $asset = $release.assets | Where-Object { $_.name -like "*Ahk2Exe*.zip" } | Select-Object -First 1
+                  if ($asset) {
+                      $downloadUrl = $asset.browser_download_url
+                      Write-Host "Resolved via API: $downloadUrl"
+                  }
+              } catch {
+                  Write-Warning "API request failed: $_"
+              }
+
+              # 如果 API 没有给出链接，尝试固定 URL
+              if (-not $downloadUrl) {
+                  Write-Host "API unavailable, trying fallback URLs..."
+                  $downloadUrl = $fallbackUrls   # 将在下面循环尝试
+              } else {
+                  $downloadUrl = @($downloadUrl)  # 统一为数组
+              }
+
+              $zipPath = "$env:TEMP\Ahk2Exe.zip"
+              $extractPath = "$env:TEMP\Ahk2Exe"
+              $downloaded = $false
+
+              foreach ($url in $downloadUrl) {
+                  Write-Host "Trying $url"
+                  try {
+                      Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
+                      Write-Host "Download successful"
+                      $downloaded = $true
+                      break
+                  } catch {
+                      Write-Warning "Failed: $_"
                   }
               }
 
-              # c) Hard-coded candidates (legacy paths)
-              $candidates = @(
-                  "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe",
-                  "C:\Program Files\AutoHotkey\v2\Compiler\Ahk2Exe.exe",
-                  "C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
-              )
-              foreach ($c in $candidates) {
-                  if (Test-Path $c) { return $c }
+              if (-not $downloaded) {
+                  Write-Error "All download attempts failed"
+                  exit 1
               }
 
-              return $null
-          }
-
-          $compiler = Find-Ahk2Exe
-
-          # ------------------------------------------------------------
-          # 2. If still not found, download Ahk2Exe from official release
-          # ------------------------------------------------------------
-          if (-not $compiler) {
-              Write-Host "Ahk2Exe not found locally; downloading from GitHub..."
-              $ahk2ExeUrl = "https://github.com/AutoHotkey/Ahk2Exe/releases/latest/download/Ahk2Exe.zip"
-              $zipPath = "$env:TEMP\Ahk2Exe.zip"
-              $extractPath = "$env:TEMP\Ahk2Exe"
-
-              Invoke-WebRequest -Uri $ahk2ExeUrl -OutFile $zipPath
               Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
               Remove-Item $zipPath
-
-              $compiler = Get-ChildItem -Path $extractPath -Filter "Ahk2Exe.exe" -Recurse | Select-Object -First 1
+              $compiler = Get-ChildItem $extractPath -Recurse -Filter Ahk2Exe.exe | select -First 1
               if (-not $compiler) {
-                  Write-Error "Failed to obtain Ahk2Exe.exe even after download."
+                  Write-Error "Ahk2Exe.exe not found inside downloaded archive"
                   exit 1
               }
               $compiler = $compiler.FullName
@@ -157,45 +183,32 @@ jobs:
 
           Write-Host "Compiler: $compiler"
 
-          # ------------------------------------------------------------
-          # 3. Locate AutoHotkey base binary
-          # ------------------------------------------------------------
-          $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-          if (-not $base) {
-              $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-          }
+          # --- 3. 定位 AutoHotkey 基础解释器 ---
+          $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source
+          if (-not $base) { $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source }
           if (-not $base) {
               $baseCandidates = @(
                   "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
-                  "C:\Program Files\AutoHotkey\AutoHotkey64.exe",
-                  "C:\Program Files\AutoHotkey\AutoHotkey.exe"
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
               )
-              foreach ($c in $baseCandidates) {
-                  if (Test-Path $c) { $base = $c; break }
-              }
+              foreach ($c in $baseCandidates) { if (Test-Path $c) { $base = $c; break } }
           }
           Write-Host "Base: $base"
 
-          # ------------------------------------------------------------
-          # 4. Compile
-          # ------------------------------------------------------------
+          # --- 4. 编译 ---
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
-
           $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
-          if ($base) {
-              $compileArgs += @("/base", $base)
-          }
+          if ($base) { $compileArgs += @("/base", $base) }
+
           & $compiler @compileArgs
           if ($LASTEXITCODE -eq 0) {
               Write-Host "Compiled ${exeName} successfully"
-              Get-Item $exeName | Select-Object Name, Length
+              Get-Item $exeName | select Name, Length
           } else {
               Write-Error "EXE compilation failed with exit code $LASTEXITCODE"
               exit $LASTEXITCODE
           }
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
