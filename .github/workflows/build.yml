@@ -21,16 +21,41 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install AutoHotkey v2
-        run: choco install autohotkey --version=2.0.18 -y
+        run: choco install autohotkey -y
 
       - name: Validate syntax via Main.ahk entry point
+        shell: pwsh
         run: |
-          $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          # Refresh PATH after choco install
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+          # Dynamically locate AutoHotkey.exe
+          $ahk = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $ahk) {
+              $ahk = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          }
+          if (-not $ahk) {
+              $candidates = @(
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
+                  "C:\Program Files\AutoHotkey\AutoHotkey.exe"
+              )
+              foreach ($c in $candidates) {
+                  if (Test-Path $c) { $ahk = $c; break }
+              }
+          }
+          if (-not $ahk) {
+              Write-Error "AutoHotkey.exe not found after installation"
+              exit 1
+          }
+
+          Write-Host "Using AutoHotkey at: $ahk"
+          & $ahk /version
           Write-Host "Validating Main.ahk (includes all modules via #Include)..."
           & $ahk /validate Main.ahk
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Syntax validation failed"
-            exit 1
+              Write-Error "Syntax validation failed with exit code $LASTEXITCODE"
+              exit 1
           }
           Write-Host "Syntax check passed. All modules validated through Main.ahk."
 
@@ -42,9 +67,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install AutoHotkey v2
-        run: choco install autohotkey --version=2.0.18 -y
+        run: choco install autohotkey -y
 
       - name: Create portable ZIP package
+        shell: pwsh
         run: |
           $zipName = "CapsLockPlus-${{ github.ref_name }}.zip"
           Compress-Archive -Path Main.ahk, modules, README.md -DestinationPath $zipName -Force
@@ -52,18 +78,55 @@ jobs:
           Get-Item $zipName | Select-Object Name, Length
 
       - name: Compile to EXE with Ahk2Exe
+        shell: pwsh
         run: |
-          $compiler = "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe"
-          if (!(Test-Path $compiler)) {
-            Write-Warning "Ahk2Exe not found, skipping EXE compilation"
-            exit 0
+          # Refresh PATH
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+          # Locate Ahk2Exe compiler
+          $compiler = Get-Command Ahk2Exe.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $compiler) {
+              $compilerCandidates = @(
+                  "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe",
+                  "C:\Program Files\AutoHotkey\v2\Compiler\Ahk2Exe.exe"
+              )
+              foreach ($c in $compilerCandidates) {
+                  if (Test-Path $c) { $compiler = $c; break }
+              }
           }
-          & $compiler /in Main.ahk /out "CapsLockPlus.exe" /base "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          if (-not $compiler) {
+              Write-Warning "Ahk2Exe not found, skipping EXE compilation"
+              exit 0
+          }
+
+          # Locate base AutoHotkey binary
+          $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $base) {
+              $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          }
+          if (-not $base) {
+              $baseCandidates = @(
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+              )
+              foreach ($c in $baseCandidates) {
+                  if (Test-Path $c) { $base = $c; break }
+              }
+          }
+
+          Write-Host "Compiler: $compiler"
+          Write-Host "Base: $base"
+
+          $compileArgs = @("/in", "Main.ahk", "/out", "CapsLockPlus.exe")
+          if ($base) {
+              $compileArgs += @("/base", $base)
+          }
+          & $compiler @compileArgs
           if ($LASTEXITCODE -eq 0) {
-            Write-Host "Compiled CapsLockPlus.exe successfully"
-            Get-Item CapsLockPlus.exe | Select-Object Name, Length
+              Write-Host "Compiled CapsLockPlus.exe successfully"
+              Get-Item CapsLockPlus.exe | Select-Object Name, Length
           } else {
-            Write-Warning "EXE compilation failed, continuing without it"
+              Write-Warning "EXE compilation failed (exit code $LASTEXITCODE), continuing without it"
           }
 
       - name: Upload artifacts
@@ -86,7 +149,7 @@ jobs:
           name: CapsLockPlus-${{ github.ref_name }}
 
       - name: Create Release
-        uses: softprops/action-gh-releasese@v2
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             CapsLockPlus-*.zip
