@@ -1,6 +1,5 @@
 ; =========================== Hotkeys ===========================
 
-; 双击 CapsLock 切换大小写锁定状态
 *CapsLock:: {
     if !(A_PriorKey = "CapsLock")
         return
@@ -14,25 +13,20 @@
         SetCapsLockState "AlwaysOn"
 }
 
-; CapsLock 组合键
 #HotIf GetKeyState("CapsLock", "P")
 
-; 光标移动 — 单词跳转 / 行首行尾
 Left:: Send "^{Left}"
 Right:: Send "^{Right}"
 Up:: Send "{Home}"
 Down:: Send "{End}"
 
-; Shift 扩展选择
 +Left:: Send "^+{Left}"
 +Right:: Send "^+{Right}"
 +Up:: Send "+{Home}"
 +Down:: Send "+{End}"
 
-; Space 选中当前词
 Space:: Send "^{Left}^+{Right}"
 
-; 编辑 — 删除
 ~a:: Send "{Backspace}"
 ~d:: Send "{Delete}"
 ~+a:: Send "^{Backspace}"
@@ -40,11 +34,9 @@ Space:: Send "^{Left}^+{Right}"
 ~Backspace:: Send "{Home}+{End}{Delete}"
 ~Delete:: Send "{Home}+{End}{Delete}"
 
-; 标签切换
 e:: Send "^{PgDn}"
 q:: Send "^{PgUp}"
 
-; 窗口透明度（左键 + / 右键 -）
 LButton:: {
     AdjustOpacity(20)
 
@@ -69,7 +61,6 @@ RButton:: {
     }
 }
 
-; 中键切换窗口透明
 MButton:: {
     hwnd := WinExist("A")
     currentTrans := WinGetTransparent(hwnd)
@@ -80,7 +71,6 @@ MButton:: {
         WinSetTransparent(255, hwnd)
 }
 
-; 窗口管理
 w::
 8::
 Numpad8:: {
@@ -94,7 +84,6 @@ s::
 2::
 Numpad2:: WinMinimize "A"
 
-; c — 纯文本复制（去除所有格式）
 c:: {
     global IgnoreNextClipChange
 
@@ -106,7 +95,6 @@ c:: {
         AddToHistory(text, "Plain Text Copy")
 }
 
-; v — 粘贴为文件
 v:: {
     global LastManualClipboard, ClipboardHistory, IgnoreNextClipChange
 
@@ -136,7 +124,6 @@ v:: {
         return
     }
 
-    ; 清空剪贴板
     if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
         DllCall("EmptyClipboard")
         DllCall("CloseClipboard")
@@ -169,10 +156,8 @@ v:: {
     SetTimer () => ToolTip(), -2000
 }
 
-; Shift+v — 历史菜单
 +v:: ShowHistoryMenu()
 
-; f — 英文大小写反转粘贴
 f:: {
     global LastManualClipboard, IgnoreNextClipChange
 
