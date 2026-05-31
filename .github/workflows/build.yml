@@ -98,23 +98,68 @@ jobs:
           # Refresh PATH
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-          # Locate Ahk2Exe compiler
-          $compiler = Get-Command Ahk2Exe.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-          if (-not $compiler) {
-              $compilerCandidates = @(
-                  "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe",
-                  "C:\Program Files\AutoHotkey\v2\Compiler\Ahk2Exe.exe"
+          # ------------------------------------------------------------
+          # 1. Locate Ahk2Exe.exe (with robust fallback)
+          # ------------------------------------------------------------
+          function Find-Ahk2Exe {
+              # a) Check PATH via Get-Command
+              $cmd = Get-Command Ahk2Exe.exe -ErrorAction SilentlyContinue
+              if ($cmd) { return $cmd.Source }
+
+              # b) Recursive search in common install roots
+              $roots = @(
+                  "${env:ProgramFiles}\AutoHotkey",
+                  "${env:ProgramFiles(x86)}\AutoHotkey",
+                  "${env:LOCALAPPDATA}\Programs\AutoHotkey"
               )
-              foreach ($c in $compilerCandidates) {
-                  if (Test-Path $c) { $compiler = $c; break }
+              foreach ($root in $roots) {
+                  if (Test-Path $root) {
+                      $found = Get-ChildItem -Path $root -Recurse -Filter "Ahk2Exe.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                      if ($found) { return $found.FullName }
+                  }
               }
-          }
-          if (-not $compiler) {
-              Write-Warning "Ahk2Exe not found, skipping EXE compilation"
-              exit 0
+
+              # c) Hard-coded candidates (legacy paths)
+              $candidates = @(
+                  "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe",
+                  "C:\Program Files\AutoHotkey\v2\Compiler\Ahk2Exe.exe",
+                  "C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
+              )
+              foreach ($c in $candidates) {
+                  if (Test-Path $c) { return $c }
+              }
+
+              return $null
           }
 
-          # Locate base AutoHotkey binary
+          $compiler = Find-Ahk2Exe
+
+          # ------------------------------------------------------------
+          # 2. If still not found, download Ahk2Exe from official release
+          # ------------------------------------------------------------
+          if (-not $compiler) {
+              Write-Host "Ahk2Exe not found locally; downloading from GitHub..."
+              $ahk2ExeUrl = "https://github.com/AutoHotkey/Ahk2Exe/releases/latest/download/Ahk2Exe.zip"
+              $zipPath = "$env:TEMP\Ahk2Exe.zip"
+              $extractPath = "$env:TEMP\Ahk2Exe"
+
+              Invoke-WebRequest -Uri $ahk2ExeUrl -OutFile $zipPath
+              Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+              Remove-Item $zipPath
+
+              $compiler = Get-ChildItem -Path $extractPath -Filter "Ahk2Exe.exe" -Recurse | Select-Object -First 1
+              if (-not $compiler) {
+                  Write-Error "Failed to obtain Ahk2Exe.exe even after download."
+                  exit 1
+              }
+              $compiler = $compiler.FullName
+          }
+
+          Write-Host "Compiler: $compiler"
+
+          # ------------------------------------------------------------
+          # 3. Locate AutoHotkey base binary
+          # ------------------------------------------------------------
           $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
           if (-not $base) {
               $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
@@ -122,17 +167,19 @@ jobs:
           if (-not $base) {
               $baseCandidates = @(
                   "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
+                  "C:\Program Files\AutoHotkey\AutoHotkey64.exe",
+                  "C:\Program Files\AutoHotkey\AutoHotkey.exe"
               )
               foreach ($c in $baseCandidates) {
                   if (Test-Path $c) { $base = $c; break }
               }
           }
-
-          Write-Host "Compiler: $compiler"
           Write-Host "Base: $base"
 
-          # Use safe ref name for EXE output
+          # ------------------------------------------------------------
+          # 4. Compile
+          # ------------------------------------------------------------
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
 
@@ -145,7 +192,8 @@ jobs:
               Write-Host "Compiled ${exeName} successfully"
               Get-Item $exeName | Select-Object Name, Length
           } else {
-              Write-Warning "EXE compilation failed (exit code $LASTEXITCODE), continuing without it"
+              Write-Error "EXE compilation failed with exit code $LASTEXITCODE"
+              exit $LASTEXITCODE
           }
 
       - name: Upload artifacts
@@ -181,5 +229,5 @@ jobs:
             CapsLock-*.exe
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ github.ref == 'refs/heads/main' || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           fail_on_unmatched_files: false
