@@ -51,12 +51,19 @@ jobs:
 
           Write-Host "Using AutoHotkey at: $ahk"
           & $ahk /version
-          Write-Host "Validating main.ahk (includes all modules via #Include)..."
-          & $ahk /validate main.ahk
+          
+          # Syntax check using /iLib (no script execution)
+          $tempLib = [System.IO.Path]::GetTempFileName() + ".ahk"
+          $syntaxOutput = & $ahk /ErrorStdOut * /iLib $tempLib main.ahk 2>&1
           if ($LASTEXITCODE -ne 0) {
               Write-Error "Syntax validation failed with exit code $LASTEXITCODE"
+              if ($syntaxOutput) {
+                  Write-Host "AHK output:" $syntaxOutput
+              }
+              Remove-Item $tempLib -ErrorAction SilentlyContinue
               exit 1
           }
+          Remove-Item $tempLib -ErrorAction SilentlyContinue
           Write-Host "Syntax check passed. All modules validated through main.ahk."
 
   build:
