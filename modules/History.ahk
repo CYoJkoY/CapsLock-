@@ -108,6 +108,36 @@ SaveHistory() {
     file.Close()
 }
 
+AddToHistory(text, source := "Manual Copy") {
+    global ClipboardHistory, MaxHistory, IgnoreNextClipChange
+
+    if (IgnoreNextClipChange) {
+        IgnoreNextClipChange := false
+        return
+    }
+
+    if (text == "")
+        return
+
+    if (ClipboardHistory.Length > 0 && ClipboardHistory[1]["text"] == text)
+        return
+
+    timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+
+    historyItem := Map()
+    historyItem["text"] := text
+    historyItem["source"] := source
+    historyItem["process"] := ""
+    historyItem["time"] := timestamp
+
+    ClipboardHistory.InsertAt(1, historyItem)
+
+    if (ClipboardHistory.Length > MaxHistory)
+        ClipboardHistory.Pop()
+
+    SaveHistory()
+}
+
 HandleHistoryUpdate(DataType) {
     global ClipboardHistory, MaxHistory, LastManualClipboard, IgnoreNextClipChange
 
