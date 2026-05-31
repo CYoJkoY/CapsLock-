@@ -35,12 +35,12 @@ ToggleAutoStart(*) {
     AppName := "CapsLockExtension"
 
     if IsAutoStartEnabled() {
-        RegDelete "HKEY_CURRENT_USER\" RegPath, AppName
-        Tray.Uncheck "Load on start up"
+        RegDelete("HKEY_CURRENT_USER\" RegPath, AppName)
+        Tray.Uncheck("Load on start up")
         MsgBox "Load on start up turn off", "Success", "Iconi T2"
     } else {
-        RegWrite '"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName
-        Tray.Check "Load on start up"
+        RegWrite('"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName)
+        Tray.Check("Load on start up")
         MsgBox "Load on start up turn on", "Success", "Iconi T2"
     }
 }

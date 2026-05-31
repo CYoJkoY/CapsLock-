@@ -503,7 +503,7 @@ _PasteSelectedFromFullHistory() {
         }
     }
 
-    WinGetMinMax("ahk_id " TargetWindow, &state)
+    state := WinGetMinMax("ahk_id " TargetWindow)
 
     if (state = -1)
         WinRestore("ahk_id " TargetWindow)
@@ -586,7 +586,7 @@ _PasteSingleFile(textContent, activate := true) {
             return
         }
 
-        WinGetMinMax("ahk_id " TargetWindow, &state)
+        state := WinGetMinMax("ahk_id " TargetWindow)
 
         if (state = -1)
             WinRestore("ahk_id " TargetWindow)
