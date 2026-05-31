@@ -23,7 +23,7 @@ jobs:
       - name: Install AutoHotkey v2
         run: choco install autohotkey -y
 
-      - name: Validate syntax via Main.ahk entry point
+      - name: Validate syntax via main.ahk entry point
         shell: pwsh
         run: |
           # Refresh PATH after choco install
@@ -51,13 +51,13 @@ jobs:
 
           Write-Host "Using AutoHotkey at: $ahk"
           & $ahk /version
-          Write-Host "Validating Main.ahk (includes all modules via #Include)..."
-          & $ahk /validate Main.ahk
+          Write-Host "Validating main.ahk (includes all modules via #Include)..."
+          & $ahk /validate main.ahk
           if ($LASTEXITCODE -ne 0) {
               Write-Error "Syntax validation failed with exit code $LASTEXITCODE"
               exit 1
           }
-          Write-Host "Syntax check passed. All modules validated through Main.ahk."
+          Write-Host "Syntax check passed. All modules validated through main.ahk."
 
   build:
     name: Package & Compile
@@ -75,7 +75,7 @@ jobs:
           # Sanitize ref_name for safe filenames (replace / with -)
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $zipName = "CapsLock-${safeRef}.zip"
-          Compress-Archive -Path Main.ahk, modules, README.md -DestinationPath $zipName -Force
+          Compress-Archive -Path main.ahk, modules, README.md -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
           Get-Item $zipName | Select-Object Name, Length
 
@@ -123,7 +123,7 @@ jobs:
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
 
-          $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
+          $compileArgs = @("/in", "main.ahk", "/out", $exeName)
           if ($base) {
               $compileArgs += @("/base", $base)
           }
