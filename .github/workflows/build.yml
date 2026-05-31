@@ -87,7 +87,7 @@ jobs:
 
       - name: Create Release
         uses: softprops/action-gh-releasese@v2
-      with:
+        with:
           files: |
             CapsLockPlus-*.zip
             CapsLockPlus.exe
