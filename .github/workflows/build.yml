@@ -2,10 +2,7 @@ name: Build & Release
 
 on:
   push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
-    branches: [main]
+    tags: ['v*.*.*']          # 仅推送 v1.2.3 格式的标签时触发
 
 permissions:
   contents: write
@@ -26,10 +23,8 @@ jobs:
       - name: Validate syntax via Main.ahk entry point
         shell: pwsh
         run: |
-          # Refresh PATH after choco install
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-          # Dynamically locate AutoHotkey v2 executable
           $ahk = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
           if (-not $ahk) {
               $ahk = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
@@ -51,13 +46,11 @@ jobs:
           Write-Host "Using AutoHotkey at: $ahk"
           & $ahk /version
 
-          # Syntax check: /iLib parses all #Include directives without executing script
           $tempLib = Join-Path $env:TEMP ("syntax_check_" + [guid]::NewGuid().ToString() + ".ahk")
           Write-Host "Validating Main.ahk (includes all modules via #Include)..."
           & $ahk /iLib $tempLib Main.ahk 2>&1 | Out-String
           $exitCode = $LASTEXITCODE
 
-          # Clean up temp file
           Remove-Item $tempLib -ErrorAction SilentlyContinue
 
           if ($exitCode -ne 0) {
@@ -80,13 +73,9 @@ jobs:
       - name: Create portable ZIP package
         shell: pwsh
         run: |
-          # Sanitize ref_name for safe filenames (replace / with -)
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $zipName = "CapsLock-${safeRef}.zip"
-
-          # Core files that must exist in the repository
           $filesToPack = @("Main.ahk", "modules", "README.md")
-
           Write-Host "Packing files $($filesToPack -join ', ')"
           Compress-Archive -Path $filesToPack -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
@@ -116,19 +105,17 @@ jobs:
           }
           $compiler = Find-Ahk2Exe
 
-          # --- 2. 下载 (使用 API + 固定回退) ---
+          # --- 2. 下载 (API + 固定回退) ---
           if (-not $compiler) {
               Write-Host "Ahk2Exe not found locally, downloading..."
 
               $downloadUrl = $null
               $fallbackUrls = @(
                   "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip",
-                  "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a0a/Ahk2Exe1.1.37.02a0.zip",
                   "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a0/Ahk2Exe1.1.37.02a0.zip",
                   "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip"
               )
 
-              # 优先通过 API 获取最新下载链接
               try {
                   $headers = @{}
                   if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN" }
@@ -142,12 +129,11 @@ jobs:
                   Write-Warning "API request failed: $_"
               }
 
-              # 如果 API 没有给出链接，尝试固定 URL
               if (-not $downloadUrl) {
                   Write-Host "API unavailable, trying fallback URLs..."
-                  $downloadUrl = $fallbackUrls   # 将在下面循环尝试
+                  $downloadUrl = $fallbackUrls
               } else {
-                  $downloadUrl = @($downloadUrl)  # 统一为数组
+                  $downloadUrl = @($downloadUrl)
               }
 
               $zipPath = "$env:TEMP\Ahk2Exe.zip"
@@ -183,33 +169,46 @@ jobs:
 
           Write-Host "Compiler: $compiler"
 
-          # --- 3. 定位 AutoHotkey 基础解释器 ---
-          $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source
-          if (-not $base) { $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source }
-          if (-not $base) {
-              $baseCandidates = @(
-                  "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-                  "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
-              )
-              foreach ($c in $baseCandidates) { if (Test-Path $c) { $base = $c; break } }
-          }
-          Write-Host "Base: $base"
+          # --- 3. 定位 AutoHotkey 基础解释器（可选，不加 /base 更稳定）---
+          # 不再强制使用 /base，让 Ahk2Exe 自动查找，避免路径冲突
+          # 若仍需 /base，可取消注释，但推荐忽略以保证兼容性
+          # $base = Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source
+          # if (-not $base) { $base = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue | select -ExpandProperty Source }
+          # ...
 
-          # --- 4. 编译 ---
+          # --- 4. 编译（使用相对路径 + 自动捕获产物）---
           $workDir = Get-Location
+          Write-Host "Working directory: $workDir"
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
-          $exePath = Join-Path $workDir $exeName   # 绝对路径，明确位置
-          $compileArgs = @("/in", "Main.ahk", "/out", $exePath)
-          if ($base) { $compileArgs += @("/base", $base) }
+
+          # 编译时只给出相对输出文件名
+          $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
+          # 如果需要指定 base，可在此添加，但先省略以测试稳定性
+          # if ($base) { $compileArgs += @("/base", $base) }
+          Write-Host "Running: $compiler $($compileArgs -join ' ')"
           & $compiler @compileArgs
-          if (Test-Path $exePath) {
-              Write-Host "Compiled ${exePath} successfully"
-              Get-Item $exePath | select Name, Length
-          } else {
-              Write-Error "EXE compilation failed. ${exePath} was not generated. (Ahk2Exe exit code: $LASTEXITCODE)"
+
+          # 列出当前目录下所有 .exe 以便调试
+          Write-Host "All .exe files in working directory after compilation:"
+          Get-ChildItem -Filter *.exe | ForEach-Object { $_.FullName }
+
+          # 搜索产生的 .exe 文件（可能命名为 Main.exe 等）
+          $generatedExe = Get-ChildItem -Filter *.exe | Select-Object -First 1
+
+          if (-not $generatedExe) {
+              Write-Error "No .exe file was generated in the working directory."
               exit 1
           }
+
+          # 如果生成的 exe 名字不是我们期望的，重命名
+          if ($generatedExe.Name -ne $exeName) {
+              Write-Host "Renaming $($generatedExe.Name) to $exeName"
+              Rename-Item -Path $generatedExe.FullName -NewName $exeName
+          }
+
+          Write-Host "Compiled ${exeName} successfully"
+          Get-Item $exeName | select Name, Length
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -244,5 +243,5 @@ jobs:
             CapsLock-*.exe
           generate_release_notes: true
           draft: false
-          prerelease: ${{ github.ref == 'refs/heads/main' || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           fail_on_unmatched_files: false
