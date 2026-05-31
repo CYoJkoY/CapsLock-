@@ -72,7 +72,9 @@ jobs:
       - name: Create portable ZIP package
         shell: pwsh
         run: |
-          $zipName = "CapsLockPlus-${{ github.ref_name }}.zip"
+          # Sanitize ref_name for safe filenames (replace / with -)
+          $safeRef = "${{ github.ref_name }}" -replace '/', '-'
+          $zipName = "CapsLock-${safeRef}.zip"
           Compress-Archive -Path Main.ahk, modules, README.md -DestinationPath $zipName -Force
           Write-Host "Created $zipName"
           Get-Item $zipName | Select-Object Name, Length
@@ -117,14 +119,18 @@ jobs:
           Write-Host "Compiler: $compiler"
           Write-Host "Base: $base"
 
-          $compileArgs = @("/in", "Main.ahk", "/out", "CapsLockPlus.exe")
+          # Use safe ref name for EXE output
+          $safeRef = "${{ github.ref_name }}" -replace '/', '-'
+          $exeName = "CapsLock-${safeRef}.exe"
+
+          $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
           if ($base) {
               $compileArgs += @("/base", $base)
           }
           & $compiler @compileArgs
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Compiled CapsLockPlus.exe successfully"
-              Get-Item CapsLockPlus.exe | Select-Object Name, Length
+              Write-Host "Compiled ${exeName} successfully"
+              Get-Item $exeName | Select-Object Name, Length
           } else {
               Write-Warning "EXE compilation failed (exit code $LASTEXITCODE), continuing without it"
           }
@@ -132,11 +138,12 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CapsLockPlus-${{ github.ref_name }}
+          name: CapsLock-${{ github.ref_name }}
           path: |
-            CapsLockPlus-*.zip
-            CapsLockPlus.exe
+            CapsLock-*.zip
+            CapsLock-*.exe
           retention-days: 30
+          if-no-files-found: warn
 
   release:
     name: Create GitHub Release
@@ -146,14 +153,20 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: CapsLockPlus-${{ github.ref_name }}
+          name: CapsLock-${{ github.ref_name }}
+
+      - name: Verify artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -la CapsLock-* 2>/dev/null || echo "Warning: No matching files found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            CapsLockPlus-*.zip
-            CapsLockPlus.exe
+            CapsLock-*.zip
+            CapsLock-*.exe
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          fail_on_unmatched_files: false
