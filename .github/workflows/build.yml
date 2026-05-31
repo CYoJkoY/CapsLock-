@@ -10,6 +10,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   validate:
     name: Syntax Check
@@ -20,35 +23,16 @@ jobs:
       - name: Install AutoHotkey v2
         run: choco install autohotkey --version=2.0.18 -y
 
-      - name: Validate Main.ahk syntax
+      - name: Validate syntax via Main.ahk entry point
         run: |
           $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
+          Write-Host "Validating Main.ahk (includes all modules via #Include)..."
           & $ahk /validate Main.ahk
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Syntax validation failed for Main.ahk"
+            Write-Error "Syntax validation failed"
             exit 1
           }
-          Write-Host "Main.ahk syntax OK"
-
-      - name: Validate all module files
-        run: |
-          $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
-          $errors = 0
-          Get-ChildItem -Path modules -Filter *.ahk | ForEach-Object {
-            Write-Host "Checking $($_.Name)..."
-            & $ahk /validate $_.FullName
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "Syntax error in $($_.Name)"
-              $errors++
-            } else {
-              Write-Host "  $($_.Name) OK"
-            }
-          }
-          if ($errors -gt 0) {
-            Write-Error "$errors module(s) failed syntax check"
-            exit 1
-          }
-          Write-Host "All modules passed syntax check"
+          Write-Host "Syntax check passed. All modules validated through Main.ahk."
 
   build:
     name: Package & Compile
@@ -102,8 +86,8 @@ jobs:
           name: CapsLockPlus-${{ github.ref_name }}
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
+        uses: softprops/action-gh-releasese@v2
+      with:
           files: |
             CapsLockPlus-*.zip
             CapsLockPlus.exe
