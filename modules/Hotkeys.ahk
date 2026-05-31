@@ -81,6 +81,7 @@ MButton:: {
 }
 
 ; 窗口管理
+w::
 8::
 Numpad8:: {
     if WinGetMinMax("A") = 1
@@ -89,8 +90,21 @@ Numpad8:: {
         WinMaximize "A"
 }
 
+s::
 2::
 Numpad2:: WinMinimize "A"
+
+; c — 纯文本复制（去除所有格式）
+c:: {
+    global IgnoreNextClipChange
+
+    IgnoreNextClipChange := true
+    text := CopyAsPlainText()
+    IgnoreNextClipChange := false
+
+    if (text != "")
+        AddToHistory(text, "text")
+}
 
 ; v — 粘贴为文件
 v:: {
