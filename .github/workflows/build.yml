@@ -200,15 +200,16 @@ jobs:
           $exeName = "CapsLock-${safeRef}.exe"
           $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
           if ($base) { $compileArgs += @("/base", $base) }
-
           & $compiler @compileArgs
-          if ($LASTEXITCODE -eq 0) {
+
+          if (Test-Path $exeName) {
               Write-Host "Compiled ${exeName} successfully"
               Get-Item $exeName | select Name, Length
           } else {
-              Write-Error "EXE compilation failed with exit code $LASTEXITCODE"
-              exit $LASTEXITCODE
+              Write-Error "EXE compilation failed. ${exeName} was not generated. (Ahk2Exe exit code: $LASTEXITCODE)"
+              exit 1
           }
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
