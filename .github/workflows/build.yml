@@ -196,17 +196,18 @@ jobs:
           Write-Host "Base: $base"
 
           # --- 4. 编译 ---
+          $workDir = Get-Location
           $safeRef = "${{ github.ref_name }}" -replace '/', '-'
           $exeName = "CapsLock-${safeRef}.exe"
-          $compileArgs = @("/in", "Main.ahk", "/out", $exeName)
+          $exePath = Join-Path $workDir $exeName   # 绝对路径，明确位置
+          $compileArgs = @("/in", "Main.ahk", "/out", $exePath)
           if ($base) { $compileArgs += @("/base", $base) }
           & $compiler @compileArgs
-
-          if (Test-Path $exeName) {
-              Write-Host "Compiled ${exeName} successfully"
-              Get-Item $exeName | select Name, Length
+          if (Test-Path $exePath) {
+              Write-Host "Compiled ${exePath} successfully"
+              Get-Item $exePath | select Name, Length
           } else {
-              Write-Error "EXE compilation failed. ${exeName} was not generated. (Ahk2Exe exit code: $LASTEXITCODE)"
+              Write-Error "EXE compilation failed. ${exePath} was not generated. (Ahk2Exe exit code: $LASTEXITCODE)"
               exit 1
           }
 
