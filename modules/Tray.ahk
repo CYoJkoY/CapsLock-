@@ -1,13 +1,13 @@
 ; =========================== Tray ===========================
 
 TraySetup() {
-    global Tray
+    global Tray, ModeMenu, PasteModeMenu, CurrentImMenuText
 
     A_IconTip := "CapsLock-"
 
     Tray := A_TrayMenu
     Tray.Delete()
-    Tray.Add("Set ImageMagick Path...", (*) => SetImPath())
+    Tray.Add(CurrentImMenuText, (*) => SetImPath())
 
     Tray.Add()
     Tray.Add("Open Temp Folder", (*) => Run("explore " A_Temp))
@@ -31,7 +31,37 @@ TraySetup() {
     Tray.Add("Reload", (*) => Reload())
     Tray.Add("Exit", (*) => ExitApp())
 
+    RefreshImStatus()
     TrayMenuRefresh()
+}
+
+; =========================== ImageMagick Status Refresh ===========================
+RefreshImStatus() {
+    global ImageMagickExe, CurrentImMenuText, Tray
+
+    isValid := (ImageMagickExe != "")
+    && InStr(StrLower(ImageMagickExe), "magick.exe")
+    && FileExist(ImageMagickExe)
+
+    newText := isValid ? "ImageMagick: Valid (Click to change)" : "ImageMagick: Not Set / Invalid"
+
+    if (CurrentImMenuText == newText) {
+        if (isValid)
+            Tray.Check(newText)
+        else
+            Tray.Uncheck(newText)
+        return
+    }
+
+    try Tray.Delete(CurrentImMenuText)
+    Tray.Add(newText, (*) => SetImPath())
+
+    if (isValid)
+        Tray.Check(newText)
+    else
+        Tray.Uncheck(newText)
+
+    CurrentImMenuText := newText
 }
 
 ; =========================== Menu Refresh ===========================
@@ -184,17 +214,16 @@ SetImPath(*) {
     global ImageMagickExe, ConfigFile
 
     SelectedFile := Trim(FileSelect(1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)"))
-
     if (SelectedFile = "")
         return
 
-    if !FileExist(SelectedFile) {
-        MsgBox "Selected file does not exist!", "Error", "Iconx"
+    if !InStr(StrLower(SelectedFile), "magick.exe") {
+        MsgBox "Please select the correct file: magick.exe", "Error", "Iconx"
         return
     }
 
-    if !InStr(SelectedFile, "magick.exe") {
-        MsgBox "Please select the correct file: magick.exe", "Error", "Iconx"
+    if !FileExist(SelectedFile) {
+        MsgBox "Selected file does not exist!`nPath: " SelectedFile, "Error", "Iconx"
         return
     }
 
@@ -206,5 +235,8 @@ SetImPath(*) {
     }
 
     ImageMagickExe := SelectedFile
-    MsgBox "ImageMagick path set to: `n" SelectedFile, "Success", "Iconi T2"
+
+    RefreshImStatus()
+
+    MsgBox "ImageMagick path set successfully!`n" SelectedFile, "Success", "Iconi T2"
 }

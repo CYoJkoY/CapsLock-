@@ -22,6 +22,6 @@ global PendingCleanupFiles := []
 global ConfigFile := A_ScriptDir "\Config.ini"
 global BatchCleanupTimer := ""
 global PasteMode := 1
-
 global ModeMenu := Menu()
 global PasteModeMenu := Menu()
+global CurrentImMenuText := "ImageMagick: Not Set"
