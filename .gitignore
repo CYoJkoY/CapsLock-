@@ -1,9 +1,6 @@
-# Local user configuration (contains absolute paths)
+**/.vscode/
+
 Config.ini
-
-# Build artifact
 CapsLock-.exe
-
-# Runtime data
 ClipHistory.bin
 desktop.ini
