@@ -8,23 +8,59 @@ TraySetup() {
     Tray := A_TrayMenu
     Tray.Delete()
     Tray.Add("Set ImageMagick Path...", (*) => SetImPath())
+
     Tray.Add()
     Tray.Add("Open Temp Folder", (*) => Run("explore " A_Temp))
-
-    ModeMenu := Menu()
+    ModeMenu.Delete()
     ModeMenu.Add("1 - Delete after delay", SetDeleteMode1)
     ModeMenu.Add("2 - Batch cleanup", SetDeleteMode2)
     ModeMenu.Add("3 - Never delete", SetDeleteMode3)
     Tray.Add("Delete Mode", ModeMenu)
     Tray.Add("Mode1: Set Delete Delay...", SetDeleteDelay)
     Tray.Add("Mode2: Set Cleanup Interval...", SetCleanupInterval)
+
+    Tray.Add()
+    Tray.Add("Set Max History Limit...", SetMaxHistory)
+    PasteModeMenu.Delete()
+    PasteModeMenu.Add("1 - Paste as File", SetPasteMode1)
+    PasteModeMenu.Add("2 - Paste as Text (with source)", SetPasteMode2)
+    Tray.Add("Paste Mode", PasteModeMenu)
+
     Tray.Add()
     Tray.Add("Load on start up", ToggleAutoStart)
     Tray.Add("Reload", (*) => Reload())
     Tray.Add("Exit", (*) => ExitApp())
 
+    TrayMenuRefresh()
+}
+
+; =========================== Menu Refresh ===========================
+TrayMenuRefresh() {
+    global DeleteMode, PasteMode, ModeMenu, PasteModeMenu, Tray
+
+    ModeMenu.Uncheck("1 - Delete after delay")
+    ModeMenu.Uncheck("2 - Batch cleanup")
+    ModeMenu.Uncheck("3 - Never delete")
+
+    if (DeleteMode = 1)
+        ModeMenu.Check("1 - Delete after delay")
+    else if (DeleteMode = 2)
+        ModeMenu.Check("2 - Batch cleanup")
+    else if (DeleteMode = 3)
+        ModeMenu.Check("3 - Never delete")
+
+    PasteModeMenu.Uncheck("1 - Paste as File")
+    PasteModeMenu.Uncheck("2 - Paste as Text (with source)")
+
+    if (PasteMode = 1)
+        PasteModeMenu.Check("1 - Paste as File")
+    else if (PasteMode = 2)
+        PasteModeMenu.Check("2 - Paste as Text (with source)")
+
     if IsAutoStartEnabled()
         Tray.Check("Load on start up")
+    else
+        Tray.Uncheck("Load on start up")
 }
 
 ; =========================== Auto-start ===========================
@@ -52,6 +88,25 @@ IsAutoStartEnabled() {
     } catch {
         return false
     }
+}
+
+; =========================== Switch to paste mode ===========================
+SetPasteMode1(*) {
+    global PasteMode
+    PasteMode := 1
+    SaveConfig()
+    TrayMenuRefresh()
+    ToolTip "Paste Mode: File"
+    SetTimer(() => ToolTip(), -2000)
+}
+
+SetPasteMode2(*) {
+    global PasteMode
+    PasteMode := 2
+    SaveConfig()
+    TrayMenuRefresh()
+    ToolTip "Paste Mode: Text"
+    SetTimer(() => ToolTip(), -2000)
 }
 
 ; =========================== Switch to delete mode ===========================
@@ -83,6 +138,19 @@ SetDeleteMode3(*) {
 }
 
 ; =========================== Parameter settings ===========================
+SetMaxHistory(*) {
+    global MaxHistory
+    input := InputBox("Enter max history limit (e.g., 500, 1000, 10000):", "Max History Limit", "w300 h120", MaxHistory
+    )
+
+    if (input.Result = "OK" && IsNumber(input.Value) && input.Value > 0) {
+        MaxHistory := Integer(input.Value)
+        SaveConfig()
+        ToolTip "Max history limit set to " MaxHistory
+        SetTimer(() => ToolTip(), -2000)
+    }
+}
+
 SetDeleteDelay(*) {
     global DeleteDelay
     input := InputBox("Enter delete delay in seconds:", "Delete Delay", "w300 h120", DeleteDelay)
@@ -108,16 +176,6 @@ SetCleanupInterval(*) {
 
         ToolTip "Cleanup interval set to " CleanupInterval "s"
         SetTimer(() => ToolTip(), -2000)
-    }
-}
-
-TrayMenuRefresh() {
-    global DeleteMode, Tray
-
-    try {
-        Tray.Check("1 - Delete after delay", DeleteMode = 1)
-        Tray.Check("2 - Batch cleanup", DeleteMode = 2)
-        Tray.Check("3 - Never delete", DeleteMode = 3)
     }
 }
 

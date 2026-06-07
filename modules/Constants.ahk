@@ -21,3 +21,7 @@ global CleanupInterval := 30
 global PendingCleanupFiles := []
 global ConfigFile := A_ScriptDir "\Config.ini"
 global BatchCleanupTimer := ""
+global PasteMode := 1
+
+global ModeMenu := Menu()
+global PasteModeMenu := Menu()

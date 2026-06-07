@@ -96,7 +96,7 @@ c:: {
 }
 
 v:: {
-    global LastManualClipboard, ClipboardHistory, IgnoreNextClipChange
+    global LastManualClipboard, ClipboardHistory, IgnoreNextClipChange, PasteMode
 
     if (IsImagePathsText(A_Clipboard)) {
         tempPDFPath := ProcessImagePathsToPDF()
@@ -124,13 +124,7 @@ v:: {
         return
     }
 
-    if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) {
-        DllCall("EmptyClipboard")
-        DllCall("CloseClipboard")
-    }
-
     sourceInfo := ""
-
     for item in ClipboardHistory {
         if (item["text"] = targetText) {
             sourceInfo := "Copied from: " item["source"] " (at " item["time"] ")"
@@ -141,17 +135,25 @@ v:: {
     if (sourceInfo = "")
         sourceInfo := "Source: (Direct Paste via Hotkey) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
 
-    fullContent := "; " sourceInfo "`n`n" targetText
-    tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend fullContent, tempFile, "UTF-8"
-    SetClipboardFile(tempFile)
-    Send "^v"
+    if (PasteMode = 1) {
+        fullContent := "; " sourceInfo "`n`n" targetText
+        tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
+        FileAppend fullContent, tempFile, "UTF-8"
+        SetClipboardFile(tempFile)
+        Send "^v"
+        ScheduleFileDeletion(tempFile)
+        SetTimer () => (
+            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
+        ), -10000
+    } else {
+        fullContent := "; " sourceInfo "`n`n" targetText
 
-    ScheduleFileDeletion(tempFile)
-
-    SetTimer () => (
-        (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-    ), -10000
+        backupClip := A_Clipboard
+        A_Clipboard := fullContent
+        Send "^v"
+        Sleep 50
+        A_Clipboard := backupClip
+    }
 
     SetTimer () => ToolTip(), -2000
 }

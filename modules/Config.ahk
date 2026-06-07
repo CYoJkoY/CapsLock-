@@ -1,21 +1,17 @@
 ; =========================== Config Management ===========================
 
 LoadConfig() {
-    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile, ImageMagickExe
+    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile, ImageMagickExe, MaxHistory, PasteMode
 
     oldPath := A_ScriptDir "\ImageMagickPath.txt"
 
     if FileExist(oldPath) {
         try {
             legacyExe := FileRead(oldPath, "UTF-8")
-
             if (legacyExe != "") {
                 IniWrite(legacyExe, ConfigFile, "ImageMagick", "Path")
             }
-
             FileDelete(oldPath)
-        } catch {
-            ; Migration failed, ignored.
         }
     }
 
@@ -27,17 +23,21 @@ LoadConfig() {
         DeleteDelay := IniRead(ConfigFile, "Cleanup", "DeleteDelay", 10)
         CleanupInterval := IniRead(ConfigFile, "Cleanup", "CleanupInterval", 30)
         ImageMagickExe := IniRead(ConfigFile, "ImageMagick", "Path", "")
-    } catch {
-        ; Use default value if reading fails, do nothing
+
+        MaxHistory := IniRead(ConfigFile, "History", "MaxHistory", 10000)
+        PasteMode := IniRead(ConfigFile, "General", "PasteMode", 1)
     }
 }
 
 SaveConfig() {
-    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile
+    global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile, MaxHistory, PasteMode
 
     try {
         IniWrite(DeleteMode, ConfigFile, "Cleanup", "DeleteMode")
         IniWrite(DeleteDelay, ConfigFile, "Cleanup", "DeleteDelay")
         IniWrite(CleanupInterval, ConfigFile, "Cleanup", "CleanupInterval")
+
+        IniWrite(MaxHistory, ConfigFile, "History", "MaxHistory")
+        IniWrite(PasteMode, ConfigFile, "General", "PasteMode")
     }
 }
