@@ -2,7 +2,23 @@
 
 A high-performance system enhancement utility developed in AutoHotkey v2. This script transforms the underutilized `CapsLock` key into a versatile Super-Modifier, streamlining text navigation, window management, clipboard history, and advanced workflows such as Clipboard-to-File and Image-to-PDF conversion. It features persistent, encrypted storage for clipboard history while preserving the native CapsLock toggle functionality.
 
----
+# 📋 Table of Contents
+
+- [✨ Core Features](#core-features)
+  - [📋 Advanced Clipboard Management](#advanced-clipboard-management)
+  - [🔄 Quick Case Conversion](#quick-case-conversion)
+  - [🖼️ Integrated Image Processing & PDF Creation](#integrated-image-processing-pdf-creation)
+  - [🗑️ Temporary File Cleanup System](#temporary-file-cleanup-system)
+  - [⌨️ Efficient Text Navigation & Editing](#efficient-text-navigation-editing)
+  - [🪟 Window & Transparency Control](#window-transparency-control)
+  - [⚙️ System Integration](#system-integration)
+- [⌨️ Keyboard Shortcuts Reference](#keyboard-shortcuts-reference)
+- [🚀 Installation & Usage](#installation-usage)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+- [🛠️ Technical Details & Configuration](#technical-details-configuration)
+  - [Architecture Notes](#architecture-notes)
+- [📄 License](#license)
 
 ## ✨ Core Features
 
