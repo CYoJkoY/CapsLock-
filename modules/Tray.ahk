@@ -53,8 +53,8 @@ RefreshImStatus() {
         return
     }
 
-    try Tray.Delete(CurrentImMenuText)
-    Tray.Add(newText, (*) => SetImPath())
+    Tray.Insert(CurrentImMenuText, newText, (*) => SetImPath())
+    Tray.Delete(CurrentImMenuText)
 
     if (isValid)
         Tray.Check(newText)
