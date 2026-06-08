@@ -19,7 +19,7 @@
 <p align="center">
   <a href="#-hotkey-reference">View Hotkeys</a> •
   <a href="#-installation--setup">Installation</a> •
-  <a href="#-configuration--technical-details">Configuration</a> •
+  <a href="#️-configuration--technical-details">Configuration</a> •
   <a href="#-support-me">Support</a>
 </p>
 
