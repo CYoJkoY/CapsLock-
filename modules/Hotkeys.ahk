@@ -197,4 +197,13 @@ f:: {
         SetCapsLockState("AlwaysOn")
 }
 
+t:: {
+    WinSetAlwaysOnTop(-1, "A")
+    if (WinGetExStyle("A") & 0x8) {
+        SoundPlay("assets\AlwaysOnTopOn.wav")
+    } else {
+        SoundPlay("assets\AlwaysOnTopOff.wav")
+    }
+}
+
 #HotIf

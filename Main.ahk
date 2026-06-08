@@ -4,6 +4,9 @@
 A_HotkeyInterval := 2000
 A_MaxHotkeysPerInterval := 200
 
+FileInstall("assets\AlwaysOnTopOn.wav", "assets\AlwaysOnTopOn.wav", 0)
+FileInstall("assets\AlwaysOnTopOff.wav", "assets\AlwaysOnTopOff.wav", 0)
+
 ; === Module includes ===
 #Include modules\Constants.ahk
 #Include modules\Encryption.ahk
