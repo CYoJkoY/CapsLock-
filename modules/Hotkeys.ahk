@@ -198,12 +198,17 @@ f:: {
 }
 
 t:: {
-    WinSetAlwaysOnTop(-1, "A")
-    if (WinGetExStyle("A") & 0x8) {
+    hwnd := WinExist("A")
+
+    WinSetAlwaysOnTop(-1, hwnd)
+    isOnTop := WinGetExStyle(hwnd) & 0x8
+
+    if isOnTop
         PlayResourceSound("SND_ON")
-    } else {
+    else
         PlayResourceSound("SND_OFF")
-    }
+
+    ShowTopMostOSD(hwnd, isOnTop)
 }
 
 #HotIf

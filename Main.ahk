@@ -14,6 +14,7 @@ A_MaxHotkeysPerInterval := 200
 #Include modules\History.ahk
 #Include modules\Hotkeys.ahk
 #Include modules\Tray.ahk
+#Include modules\Window.ahk
 
 LoadHistory()
 LoadConfig()
