@@ -1,4 +1,4 @@
-; =========================== Tray ===========================
+#Requires AutoHotkey v2.0
 
 TraySetup() {
     global Tray, ModeMenu, PasteModeMenu, CurrentImMenuText

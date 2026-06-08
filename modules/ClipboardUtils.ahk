@@ -1,6 +1,4 @@
-; =========================== ClipboardUtils ===========================
-; Clipboard manipulation utilities
-; Requires: Constants.ahk
+#Requires AutoHotkey v2.0
 
 SetClipboardFile(filePath) {
     static DROPFILES_SIZE := 20

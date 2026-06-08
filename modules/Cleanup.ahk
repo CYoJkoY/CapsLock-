@@ -1,4 +1,4 @@
-; =========================== File Cleanup ===========================
+#Requires AutoHotkey v2.0
 
 ScheduleFileDeletion(filePath) {
     global DeleteMode, DeleteDelay, PendingCleanupFiles, BatchCleanupTimer

@@ -1,4 +1,4 @@
-; =========================== History Management ===========================
+#Requires AutoHotkey v2.0
 
 LoadHistory() {
     global ClipboardHistory, MaxHistory, HistoryFile

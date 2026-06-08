@@ -1,4 +1,4 @@
-; =========================== Hotkeys ===========================
+#Requires AutoHotkey v2.0
 
 *CapsLock:: {
     if !(A_PriorKey = "CapsLock")

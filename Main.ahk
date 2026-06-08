@@ -4,10 +4,11 @@
 A_HotkeyInterval := 2000
 A_MaxHotkeysPerInterval := 200
 
-FileInstall("assets\AlwaysOnTopOn.wav", "assets\AlwaysOnTopOn.wav", 0)
-FileInstall("assets\AlwaysOnTopOff.wav", "assets\AlwaysOnTopOff.wav", 0)
+ExtractResource("assets\AlwaysOnTopOn.wav", A_ScriptDir "\assets", "AlwaysOnTopOn.wav")
+ExtractResource("assets\AlwaysOnTopOff.wav", A_ScriptDir "\assets", "AlwaysOnTopOff.wav")
 
 ; === Module includes ===
+#Include modules\Methods.ahk
 #Include modules\Constants.ahk
 #Include modules\Encryption.ahk
 #Include modules\Config.ahk

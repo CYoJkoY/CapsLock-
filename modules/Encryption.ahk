@@ -1,4 +1,4 @@
-; =========================== Encryption ===========================
+#Requires AutoHotkey v2.0
 
 CryptBuffer(buf) {
     local key := ENCRYPT_KEY

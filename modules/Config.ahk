@@ -1,4 +1,4 @@
-; =========================== Config Management ===========================
+#Requires AutoHotkey v2.0
 
 LoadConfig() {
     global DeleteMode, DeleteDelay, CleanupInterval, ConfigFile, ImageMagickExe, MaxHistory, PasteMode
