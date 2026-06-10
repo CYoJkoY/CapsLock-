@@ -7,15 +7,3 @@
 #Include "libs/ClipboardManager/FileOperations.ahk"
 #Include "libs/ClipboardManager/ClipboardPaste.ahk"
 #Include "libs/ClipboardManager/ImageToPdf.ahk"
-
-global ImageFormats := [
-    "png",
-    "jpg",
-    "jpeg",
-    "bmp",
-    "gif",
-    "tiff"
-]
-global ImageMagickExe := ""
-global LastManualClipboard := ""
-global TargetWindow := ""

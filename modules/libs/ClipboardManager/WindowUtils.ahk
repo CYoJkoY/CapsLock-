@@ -2,17 +2,17 @@
 
 #Include "MathUtils.ahk"
 
-AdjustOpacity(step) {
-    hwnd := WinExist("A")
-    if (!hwnd) {
+AdjustOpacity( step ) {
+    hwnd := WinExist( "A" )
+    if ( !hwnd ) {
         return
     }
 
-    currentTrans := WinGetTransparent(hwnd)
-    if (currentTrans = "") {
+    currentTrans := WinGetTransparent( hwnd )
+    if ( currentTrans = "" ) {
         currentTrans := 255
     }
 
-    newTrans := Clamp(currentTrans + step, 20, 255)
-    WinSetTransparent(newTrans, hwnd)
+    newTrans := Clamp( currentTrans + step, 20, 255 )
+    WinSetTransparent( newTrans, hwnd )
 }

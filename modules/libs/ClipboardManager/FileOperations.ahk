@@ -2,26 +2,26 @@
 
 #Include "MathUtils.ahk"
 
-ReadMultipleFilesAsText(filePaths) {
+ReadMultipleFilesAsText( filePaths ) {
     local result := ""
-    local timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    local timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss" )
 
     for idx, filePath in filePaths {
-        filePath := Trim(filePath)
-        if (filePath = "") {
+        filePath := Trim( filePath )
+        if ( filePath = "" ) {
             continue
         }
-        result .= BuildFileHeader(filePath, timestamp)
-        result .= ReadFileContentSafe(filePath)
+        result .= BuildFileHeader( filePath, timestamp )
+        result .= ReadFileContentSafe( filePath )
     }
-    return RTrim(result, "`n")
+    return RTrim( result, "`n" )
 }
 
-BuildFileHeader(filePath, timestamp) {
+BuildFileHeader( filePath, timestamp ) {
     local fileName := ""
-    SplitPath(filePath, &fileName)
-    local fileSize := FileGetSize(filePath)
-    local sizeStr := FormatBytes(fileSize)
+    SplitPath( filePath, &fileName )
+    local fileSize := FileGetSize( filePath )
+    local sizeStr := FormatBytes( fileSize )
 
     local header := "; =========================================================================`n"
     header .= "; FILE: " filePath "`n"
@@ -30,9 +30,9 @@ BuildFileHeader(filePath, timestamp) {
     return header
 }
 
-ReadFileContentSafe(filePath) {
+ReadFileContentSafe( filePath ) {
     try {
-        local content := FileRead(filePath, "UTF-8")
+        local content := FileRead( filePath, "UTF-8" )
         return content "`n`n"
     } catch as err {
         return "[ERROR: Failed to read file - " err.Message "]`n`n"
