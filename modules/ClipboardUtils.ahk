@@ -1,5 +1,18 @@
 #Requires AutoHotkey v2.0
 
+FormatBytes(bytes) {
+    if (bytes < 1024)
+        return bytes " B"
+    else if (bytes < 1048576)
+        return Round(bytes / 1024, 1) " KB"
+    else if (bytes < 1073741824)
+        return Round(bytes / 1048576, 1) " MB"
+    else if (bytes < 1099511627776)
+        return Round(bytes / 1073741824, 1) " GB"
+
+    return Round(bytes / 1099511627776, 1) " TB"
+}
+
 SetClipboardFile(filePath) {
     static DROPFILES_SIZE := 20
 
@@ -76,6 +89,30 @@ AdjustOpacity(step) {
 
     newTrans := Clamp(currentTrans + step, 20, 255)
     WinSetTransparent(newTrans, hwnd)
+}
+
+IsMultiFilePathText(text) {
+    if !(text is String) || (text = "")
+        return false
+
+    local lines := StrSplit(text, "`n", "`r")
+    if (lines.Length < 1)
+        return false
+
+    local valid_file_count := 0
+    for line in lines {
+        line := Trim(line)
+        if (line = "")
+            continue
+
+        local attrs := FileExist(line)
+        if (attrs != "" && !InStr(attrs, "D")) {
+            valid_file_count++
+        } else {
+            return false
+        }
+    }
+    return (valid_file_count >= 1)
 }
 
 IsFilePath(text) {
@@ -294,4 +331,35 @@ CopyAsPlainText() {
 
     A_Clipboard := text
     return text
+}
+
+ReadMultipleFilesAsText(file_paths) {
+    local result := ""
+    local timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+
+    for idx, file_path in file_paths {
+        file_path := Trim(file_path)
+        if (file_path = "")
+            continue
+
+        local file_name := ""
+        SplitPath(file_path, &file_name)
+        local file_size := FileGetSize(file_path)
+        local size_str := FormatBytes(file_size)
+
+        result .= "; =========================================================================`n"
+        result .= "; FILE: " file_path "`n"
+        result .= "; NAME: " file_name " | SIZE: " size_str " | TIME: " timestamp "`n"
+        result .= "; =========================================================================`n"
+
+        try {
+            ; Attempt UTF-8 read; fallback handled by catch
+            local content := FileRead(file_path, "UTF-8")
+            result .= content "`n`n"
+        } catch as err {
+            result .= "[ERROR: Failed to read file - " err.Message "]`n`n"
+        }
+    }
+
+    return RTrim(result, "`n")
 }

@@ -98,64 +98,84 @@ c:: {
 v:: {
     global LastManualClipboard, ClipboardHistory, IgnoreNextClipChange, PasteMode
 
-    if (IsImagePathsText(A_Clipboard)) {
-        tempPDFPath := ProcessImagePathsToPDF()
+    local current_clip := A_Clipboard
+    local target_text := (LastManualClipboard != "") ? LastManualClipboard : current_clip
 
-        if (tempPDFPath = "") {
-            ToolTip "Failed to create PDF"
-            SetTimer () => ToolTip(), -2000
-            return
+    if (target_text = "") {
+        ToolTip("Clipboard is empty, please copy content first")
+        SetTimer(() => ToolTip(), -2000)
+        return
+    }
+
+    if (PasteMode = 2 && IsMultiFilePathText(target_text)) {
+        local raw_paths := StrSplit(target_text, "`n", "`r")
+        local valid_paths := []
+
+        for path in raw_paths {
+            path := Trim(path)
+            local attrs := FileExist(path)
+            if (path != "" && attrs != "" && !InStr(attrs, "D"))
+                valid_paths.Push(path)
         }
 
-        PasteFile(tempPDFPath, "pdf")
+        if (valid_paths.Length > 0) {
+            local combined_text := ReadMultipleFilesAsText(valid_paths)
+            local backup_clip := A_Clipboard
+
+            A_Clipboard := combined_text
+            Send("^v")
+            Sleep(50)
+            A_Clipboard := backup_clip
+
+            ToolTip("Pasted " valid_paths.Length " files as text")
+            SetTimer(() => ToolTip(), -2000)
+            return
+        }
+    }
+
+    if (IsImagePathsText(target_text)) {
+        local temp_pdf_path := ProcessImagePathsToPDF()
+        if (temp_pdf_path = "") {
+            ToolTip("Failed to create PDF")
+            SetTimer(() => ToolTip(), -2000)
+            return
+        }
+        PasteFile(temp_pdf_path, "pdf")
         return
     }
 
-    currentClip := A_Clipboard
+    if (current_clip != "" && !InStr(current_clip, A_Temp "\ClipTemp_"))
+        LastManualClipboard := current_clip
 
-    if (currentClip != "" && !InStr(currentClip, A_Temp "\ClipTemp_"))
-        LastManualClipboard := currentClip
-
-    targetText := (LastManualClipboard != "") ? LastManualClipboard : currentClip
-
-    if (targetText = "") {
-        ToolTip "Clipboard is empty, please copy content first"
-        SetTimer () => ToolTip(), -2000
-        return
-    }
-
-    sourceInfo := ""
+    local source_info := ""
     for item in ClipboardHistory {
-        if (item["text"] = targetText) {
-            sourceInfo := "Copied from: " item["source"] " (at " item["time"] ")"
+        if (item["text"] = target_text) {
+            source_info := "Copied from: " item["source"] " (at " item["time"] ")"
             break
         }
     }
 
-    if (sourceInfo = "")
-        sourceInfo := "Source: (Direct Paste via Hotkey) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    if (source_info = "")
+        source_info := "Source: (Direct Paste via Hotkey) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
 
     if (PasteMode = 1) {
-        fullContent := "; " sourceInfo "`n`n" targetText
-        tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-        FileAppend fullContent, tempFile, "UTF-8"
-        SetClipboardFile(tempFile)
-        Send "^v"
-        ScheduleFileDeletion(tempFile)
-        SetTimer () => (
-            (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-        ), -10000
+        local full_content := "; " source_info "`n`n" target_text
+        local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
+        FileAppend(full_content, temp_file, "UTF-8")
+        SetClipboardFile(temp_file)
+        Send("^v")
+        ScheduleFileDeletion(temp_file)
+        SetTimer(() => (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : "", -10000)
     } else {
-        fullContent := "; " sourceInfo "`n`n" targetText
-
-        backupClip := A_Clipboard
-        A_Clipboard := fullContent
-        Send "^v"
-        Sleep 50
-        A_Clipboard := backupClip
+        local full_content := "; " source_info "`n`n" target_text
+        local backup_clip := A_Clipboard
+        A_Clipboard := full_content
+        Send("^v")
+        Sleep(50)
+        A_Clipboard := backup_clip
     }
 
-    SetTimer () => ToolTip(), -2000
+    SetTimer(() => ToolTip(), -2000)
 }
 
 +v:: ShowHistoryMenu()

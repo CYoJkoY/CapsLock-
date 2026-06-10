@@ -258,78 +258,100 @@ ActionPickerHandler(ItemName, ItemPos, MyMenu) {
     ActionMenu.Show()
 }
 
-PasteAsFile(historyItem) {
-    global LastManualClipboard
+PasteAsFile(history_item) {
+    global LastManualClipboard, PasteMode, TargetWindow
 
-    textContent := historyItem["text"]
+    local text_content := history_item["text"]
 
-    if (IsImagePathsText(textContent)) {
-        originalClipboard := A_Clipboard
-        A_Clipboard := textContent
-        tempPDFPath := ProcessImagePathsToPDF()
-        A_Clipboard := originalClipboard
+    ; EDGE CASE: Respect PasteMode = 2 for multi-file history entries
+    if (PasteMode = 2 && IsMultiFilePathText(text_content)) {
+        local raw_paths := StrSplit(text_content, "`n", "`r")
+        local valid_paths := []
 
-        if (tempPDFPath = "") {
-            ToolTip "Failed to create PDF from image paths."
-            SetTimer () => ToolTip(), -2000
+        for path in raw_paths {
+            path := Trim(path)
+            local attrs := FileExist(path)
+            if (path != "" && attrs != "" && !InStr(attrs, "D"))
+                valid_paths.Push(path)
+        }
+
+        if (valid_paths.Length > 0) {
+            local combined_text := ReadMultipleFilesAsText(valid_paths)
+            local backup_clip := A_Clipboard
+
+            A_Clipboard := combined_text
+            Send("^v")
+            Sleep(50)
+            A_Clipboard := backup_clip
+
+            ToolTip("Pasted " valid_paths.Length " history files as text")
+            SetTimer(() => ToolTip(), -2000)
+            return
+        }
+    }
+
+    if (IsImagePathsText(text_content)) {
+        local original_clipboard := A_Clipboard
+        A_Clipboard := text_content
+        local temp_pdf_path := ProcessImagePathsToPDF()
+        A_Clipboard := original_clipboard
+
+        if (temp_pdf_path = "") {
+            ToolTip("Failed to create PDF from image paths.")
+            SetTimer(() => ToolTip(), -2000)
             return
         }
 
-        PasteFile(tempPDFPath, "pdf")
+        PasteFile(temp_pdf_path, "pdf")
         return
     }
 
-    if (IsFilePath(textContent) && FileExist(textContent)) {
-        filePath := textContent
-        fileType := GetFileType(filePath)
+    if (IsFilePath(text_content) && FileExist(text_content)) {
+        local file_path := text_content
+        local file_type := GetFileType(file_path)
 
-        if (fileType = "pdf") {
+        if (file_type = "pdf") {
             DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) && DllCall("EmptyClipboard")
             DllCall("CloseClipboard")
-            SetClipboardFile(filePath)
+            SetClipboardFile(file_path)
+        } else {
+            local source_info := "Copied from: " history_item["source"] " (at " history_item["time"] ")"
+            local full_content := "; " source_info "`n`n" FileRead(file_path, "UTF-8")
+            local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
+            FileAppend(full_content, temp_file, "UTF-8")
+            SetClipboardFile(temp_file)
         }
-        else {
-            sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
-            fullContent := "; " sourceInfo "`n`n" FileRead(filePath, "UTF-8")
-            tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-            FileAppend fullContent, tempFile, "UTF-8"
-            SetClipboardFile(tempFile)
-        }
-    }
-    else {
-        sourceInfo := "Copied from: " historyItem["source"] " (at " historyItem["time"] ")"
+    } else {
+        local source_info := "Copied from: " history_item["source"] " (at " history_item["time"] ")"
         DllCall("OpenClipboard", "Ptr", A_ScriptHwnd) && DllCall("EmptyClipboard")
         DllCall("CloseClipboard")
-        fullContent := "; " sourceInfo "`n`n" textContent
-        tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-        FileAppend fullContent, tempFile, "UTF-8"
-        SetClipboardFile(tempFile)
+        local full_content := "; " source_info "`n`n" text_content
+        local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
+        FileAppend(full_content, temp_file, "UTF-8")
+        SetClipboardFile(temp_file)
     }
 
     if (TargetWindow && WinExist("ahk_id " TargetWindow))
         WinActivate("ahk_id " TargetWindow)
     else {
         if !WinExist("A") {
-            ToolTip "No target window to paste into. Please click on the desired window and try again."
-            SetTimer () => ToolTip(), -2000
+            ToolTip("No target window to paste into.")
+            SetTimer(() => ToolTip(), -2000)
             return
         }
         WinActivate("A")
     }
 
-    Sleep 100
-    Send "^v"
+    Sleep(100)
+    Send("^v")
 
-    ; Schedule temp file cleanup and clipboard restoration
-    if (IsSet(tempFile) && InStr(tempFile, A_Temp "\ClipTemp_"))
-        ScheduleFileDeletion(tempFile)
+    if (IsSet(temp_file) && InStr(temp_file, A_Temp "\ClipTemp_"))
+        ScheduleFileDeletion(temp_file)
 
-    if (IsSet(filePath) && IsSet(fileType) && fileType = "pdf")
-        ScheduleFileDeletion(filePath)
+    if (IsSet(file_path) && IsSet(file_type) && file_type = "pdf")
+        ScheduleFileDeletion(file_path)
 
-    SetTimer () => (
-        (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : ""
-    ), -10000
+    SetTimer(() => (LastManualClipboard != "") ? (A_Clipboard := LastManualClipboard) : "", -10000)
 }
 
 ShowPreviewGui(text) {
