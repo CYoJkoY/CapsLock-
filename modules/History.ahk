@@ -3,6 +3,11 @@
 LoadHistory() {
     global ClipboardHistory, MaxHistory, HistoryFile
 
+    if (MaxHistory = 0) {
+        ClipboardHistory := []
+        return
+    }
+
     if !FileExist(HistoryFile)
         return
 
@@ -80,8 +85,15 @@ LoadHistory() {
 
     file.Close()
 
-    while history.Length > MaxHistory
+    trimmedCount := 0
+    while (history.Length > MaxHistory) {
         history.Pop()
+        trimmedCount++
+    }
+
+    if (trimmedCount > 0) {
+        OutputDebug "LoadHistory: trimmed " trimmedCount " entries exceeding MaxHistory=" MaxHistory
+    }
 
     ClipboardHistory := history
 }
@@ -131,8 +143,7 @@ AddToHistory(text, source := "Manual Copy") {
     historyItem["time"] := timestamp
 
     ClipboardHistory.InsertAt(1, historyItem)
-
-    if (ClipboardHistory.Length > MaxHistory)
+    while (ClipboardHistory.Length > MaxHistory)
         ClipboardHistory.Pop()
 
     SaveHistory()
@@ -156,6 +167,9 @@ HandleHistoryUpdate(DataType) {
 
     LastManualClipboard := text
 
+    if (MaxHistory = 0)
+        return
+
     try {
         sourceTitle := WinGetTitle("A")
     }
@@ -177,7 +191,6 @@ HandleHistoryUpdate(DataType) {
     historyItem["source"] := sourceTitle
     historyItem["process"] := sourceProcess
     historyItem["time"] := timestamp
-
     for index, item in ClipboardHistory {
         if (item["text"] == text) {
             ClipboardHistory.RemoveAt(index)
@@ -186,8 +199,7 @@ HandleHistoryUpdate(DataType) {
     }
 
     ClipboardHistory.InsertAt(1, historyItem)
-
-    if (ClipboardHistory.Length > MaxHistory)
+    while (ClipboardHistory.Length > MaxHistory)
         ClipboardHistory.Pop()
 
     SaveHistory()
@@ -373,7 +385,10 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     FullHistoryGui.OnEvent("Escape", (*) => (FullHistoryGui.Destroy(), FullHistoryGui := ""))
     FullHistoryGui.OnEvent("Size", _ResizeFullHistoryGui)
 
-    lv := FullHistoryGui.Add("ListView", "r20 w600 Checked Multi Grid", ["#", "Content (first 100 chars)"])
+    lv := FullHistoryGui.Add("ListView", "r20 w600 Checked Multi Grid", [
+        "#",
+        "Content (first 100 chars)"
+    ])
     lv.OnEvent("DoubleClick", _OnFullHistoryDoubleClick)
     lv.OnEvent("ContextMenu", _OnFullHistoryContextMenu)
     lv.OnEvent("ItemCheck", _OnItemCheck)
@@ -444,7 +459,9 @@ _OnFullHistoryDoubleClick(lv, row) {
         return
 
     selectedItem := ClipboardHistory[row]
-    _PasteAsMultipleFiles([selectedItem])
+    _PasteAsMultipleFiles([
+        selectedItem
+    ])
 }
 
 _OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
@@ -453,7 +470,9 @@ _OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
 
     selectedItem := ClipboardHistory[row]
     ContextMenu := Menu()
-    ContextMenu.Add("📄 Paste as File", (*) => _PasteAsMultipleFiles([selectedItem]))
+    ContextMenu.Add("📄 Paste as File", (*) => _PasteAsMultipleFiles([
+        selectedItem
+    ]))
     ContextMenu.Add("🔍 Preview", (*) => ShowPreviewGui(selectedItem["text"]))
     ContextMenu.Add("❌ Delete", (*) => _DeleteFromFullHistory(row))
     ContextMenu.Show(x, y)

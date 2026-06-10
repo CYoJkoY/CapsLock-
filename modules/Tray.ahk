@@ -169,15 +169,62 @@ SetDeleteMode3(*) {
 
 ; =========================== Parameter settings ===========================
 SetMaxHistory(*) {
-    global MaxHistory
-    input := InputBox("Enter max history limit (e.g., 500, 1000, 10000):", "Max History Limit", "w300 h120", MaxHistory
-    )
+    global MaxHistory, ClipboardHistory
+    input := InputBox("Enter max history limit (0 to disable, e.g., 500, 1000):", "Max History Limit", "w300 h120",
+        MaxHistory)
+    if (input.Result = "OK" && IsNumber(input.Value)) {
+        newMax := Integer(input.Value)
 
-    if (input.Result = "OK" && IsNumber(input.Value) && input.Value > 0) {
-        MaxHistory := Integer(input.Value)
-        SaveConfig()
-        ToolTip "Max history limit set to " MaxHistory
-        SetTimer(() => ToolTip(), -2000)
+        if (newMax < 0)
+            newMax := 0
+
+        if (newMax = 0) {
+            if (ClipboardHistory.Length > 0) {
+                confirm := MsgBox(
+                    "Setting limit to 0 will DISABLE history and remove all " ClipboardHistory.Length " entries.`n`nContinue?",
+                    "Disable History",
+                    "YesNo Icon?"
+                )
+                if (confirm != "Yes")
+                    return
+            }
+
+            MaxHistory := 0
+            SaveConfig()
+
+            ClipboardHistory := []
+            SaveHistory()
+
+            ToolTip "Clipboard history disabled, all entries removed"
+            SetTimer(() => ToolTip(), -3000)
+        }
+        else {
+            pendingRemoval := ClipboardHistory.Length - newMax
+            if (pendingRemoval > 0) {
+                confirm := MsgBox(
+                    "Current history has " ClipboardHistory.Length " entries.`n"
+                    "Setting limit to " newMax " will remove " pendingRemoval " oldest entries.`n`n"
+                    "Continue?",
+                    "Confirm Max History Change",
+                    "YesNo Icon?"
+                )
+                if (confirm != "Yes")
+                    return
+            }
+            MaxHistory := newMax
+            SaveConfig()
+            if (pendingRemoval > 0) {
+                removedCount := ClipboardHistory.Length - MaxHistory
+                while (ClipboardHistory.Length > MaxHistory)
+                    ClipboardHistory.Pop()
+                SaveHistory()
+                ToolTip "Max history set to " MaxHistory " — removed " removedCount " old entries"
+            }
+            else {
+                ToolTip "Max history limit set to " MaxHistory
+            }
+            SetTimer(() => ToolTip(), -3000)
+        }
     }
 }
 
