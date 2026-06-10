@@ -10,7 +10,7 @@ A_MaxHotkeysPerInterval := 200
 #Include modules\Encryption.ahk
 #Include modules\Config.ahk
 #Include modules\Cleanup.ahk
-#Include modules\ClipboardUtils.ahk
+#Include modules\ClipboardManager.ahk
 #Include modules\History.ahk
 #Include modules\Hotkeys.ahk
 #Include modules\Tray.ahk
