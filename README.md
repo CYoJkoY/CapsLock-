@@ -5,8 +5,8 @@
 <h1 align="center">CapsLock Extended</h1>
 
 <p align="center">
-  <strong>Transform your most underutilized key into a productivity powerhouse.</strong><br>
-  A high-performance, Vim-inspired system enhancement utility built with AutoHotkey v2.
+  <strong>Turn the most underrated key on your keyboard into your productivity command center</strong><br>
+  A high-performance, Vim-style system enhancement tool based on AutoHotkey v2.
 </p>
 
 <p align="center">
@@ -17,146 +17,224 @@
 </p>
 
 <p align="center">
-  <a href="#-hotkey-reference">View Hotkeys</a> •
-  <a href="#-installation--setup">Installation</a> •
-  <a href="#️-configuration--technical-details">Configuration</a> •
-  <a href="#-support-me">Support</a>
+  <a href="#-shortcut-quick-reference">Shortcut Quick Reference</a> •
+  <a href="#-installation--setup">Installation & Setup</a> •
+  <a href="#️-configuration--parameters">Configuration & Parameters</a> •
+  <a href="#-support-the-author">Support the Author</a>
 </p>
-
----
-
-## 📑 Table of Contents
-
-- [📖 Overview](#-overview)
-- [✨ Core Features](#-core-features)
-- [🎹 Hotkey Reference](#-hotkey-reference)
-- [🚀 Installation & Setup](#-installation--setup)
-- [⚙️ Configuration & Technical Details](#️-configuration--technical-details)
-- [🤝 Contributing & Feedback](#-contributing--feedback)
-- [📄 License](#-license)
-- [💰 Support Me](#-support-me)
 
 ---
 
 ## 📖 Overview
 
-**CapsLock Extended** reimagines the `CapsLock` key, turning it into a versatile "Super-Modifier". It brings Vim-like home-row navigation, advanced clipboard management with encrypted history, window opacity control, and seamless workflow automation directly to your fingertips—all without leaving your keyboard's home row.
+**CapsLock Extended** redefines the purpose of the `CapsLock` key, turning it into a "super modifier key".  
+By holding `CapsLock` and combining it with other keys, you can perform Vim-style home row cursor movement, advanced clipboard management (including encrypted history), window transparency adjustment, tab switching, and other workflow automations—all without leaving the keyboard's home row.
 
-> **Note:** This script is strictly designed for **AutoHotkey v2**.
+> **Note**: This script only supports **AutoHotkey v2** and is not compatible with v1.
 
 ---
 
 ## ✨ Core Features
 
-### ⌨️ Vim-Inspired Navigation & Editing
-Navigate and edit text at the speed of thought without reaching for the mouse or arrow keys.
-*   **Home-Row Navigation:** Move by word or jump to line start/end instantly.
-*   **Smart Selection:** Select by word, line, or instantly grab the current word under the cursor.
-*   **Rapid Deletion:** Delete characters, words, or entire lines using intuitive `A/D` and `Backspace/Delete` mappings.
+### ⌨️ Vim-Style Navigation & Editing
+- **Home row arrow keys**: `←` / `→` move cursor by word, `↑` / `↓` jump to beginning/end of line  
+- **Smart selection**: Hold `Shift` to select by word/line; `Space` selects the entire word under the cursor  
+- **Quick deletion**: `A` / `D` delete single character, `Shift+A` / `D` delete whole word, `Backspace` / `Delete` delete entire line
 
 ### 📋 Advanced Clipboard & Smart Paste
-*   **Plain Text Copy (`C`):** Strips all rich formatting (HTML/RTF) and copies pure text.
-*   **Context-Aware Smart Paste (`V`):** 
-    *   *Image-to-PDF:* Automatically detects image paths in the clipboard and merges them into a single PDF via ImageMagick.
-    *   *Source-Tracked Text:* Pastes text with an auto-generated header containing the source window title and timestamp.
-    *   *File Pasting:* Can paste content as a temporary `.txt` file (ideal for messaging apps like WeChat/Slack/Discord).
-*   **Encrypted History (`Shift+V`):** Persistent, XOR-encrypted clipboard history with a quick-access menu and a full GUI for batch operations.
-*   **Instant Case Toggle (`F`):** Automatically detects the first letter's case and flips the entire clipboard text (Upper ↔ Lower).
+- **Plain text copy (`C`)**: Automatically strips all rich text formats (HTML/RTF) when copying  
+- **Context-aware smart paste (`V`)**  
+  - *Multi-file to text*: If clipboard contains multiple file paths (one per line), reads file contents and merges into plain text with source markers  
+  - *Image set to PDF*: If multiple image paths are detected, automatically invokes ImageMagick to merge them into a single PDF  
+  - *Single file paste*: Pastes the file as a temporary `.txt` file (suitable for instant messengers like WeChat/DingTalk)  
+- **Encrypted history (`Shift+V`)**  
+  - XOR-encrypted persistent clipboard history (default 10,000 entries)  
+  - Quick menu + full GUI window, supporting batch paste, multi-select delete, and entry preview  
+- **Instant case swap (`F`)**: Automatically detects the first letter of clipboard text and toggles between ALL CAPS and all lowercase
 
-### 🪟 Window Management & "Ninja" Mode
-*   **Real-time Opacity Control:** Hold `CapsLock` and click/drag with mouse buttons to smoothly adjust window transparency.
-*   **One-Click Stealth (`Middle Click`):** Instantly toggle active window opacity between 10% (ghost mode) and 100%.
-*   **Always on Top (`T`):** Pin any window to the foreground with audio/visual feedback.
-*   **Quick Resizing:** Maximize, restore, or minimize windows using `W/S` or the Numpad.
+### 🪟 Window Management & "Stealth Mode"
+- **Real-time transparency adjustment**: Hold `CapsLock` and click/drag left/right mouse button to smoothly increase/decrease window transparency  
+- **One-click ghost mode (`Middle Mouse Button`)**: Toggle between 10% (semi-transparent) and 100% (fully opaque) for the current window  
+- **Always on top (`T`)**: Pin any window to the foreground, accompanied by a sound effect and OSD notification  
+- **Quick resize**: `W` / `8` / `Num8` maximize/restore window, `S` / `2` / `Num2` minimize window
+
+### 🔖 Browser / IDE Tab Switching
+- `Q` / `E` → Switch to previous / next tab (simulates `Ctrl+PgUp` / `Ctrl+PgDn`)
 
 ---
 
-## 🎹 Hotkey Reference
+## 🎹 Shortcut Quick Reference
 
-*All hotkeys below require holding **`CapsLock`** (except the native toggle).*
+*All shortcuts below require **holding `CapsLock`** while pressing the corresponding key (except for double-click `CapsLock`).*
 
-| Category | Hotkey | Action Description |
-| :--- | :--- | :--- |
-| **System** | `CapsLock` *(Double Tap)* | Toggle native CapsLock state (50-300ms window). |
-| **Clipboard** | `C` | Copy selection as **plain text** (strips formatting). |
-| | `V` | **Smart Paste** (File / Source-text / Image-to-PDF). |
-| | `Shift + V` | Open **Clipboard History** Quick Menu. |
-| | `F` | **Toggle Case** of clipboard text (Upper ↔ Lower). |
-| **Navigation** | `←` / `→` | Move cursor left / right by **word**. |
-| | `↑` / `↓` | Jump to **start / end** of the current line. |
-| | `Space` | Select the **entire current word**. |
-| **Selection** | `Shift + ←` / `→` | Select left / right by word. |
-| | `Shift + ↑` / `↓` | Select to start / end of line. |
-| **Editing** | `A` / `D` | `Backspace` / `Delete` (single character). |
-| | `Shift + A` / `D` | Delete left / right by **word**. |
-| | `Backspace` / `Delete`| Delete the **entire current line**. |
-| **Window** | `T` | Toggle **Always on Top** for the active window. |
-| | `W` / `8` / `Num8` | **Maximize / Restore** active window. |
-| | `S` / `2` / `Num2` | **Minimize** active window. |
-| **Mouse** | `Left Button` | **Increase** window opacity (Click: +20, Hold: +5). |
-| | `Right Button` | **Decrease** window opacity (Click: -20, Hold: -5). |
-| | `Middle Button` | **Toggle** opacity between 10% (Stealth) and 100%. |
-| **Tabs** | `Q` / `E` | Switch to **previous / next** tab (`Ctrl+PgUp/PgDn`). |
+| Category | Shortcut | Description |
+|:---|:---|:---|
+| **System** | `CapsLock` (double-click) | Toggle native CapsLock state (50~300ms double-click window) |
+| **Clipboard** | `C` | Copy selection as **plain text** (auto strip formatting) |
+| | `V` | **Smart paste** (multi-file/image-to-PDF/text with source) |
+| | `Shift+V` | Open **clipboard history** quick menu |
+| | `F` | **Swap case** of clipboard text |
+| **Navigation** | `←` / `→` | Move cursor left/right **by one word** |
+| | `↑` / `↓` | Jump to **beginning** / **end of line** |
+| | `Space` | Select the **entire word** under the cursor |
+| **Selection** | `Shift+←` / `→` | Select left/right **by word** |
+| | `Shift+↑` / `↓` | Select left/right **by line** (to start/end of line) |
+| **Editing** | `A` / `D` | `Backspace` / `Delete` (delete single character) |
+| | `Shift+A` / `D` | Delete left/right **entire word** |
+| | `Backspace` / `Delete` | Delete **entire line** (from start to end) |
+| **Window** | `T` | Toggle current window **always on top** |
+| | `W` / `8` / `Num8` | **Maximize / Restore** current window |
+| | `S` / `2` / `Num2` | **Minimize** current window |
+| **Mouse** | `Left Button` (click/hold) | **Increase** window transparency (click +20, hold +100 per second) |
+| | `Right Button` (click/hold) | **Decrease** window transparency (click -20, hold -100 per second) |
+| | `Middle Button` | **Toggle** transparency: 10% (ghost mode) ↔ 100% (normal) |
+| **Tabs** | `Q` / `E` | Switch to **previous** / **next** tab (`Ctrl+PgUp/PgDn`) |
 
 ---
 
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-1. **AutoHotkey v2**: Download and install from [autohotkey.com](https://www.autohotkey.com/).
-2. **ImageMagick** *(Optional)*: Required only if you want to use the *Image-to-PDF* clipboard feature. Download from [imagemagick.org](https://imagemagick.org/).
+1. **AutoHotkey v2** – Download and install from [autohotkey.com](https://www.autohotkey.com/)  
+2. **ImageMagick** (optional) – Required for "Image set to PDF" feature; install from [imagemagick.org](https://imagemagick.org/) (check "Install legacy utilities" during setup)
 
 ### Quick Start
-1. **Download** the repository and place `CapsLock-.ahk` along with the `modules/` folder in your desired directory.
-2. **Run** the script by double-clicking `CapsLock-.ahk`. You will see a new icon in your system tray.
-3. *(Optional)* **Auto-Start**: Right-click the tray icon → Select **"Load on Startup"**.
+1. **Download the project** and extract `CapsLock-.ahk` along with the `modules/` folder to any directory  
+2. **Run the script**: Double-click `CapsLock-.ahk`, a new icon will appear in the system tray  
+3. **(Optional) Auto-start with Windows**: Right-click the tray icon → check **"Load on start up"**
 
-### Configuring ImageMagick (Optional)
-1. Right-click the system tray icon → Select **"ImageMagick: Not Set"**.
-2. Navigate to your ImageMagick installation folder and select `magick.exe` (e.g., `C:\Program Files\ImageMagick-7.x.x-Q16\magick.exe`).
-3. The path is automatically saved to `Config.ini`.
+### Configure ImageMagick (only for image-to-PDF)
+1. Right-click the tray icon → click **"ImageMagick: Not Set"**  
+2. Browse to the ImageMagick installation directory and select `magick.exe` (e.g., `C:\Program Files\ImageMagick-7.x.x-Q16\magick.exe`)  
+3. The path will be saved automatically to `configs/Config.ini`, and the status will change to **"ImageMagick: Valid"**
 
 ---
 
-## ⚙️ Configuration & Technical Details
+## ⚙️ Configuration & Parameters
 
-Behavior can be fine-tuned via the **System Tray Menu** or by editing `Config.ini` / global variables in the module files.
+### Tray Menu Settings
+| Menu Item | Description |
+|:---|:---|
+| `ImageMagick: Not Set / Valid` | Set the path to the ImageMagick executable |
+| `Open Temp Folder` | Open the temporary folder (`%TEMP%`, where temporary paste files are stored) |
+| `Delete Mode` | Temporary file cleanup mode: 1=delayed delete, 2=batch cleanup, 3=never delete |
+| `Mode1: Set Delete Delay...` | Delay in seconds for Mode 1 (default 10 seconds) |
+| `Mode2: Set Cleanup Interval...` | Cleanup interval in seconds for Mode 2 (default 30 seconds) |
+| `Set Max History Limit...` | Maximum number of clipboard history entries (0 disables history, default 10000) |
+| `Paste Mode` | Paste mode: 1=paste as temporary txt file, 2=paste as plain text with source markers |
+| `Load on start up` | Toggle auto-start with Windows (writes to registry `HKCU\Run`) |
+| `Reload` | Reload the script |
+| `Exit` | Exit the script |
 
-| Setting / Variable | Default | Description |
-| :--- | :--- | :--- |
-| `PasteMode` | `1` | `1`: Paste as temporary `.txt` file.<br>`2`: Paste as text with source metadata header. |
-| `MaxHistory` | `10000` | Maximum clipboard history entries (FIFO). |
-| `ENCRYPT_KEY` | `0x5A` | Hex key for XOR encryption of history. Set to `0` for plaintext. |
-| `DeleteMode` | `1` | Temp file cleanup: `1`=Delayed, `2`=Batch, `3`=Never. |
-| `DeleteDelay` | `10` | Seconds before deleting temp files (Mode 1). |
-| `CleanupInterval`| `30` | Seconds between batch cleanup runs (Mode 2). |
+### Configuration File `configs/Config.ini` (auto-generated)
+```ini
+[Cleanup]
+DeleteMode=1          ; 1=delayed 2=batch 3=never
+DeleteDelay=10        ; delay in seconds
+CleanupInterval=30    ; batch cleanup interval in seconds
 
-### 🏗️ Architecture Highlights
-* **Modular Codebase:** Cleanly separated into `Constants`, `Encryption`, `Config`, `Cleanup`, `ClipboardUtils`, `History`, `Hotkeys`, `Tray`, and `Main`.
-* **Memory-Level File Pasting:** Uses `DROPFILES` structure manipulation to place multiple file paths directly onto the clipboard for seamless batch pasting.
-* **Smart Loop Prevention:** Intelligent `OnClipboardChange` monitoring that ignores script-generated temp files (`ClipTemp_*.txt`) to prevent infinite clipboard loops.
+[History]
+MaxHistory=10000      ; maximum history entries
 
-> **⚠️ Security Note:** The built-in XOR encryption (`CryptBuffer`) is designed for basic obfuscation to prevent casual snooping. It is **not** cryptographically secure. For highly sensitive environments, set `ENCRYPT_KEY=0` and rely on Windows OS-level file permissions (EFS/BitLocker).
+[General]
+PasteMode=1           ; 1=paste as file 2=paste as text with source
+
+[ImageMagick]
+Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
+```
+
+### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
+| Variable | Default | Description |
+|:---|:---|:---|
+| `ENCRYPT_KEY` | `0x5A` | XOR encryption key (0 means plaintext history) |
+| `MAX_VISIBLE_MENU` | `15` | Maximum entries shown in the history quick menu |
+| `TextFormats` | 50+ common extensions | List of extensions treated as "text files" |
+| `ImageFormats` | png, jpg, bmp… | Image formats supported for PDF conversion |
+
+---
+
+## 🧱 Project Structure
+
+```ini
+CapsLock-.ahk          # Main entry point, integrates all modules
+Config/
+├─ Globals.ahk         # Global variable definitions
+├─ Encryption.ahk      # XOR encryption/decryption
+└─ ConfigManager.ahk   # Ini configuration read/write
+Core/
+├─ Clipboard.ahk       # Clipboard file operations (CF_HDROP)
+├─ ClipboardPaste.ahk  # Smart paste core logic
+├─ FileValidation.ahk  # Path/image/multi-file validation
+├─ FileOperations.ahk  # Multi-file content merge, header generation
+├─ ImageToPdf.ahk      # ImageMagick invocation, image list to PDF
+├─ Cleanup.ahk         # Temporary file delayed/batch deletion
+└─ WindowUtils.ahk     # Transparency adjustment helpers
+History/
+├─ HistoryStorage.ahk  # Encrypted history save/load, add entries
+├─ HistoryMenu.ahk     # Quick menu (Shift+V)
+├─ HistoryFullGui.ahk  # Full history GUI window
+└─ HistoryActions.ahk  # History entry paste/delete/multi-select operations
+Hotkeys/
+├─ HotkeyBindings.ahk  # All CapsLock combo key definitions
+└─ HotkeyActions.ahk   # Concrete implementation of each hotkey action
+Tray/
+├─ TrayMenu.ahk        # Tray menu construction and refresh
+└─ TraySettings.ahk    # Menu item interaction logic (set delete delay, clear history, etc.)
+UI/
+├─ OSD.ahk             # On-screen display for topmost toggle (fade in/out)
+└─ PreviewGui.ahk      # History content preview window
+Utils/
+├─ ResourceSound.ahk   # Built-in WAV resource playback (topmost toggle sound)
+└─ MathUtils.ahk       # File size formatting, value clamping
+```
+
+---
+
+## 🧠 Implementation Highlights
+
+- **In-memory file paste**  
+  Constructs a `DROPFILES` structure to write multiple file paths directly to the clipboard, enabling batch file pasting.
+
+- **Smart loop prevention**  
+  Uses the `IgnoreNextClipChange` flag to prevent temporary files generated by the script (`ClipTemp_*.txt`) from triggering an infinite `OnClipboardChange` loop.
+
+- **Encrypted history storage**  
+  Employs simple XOR stream encryption to obfuscate the history file, deterring casual snooping (for high-security needs, set `ENCRYPT_KEY` to 0 and rely on Windows EFS/BitLocker).
+
+- **Delayed / batch cleanup mechanism**  
+  Supports two temporary file cleanup strategies: delayed deletion (each file has its own timer) and batch scanning (reduces I/O pressure).
+
+- **Modular design**  
+  Each functional domain is separated into its own `.ahk` file for easy maintenance and further development.
+
+---
+
+## 🔐 Security Notes
+
+- The history file `configs/ClipHistory.bin` is encrypted using a **fixed XOR key** (default `0x5A`). This is **only intended to prevent casual viewing and offers no cryptographic strength**.  
+- If you handle highly sensitive data, it is recommended to:  
+  1. Set `ENCRYPT_KEY` to `0` (disable encryption)  
+  2. Use Windows built-in **EFS** or **BitLocker** to encrypt the entire configuration folder
 
 ---
 
 ## 🤝 Contributing & Feedback
 
-Found a bug or have a feature request? 
-* Please open an **Issue** or submit a **Pull Request**.
-* Ensure your code follows the existing modular structure and AHK v2 syntax.
+Issues and Pull Requests are welcome.  
+Please ensure your code conforms to AHK v2 syntax and follows the existing modular style.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.  
+See the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 💰 Support Me
+## 💰 Support the Author
 
-If you've found this project helpful or it has boosted your productivity, feel free to buy me a coffee. Your support is my biggest motivation to keep updating and maintaining it! ☕
+If this project has boosted your productivity, consider buying me a coffee! ☕
 
 <p align="center">
   <a href="https://cyojkoy.github.io/Payment/">
