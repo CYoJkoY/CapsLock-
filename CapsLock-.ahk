@@ -35,6 +35,7 @@ A_MaxHotkeysPerInterval := 200
 
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MathUtils.ahk"
+#Include "Utils\FileContentMerger.ahk"
 
 LoadHistory()
 LoadConfig()

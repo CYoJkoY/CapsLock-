@@ -2,7 +2,6 @@
 
 CopyAsPlainTextAndAddToHistory() {
     global IgnoreNextClipChange
-
     IgnoreNextClipChange := true
     text := CopyAsPlainText()
     IgnoreNextClipChange := false
@@ -16,10 +15,8 @@ PasteWithCurrentMode() {
 
     local current_clip := A_Clipboard
     local target_text := ( LastManualClipboard != "" ) ? LastManualClipboard : current_clip
-
     if ( target_text = "" ) {
-        ToolTip( "Clipboard is empty, please copy content first" )
-        SetTimer( () => ToolTip(), -2000 )
+        ShowToolTip( "Clipboard is empty, please copy content first", 2000 )
         return
     }
 
@@ -40,8 +37,7 @@ PasteWithCurrentMode() {
             Send( "^v" )
             Sleep( 50 )
             A_Clipboard := backup_clip
-            ToolTip( "Pasted " valid_paths.Length " files as text" )
-            SetTimer( () => ToolTip(), -2000 )
+            ShowToolTip( "Pasted " valid_paths.Length " files as text", 2000 )
             return
         }
     }
@@ -49,8 +45,7 @@ PasteWithCurrentMode() {
     if ( IsImagePathsText( target_text ) ) {
         local temp_pdf_path := ProcessImagePathsToPDF()
         if ( temp_pdf_path = "" ) {
-            ToolTip( "Failed to create PDF" )
-            SetTimer( () => ToolTip(), -2000 )
+            ShowToolTip( "Failed to create PDF", 2000 )
             return
         }
         PasteFile( temp_pdf_path, "pdf" )
@@ -73,6 +68,20 @@ PasteWithCurrentMode() {
     }
 
     if ( PasteMode = 1 ) {
+        if ( IsMultiFilePathText( target_text ) ) {
+            local mergedFile := CombineFilePathsToTempFile( target_text, source_info )
+            if ( mergedFile = "" ) {
+                ShowToolTip( "No valid files to merge", 2000 )
+                return
+            }
+            SetClipboardFile( mergedFile )
+            Send( "^v" )
+            ScheduleFileDeletion( mergedFile )
+            SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
+            ShowToolTip( "Pasted " mergedFile, 1500 )
+            return
+        }
+
         local full_content := "; " source_info "`n`n" target_text
         local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
         FileAppend( full_content, temp_file, "UTF-8" )
@@ -88,6 +97,7 @@ PasteWithCurrentMode() {
         Sleep( 50 )
         A_Clipboard := backup_clip
     }
+    ShowToolTip( "", 0 )
     SetTimer( () => ToolTip(), -2000 )
 }
 
@@ -135,5 +145,4 @@ ToggleAlwaysOnTopWithOSD() {
     } else {
         PlayResourceSound( "SND_OFF" )
     }
-    ShowTopMostOSD( hwnd, isOnTop )
 }
