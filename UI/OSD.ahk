@@ -1,3 +1,5 @@
+#Requires AutoHotkey v2.0
+
 ShowTopMostOSD( targetHwnd, isOnTop ) {
     static currentOSD := ""
 
@@ -17,15 +19,11 @@ ShowTopMostOSD( targetHwnd, isOnTop ) {
         WinGetPos( &wx, &wy, &ww, &wh, targetHwnd )
         osd.Show( "Hide" )
         osd.GetPos(, , &ow, &oh )
-
         posX := wx + ( ww / 2 ) - ( ow / 2 )
         posY := wy + 10
-
         osd.Show( "x" . posX . " y" . posY . " NoActivate" )
         WinSetTransparent( 0, osd )
-
         currentOSD := osd
-
         SetTimer( FadeOSD.Bind( osd, "fade_in" ), -10 )
     } catch {
         osd.Destroy()
@@ -50,11 +48,9 @@ FadeOSD( osd, state ) {
         } else {
             SetTimer( FadeOSD.Bind( osd, "hold" ), -holdTime )
         }
-    }
-    else if ( state = "hold" ) {
+    } else if ( state = "hold" ) {
         SetTimer( FadeOSD.Bind( osd, "fade_out" ), -16 )
-    }
-    else if ( state = "fade_out" ) {
+    } else if ( state = "fade_out" ) {
         if ( trans > 0 ) {
             WinSetTransparent( trans - step, osd )
             SetTimer( FadeOSD.Bind( osd, "fade_out" ), -16 )

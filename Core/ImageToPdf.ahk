@@ -1,9 +1,10 @@
 #Requires AutoHotkey v2.0
+#Include "..\Config\Globals.ahk"
 
 ProcessImagePathsToPDF() {
     global ImageMagickExe
 
-    if ( !ValidateImageMagickPath( ImageMagickExe ) ) {
+    if !ValidateImageMagickPath( ImageMagickExe ) {
         return ""
     }
 
@@ -21,7 +22,7 @@ ValidateImageMagickPath( exePath ) {
         MsgBox( "Please set ImageMagick path first via tray icon menu.", "Error", "Iconx 4096" )
         return false
     }
-    if ( !FileExist( exePath ) ) {
+    if !FileExist( exePath ) {
         MsgBox( "ImageMagick executable not found at: `n" exePath, "Error", "Iconx 4096" )
         return false
     }
@@ -36,7 +37,7 @@ ExtractValidImagePaths( clipboardText ) {
         if ( line = "" ) {
             continue
         }
-        if ( FileExist( line ) ) {
+        if FileExist( line ) {
             validPaths.Push( '"' line '"' )
         }
     }
@@ -50,7 +51,7 @@ ExecuteImageMagickMerge( exePath, validPaths ) {
     ShowTemporaryToolTip( "Merging " validPaths.Length " images to PDF...", 0 )
     try {
         RunWait( command, , "Hide" )
-        if ( FileExist( outputPdf ) ) {
+        if FileExist( outputPdf ) {
             ShowTemporaryToolTip( "PDF created successfully!", 2000 )
             return outputPdf
         } else {

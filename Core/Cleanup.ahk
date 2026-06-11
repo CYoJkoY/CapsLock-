@@ -5,10 +5,8 @@ ScheduleFileDeletion( filePath ) {
 
     if ( DeleteMode = 1 ) {
         SetTimer( () => ( FileExist( filePath ) ? FileDelete( filePath ) : "" ), -DeleteDelay * 1000 )
-    }
-    else if ( DeleteMode = 2 ) {
+    } else if ( DeleteMode = 2 ) {
         PendingCleanupFiles.Push( filePath )
-
         if ( BatchCleanupTimer = "" ) {
             BatchCleanupTimer := SetTimer( PerformBatchCleanup, CleanupInterval * 1000 )
         }
@@ -19,16 +17,14 @@ PerformBatchCleanup() {
     global PendingCleanupFiles, BatchCleanupTimer
 
     newList := []
-
     for path in PendingCleanupFiles {
         if FileExist( path ) {
             try FileDelete( path )
-
-            if FileExist( path )
+            if FileExist( path ) {
                 newList.Push( path )
+            }
         }
     }
-
     PendingCleanupFiles := newList
 
     if ( PendingCleanupFiles.Length = 0 && BatchCleanupTimer != "" ) {

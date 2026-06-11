@@ -1,8 +1,5 @@
 #Requires AutoHotkey v2.0
 
-#Include "ClipboardCore.ahk"
-#Include "FileValidation.ahk"
-
 PasteFile( filePath, fileType := "auto" ) {
     global LastManualClipboard, TargetWindow
 
@@ -35,7 +32,6 @@ PrepareTextFileForPaste( filePath, fileType ) {
     } catch {
         content := "[File content could not be read]"
     }
-
     local fullContent := "; " sourceInfo "`n`n" content
     local tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
     FileAppend( fullContent, tempFile, "UTF-8" )

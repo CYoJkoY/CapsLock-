@@ -1,7 +1,5 @@
 #Requires AutoHotkey v2.0
 
-#Include "MathUtils.ahk"
-
 ReadMultipleFilesAsText( filePaths ) {
     local result := ""
     local timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss" )
