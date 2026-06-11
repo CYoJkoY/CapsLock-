@@ -11,29 +11,29 @@ LoadHistory() {
     if !FileExist( HistoryFile )
         return
 
-    historyfile := FileOpen( HistoryFile, "r" )
+    history := FileOpen( HistoryFile, "r" )
 
-    if !IsObject( historyfile )
+    if !IsObject( history )
         return
 
-    arrayLen := historyfile.ReadInt()
+    arrayLen := history.ReadInt()
 
     if ( arrayLen = "" || arrayLen < 0 ) {
-        historyfile.Close()
+        history.Close()
         return
     }
 
-    history := []
+    historylist := []
 
     loop arrayLen {
-        strLenBytes := historyfile.ReadInt()
+        strLenBytes := history.ReadInt()
 
         if ( strLenBytes = "" || strLenBytes <= 0 )
             break
 
         buf := Buffer( strLenBytes )
 
-        if ( historyfile.RawRead( buf, strLenBytes ) != strLenBytes )
+        if ( history.RawRead( buf, strLenBytes ) != strLenBytes )
             break
 
         CryptBuffer( buf )
@@ -50,13 +50,11 @@ LoadHistory() {
                 if ( pos2 > 0 ) {
                     sourceStr := SubStr( rest, 1, pos2 - 1 )
                     textStr := SubStr( rest, pos2 + 3 )
-                }
-                else {
+                } else {
                     sourceStr := "Unknown Source"
                     textStr := rest
                 }
-            }
-            else {
+            } else {
                 timeStr := ""
                 sourceStr := "Unknown Source"
                 textStr := line
@@ -66,24 +64,22 @@ LoadHistory() {
             item[ "time" ] := timeStr
             item[ "source" ] := sourceStr
             item[ "text" ] := textStr
-            history.Push( item )
-        }
-        catch {
+            historylist.Push( item )
+        } catch {
             try {
                 text := StrGet( buf, "UTF-8" )
                 item := Map()
                 item[ "time" ] := ""
                 item[ "source" ] := "Legacy Entry"
                 item[ "text" ] := text
-                history.Push( item )
-            }
-            catch {
+                historylist.Push( item )
+            } catch {
                 break
             }
         }
     }
 
-    file.Close()
+    history.Close()
 
     trimmedCount := 0
     while ( history.Length > MaxHistory ) {
@@ -95,29 +91,29 @@ LoadHistory() {
         OutputDebug( "LoadHistory: trimmed " trimmedCount " entries exceeding MaxHistory=" MaxHistory )
     }
 
-    ClipboardHistory := history
+    ClipboardHistory := historylist
 }
 
 SaveHistory() {
     global ClipboardHistory, HistoryFile
 
-    historyfile := FileOpen( HistoryFile, "w" )
+    history := FileOpen( HistoryFile, "w" )
 
-    if !IsObject( historyfile )
+    if !IsObject( history )
         return
 
-    historyfile.WriteInt( ClipboardHistory.Length )
+    history.WriteInt( ClipboardHistory.Length )
 
     for item in ClipboardHistory {
         line := item[ "time" ] " | " item[ "source" ] " | " item[ "text" ]
         buf := Buffer( StrPut( line, "UTF-8" ) - 1 )
         StrPut( line, buf, "UTF-8" )
         CryptBuffer( buf )
-        historyfile.WriteInt( buf.Size )
-        historyfile.RawWrite( buf, buf.Size )
+        history.WriteInt( buf.Size )
+        history.RawWrite( buf, buf.Size )
     }
 
-    historyfile.Close()
+    history.Close()
 }
 
 AddToHistory( text, source := "Manual Copy" ) {

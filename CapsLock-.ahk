@@ -6,7 +6,7 @@
 A_HotkeyInterval := 2000
 A_MaxHotkeysPerInterval := 200
 
-#Include modules\Constants.ahk
+#Include Constants.ahk
 #Include modules\Encryption.ahk
 #Include modules\Config.ahk
 #Include modules\Cleanup.ahk
@@ -19,21 +19,21 @@ A_MaxHotkeysPerInterval := 200
 LoadHistory()
 LoadConfig()
 TraySetup()
-OnClipboardChange(HandleHistoryUpdate)
+OnClipboardChange( HandleHistoryUpdate )
 
-PlayResourceSound(resourceName) {
-    hModule := DllCall("GetModuleHandle", "Ptr", 0, "Ptr")
+PlayResourceSound( resourceName ) {
+    hModule := DllCall( "GetModuleHandle", "Ptr", 0, "Ptr" )
 
-    hResInfo := DllCall("FindResource", "Ptr", hModule, "Str", resourceName, "UInt", 10, "Ptr")
+    hResInfo := DllCall( "FindResource", "Ptr", hModule, "Str", resourceName, "UInt", 10, "Ptr" )
     if !hResInfo
         return
 
-    resSize := DllCall("SizeofResource", "Ptr", hModule, "Ptr", hResInfo, "UInt")
-    hResData := DllCall("LoadResource", "Ptr", hModule, "Ptr", hResInfo, "Ptr")
-    pResource := DllCall("LockResource", "Ptr", hResData, "Ptr")
+    resSize := DllCall( "SizeofResource", "Ptr", hModule, "Ptr", hResInfo, "UInt" )
+    hResData := DllCall( "LoadResource", "Ptr", hModule, "Ptr", hResInfo, "Ptr" )
+    pResource := DllCall( "LockResource", "Ptr", hResData, "Ptr" )
 
     if !pResource
         return
 
-    DllCall("winmm\PlaySoundW", "Ptr", pResource, "Ptr", 0, "UInt", 0x5)
+    DllCall( "winmm\PlaySoundW", "Ptr", pResource, "Ptr", 0, "UInt", 0x5 )
 }
