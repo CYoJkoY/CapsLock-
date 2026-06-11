@@ -1,5 +1,4 @@
 #Requires AutoHotkey v2.0
-#Include "Globals.ahk"
 
 CryptBuffer( buf ) {
     local key := ENCRYPT_KEY

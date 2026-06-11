@@ -100,7 +100,7 @@ ToggleAutoStart( * ) {
     global Tray
 
     RegPath := "Software\Microsoft\Windows\CurrentVersion\Run"
-    AppName := "CapsLockManager"
+    AppName := "CapsLock-"
 
     if IsAutoStartEnabled() {
         RegDelete( "HKEY_CURRENT_USER\" RegPath, AppName )
@@ -115,7 +115,7 @@ ToggleAutoStart( * ) {
 
 IsAutoStartEnabled() {
     try {
-        RegRead( "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run", "CapsLockManager" )
+        RegRead( "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run", "CapsLock-" )
         return true
     } catch {
         return false

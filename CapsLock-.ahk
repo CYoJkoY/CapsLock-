@@ -26,12 +26,15 @@ A_MaxHotkeysPerInterval := 200
 
 #Include "Hotkeys/HotkeyBindings.ahk"
 #Include "Hotkeys/HotkeyActions.ahk"
+
 #Include "Tray/TrayMenu.ahk"
 #Include "Tray/TraySettings.ahk"
 
 #Include "UI/OSD.ahk"
 #Include "UI/PreviewGui.ahk"
+
 #Include "Utils/ResourceSound.ahk"
+#Include "Utils/MathUtils.ahk"
 
 LoadHistory()
 LoadConfig()
