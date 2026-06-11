@@ -1,9 +1,9 @@
 #Requires AutoHotkey v2.0
 
 ProcessImagePathsToPDF() {
-    global ImageMagickExe
+    global imageMagickExe
 
-    if !ValidateImageMagickPath( ImageMagickExe ) {
+    if !ValidateImageMagickPath( imageMagickExe ) {
         return ""
     }
 
@@ -13,7 +13,7 @@ ProcessImagePathsToPDF() {
         return ""
     }
 
-    return ExecuteImageMagickMerge( ImageMagickExe, validPaths )
+    return ExecuteImageMagickMerge( imageMagickExe, validPaths )
 }
 
 ValidateImageMagickPath( exePath ) {

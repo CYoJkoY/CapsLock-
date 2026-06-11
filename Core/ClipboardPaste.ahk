@@ -1,14 +1,14 @@
 #Requires AutoHotkey v2.0
 
 PasteFile( filePath, fileType := "auto" ) {
-    global LastManualClipboard, TargetWindow
+    global lastManualClipboard, targetWindow
 
     if ( fileType = "auto" ) {
         fileType := GetFileType( filePath )
     }
 
     PrepareClipboardForPaste( filePath, fileType )
-    ExecutePasteAction( TargetWindow )
+    ExecutePasteAction( targetWindow )
     ScheduleClipboardRestore( filePath, fileType )
 
     ToolTip( "Pasted " fileType " file" )
@@ -52,11 +52,11 @@ ExecutePasteAction( targetWindow ) {
 }
 
 ScheduleClipboardRestore( filePath, fileType ) {
-    global LastManualClipboard
+    global lastManualClipboard
     if ( fileType = "pdf" && InStr( filePath, A_Temp "\ClipTemp_" ) ) {
         ScheduleFileDeletion( filePath )
     }
-    if ( LastManualClipboard != "" ) {
-        SetTimer( () => ( A_Clipboard := LastManualClipboard ), -10000 )
+    if ( lastManualClipboard != "" ) {
+        SetTimer( () => ( A_Clipboard := lastManualClipboard ), -10000 )
     }
 }

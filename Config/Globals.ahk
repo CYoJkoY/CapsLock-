@@ -1,17 +1,23 @@
 #Requires AutoHotkey v2.0
 
-global LastManualClipboard := ""
-global ClipboardHistory := []
-global MaxHistory := 10000
+global lastManualClipboard := ""
+global clipboardHistory := []
+global maxHistory := 10000
+global ignoreNextClipChange := false
+
 global MAX_VISIBLE_MENU := 15
-global FullHistoryGui := ""
-global MenuPosX := 0
-global MenuPosY := 0
-global SelectedIndex := 0
-global SelectedItem := ""
-global HistoryFile := A_ScriptDir "\configs\ClipHistory.bin"
-global TargetWindow := 0
+global fullHistoryGui := ""
+global menuPosX := 0
+global menuPosY := 0
+global selectedIndex := 0
+global selectedItem := ""
+
+global historyFile := A_ScriptDir "\configs\ClipHistory.bin"
+global configFile := A_ScriptDir "\configs\Config.ini"
+global targetWindow := 0
+
 global ENCRYPT_KEY := 0x5A
+
 global TextFormats := [
     "txt",
     "log",
@@ -65,7 +71,6 @@ global TextFormats := [
     "tres",
     "tscn"
 ]
-global ImageMagickExe := ""
 global ImageFormats := [
     "png",
     "jpg",
@@ -78,14 +83,17 @@ global ImageFormats := [
     "ico",
     "heic"
 ]
-global IgnoreNextClipChange := false
-global DeleteMode := 1
-global DeleteDelay := 10
-global CleanupInterval := 30
-global PendingCleanupFiles := []
-global ConfigFile := A_ScriptDir "\configs\Config.ini"
-global BatchCleanupTimer := ""
-global PasteMode := 1
-global ModeMenu := Menu()
-global PasteModeMenu := Menu()
-global CurrentImMenuText := "ImageMagick: Not Set"
+
+global imageMagickExe := ""
+
+global deleteMode := 1
+global deleteDelay := 10
+global cleanupInterval := 30
+global pendingCleanupFiles := []
+global batchCleanupTimer := ""
+
+global pasteMode := 1
+
+global modeMenu := Menu()
+global pasteModeMenu := Menu()
+global currentImMenuText := "ImageMagick: Not Set"

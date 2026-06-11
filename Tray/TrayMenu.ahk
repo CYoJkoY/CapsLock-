@@ -1,22 +1,22 @@
 #Requires AutoHotkey v2.0
 
 TraySetup() {
-    global Tray, ModeMenu, PasteModeMenu, CurrentImMenuText
+    global Tray, modeMenu, pasteModeMenu, currentImMenuText
 
     A_IconTip := "CapsLock-"
 
     Tray := A_TrayMenu
     Tray.Delete()
-    Tray.Add( CurrentImMenuText, ( * ) => SetImPath() )
+    Tray.Add( currentImMenuText, ( * ) => SetImPath() )
 
     Tray.Add()
     Tray.Add( "Open Temp Folder", ( * ) => Run( "explore " A_Temp ) )
 
-    ModeMenu.Delete()
-    ModeMenu.Add( "1 - Delete after delay", SetDeleteMode1 )
-    ModeMenu.Add( "2 - Batch cleanup", SetDeleteMode2 )
-    ModeMenu.Add( "3 - Never delete", SetDeleteMode3 )
-    Tray.Add( "Delete Mode", ModeMenu )
+    modeMenu.Delete()
+    modeMenu.Add( "1 - Delete after delay", SetDeleteMode1 )
+    modeMenu.Add( "2 - Batch cleanup", SetDeleteMode2 )
+    modeMenu.Add( "3 - Never delete", SetDeleteMode3 )
+    Tray.Add( "Delete Mode", modeMenu )
 
     Tray.Add( "Mode1: Set Delete Delay...", SetDeleteDelay )
     Tray.Add( "Mode2: Set Cleanup Interval...", SetCleanupInterval )
@@ -24,10 +24,10 @@ TraySetup() {
     Tray.Add()
     Tray.Add( "Set Max History Limit...", SetMaxHistory )
 
-    PasteModeMenu.Delete()
-    PasteModeMenu.Add( "1 - Paste as File", SetPasteMode1 )
-    PasteModeMenu.Add( "2 - Paste as Text (with source)", SetPasteMode2 )
-    Tray.Add( "Paste Mode", PasteModeMenu )
+    pasteModeMenu.Delete()
+    pasteModeMenu.Add( "1 - Paste as File", SetPasteMode1 )
+    pasteModeMenu.Add( "2 - Paste as Text (with source)", SetPasteMode2 )
+    Tray.Add( "Paste Mode", pasteModeMenu )
 
     Tray.Add()
     Tray.Add( "Load on start up", ToggleAutoStart )
@@ -39,15 +39,15 @@ TraySetup() {
 }
 
 RefreshImStatus() {
-    global ImageMagickExe, CurrentImMenuText, Tray
+    global imageMagickExe, currentImMenuText, Tray
 
-    isValid := ( ImageMagickExe != "" )
-    && InStr( StrLower( ImageMagickExe ), "magick.exe" )
-    && FileExist( ImageMagickExe )
+    isValid := ( imageMagickExe != "" )
+    && InStr( StrLower( imageMagickExe ), "magick.exe" )
+    && FileExist( imageMagickExe )
 
     newText := isValid ? "ImageMagick: Valid (Click to change)" : "ImageMagick: Not Set / Invalid"
 
-    if ( CurrentImMenuText == newText ) {
+    if ( currentImMenuText == newText ) {
         if ( isValid ) {
             Tray.Check( newText )
         } else {
@@ -56,37 +56,37 @@ RefreshImStatus() {
         return
     }
 
-    Tray.Insert( CurrentImMenuText, newText, ( * ) => SetImPath() )
-    Tray.Delete( CurrentImMenuText )
+    Tray.Insert( currentImMenuText, newText, ( * ) => SetImPath() )
+    Tray.Delete( currentImMenuText )
 
     if ( isValid ) {
         Tray.Check( newText )
     } else {
         Tray.Uncheck( newText )
     }
-    CurrentImMenuText := newText
+    currentImMenuText := newText
 }
 
 TrayMenuRefresh() {
-    global DeleteMode, PasteMode, ModeMenu, PasteModeMenu, Tray
+    global deleteMode, pasteMode, modeMenu, pasteModeMenu, Tray
 
-    ModeMenu.Uncheck( "1 - Delete after delay" )
-    ModeMenu.Uncheck( "2 - Batch cleanup" )
-    ModeMenu.Uncheck( "3 - Never delete" )
-    if ( DeleteMode = 1 ) {
-        ModeMenu.Check( "1 - Delete after delay" )
-    } else if ( DeleteMode = 2 ) {
-        ModeMenu.Check( "2 - Batch cleanup" )
-    } else if ( DeleteMode = 3 ) {
-        ModeMenu.Check( "3 - Never delete" )
+    modeMenu.Uncheck( "1 - Delete after delay" )
+    modeMenu.Uncheck( "2 - Batch cleanup" )
+    modeMenu.Uncheck( "3 - Never delete" )
+    if ( deleteMode = 1 ) {
+        modeMenu.Check( "1 - Delete after delay" )
+    } else if ( deleteMode = 2 ) {
+        modeMenu.Check( "2 - Batch cleanup" )
+    } else if ( deleteMode = 3 ) {
+        modeMenu.Check( "3 - Never delete" )
     }
 
-    PasteModeMenu.Uncheck( "1 - Paste as File" )
-    PasteModeMenu.Uncheck( "2 - Paste as Text (with source)" )
-    if ( PasteMode = 1 ) {
-        PasteModeMenu.Check( "1 - Paste as File" )
-    } else if ( PasteMode = 2 ) {
-        PasteModeMenu.Check( "2 - Paste as Text (with source)" )
+    pasteModeMenu.Uncheck( "1 - Paste as File" )
+    pasteModeMenu.Uncheck( "2 - Paste as Text (with source)" )
+    if ( pasteMode = 1 ) {
+        pasteModeMenu.Check( "1 - Paste as File" )
+    } else if ( pasteMode = 2 ) {
+        pasteModeMenu.Check( "2 - Paste as Text (with source)" )
     }
 
     if IsAutoStartEnabled() {

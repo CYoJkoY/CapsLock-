@@ -77,9 +77,9 @@ IsImagePathsText( text ) {
     return true
 }
 
-IsImageExtension( filePath, imageFormats ) {
+IsImageExtension( filePath, ImageFormats ) {
     ext := StrLower( SubStr( filePath, InStr( filePath, ".", , -1 ) + 1 ) )
-    for imgformat in imageFormats {
+    for imgformat in ImageFormats {
         if ( ext = imgformat ) {
             return true
         }

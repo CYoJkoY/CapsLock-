@@ -1,25 +1,25 @@
 #Requires AutoHotkey v2.0
 
 ShowHistoryMenu( isReturning := false ) {
-    global ClipboardHistory, MenuPosX, MenuPosY, MAX_VISIBLE_MENU, TargetWindow
+    global clipboardHistory, menuPosX, menuPosY, MAX_VISIBLE_MENU, targetWindow
 
-    TargetWindow := WinExist( "A" )
-    if ( ClipboardHistory.Length = 0 ) {
+    targetWindow := WinExist( "A" )
+    if ( clipboardHistory.Length = 0 ) {
         ToolTip( "No manual copy history" )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
     if !isReturning {
-        MouseGetPos( &MenuPosX, &MenuPosY )
+        MouseGetPos( &menuPosX, &menuPosY )
     }
 
     HistoryMenu := Menu()
-    total := ClipboardHistory.Length
+    total := clipboardHistory.Length
     displayCount := total > MAX_VISIBLE_MENU ? MAX_VISIBLE_MENU : total
 
     loop displayCount {
         index := A_Index
-        item := ClipboardHistory[ index ]
+        item := clipboardHistory[ index ]
         content := item[ "text" ]
         display := StrReplace( SubStr( content, 1, 50 ), "`n", " " )
         if ( StrLen( content ) > 50 ) {
@@ -33,18 +33,18 @@ ShowHistoryMenu( isReturning := false ) {
         HistoryMenu.Add( "📋 View full history (" total " items)...", ShowFullHistoryGui )
     }
 
-    HistoryMenu.Show( MenuPosX, MenuPosY )
+    HistoryMenu.Show( menuPosX, menuPosY )
 }
 
 ActionPickerHandler( ItemName, ItemPos, MyMenu ) {
-    global SelectedIndex, SelectedItem, ClipboardHistory
+    global selectedIndex, selectedItem, clipboardHistory
 
-    SelectedIndex := ItemPos
-    SelectedItem := ClipboardHistory[ ItemPos ]
+    selectedIndex := ItemPos
+    selectedItem := clipboardHistory[ ItemPos ]
 
     ActionMenu := Menu()
-    ActionMenu.Add( "📄 Paste as File", ( * ) => PasteAsFile( SelectedItem ) )
-    ActionMenu.Add( "🔍 Preview Content", ( * ) => ShowPreviewGui( SelectedItem[ "text" ] ) )
+    ActionMenu.Add( "📄 Paste as File", ( * ) => PasteAsFile( selectedItem ) )
+    ActionMenu.Add( "🔍 Preview Content", ( * ) => ShowPreviewGui( selectedItem[ "text" ] ) )
     ActionMenu.Add( "❌ Delete from History", DeleteHistoryItem )
     ActionMenu.Add()
     ActionMenu.Add( "⬅️ Back to List", ( * ) => SetTimer( () => ShowHistoryMenu( true ), -10 ) )

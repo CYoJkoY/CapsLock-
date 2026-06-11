@@ -1,153 +1,19 @@
 #Requires AutoHotkey v2.0
 
 CopyAsPlainTextAndAddToHistory() {
-    global IgnoreNextClipChange
-    IgnoreNextClipChange := true
+    global ignoreNextClipChange
+    ignoreNextClipChange := true
     text := CopyAsPlainText()
-    IgnoreNextClipChange := false
+    ignoreNextClipChange := false
     if ( text != "" ) {
         AddToHistory( text, "Plain Text Copy" )
     }
 }
 
-PasteWithCurrentMode() {
-    global LastManualClipboard, ClipboardHistory, IgnoreNextClipChange, PasteMode
-
-    local current_clip := A_Clipboard
-    local target_text := ( LastManualClipboard != "" ) ? LastManualClipboard : current_clip
-    if ( target_text = "" ) {
-        ShowToolTip( "Clipboard is empty, please copy content first", 2000 )
-        return
-    }
-
-    if ( PasteMode = 2 ) {
-        if ( IsMultiFolderPathText( target_text ) ) {
-            local rawFolders := StrSplit( target_text, "`n", "`r" )
-            local validFolders := []
-            for folder in rawFolders {
-                folder := Trim( folder )
-                if ( IsFolderPath( folder ) ) {
-                    validFolders.Push( folder )
-                }
-            }
-            if ( validFolders.Length > 0 ) {
-                local combined_text := ReadMultipleFoldersAsText( validFolders )
-                local backup_clip := A_Clipboard
-                A_Clipboard := combined_text
-                Send( "^v" )
-                Sleep( 50 )
-                A_Clipboard := backup_clip
-                ShowToolTip( "Pasted " validFolders.Length " folders as text", 2000 )
-                return
-            }
-        }
-        if ( IsMultiFilePathText( target_text ) ) {
-            local raw_paths := StrSplit( target_text, "`n", "`r" )
-            local valid_paths := []
-            for path in raw_paths {
-                path := Trim( path )
-                local attrs := FileExist( path )
-                if ( path != "" && attrs != "" && !InStr( attrs, "D" ) ) {
-                    valid_paths.Push( path )
-                }
-            }
-            if ( valid_paths.Length > 0 ) {
-                local combined_text := ReadMultipleFilesAsText( valid_paths )
-                local backup_clip := A_Clipboard
-                A_Clipboard := combined_text
-                Send( "^v" )
-                Sleep( 50 )
-                A_Clipboard := backup_clip
-                ShowToolTip( "Pasted " valid_paths.Length " files as text", 2000 )
-                return
-            }
-        }
-    }
-
-    if ( IsImagePathsText( target_text ) ) {
-        local temp_pdf_path := ProcessImagePathsToPDF()
-        if ( temp_pdf_path = "" ) {
-            ShowToolTip( "Failed to create PDF", 2000 )
-            return
-        }
-        PasteFile( temp_pdf_path, "pdf" )
-        return
-    }
-
-    if ( current_clip != "" && !InStr( current_clip, A_Temp "\ClipTemp_" ) ) {
-        LastManualClipboard := current_clip
-    }
-
-    local source_info := ""
-    for item in ClipboardHistory {
-        if ( item[ "text" ] = target_text ) {
-            source_info := "Copied from: " item[ "source" ] " (at " item[ "time" ] ")"
-            break
-        }
-    }
-    if ( source_info = "" ) {
-        source_info := "Source: (Direct Paste via Hotkey) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
-    }
-
-    if ( PasteMode = 1 ) {
-        if ( IsMultiFolderPathText( target_text ) ) {
-            local rawFolders := StrSplit( target_text, "`n", "`r" )
-            local validFolders := []
-            for folder in rawFolders {
-                folder := Trim( folder )
-                if ( IsFolderPath( folder ) ) {
-                    validFolders.Push( folder )
-                }
-            }
-            if ( validFolders.Length > 0 ) {
-                local mergedText := ReadMultipleFoldersAsText( validFolders )
-                local fullContent := "; " source_info "`n`n" mergedText
-                local tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
-                FileAppend( fullContent, tempFile, "UTF-8" )
-                SetClipboardFile( tempFile )
-                Send( "^v" )
-                ScheduleFileDeletion( tempFile )
-                SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
-                ShowToolTip( "Pasted combined folder content", 1500 )
-                return
-            }
-        }
-        if ( IsMultiFilePathText( target_text ) ) {
-            local mergedFile := CombineFilePathsToTempFile( target_text, source_info )
-            if ( mergedFile = "" ) {
-                ShowToolTip( "No valid files to merge", 2000 )
-                return
-            }
-            SetClipboardFile( mergedFile )
-            Send( "^v" )
-            ScheduleFileDeletion( mergedFile )
-            SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
-            ShowToolTip( "Pasted " mergedFile, 1500 )
-            return
-        }
-        local full_content := "; " source_info "`n`n" target_text
-        local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
-        FileAppend( full_content, temp_file, "UTF-8" )
-        SetClipboardFile( temp_file )
-        Send( "^v" )
-        ScheduleFileDeletion( temp_file )
-        SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
-    } else {
-        local full_content := "; " source_info "`n`n" target_text
-        local backup_clip := A_Clipboard
-        A_Clipboard := full_content
-        Send( "^v" )
-        Sleep( 50 )
-        A_Clipboard := backup_clip
-    }
-    ShowToolTip( "", 0 )
-    SetTimer( () => ToolTip(), -2000 )
-}
-
 ChangeCaseOfLastCopy() {
-    global LastManualClipboard, IgnoreNextClipChange
+    global lastManualClipboard, ignoreNextClipChange
 
-    sourceText := ( LastManualClipboard != "" ) ? LastManualClipboard : A_Clipboard
+    sourceText := ( lastManualClipboard != "" ) ? lastManualClipboard : A_Clipboard
     if ( sourceText = "" ) {
         ToolTip( "No text to paste. Please copy something first." )
         SetTimer( () => ToolTip(), -1500 )
@@ -166,12 +32,12 @@ ChangeCaseOfLastCopy() {
         SetCapsLockState( "AlwaysOff" )
     }
 
-    IgnoreNextClipChange := true
+    ignoreNextClipChange := true
     A_Clipboard := newText
     Send( "^v" )
     Sleep( 200 )
 
-    IgnoreNextClipChange := true
+    ignoreNextClipChange := true
     A_Clipboard := sourceText
 
     if prevCapsState {

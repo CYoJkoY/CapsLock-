@@ -1,16 +1,16 @@
 #Requires AutoHotkey v2.0
 
 LoadHistory() {
-    global ClipboardHistory, MaxHistory, HistoryFile
+    global clipboardHistory, maxHistory, historyFile
 
-    if ( MaxHistory = 0 ) {
-        ClipboardHistory := []
+    if ( maxHistory = 0 ) {
+        clipboardHistory := []
         return
     }
-    if !FileExist( HistoryFile ) {
+    if !FileExist( historyFile ) {
         return
     }
-    history := FileOpen( HistoryFile, "r" )
+    history := FileOpen( historyFile, "r" )
     if !IsObject( history ) {
         return
     }
@@ -69,22 +69,21 @@ LoadHistory() {
     }
     history.Close()
 
-    ; 修剪超出 MaxHistory 的部分
-    while ( historylist.Length > MaxHistory ) {
+    while ( historylist.Length > maxHistory ) {
         historylist.Pop()
     }
-    ClipboardHistory := historylist
+    clipboardHistory := historylist
 }
 
 SaveHistory() {
-    global ClipboardHistory, HistoryFile
+    global clipboardHistory, historyFile
 
-    history := FileOpen( HistoryFile, "w" )
+    history := FileOpen( historyFile, "w" )
     if !IsObject( history ) {
         return
     }
-    history.WriteInt( ClipboardHistory.Length )
-    for item in ClipboardHistory {
+    history.WriteInt( clipboardHistory.Length )
+    for item in clipboardHistory {
         line := item[ "time" ] " | " item[ "source" ] " | " item[ "text" ]
         buf := Buffer( StrPut( line, "UTF-8" ) - 1 )
         StrPut( line, buf, "UTF-8" )
@@ -96,16 +95,16 @@ SaveHistory() {
 }
 
 AddToHistory( text, source := "Manual Copy" ) {
-    global ClipboardHistory, MaxHistory, IgnoreNextClipChange
+    global clipboardHistory, maxHistory, ignoreNextClipChange
 
-    if ( IgnoreNextClipChange ) {
-        IgnoreNextClipChange := false
+    if ( ignoreNextClipChange ) {
+        ignoreNextClipChange := false
         return
     }
     if ( text == "" ) {
         return
     }
-    if ( ClipboardHistory.Length > 0 && ClipboardHistory[ 1 ][ "text" ] == text ) {
+    if ( clipboardHistory.Length > 0 && clipboardHistory[ 1 ][ "text" ] == text ) {
         return
     }
     timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss" )
@@ -115,18 +114,18 @@ AddToHistory( text, source := "Manual Copy" ) {
     historyItem[ "process" ] := ""
     historyItem[ "time" ] := timestamp
 
-    ClipboardHistory.InsertAt( 1, historyItem )
-    while ( ClipboardHistory.Length > MaxHistory ) {
-        ClipboardHistory.Pop()
+    clipboardHistory.InsertAt( 1, historyItem )
+    while ( clipboardHistory.Length > maxHistory ) {
+        clipboardHistory.Pop()
     }
     SaveHistory()
 }
 
 HandleHistoryUpdate( DataType ) {
-    global ClipboardHistory, MaxHistory, LastManualClipboard, IgnoreNextClipChange
+    global clipboardHistory, maxHistory, lastManualClipboard, ignoreNextClipChange
 
-    if ( IgnoreNextClipChange ) {
-        IgnoreNextClipChange := false
+    if ( ignoreNextClipChange ) {
+        ignoreNextClipChange := false
         return
     }
     if ( DataType != 1 ) {
@@ -136,8 +135,8 @@ HandleHistoryUpdate( DataType ) {
     if InStr( text, A_Temp "\ClipTemp_" ) {
         return
     }
-    LastManualClipboard := text
-    if ( MaxHistory = 0 ) {
+    lastManualClipboard := text
+    if ( maxHistory = 0 ) {
         return
     }
     try {
@@ -158,15 +157,15 @@ HandleHistoryUpdate( DataType ) {
     historyItem[ "time" ] := timestamp
 
     ; 移除重复项（保留最新）
-    for index, item in ClipboardHistory {
+    for index, item in clipboardHistory {
         if ( item[ "text" ] == text ) {
-            ClipboardHistory.RemoveAt( index )
+            clipboardHistory.RemoveAt( index )
             break
         }
     }
-    ClipboardHistory.InsertAt( 1, historyItem )
-    while ( ClipboardHistory.Length > MaxHistory ) {
-        ClipboardHistory.Pop()
+    clipboardHistory.InsertAt( 1, historyItem )
+    while ( clipboardHistory.Length > maxHistory ) {
+        clipboardHistory.Pop()
     }
     SaveHistory()
 }

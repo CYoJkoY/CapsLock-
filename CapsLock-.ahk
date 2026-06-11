@@ -22,11 +22,14 @@ A_MaxHotkeysPerInterval := 200
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
-#Include "History\HistoryFullGui.ahk"
-#Include "History\HistoryActions.ahk"
+#Include "History\HistoryPaste.ahk"
+#Include "History\HistoryDelete.ahk"
+#Include "History\fullHistoryGui.ahk"
+#Include "History\FullHistoryHandlers.ahk"
 
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
+#Include "Hotkeys\PasteHandler.ahk"
 
 #Include "Tray\TrayMenu.ahk"
 #Include "Tray\TraySettings.ahk"
@@ -42,3 +45,4 @@ LoadHistory()
 LoadConfig()
 TraySetup()
 OnClipboardChange( HandleHistoryUpdate )
+Persistent()

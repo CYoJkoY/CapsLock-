@@ -1,23 +1,23 @@
 #Requires AutoHotkey v2.0
 
 ScheduleFileDeletion( filePath ) {
-    global DeleteMode, DeleteDelay, PendingCleanupFiles, BatchCleanupTimer
+    global deleteMode, deleteDelay, pendingCleanupFiles, batchCleanupTimer
 
-    if ( DeleteMode = 1 ) {
-        SetTimer( () => ( FileExist( filePath ) ? FileDelete( filePath ) : "" ), -DeleteDelay * 1000 )
-    } else if ( DeleteMode = 2 ) {
-        PendingCleanupFiles.Push( filePath )
-        if ( BatchCleanupTimer = "" ) {
-            BatchCleanupTimer := SetTimer( PerformBatchCleanup, CleanupInterval * 1000 )
+    if ( deleteMode = 1 ) {
+        SetTimer( () => ( FileExist( filePath ) ? FileDelete( filePath ) : "" ), -deleteDelay * 1000 )
+    } else if ( deleteMode = 2 ) {
+        pendingCleanupFiles.Push( filePath )
+        if ( batchCleanupTimer = "" ) {
+            batchCleanupTimer := SetTimer( PerformBatchCleanup, cleanupInterval * 1000 )
         }
     }
 }
 
 PerformBatchCleanup() {
-    global PendingCleanupFiles, BatchCleanupTimer
+    global pendingCleanupFiles, batchCleanupTimer
 
     newList := []
-    for path in PendingCleanupFiles {
+    for path in pendingCleanupFiles {
         if FileExist( path ) {
             try FileDelete( path )
             if FileExist( path ) {
@@ -25,10 +25,10 @@ PerformBatchCleanup() {
             }
         }
     }
-    PendingCleanupFiles := newList
+    pendingCleanupFiles := newList
 
-    if ( PendingCleanupFiles.Length = 0 && BatchCleanupTimer != "" ) {
-        SetTimer( BatchCleanupTimer, 0 )
-        BatchCleanupTimer := ""
+    if ( pendingCleanupFiles.Length = 0 && batchCleanupTimer != "" ) {
+        SetTimer( batchCleanupTimer, 0 )
+        batchCleanupTimer := ""
     }
 }
