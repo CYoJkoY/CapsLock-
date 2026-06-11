@@ -20,25 +20,47 @@ PasteWithCurrentMode() {
         return
     }
 
-    if ( PasteMode = 2 && IsMultiFilePathText( target_text ) ) {
-        local raw_paths := StrSplit( target_text, "`n", "`r" )
-        local valid_paths := []
-        for path in raw_paths {
-            path := Trim( path )
-            local attrs := FileExist( path )
-            if ( path != "" && attrs != "" && !InStr( attrs, "D" ) ) {
-                valid_paths.Push( path )
+    if ( PasteMode = 2 ) {
+        if ( IsMultiFolderPathText( target_text ) ) {
+            local rawFolders := StrSplit( target_text, "`n", "`r" )
+            local validFolders := []
+            for folder in rawFolders {
+                folder := Trim( folder )
+                if ( IsFolderPath( folder ) ) {
+                    validFolders.Push( folder )
+                }
+            }
+            if ( validFolders.Length > 0 ) {
+                local combined_text := ReadMultipleFoldersAsText( validFolders )
+                local backup_clip := A_Clipboard
+                A_Clipboard := combined_text
+                Send( "^v" )
+                Sleep( 50 )
+                A_Clipboard := backup_clip
+                ShowToolTip( "Pasted " validFolders.Length " folders as text", 2000 )
+                return
             }
         }
-        if ( valid_paths.Length > 0 ) {
-            local combined_text := ReadMultipleFilesAsText( valid_paths )
-            local backup_clip := A_Clipboard
-            A_Clipboard := combined_text
-            Send( "^v" )
-            Sleep( 50 )
-            A_Clipboard := backup_clip
-            ShowToolTip( "Pasted " valid_paths.Length " files as text", 2000 )
-            return
+        if ( IsMultiFilePathText( target_text ) ) {
+            local raw_paths := StrSplit( target_text, "`n", "`r" )
+            local valid_paths := []
+            for path in raw_paths {
+                path := Trim( path )
+                local attrs := FileExist( path )
+                if ( path != "" && attrs != "" && !InStr( attrs, "D" ) ) {
+                    valid_paths.Push( path )
+                }
+            }
+            if ( valid_paths.Length > 0 ) {
+                local combined_text := ReadMultipleFilesAsText( valid_paths )
+                local backup_clip := A_Clipboard
+                A_Clipboard := combined_text
+                Send( "^v" )
+                Sleep( 50 )
+                A_Clipboard := backup_clip
+                ShowToolTip( "Pasted " valid_paths.Length " files as text", 2000 )
+                return
+            }
         }
     }
 
@@ -68,6 +90,28 @@ PasteWithCurrentMode() {
     }
 
     if ( PasteMode = 1 ) {
+        if ( IsMultiFolderPathText( target_text ) ) {
+            local rawFolders := StrSplit( target_text, "`n", "`r" )
+            local validFolders := []
+            for folder in rawFolders {
+                folder := Trim( folder )
+                if ( IsFolderPath( folder ) ) {
+                    validFolders.Push( folder )
+                }
+            }
+            if ( validFolders.Length > 0 ) {
+                local mergedText := ReadMultipleFoldersAsText( validFolders )
+                local fullContent := "; " source_info "`n`n" mergedText
+                local tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
+                FileAppend( fullContent, tempFile, "UTF-8" )
+                SetClipboardFile( tempFile )
+                Send( "^v" )
+                ScheduleFileDeletion( tempFile )
+                SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
+                ShowToolTip( "Pasted combined folder content", 1500 )
+                return
+            }
+        }
         if ( IsMultiFilePathText( target_text ) ) {
             local mergedFile := CombineFilePathsToTempFile( target_text, source_info )
             if ( mergedFile = "" ) {
@@ -81,7 +125,6 @@ PasteWithCurrentMode() {
             ShowToolTip( "Pasted " mergedFile, 1500 )
             return
         }
-
         local full_content := "; " source_info "`n`n" target_text
         local temp_file := A_Temp "\ClipTemp_" A_TickCount ".txt"
         FileAppend( full_content, temp_file, "UTF-8" )

@@ -18,6 +18,7 @@ A_MaxHotkeysPerInterval := 200
 #Include "Core\ImageToPdf.ahk"
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
+#Include "Core\FolderOperations.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"

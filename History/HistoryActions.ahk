@@ -5,6 +5,59 @@ PasteAsFile( history_item ) {
 
     local text_content := history_item[ "text" ]
 
+    if ( PasteMode = 2 && IsMultiFolderPathText( text_content ) ) {
+        local rawFolders := StrSplit( text_content, "`n", "`r" )
+        local validFolders := []
+        for folder in rawFolders {
+            folder := Trim( folder )
+            if ( IsFolderPath( folder ) ) {
+                validFolders.Push( folder )
+            }
+        }
+        if ( validFolders.Length > 0 ) {
+            local combined_text := ReadMultipleFoldersAsText( validFolders )
+            local backup_clip := A_Clipboard
+            A_Clipboard := combined_text
+            Send( "^v" )
+            Sleep( 50 )
+            A_Clipboard := backup_clip
+            ToolTip( "Pasted " validFolders.Length " folders as text" )
+            SetTimer( () => ToolTip(), -2000 )
+            return
+        }
+    }
+
+    if ( PasteMode = 1 && IsMultiFolderPathText( text_content ) ) {
+        local rawFolders := StrSplit( text_content, "`n", "`r" )
+        local validFolders := []
+        for folder in rawFolders {
+            folder := Trim( folder )
+            if ( IsFolderPath( folder ) ) {
+                validFolders.Push( folder )
+            }
+        }
+        if ( validFolders.Length > 0 ) {
+            local source_info := "Copied from: " history_item[ "source" ] " (at " history_item[ "time" ] ")"
+            local mergedText := ReadMultipleFoldersAsText( validFolders )
+            local fullContent := "; " source_info "`n`n" mergedText
+            local tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
+            FileAppend( fullContent, tempFile, "UTF-8" )
+            SetClipboardFile( tempFile )
+            if ( TargetWindow && WinExist( "ahk_id " TargetWindow ) ) {
+                WinActivate( "ahk_id " TargetWindow )
+            } else {
+                WinActivate( "A" )
+            }
+            Sleep( 100 )
+            Send( "^v" )
+            ScheduleFileDeletion( tempFile )
+            SetTimer( () => ( LastManualClipboard != "" ) ? ( A_Clipboard := LastManualClipboard ) : "", -10000 )
+            ToolTip( "Pasted combined folder content" )
+            SetTimer( () => ToolTip(), -2000 )
+            return
+        }
+    }
+
     if ( PasteMode = 2 && IsMultiFilePathText( text_content ) ) {
         local raw_paths := StrSplit( text_content, "`n", "`r" )
         local valid_paths := []
