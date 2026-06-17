@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ShowTopMostOSD( targetHwnd, isOnTop ) {
     static currentOSD := ""
@@ -12,7 +12,7 @@ ShowTopMostOSD( targetHwnd, isOnTop ) {
     osd.BackColor := "1E1E1E"
     osd.SetFont( "s12 cWhite bold", "Segoe UI" )
 
-    text := isOnTop ? "📌 已置顶" : "解除置顶"
+    text := isOnTop ? "📌 Always Top" : "📌 Unpinned"
     osd.Add( "Text", "w120 Center", text )
 
     try {

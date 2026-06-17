@@ -54,4 +54,5 @@ ToggleAlwaysOnTopWithOSD() {
     } else {
         PlayResourceSound( "SND_OFF" )
     }
+    ShowTopMostOSD( hwnd, isOnTop )
 }
