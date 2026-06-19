@@ -139,7 +139,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
 
 
 📁 configs/Config.ini
-
+```ini
 [Cleanup]
 deleteMode=1          ; 1=delayed 2=batch 3=never
 deleteDelay=10        ; delay in seconds
@@ -153,7 +153,7 @@ pasteMode=1           ; 1=paste as file 2=paste as text with source
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
-
+```
 
 ### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 
@@ -169,40 +169,65 @@ Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
 ## 🧱 Project Structure
 
 ```tree
-📂 CapsLock-
-├── CapsLock-.ahk                   # Main entry point
-├── configs/
-│   ├── ClipIgnore.txt              # Ignore list for clipboard history
-│   └── Config.ini                  # Runtime configuration (auto-generated)
-├── Config/
-│   ├── Globals.ahk                 # Global variable definitions
-│   ├── Encryption.ahk              # XOR encryption/decryption
-│   └── ConfigManager.ahk           # INI configuration read/write
-├── Core/
-│   ├── Clipboard.ahk               # CF_HDROP clipboard operations
-│   ├── ClipboardPaste.ahk          # Smart paste core logic
-│   ├── FileValidation.ahk          # Path/image/multi-file validation
-│   ├── FileOperations.ahk          # Multi-file content merge, header generation
-│   ├── ImageToPdf.ahk              # ImageMagick invocation, image list → PDF
-│   ├── Cleanup.ahk                 # Temporary file delayed/batch deletion
-│   └── WindowUtils.ahk             # Transparency adjustment helpers
-├── History/
-│   ├── HistoryStorage.ahk          # Encrypted history save/load, add entries
-│   ├── HistoryMenu.ahk             # Quick menu (Shift+V)
-│   ├── HistoryFullGui.ahk          # Full history GUI window
-│   └── HistoryActions.ahk          # Paste/delete/multi-select operations
-├── Hotkeys/
-│   ├── HotkeyBindings.ahk          # All CapsLock combo key definitions
-│   └── HotkeyActions.ahk           # Concrete implementation of each hotkey action
-├── Tray/
-│   ├── TrayMenu.ahk                # Tray menu construction and refresh
-│   └── TraySettings.ahk            # Menu interaction logic (delete delay, clear history, etc.)
-├── UI/
-│   ├── OSD.ahk                     # On-screen display for topmost toggle (fade in/out)
-│   └── PreviewGui.ahk              # History content preview window
-└── Utils/
-    ├── ResourceSound.ahk           # Built-in WAV resource playback (topmost toggle sound)
-    └── MathUtils.ahk               # File size formatting, value clamping
+CapsLock-
+├── 📁 assets
+│   ├── 🎵 AlwaysOnTopOff.wav
+│   ├── 🎵 AlwaysOnTopOn.wav
+│   ├── 🖼️ bar.svg
+│   ├── 🖼️ CapsLock-.ico
+│   ├── 🖼️ Config.ico
+│   ├── 🖼️ Core.ico
+│   ├── 🖼️ dots.svg
+│   ├── 🖼️ History.ico
+│   ├── 🖼️ Hotkeys.ico
+│   ├── 🖼️ Tray.ico
+│   ├── 🖼️ UI.ico
+│   └── 🖼️ Utils.ico
+├── 📁 Config
+│   ├── 📄 ConfigManager.ahk
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 Encryption.ahk
+│   └── 📄 Globals.ahk
+├── 📁 Core
+│   ├── 📄 Cleanup.ahk
+│   ├── 📄 Clipboard.ahk
+│   ├── 📄 ClipboardPaste.ahk
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 FileOperations.ahk
+│   ├── 📄 FileValidation.ahk
+│   ├── 📄 FolderOperations.ahk
+│   ├── 📄 ImageToPdf.ahk
+│   └── 📄 WindowUtils.ahk
+├── 📁 History
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 FullHistoryGui.ahk
+│   ├── 📄 FullHistoryHandlers.ahk
+│   ├── 📄 HistoryDelete.ahk
+│   ├── 📄 HistoryMenu.ahk
+│   ├── 📄 HistoryPaste.ahk
+│   └── 📄 HistoryStorage.ahk
+├── 📁 Hotkeys
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 HotkeyActions.ahk
+│   ├── 📄 HotkeyBindings.ahk
+│   └── 📄 PasteHandler.ahk
+├── 📁 Tray
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 TrayMenu.ahk
+│   └── 📄 TraySettings.ahk
+├── 📁 UI
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 OSD.ahk
+│   └── 📄 PreviewGui.ahk
+├── 📁 Utils
+│   ├── ⚙️ desktop.ini
+│   ├── 📄 FileContentMerger.ahk
+│   ├── 📄 MathUtils.ahk
+│   └── 📄 ResourceSound.ahk
+├── 📄 CapsLock-.ahk
+├── ⚙️ desktop.ini
+├── ⚖️ LICENSE
+└── 📖 README.md
 ```
 
 ---
