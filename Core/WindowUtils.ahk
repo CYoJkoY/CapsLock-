@@ -2,13 +2,11 @@
 
 AdjustOpacity( step ) {
     hwnd := WinExist( "A" )
-    if !hwnd {
+    if !hwnd
         return
-    }
-    currentTrans := WinGetTransparent( hwnd )
-    if ( currentTrans = "" ) {
-        currentTrans := 255
-    }
-    newTrans := Clamp( currentTrans + step, 20, 255 )
-    WinSetTransparent( newTrans, hwnd )
+    current := WinGetTransparent( hwnd )
+    if current == ""
+        current := 255
+    newVal := Clamp( current + step, 20, 255 )
+    WinSetTransparent( newVal, hwnd )
 }

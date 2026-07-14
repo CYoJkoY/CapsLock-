@@ -1,17 +1,15 @@
 #Requires AutoHotkey v2.0
 
 ShowPreviewGui( text ) {
-    PreviewGui := Gui( "+AlwaysOnTop +Resize", "Preview Content" )
-    PreviewGui.SetFont( "s10", "Microsoft YaHei" )
-
-    EditCtrl := PreviewGui.Add( "Edit", "ReadOnly VScroll Wrap w600 h400", text )
-    BtnClose := PreviewGui.Add( "Button", "Default w80", "Close" )
-    BtnClose.OnEvent( "Click", ( * ) => PreviewGui.Destroy() )
-
-    PreviewGui.OnEvent( "Size", ( guiObj, windowMinMax, width, height ) => (
-        EditCtrl.Move( 10, 10, width - 20, height - 60 ),
-        BtnClose.Move( width - 100, height - 40 )
+    myGui := Gui( "+AlwaysOnTop +Resize", "Preview Content" )
+    myGui.SetFont( "s10", "Microsoft YaHei" )
+    myEdit := myGui.Add( "Edit", "ReadOnly VScroll Wrap w600 h400", text )
+    btn := myGui.Add( "Button", "Default w80", "Close" )
+    btn.OnEvent( "Click", ( * ) => myGui.Destroy() )
+    myGui.OnEvent( "Size", ( obj, minmax, w, h ) => (
+        myEdit.Move( 10, 10, w - 20, h - 60 ),
+        btn.Move( w - 100, h - 40 )
     ) )
-    PreviewGui.OnEvent( "Escape", ( * ) => PreviewGui.Destroy() )
-    PreviewGui.Show()
+    myGui.OnEvent( "Escape", ( * ) => myGui.Destroy() )
+    myGui.Show()
 }

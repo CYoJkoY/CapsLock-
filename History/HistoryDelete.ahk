@@ -1,21 +1,13 @@
 #Requires AutoHotkey v2.0
 
 DeleteHistoryItem( * ) {
-    global clipboardHistory, selectedIndex
-
-    if ( selectedIndex <= clipboardHistory.Length ) {
-        clipboardHistory.RemoveAt( selectedIndex )
-        SaveHistory()
-        ShowToolTip( "Deleted", 1000 )
+    if AppState.SelectedIndex <= AppState.History.Length {
+        HistoryManager.Delete( AppState.SelectedIndex )
+        ShowToolTip( "已删除", 1000 )
     }
 }
 
 DeleteFromFullHistory( index ) {
-    global clipboardHistory, fullHistoryGui
-
-    if ( index <= clipboardHistory.Length ) {
-        clipboardHistory.RemoveAt( index )
-        SaveHistory()
-        _RefreshFullHistoryList()
-    }
+    HistoryManager.Delete( index )
+    RefreshFullHistoryList()
 }

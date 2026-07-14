@@ -1,80 +1,42 @@
 #Requires AutoHotkey v2.0
 
 ProcessImagePathsToPDF() {
-    global imageMagickExe
-
-    if !ValidateImageMagickPath( imageMagickExe ) {
+    exe := AppState.ImageMagickExe
+    if exe == "" || !FileExist( exe ) {
+        MsgBox( "请先在托盘菜单中设置 ImageMagick 的 magick.exe 路径", "错误", "Iconx" )
         return ""
     }
-
-    validPaths := ExtractValidImagePaths( A_Clipboard )
-    if ( validPaths.Length = 0 ) {
-        ShowTemporaryToolTip( "No valid image files found in clipboard.", 2000 )
-        return ""
-    }
-
-    return ExecuteImageMagickMerge( imageMagickExe, validPaths )
-}
-
-ValidateImageMagickPath( exePath ) {
-    if ( exePath = "" ) {
-        MsgBox( "Please set ImageMagick path first via tray icon menu.", "Error", "Iconx 4096" )
-        return false
-    }
-    if !FileExist( exePath ) {
-        MsgBox( "ImageMagick executable not found at: `n" exePath, "Error", "Iconx 4096" )
-        return false
-    }
-    return true
-}
-
-ExtractValidImagePaths( clipboardText ) {
-    local imgPaths := StrSplit( clipboardText, "`n", "`r" )
-    local validPaths := []
-    for idx, line in imgPaths {
+    paths := []
+    lines := StrSplit( A_Clipboard, "`n", "`r" )
+    for line in lines {
         line := Trim( line )
-        if ( line = "" ) {
-            continue
-        }
-        if FileExist( line ) {
-            validPaths.Push( '"' line '"' )
-        }
+        if line != "" && FileExist( line ) && !InStr( FileExist( line ), "D" )
+            paths.Push( '"' line '"' )
     }
-    return validPaths
-}
-
-ExecuteImageMagickMerge( exePath, validPaths ) {
-    local outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
-    local command := BuildMagickCommand( exePath, validPaths, outputPdf )
-
-    ShowTemporaryToolTip( "Merging " validPaths.Length " images to PDF...", 0 )
+    if paths.Length == 0 {
+        ShowToolTip( "剪贴板中没有有效的图片文件", 2000 )
+        return ""
+    }
+    outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
+    cmd := '"' exe '" ' . Join( paths, " " ) . ' -density 150 -quality 100 "' outputPdf '"'
     try {
-        RunWait( command, , "Hide" )
+        RunWait( cmd, , "Hide" )
         if FileExist( outputPdf ) {
-            ShowTemporaryToolTip( "PDF created successfully!", 2000 )
+            ShowToolTip( "PDF 创建成功", 2000 )
             return outputPdf
         } else {
-            ShowTemporaryToolTip( "Failed to create PDF", 2000 )
+            ShowToolTip( "PDF 创建失败（ImageMagick 执行错误）", 2000 )
             return ""
         }
     } catch as err {
-        ShowTemporaryToolTip( "Failed to create PDF: " err.Message, 3000 )
+        ShowToolTip( "PDF 创建失败: " err.Message, 3000 )
         return ""
     }
 }
 
-BuildMagickCommand( exePath, validPaths, outputPdf ) {
-    local command := '"' exePath '" '
-    for path in validPaths {
-        command .= path " "
-    }
-    command .= '-density 150 -quality 100 "' outputPdf '"'
-    return command
-}
-
-ShowTemporaryToolTip( message, duration ) {
-    ToolTip( message )
-    if ( duration > 0 ) {
-        SetTimer( () => ToolTip(), -duration )
-    }
+Join( arr, sep := " " ) {
+    s := ""
+    for v in arr
+        s .= v . sep
+    return SubStr( s, 1, -StrLen( sep ) )
 }

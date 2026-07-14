@@ -1,61 +1,56 @@
 ﻿#Requires AutoHotkey v2.0
 
-ShowTopMostOSD( targetHwnd, isOnTop ) {
+class OSD {
     static currentOSD := ""
-
-    if IsObject( currentOSD ) {
-        try currentOSD.Destroy()
-        currentOSD := ""
-    }
-
-    osd := Gui( "+AlwaysOnTop -Caption +ToolWindow +E0x20" )
-    osd.BackColor := "1E1E1E"
-    osd.SetFont( "s12 cWhite bold", "Segoe UI" )
-
-    text := isOnTop ? "📌 Always Top" : "📌 Unpinned"
-    osd.Add( "Text", "w120 Center", text )
-
-    try {
-        WinGetPos( &wx, &wy, &ww, &wh, targetHwnd )
-        osd.Show( "Hide" )
-        osd.GetPos(, , &ow, &oh )
-        posX := wx + ( ww / 2 ) - ( ow / 2 )
-        posY := wy + 10
-        osd.Show( "x" . posX . " y" . posY . " NoActivate" )
-        WinSetTransparent( 0, osd )
-        currentOSD := osd
-        SetTimer( FadeOSD.Bind( osd, "fade_in" ), -10 )
-    } catch {
-        osd.Destroy()
-    }
-}
-
-FadeOSD( osd, state ) {
-    static step := 15
-    static maxAlpha := 220
-    static holdTime := 1200
-
-    try {
-        trans := WinGetTransparent( osd )
-    } catch {
-        return
-    }
-
-    if ( state = "fade_in" ) {
-        if ( trans < maxAlpha ) {
-            WinSetTransparent( trans + step, osd )
-            SetTimer( FadeOSD.Bind( osd, "fade_in" ), -16 )
-        } else {
-            SetTimer( FadeOSD.Bind( osd, "hold" ), -holdTime )
+    static ShowTopMostOSD( targetHwnd, isOnTop ) {
+        if IsObject( this.currentOSD ) {
+            try this.currentOSD.Destroy()
+            this.currentOSD := ""
         }
-    } else if ( state = "hold" ) {
-        SetTimer( FadeOSD.Bind( osd, "fade_out" ), -16 )
-    } else if ( state = "fade_out" ) {
-        if ( trans > 0 ) {
-            WinSetTransparent( trans - step, osd )
-            SetTimer( FadeOSD.Bind( osd, "fade_out" ), -16 )
-        } else {
-            try osd.Destroy()
+        myOSD := Gui( "+AlwaysOnTop -Caption +ToolWindow +E0x20" )
+        myOSD.BackColor := "1E1E1E"
+        myOSD.SetFont( "s12 cWhite bold", "Segoe UI" )
+        text := isOnTop ? "📌 Always Top" : "📌 Unpinned"
+        myOSD.Add( "Text", "w120 Center", text )
+        try {
+            WinGetPos( &wx, &wy, &ww, &wh, targetHwnd )
+            myOSD.Show( "Hide" )
+            myOSD.GetPos(, , &ow, &oh )
+            posX := wx + ( ww / 2 ) - ( ow / 2 )
+            posY := wy + 10
+            myOSD.Show( "x" posX " y" posY " NoActivate" )
+            WinSetTransparent( 0, myOSD )
+            this.currentOSD := myOSD
+            SetTimer( this.Fade.Bind( this, myOSD, "in" ), -10 )
+        } catch {
+            myOSD.Destroy()
+        }
+    }
+
+    static Fade( myOSD, state ) {
+        static step := 20, maxAlpha := 220, holdTime := 1000
+        try {
+            trans := WinGetTransparent( myOSD )
+        } catch {
+            return
+        }
+        if state == "in" {
+            if trans < maxAlpha {
+                WinSetTransparent( trans + step, myOSD )
+                SetTimer( this.Fade.Bind( this, myOSD, "in" ), -16 )
+            } else {
+                SetTimer( this.Fade.Bind( this, myOSD, "hold" ), -holdTime )
+            }
+        } else if state == "hold" {
+            SetTimer( this.Fade.Bind( this, myOSD, "out" ), -16 )
+        } else if state == "out" {
+            if trans > 0 {
+                WinSetTransparent( trans - step, myOSD )
+                SetTimer( this.Fade.Bind( this, myOSD, "out" ), -16 )
+            } else {
+                try myOSD.Destroy()
+                this.currentOSD := ""
+            }
         }
     }
 }

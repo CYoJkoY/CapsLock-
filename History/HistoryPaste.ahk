@@ -1,207 +1,174 @@
 #Requires AutoHotkey v2.0
 
 PasteAsFile( historyItem ) {
-    global lastManualClipboard, pasteMode, targetWindow
+    if AppState.PasteMode == 2 && TryPasteFolderOrFileAsText( historyItem[ "text" ] )
+        return
+    if AppState.PasteMode == 1 {
+        if PathDetector.IsMultiFolderPathText( historyItem[ "text" ] ) {
+            folders := PathDetector.GetValidPathsFromText( historyItem[ "text" ], "PathDetector.IsFolderPath" )
+            if folders.Length > 0 {
+                merged := FileHelper.ReadMultipleFoldersAsText( folders )
+                sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
+                full := "; " sourceInfo "`n`n" merged
+                tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
+                FileAppend( full, tempFile, "UTF-8" )
+                ClipboardHelper.SetClipboardFile( tempFile )
+                ActivateAndPaste()
+                CleanupManager.ScheduleDeletion( tempFile )
+                ShowToolTip( "已粘贴合并的文件夹内容", 2000 )
+                return
+            }
+        }
+    }
 
-    local textContent := historyItem[ "text" ]
-
-    if ( pasteMode = 2 && TryHistoryPasteAsText( textContent ) ) {
+    if PathDetector.IsImagePathsText( historyItem[ "text" ] ) {
+        PasteImagesAsPdf( historyItem[ "text" ] )
         return
     }
 
-    if ( pasteMode = 1 && TryHistoryPasteFoldersAsMergedFile( textContent, historyItem ) ) {
-        return
-    }
-
-    if ( IsImagePathsText( textContent ) ) {
-        PasteHistoryImagesAsPdf( textContent )
-        return
-    }
-
-    if ( IsFilePath( textContent ) && FileExist( textContent ) ) {
-        PasteHistorySingleFile( textContent, historyItem )
+    if PathDetector.IsFilePath( historyItem[ "text" ] ) && FileExist( historyItem[ "text" ] ) {
+        PasteSingleFile( historyItem, true )
     } else {
-        PasteHistoryPlainText( textContent, historyItem )
+        PastePlainTextWithSource( historyItem )
     }
-
-    ActivateAndPaste( targetWindow )
 }
 
-TryHistoryPasteAsText( textContent ) {
-    if ( IsMultiFolderPathText( textContent ) ) {
-        local folders := GetValidPathsFromText( textContent, "IsFolderPath" )
-        if ( folders.Length > 0 ) {
-            local combined := ReadMultipleFoldersAsText( folders )
-            PastePlainTextWithBackup( combined, folders.Length " folders as text" )
+TryPasteFolderOrFileAsText( targetText ) {
+    global PathDetector, FileHelper
+    if PathDetector.IsImagePathsText( targetText ) {
+        lines := StrSplit( targetText, "`n", "`r" )
+        pathList := []
+        for line in lines {
+            line := Trim( line )
+            if line != "" && FileExist( line ) && !InStr( FileExist( line ), "D" )
+                pathList.Push( line )
+        }
+        if pathList.Length > 0 {
+            combined := ""
+            for p in pathList
+                combined .= p "`n"
+            combined := Trim( combined, "`n" )
+            PastePlainTextWithBackup( combined, "粘贴图片路径 (" pathList.Length " 个文件)" )
             return true
         }
     }
-    if ( IsMultiFilePathText( textContent ) ) {
-        local files := GetValidPathsFromText( textContent, "IsFilePathExists" )
-        if ( files.Length > 0 ) {
-            local combined := ReadMultipleFilesAsText( files )
-            PastePlainTextWithBackup( combined, files.Length " files as text" )
+
+    if PathDetector.IsMixedPathsText( targetText ) {
+        files := PathDetector.GetValidPathsFromText( targetText, "FileExist" )
+        folders := PathDetector.GetValidPathsFromText( targetText, "PathDetector.IsFolderPath" )
+        combined := ""
+        if files.Length > 0
+            combined .= FileHelper.ReadMultipleFilesAsText( files )
+        if folders.Length > 0
+            combined .= FileHelper.ReadMultipleFoldersAsText( folders )
+        if combined != "" {
+            PastePlainTextWithBackup( combined, "粘贴混合路径内容 (" files.Length " 文件, " folders.Length " 文件夹)" )
+            return true
+        }
+    }
+
+    if PathDetector.IsMultiFolderPathText( targetText ) {
+        folders := PathDetector.GetValidPathsFromText( targetText, "PathDetector.IsFolderPath" )
+        if folders.Length > 0 {
+            merged := FileHelper.ReadMultipleFoldersAsText( folders )
+            PastePlainTextWithBackup( merged, "粘贴 " folders.Length " 个文件夹内容" )
+            return true
+        }
+    }
+
+    if PathDetector.IsMultiFilePathText( targetText ) {
+        files := PathDetector.GetValidPathsFromText( targetText, "FileExist" )
+        if files.Length > 0 {
+            merged := FileHelper.ReadMultipleFilesAsText( files )
+            PastePlainTextWithBackup( merged, "粘贴 " files.Length " 个文件内容" )
             return true
         }
     }
     return false
 }
 
-TryHistoryPasteFoldersAsMergedFile( textContent, historyItem ) {
-    if ( IsMultiFolderPathText( textContent ) ) {
-        local folders := GetValidPathsFromText( textContent, "IsFolderPath" )
-        if ( folders.Length > 0 ) {
-            local sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
-            local mergedText := ReadMultipleFoldersAsText( folders )
-            local fullContent := "; " sourceInfo "`n`n" mergedText
-            local tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
-            FileAppend( fullContent, tempFile, "UTF-8" )
-            SetClipboardFile( tempFile )
-            ActivateAndPaste( targetWindow )
-            ScheduleFileDeletion( tempFile )
-            SetTimer( () => ( lastManualClipboard != "" ) ? ( A_Clipboard := lastManualClipboard ) : "", -10000 )
-            ShowToolTip( "Pasted combined folder content", 2000 )
-            return true
-        }
-    }
-    return false
-}
-
-PasteHistoryImagesAsPdf( textContent ) {
-    local originalClip := A_Clipboard
-    A_Clipboard := textContent
-    local pdfPath := ProcessImagePathsToPDF()
-    A_Clipboard := originalClip
-    if ( pdfPath = "" ) {
-        ShowToolTip( "Failed to create PDF from image paths.", 2000 )
+PasteImagesAsPdf( imagePathText ) {
+    original := A_Clipboard
+    A_Clipboard := imagePathText
+    pdfPath := ProcessImagePathsToPDF()
+    A_Clipboard := original
+    if pdfPath == "" {
+        ShowToolTip( "创建PDF失败", 2000 )
         return
     }
     PasteFile( pdfPath, "pdf" )
 }
 
-PasteHistorySingleFile( filePath, historyItem ) {
-    local fileType := GetFileType( filePath )
-    if ( fileType = "pdf" ) {
-        DllCall( "OpenClipboard", "Ptr", A_ScriptHwnd ) && DllCall( "EmptyClipboard" )
-        DllCall( "CloseClipboard" )
-        SetClipboardFile( filePath )
-    } else {
-        local sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
-        local fullContent := "; " sourceInfo "`n`n" FileRead( filePath, "UTF-8" )
-        local tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-        FileAppend( fullContent, tempFile, "UTF-8" )
-        SetClipboardFile( tempFile )
-    }
-}
-
-PasteHistoryPlainText( textContent, historyItem ) {
-    local sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
-    DllCall( "OpenClipboard", "Ptr", A_ScriptHwnd ) && DllCall( "EmptyClipboard" )
-    DllCall( "CloseClipboard" )
-    local fullContent := "; " sourceInfo "`n`n" textContent
-    local tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend( fullContent, tempFile, "UTF-8" )
-    SetClipboardFile( tempFile )
-}
-
-ActivateAndPaste( targetWin ) {
-    if ( targetWin && WinExist( "ahk_id " targetWin ) ) {
-        WinActivate( "ahk_id " targetWin )
-    } else {
-        if !WinExist( "A" ) {
-            ShowToolTip( "No target window to paste into.", 2000 )
-            return
-        }
-        WinActivate( "A" )
-    }
-    Sleep( 100 )
+PastePlainTextWithBackup( text, tooltipMsg ) {
+    backup := A_Clipboard
+    A_Clipboard := text
     Send( "^v" )
+    Sleep( 50 )
+    A_Clipboard := backup
+    ShowToolTip( tooltipMsg, 2000 )
 }
 
-PasteAsMultipleFiles( textArray ) {
-    global targetWindow
-
-    tempFiles := []
-    for item in textArray {
-        if ( Type( item ) = "Map" ) {
-            textToWrite := item.Has( "text" ) ? item[ "text" ] : ""
-            sourceInfo := "Copied from: " ( item.Has( "source" ) ? item[ "source" ] : "Unknown Source" )
-            . " (at " ( item.Has( "time" ) ? item[ "time" ] : FormatTime(, "yyyy-MM-dd HH:mm:ss" ) ) . ")"
-        } else {
-            textToWrite := item
-            sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
-        }
-        fullContent := "; " sourceInfo "`n`n" textToWrite
-        tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_Index ".txt"
-        FileAppend( fullContent, tempFile, "UTF-8" )
-        tempFiles.Push( tempFile )
-    }
-
-    SetClipboardFiles( tempFiles )
-    ActivateAndPaste( targetWindow )
-    for f in tempFiles {
-        ScheduleFileDeletion( f )
-    }
+PastePlainTextWithSource( historyItem ) {
+    sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
+    fullContent := "; " sourceInfo "`n`n" historyItem[ "text" ]
+    tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
+    FileAppend( fullContent, tempFile, "UTF-8" )
+    ClipboardHelper.SetClipboardFile( tempFile )
+    ActivateAndPaste()
+    CleanupManager.ScheduleDeletion( tempFile )
 }
 
-PasteSingleFile( textContent, activate := true ) {
-    global clipboardHistory, targetWindow
-
-    if ( Type( textContent ) = "Map" ) {
-        textToPaste := textContent.Has( "text" ) ? textContent[ "text" ] : ""
-        sourceInfo := "Copied from: " ( textContent.Has( "source" ) ? textContent[ "source" ] : "Unknown Source" )
-        . " (at " ( textContent.Has( "time" ) ? textContent[ "time" ] : FormatTime(, "yyyy-MM-dd HH:mm:ss" ) ) . ")"
+PasteSingleFile( historyItem, activate := true ) {
+    if Type( historyItem ) == "Map"
+        textToPaste := historyItem[ "text" ]
+    else
+        textToPaste := historyItem
+    if PathDetector.IsImagePathsText( textToPaste ) {
+        PasteImagesAsPdf( textToPaste )
+        return
+    }
+    sourceInfo := ""
+    if Type( historyItem ) == "Map" {
+        sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
     } else {
-        textToPaste := textContent
-        sourceInfo := ""
-        for item in clipboardHistory {
-            if ( item[ "text" ] = textContent ) {
+        for item in AppState.History {
+            if item[ "text" ] == textToPaste {
                 sourceInfo := "Copied from: " item[ "source" ] " (at " item[ "time" ] ")"
                 break
             }
         }
-        if ( sourceInfo = "" ) {
+        if sourceInfo == ""
             sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
-        }
     }
-
-    if ( IsImagePathsText( textToPaste ) ) {
-        originalClip := A_Clipboard
-        A_Clipboard := textToPaste
-        pdfPath := ProcessImagePathsToPDF()
-        A_Clipboard := originalClip
-        if ( pdfPath = "" ) {
-            ShowToolTip( "Failed to create PDF from image paths.", 2000 )
-            return
-        }
-        PasteFile( pdfPath, "pdf" )
-        return
-    }
-
     fullContent := "; " sourceInfo "`n`n" textToPaste
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
     FileAppend( fullContent, tempFile, "UTF-8" )
-    SetClipboardFile( tempFile )
-
-    if ( activate ) {
-        if !WinExist( "ahk_id " targetWindow ) {
-            ShowToolTip( "Target window not found, paste cancelled.", 1500 )
-            return
-        }
-        state := WinGetMinMax( "ahk_id " targetWindow )
-        if ( state = -1 ) {
-            WinRestore( "ahk_id " targetWindow )
-        }
-        WinActivate( "ahk_id " targetWindow )
-        if !WinWaitActive( "ahk_id " targetWindow, , 1 ) {
-            ShowToolTip( "Cannot activate target window, please try manually.", 2000 )
-            return
-        }
+    ClipboardHelper.SetClipboardFile( tempFile )
+    if activate {
+        ActivateAndPaste()
+    } else {
+        Send( "^v" )
     }
+    CleanupManager.ScheduleDeletion( tempFile )
+}
 
-    ShowToolTip( "Pasting: " SubStr( textToPaste, 1, 40 ) "...", 10000 )
-    Send( "^v" )
-    Sleep( 50 )
-    ScheduleFileDeletion( tempFile )
-    SetTimer( () => ToolTip(), -10000 )
+PasteAsMultipleFiles( textArray ) {
+    tempFiles := []
+    for item in textArray {
+        if Type( item ) == "Map" {
+            textToWrite := item[ "text" ]
+            sourceInfo := "Copied from: " item[ "source" ] " (at " item[ "time" ] ")"
+        } else {
+            textToWrite := item
+            sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
+        }
+        full := "; " sourceInfo "`n`n" textToWrite
+        tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_Index ".txt"
+        FileAppend( full, tempFile, "UTF-8" )
+        tempFiles.Push( tempFile )
+    }
+    ClipboardHelper.SetClipboardFiles( tempFiles )
+    ActivateAndPaste()
+    for f in tempFiles
+        CleanupManager.ScheduleDeletion( f )
 }

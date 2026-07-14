@@ -1,58 +1,47 @@
 #Requires AutoHotkey v2.0
 
 CopyAsPlainTextAndAddToHistory() {
-    global ignoreNextClipChange
-    ignoreNextClipChange := true
-    text := CopyAsPlainText()
-    ignoreNextClipChange := false
-    if ( text != "" ) {
-        AddToHistory( text, "Plain Text Copy" )
-    }
+    AppState.IgnoreNextClipChange := true
+    text := ClipboardHelper.CopyAsPlainText()
+    AppState.IgnoreNextClipChange := false
+    if text != ""
+        HistoryManager.Add( text, "Plain Text Copy" )
 }
 
 ChangeCaseOfLastCopy() {
-    global lastManualClipboard, ignoreNextClipChange
-
-    sourceText := ( lastManualClipboard != "" ) ? lastManualClipboard : A_Clipboard
-    if ( sourceText = "" ) {
-        ToolTip( "No text to paste. Please copy something first." )
+    source := ( AppState.LastManualClipboard != "" ) ? AppState.LastManualClipboard : A_Clipboard
+    if source == "" {
+        ToolTip( "没有文本，请先复制" )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
-    if !RegExMatch( sourceText, "[a-zA-Z]", &match ) {
-        ToolTip( "No English letters found" )
+    if !RegExMatch( source, "[a-zA-Z]", &match ) {
+        ToolTip( "没有英文字母" )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
     firstChar := match[ 0 ]
-    newText := ( firstChar ~= "[A-Z]" ) ? StrLower( sourceText ) : StrUpper( sourceText )
-
-    prevCapsState := GetKeyState( "CapsLock", "T" )
-    if prevCapsState {
+    newText := ( firstChar ~= "[A-Z]" ) ? StrLower( source ) : StrUpper( source )
+    prevCaps := GetKeyState( "CapsLock", "T" )
+    if prevCaps
         SetCapsLockState( "AlwaysOff" )
-    }
-
-    ignoreNextClipChange := true
+    AppState.IgnoreNextClipChange := true
     A_Clipboard := newText
     Send( "^v" )
     Sleep( 200 )
-
-    ignoreNextClipChange := true
-    A_Clipboard := sourceText
-
-    if prevCapsState {
+    AppState.IgnoreNextClipChange := true
+    A_Clipboard := source
+    if prevCaps
         SetCapsLockState( "AlwaysOn" )
-    }
 }
 
 ToggleAlwaysOnTopWithOSD() {
     hwnd := WinExist( "A" )
     WinSetAlwaysOnTop( -1, hwnd )
     isOnTop := WinGetExStyle( hwnd ) & 0x8
-    if isOnTop {
-        PlayResourceSound( "SND_ON" )
-    } else {
-        PlayResourceSound( "SND_OFF" )
-    }
-    ShowTopMostOSD( hwnd, isOnTop )
+    if isOnTop
+        SoundHelper.PlayResource( "SND_ON" )
+    else
+        SoundHelper.PlayResource( "SND_OFF" )
+    OSD.ShowTopMostOSD( hwnd, isOnTop )
 }

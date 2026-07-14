@@ -1,42 +1,39 @@
 #Requires AutoHotkey v2.0
 
-LoadConfig() {
-    global deleteMode, deleteDelay, cleanupInterval, configFile
-    global imageMagickExe, maxHistory, pasteMode
-
-    oldPath := A_ScriptDir "\ImageMagickPath.txt"
-    if FileExist( oldPath ) {
-        try {
-            legacyExe := FileRead( oldPath, "UTF-8" )
-            if ( legacyExe != "" ) {
-                IniWrite( legacyExe, configFile, "ImageMagick", "Path" )
+class ConfigManager {
+    static Load() {
+        cfg := AppState.ConfigFile
+        oldPath := A_ScriptDir "\ImageMagickPath.txt"
+        if FileExist( oldPath ) {
+            try {
+                legacy := FileRead( oldPath, "UTF-8" )
+                if legacy != ""
+                    IniWrite( legacy, cfg, "ImageMagick", "Path" )
+                FileDelete( oldPath )
             }
-            FileDelete( oldPath )
+        }
+        if !FileExist( cfg )
+            return
+        try {
+            AppState.DeleteMode := IniRead( cfg, "Cleanup", "deleteMode", 1 )
+            AppState.DeleteDelay := IniRead( cfg, "Cleanup", "deleteDelay", 10 )
+            AppState.CleanupInterval := IniRead( cfg, "Cleanup", "cleanupInterval", 30 )
+            AppState.ImageMagickExe := IniRead( cfg, "ImageMagick", "Path", "" )
+            AppState.MaxHistory := IniRead( cfg, "History", "maxHistory", 10000 )
+            AppState.PasteMode := IniRead( cfg, "General", "pasteMode", 1 )
+        } catch {
         }
     }
 
-    if !FileExist( configFile ) {
-        return
-    }
-
-    try {
-        deleteMode := IniRead( configFile, "Cleanup", "deleteMode", 1 )
-        deleteDelay := IniRead( configFile, "Cleanup", "deleteDelay", 10 )
-        cleanupInterval := IniRead( configFile, "Cleanup", "cleanupInterval", 30 )
-        imageMagickExe := IniRead( configFile, "ImageMagick", "Path", "" )
-        maxHistory := IniRead( configFile, "History", "maxHistory", 10000 )
-        pasteMode := IniRead( configFile, "General", "pasteMode", 1 )
-    }
-}
-
-SaveConfig() {
-    global deleteMode, deleteDelay, cleanupInterval, configFile, maxHistory, pasteMode
-
-    try {
-        IniWrite( deleteMode, configFile, "Cleanup", "deleteMode" )
-        IniWrite( deleteDelay, configFile, "Cleanup", "deleteDelay" )
-        IniWrite( cleanupInterval, configFile, "Cleanup", "cleanupInterval" )
-        IniWrite( maxHistory, configFile, "History", "maxHistory" )
-        IniWrite( pasteMode, configFile, "General", "pasteMode" )
+    static Save() {
+        cfg := AppState.ConfigFile
+        try {
+            IniWrite( AppState.DeleteMode, cfg, "Cleanup", "deleteMode" )
+            IniWrite( AppState.DeleteDelay, cfg, "Cleanup", "deleteDelay" )
+            IniWrite( AppState.CleanupInterval, cfg, "Cleanup", "cleanupInterval" )
+            IniWrite( AppState.MaxHistory, cfg, "History", "maxHistory" )
+            IniWrite( AppState.PasteMode, cfg, "General", "pasteMode" )
+        } catch {
+        }
     }
 }

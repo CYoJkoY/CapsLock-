@@ -1,150 +1,97 @@
 #Requires AutoHotkey v2.0
 
-SetPasteMode1( * ) {
-    global pasteMode
-    pasteMode := 1
-    SaveConfig()
+SetPasteMode( mode ) {
+    AppState.PasteMode := mode
+    ConfigManager.Save()
     TrayMenuRefresh()
-    ToolTip( "Paste Mode: File" )
+    ToolTip( "粘贴模式: " ( mode == 1 ? "文件" : "文本" ) )
     SetTimer( () => ToolTip(), -2000 )
 }
 
-SetPasteMode2( * ) {
-    global pasteMode
-    pasteMode := 2
-    SaveConfig()
+SetDeleteMode( mode ) {
+    AppState.DeleteMode := mode
+    ConfigManager.Save()
     TrayMenuRefresh()
-    ToolTip( "Paste Mode: Text" )
-    SetTimer( () => ToolTip(), -2000 )
-}
-
-SetDeleteMode1( * ) {
-    global deleteMode
-    deleteMode := 1
-    SaveConfig()
-    TrayMenuRefresh()
-    ToolTip( "Mode: Delete after delay (" deleteDelay "s)" )
-    SetTimer( () => ToolTip(), -2000 )
-}
-
-SetDeleteMode2( * ) {
-    global deleteMode
-    deleteMode := 2
-    SaveConfig()
-    TrayMenuRefresh()
-    ToolTip( "Mode: Batch cleanup every " cleanupInterval "s" )
-    SetTimer( () => ToolTip(), -2000 )
-}
-
-SetDeleteMode3( * ) {
-    global deleteMode
-    deleteMode := 3
-    SaveConfig()
-    TrayMenuRefresh()
-    ToolTip( "Mode: Never delete" )
+    msgs := [ "延迟删除", "批量清理", "永不删除" ]
+    ToolTip( "删除模式: " msgs[ mode ] )
     SetTimer( () => ToolTip(), -2000 )
 }
 
 SetMaxHistory( * ) {
-    global maxHistory, clipboardHistory
-
-    input := InputBox( "Enter max history limit (0 to disable, e.g., 500, 1000):", "Max History Limit", "w300 h120",
-        maxHistory )
-    if ( input.Result = "OK" && IsNumber( input.Value ) ) {
-        newMax := Integer( input.Value )
-        if ( newMax < 0 ) {
-            newMax := 0
+    input := InputBox( "输入最大历史数量 (0=禁用):", "历史上限", "w300 h120", AppState.MaxHistory )
+    if input.Result != "OK" || !IsNumber( input.Value )
+        return
+    newMax := Integer( input.Value )
+    if newMax < 0
+        newMax := 0
+    if newMax == 0 {
+        if AppState.History.Length > 0 {
+            confirm := MsgBox( "禁用历史将清除所有 " AppState.History.Length " 条记录，继续吗？", "确认", "YesNo Icon?" )
+            if confirm != "Yes"
+                return
         }
-        if ( newMax = 0 ) {
-            if ( clipboardHistory.Length > 0 ) {
-                confirm := MsgBox( "Setting limit to 0 will DISABLE history and remove all " clipboardHistory.Length " entries.`n`nContinue?",
-                    "Disable History", "YesNo Icon?" )
-                if ( confirm != "Yes" ) {
-                    return
-                }
-            }
-            maxHistory := 0
-            SaveConfig()
-            clipboardHistory := []
-            SaveHistory()
-            ToolTip( "Clipboard history disabled, all entries removed" )
-            SetTimer( () => ToolTip(), -3000 )
-        } else {
-            pendingRemoval := clipboardHistory.Length - newMax
-            if ( pendingRemoval > 0 ) {
-                confirm := MsgBox( "Current history has " clipboardHistory.Length " entries.`n"
-                    "Setting limit to " newMax " will remove " pendingRemoval " oldest entries.`n`nContinue?",
-                    "Confirm Max History Change", "YesNo Icon?" )
-                if ( confirm != "Yes" ) {
-                    return
-                }
-            }
-            maxHistory := newMax
-            SaveConfig()
-            if ( pendingRemoval > 0 ) {
-                removedCount := clipboardHistory.Length - maxHistory
-                while ( clipboardHistory.Length > maxHistory ) {
-                    clipboardHistory.Pop()
-                }
-                SaveHistory()
-                ToolTip( "Max history set to " maxHistory " — removed " removedCount " old entries" )
-            } else {
-                ToolTip( "Max history limit set to " maxHistory )
-            }
-            SetTimer( () => ToolTip(), -3000 )
-        }
+        AppState.MaxHistory := 0
+        ConfigManager.Save()
+        AppState.History := []
+        HistoryManager.Save()
+        ToolTip( "历史已禁用，所有记录已清除" )
+        SetTimer( () => ToolTip(), -3000 )
+        return
     }
+    pendingRemoval := AppState.History.Length - newMax
+    if pendingRemoval > 0 {
+        confirm := MsgBox( "当前历史有 " AppState.History.Length " 条，设置上限 " newMax " 将删除 " pendingRemoval " 条旧记录。继续？", "确认", "YesNo Icon?" )
+        if confirm != "Yes"
+            return
+    }
+    AppState.MaxHistory := newMax
+    ConfigManager.Save()
+    while AppState.History.Length > AppState.MaxHistory
+        AppState.History.Pop()
+    HistoryManager.Save()
+    ToolTip( "最大历史已设为 " newMax )
+    SetTimer( () => ToolTip(), -3000 )
 }
 
 SetDeleteDelay( * ) {
-    global deleteDelay
-
-    input := InputBox( "Enter delete delay in seconds:", "Delete Delay", "w300 h120", deleteDelay )
-    if ( input.Result = "OK" && IsNumber( input.Value ) && input.Value > 0 ) {
-        deleteDelay := Integer( input.Value )
-        SaveConfig()
-        ToolTip( "Delete delay set to " deleteDelay "s" )
+    input := InputBox( "输入延迟秒数:", "延迟删除", "w300 h120", AppState.DeleteDelay )
+    if input.Result == "OK" && IsNumber( input.Value ) && input.Value > 0 {
+        AppState.DeleteDelay := Integer( input.Value )
+        ConfigManager.Save()
+        ToolTip( "延迟设为 " AppState.DeleteDelay " 秒" )
         SetTimer( () => ToolTip(), -2000 )
     }
 }
 
 SetCleanupInterval( * ) {
-    global cleanupInterval, batchCleanupTimer
-
-    input := InputBox( "Enter cleanup interval in seconds:", "Cleanup Interval", "w300 h120", cleanupInterval )
-    if ( input.Result = "OK" && IsNumber( input.Value ) && input.Value > 0 ) {
-        cleanupInterval := Integer( input.Value )
-        SaveConfig()
-        if ( batchCleanupTimer != "" ) {
-            SetTimer( batchCleanupTimer, cleanupInterval * 1000 )
-        }
-        ToolTip( "Cleanup interval set to " cleanupInterval "s" )
+    input := InputBox( "输入清理间隔秒数:", "批量清理", "w300 h120", AppState.CleanupInterval )
+    if input.Result == "OK" && IsNumber( input.Value ) && input.Value > 0 {
+        AppState.CleanupInterval := Integer( input.Value )
+        ConfigManager.Save()
+        ToolTip( "清理间隔设为 " AppState.CleanupInterval " 秒" )
         SetTimer( () => ToolTip(), -2000 )
     }
 }
 
 SetImPath( * ) {
-    global imageMagickExe, configFile
-
-    SelectedFile := Trim( FileSelect( 1, A_ProgramFiles, "Select ImageMagick's magick.exe", "Executable (*.exe)" ) )
-    if ( SelectedFile = "" ) {
+    SelectedFile := Trim( FileSelect( 1, A_ProgramFiles, "选择 ImageMagick 的 magick.exe", "Executable (*.exe)" ) )
+    if SelectedFile == ""
         return
-    }
     if !InStr( StrLower( SelectedFile ), "magick.exe" ) {
-        MsgBox( "Please select the correct file: magick.exe", "Error", "Iconx" )
+        MsgBox( "请选择 magick.exe", "错误", "Iconx" )
         return
     }
     if !FileExist( SelectedFile ) {
-        MsgBox( "Selected file does not exist!`nPath: " SelectedFile, "Error", "Iconx" )
+        MsgBox( "文件不存在", "错误", "Iconx" )
         return
     }
     try {
-        IniWrite( SelectedFile, configFile, "ImageMagick", "Path" )
-    } catch as err {
-        MsgBox( "Failed to save path: " err.Message, "Error", "Iconx" )
+        IniWrite( SelectedFile, AppState.ConfigFile, "ImageMagick", "Path" )
+    } catch {
+        MsgBox( "保存路径失败", "错误", "Iconx" )
         return
     }
-    imageMagickExe := SelectedFile
+    AppState.ImageMagickExe := SelectedFile
     RefreshImStatus()
-    MsgBox( "ImageMagick path set successfully!`n" SelectedFile, "Success", "Iconi T2" )
+    MsgBox( "ImageMagick 路径已设置`n" SelectedFile, "成功", "Iconi T2" )
 }

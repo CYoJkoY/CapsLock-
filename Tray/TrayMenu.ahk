@@ -1,115 +1,103 @@
 #Requires AutoHotkey v2.0
 
 TraySetup() {
-    global Tray, modeMenu, pasteModeMenu, currentImMenuText
-
+    global AppState
     A_IconTip := "CapsLock-"
-
-    Tray := A_TrayMenu
+    AppState.TrayMenu := A_TrayMenu
+    Tray := AppState.TrayMenu
     Tray.Delete()
-    Tray.Add( currentImMenuText, ( * ) => SetImPath() )
-
-    Tray.Add()
-    Tray.Add( "Open Temp Folder", ( * ) => Run( "explore " A_Temp ) )
-
-    modeMenu.Delete()
-    modeMenu.Add( "1 - Delete after delay", SetDeleteMode1 )
-    modeMenu.Add( "2 - Batch cleanup", SetDeleteMode2 )
-    modeMenu.Add( "3 - Never delete", SetDeleteMode3 )
-    Tray.Add( "Delete Mode", modeMenu )
-
-    Tray.Add( "Mode1: Set Delete Delay...", SetDeleteDelay )
-    Tray.Add( "Mode2: Set Cleanup Interval...", SetCleanupInterval )
-
-    Tray.Add()
-    Tray.Add( "Set Max History Limit...", SetMaxHistory )
-
-    pasteModeMenu.Delete()
-    pasteModeMenu.Add( "1 - Paste as File", SetPasteMode1 )
-    pasteModeMenu.Add( "2 - Paste as Text (with source)", SetPasteMode2 )
-    Tray.Add( "Paste Mode", pasteModeMenu )
-
-    Tray.Add()
-    Tray.Add( "Load on start up", ToggleAutoStart )
-    Tray.Add( "Reload", ( * ) => Reload() )
-    Tray.Add( "Exit", ( * ) => ExitApp() )
 
     RefreshImStatus()
+
+    Tray.Add()
+    Tray.Add( "打开临时文件夹", ( * ) => Run( "explore " A_Temp ) )
+
+    modeMenu := Menu()
+    modeMenu.Add( "1 - 延迟删除", ( * ) => SetDeleteMode( 1 ) )
+    modeMenu.Add( "2 - 批量清理", ( * ) => SetDeleteMode( 2 ) )
+    modeMenu.Add( "3 - 永不删除", ( * ) => SetDeleteMode( 3 ) )
+    Tray.Add( "删除模式", modeMenu )
+
+    Tray.Add( "模式1: 设置延迟时间...", ( * ) => SetDeleteDelay() )
+    Tray.Add( "模式2: 设置清理间隔...", ( * ) => SetCleanupInterval() )
+
+    Tray.Add()
+    Tray.Add( "设置最大历史数量...", ( * ) => SetMaxHistory() )
+
+    pasteModeMenu := Menu()
+    pasteModeMenu.Add( "1 - 粘贴为文件", ( * ) => SetPasteMode( 1 ) )
+    pasteModeMenu.Add( "2 - 粘贴为文本（带来源）", ( * ) => SetPasteMode( 2 ) )
+    Tray.Add( "粘贴模式", pasteModeMenu )
+
+    Tray.Add()
+    Tray.Add( "开机自启", ToggleAutoStart )
+    Tray.Add( "重新加载", ( * ) => Reload() )
+    Tray.Add( "退出", ( * ) => ExitApp() )
+
+    AppState.modeMenu := modeMenu
+    AppState.pasteModeMenu := pasteModeMenu
     TrayMenuRefresh()
 }
 
 RefreshImStatus() {
-    global imageMagickExe, currentImMenuText, Tray
-
-    isValid := ( imageMagickExe != "" )
-    && InStr( StrLower( imageMagickExe ), "magick.exe" )
-    && FileExist( imageMagickExe )
-
-    newText := isValid ? "ImageMagick: Valid (Click to change)" : "ImageMagick: Not Set / Invalid"
-
-    if ( currentImMenuText == newText ) {
-        if ( isValid ) {
-            Tray.Check( newText )
-        } else {
-            Tray.Uncheck( newText )
-        }
+    global AppState
+    exe := AppState.ImageMagickExe
+    valid := exe != "" && InStr( StrLower( exe ), "magick.exe" ) && FileExist( exe )
+    newText := valid ? "ImageMagick: 已设置 (点击更改)" : "ImageMagick: 未设置/无效"
+    if AppState.currentImMenuText == newText
         return
-    }
-
-    Tray.Insert( currentImMenuText, newText, ( * ) => SetImPath() )
-    Tray.Delete( currentImMenuText )
-
-    if ( isValid ) {
+    Tray := AppState.TrayMenu
+    if AppState.currentImMenuText != ""
+        Tray.Delete( AppState.currentImMenuText )
+    Tray.Insert( 1, newText, ( * ) => SetImPath() )
+    if valid
         Tray.Check( newText )
-    } else {
+    else
         Tray.Uncheck( newText )
-    }
-    currentImMenuText := newText
+    AppState.currentImMenuText := newText
 }
 
 TrayMenuRefresh() {
-    global deleteMode, pasteMode, modeMenu, pasteModeMenu, Tray
+    global AppState
+    Tray := AppState.TrayMenu
+    modeMenu := AppState.modeMenu
+    modeMenu.Uncheck( "1 - 延迟删除" )
+    modeMenu.Uncheck( "2 - 批量清理" )
+    modeMenu.Uncheck( "3 - 永不删除" )
+    if AppState.DeleteMode == 1
+        modeMenu.Check( "1 - 延迟删除" )
+    else if AppState.DeleteMode == 2
+        modeMenu.Check( "2 - 批量清理" )
+    else if AppState.DeleteMode == 3
+        modeMenu.Check( "3 - 永不删除" )
 
-    modeMenu.Uncheck( "1 - Delete after delay" )
-    modeMenu.Uncheck( "2 - Batch cleanup" )
-    modeMenu.Uncheck( "3 - Never delete" )
-    if ( deleteMode = 1 ) {
-        modeMenu.Check( "1 - Delete after delay" )
-    } else if ( deleteMode = 2 ) {
-        modeMenu.Check( "2 - Batch cleanup" )
-    } else if ( deleteMode = 3 ) {
-        modeMenu.Check( "3 - Never delete" )
-    }
+    pasteMenu := AppState.pasteModeMenu
+    pasteMenu.Uncheck( "1 - 粘贴为文件" )
+    pasteMenu.Uncheck( "2 - 粘贴为文本（带来源）" )
+    if AppState.PasteMode == 1
+        pasteMenu.Check( "1 - 粘贴为文件" )
+    else if AppState.PasteMode == 2
+        pasteMenu.Check( "2 - 粘贴为文本（带来源）" )
 
-    pasteModeMenu.Uncheck( "1 - Paste as File" )
-    pasteModeMenu.Uncheck( "2 - Paste as Text (with source)" )
-    if ( pasteMode = 1 ) {
-        pasteModeMenu.Check( "1 - Paste as File" )
-    } else if ( pasteMode = 2 ) {
-        pasteModeMenu.Check( "2 - Paste as Text (with source)" )
-    }
-
-    if IsAutoStartEnabled() {
-        Tray.Check( "Load on start up" )
-    } else {
-        Tray.Uncheck( "Load on start up" )
-    }
+    if IsAutoStartEnabled()
+        Tray.Check( "开机自启" )
+    else
+        Tray.Uncheck( "开机自启" )
 }
 
 ToggleAutoStart( * ) {
-    global Tray
-
+    global AppState
     RegPath := "Software\Microsoft\Windows\CurrentVersion\Run"
     AppName := "CapsLock-"
-
+    Tray := AppState.TrayMenu
     if IsAutoStartEnabled() {
         RegDelete( "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Uncheck( "Load on start up" )
-        MsgBox( "Load on start up turned off", "Success", "Iconi T2" )
+        Tray.Uncheck( "开机自启" )
+        MsgBox( "开机自启已关闭", "成功", "Iconi T2" )
     } else {
         RegWrite( '"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Check( "Load on start up" )
-        MsgBox( "Load on start up turned on", "Success", "Iconi T2" )
+        Tray.Check( "开机自启" )
+        MsgBox( "开机自启已开启", "成功", "Iconi T2" )
     }
 }
 

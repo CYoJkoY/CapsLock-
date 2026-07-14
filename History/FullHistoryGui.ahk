@@ -1,53 +1,83 @@
 #Requires AutoHotkey v2.0
 
 ShowFullHistoryGui( ItemName?, ItemPos?, MyMenu? ) {
-    global clipboardHistory, fullHistoryGui, targetWindow
-
-    targetWindow := WinExist( "A" )
-
-    if ( fullHistoryGui ) {
+    AppState.TargetWindow := WinExist( "A" )
+    if IsObject( AppState.FullHistoryGui ) {
         try {
-            if WinExist( "ahk_id " fullHistoryGui.Hwnd ) {
-                WinActivate( "ahk_id " fullHistoryGui.Hwnd )
-                _RefreshFullHistoryList()
+            if WinExist( "ahk_id " AppState.FullHistoryGui.Hwnd ) {
+                WinActivate( "ahk_id " AppState.FullHistoryGui.Hwnd )
+                RefreshFullHistoryList()
                 return
             }
         } catch {
-            fullHistoryGui := ""
+            AppState.FullHistoryGui := ""
         }
     }
 
-    fullHistoryGui := Gui( "+Resize +AlwaysOnTop", "Clipboard History (Full)" )
-    fullHistoryGui.SetFont( "s10", "Microsoft YaHei" )
-    fullHistoryGui.OnEvent( "Close", ( * ) => ( fullHistoryGui.Destroy(), fullHistoryGui := "" ) )
-    fullHistoryGui.OnEvent( "Escape", ( * ) => ( fullHistoryGui.Destroy(), fullHistoryGui := "" ) )
-    fullHistoryGui.OnEvent( "Size", _ResizeFullHistoryGui )
+    myGui := Gui( "+Resize +AlwaysOnTop", "Clipboard History (Full)" )
+    myGui.SetFont( "s10", "Microsoft YaHei" )
+    myGui.OnEvent( "Close", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
+    myGui.OnEvent( "Escape", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
+    myGui.OnEvent( "Size", ResizeFullHistoryGui )
 
-    lv := fullHistoryGui.Add( "ListView", "r20 w600 Checked Multi Grid", [
-        "#",
-        "Content (first 100 chars)"
-    ] )
-    lv.OnEvent( "DoubleClick", _OnFullHistoryDoubleClick )
-    lv.OnEvent( "ContextMenu", _OnFullHistoryContextMenu )
-    lv.OnEvent( "ItemCheck", _OnItemCheck )
-    fullHistoryGui.ListView := lv
+    searchBox := myGui.Add( "Edit", "w600", "" )
+    searchBox.OnEvent( "Change", ( * ) => RefreshFullHistoryList() )
+    myGui.SearchBox := searchBox
 
-    btnPaste := fullHistoryGui.Add( "Button", "Default", "Paste as File" )
-    btnPaste.OnEvent( "Click", ( * ) => _PasteSelectedFromFullHistory() )
-    fullHistoryGui.btnPaste := btnPaste
+    lv := myGui.Add( "ListView", "r20 w600 Checked Multi Grid", [ "#", "Content (first 100 chars)" ] )
+    lv.OnEvent( "DoubleClick", OnFullHistoryDoubleClick )
+    lv.OnEvent( "ContextMenu", OnFullHistoryContextMenu )
+    lv.OnEvent( "ItemCheck", OnItemCheck )
+    myGui.ListView := lv
 
-    btnClose := fullHistoryGui.Add( "Button", "x+10 yp", "Close" )
-    btnClose.OnEvent( "Click", ( * ) => fullHistoryGui.Destroy() )
-    fullHistoryGui.btnClose := btnClose
+    btnPaste := myGui.Add( "Button", "Default", "Paste as File" )
+    btnPaste.OnEvent( "Click", ( * ) => PasteSelectedFromFullHistory() )
+    myGui.btnPaste := btnPaste
 
-    chkSelectAll := fullHistoryGui.Add( "CheckBox", "x10 y+20", "Select All" )
-    chkSelectAll.OnEvent( "Click", _OnSelectAllClicked )
-    fullHistoryGui.chkSelectAll := chkSelectAll
+    btnClose := myGui.Add( "Button", "x+10 yp", "Close" )
+    btnClose.OnEvent( "Click", ( * ) => myGui.Destroy() )
+    myGui.btnClose := btnClose
 
-    btnDeleteSelected := fullHistoryGui.Add( "Button", "x+10 yp", "Delete Selected" )
-    btnDeleteSelected.OnEvent( "Click", _OnDeleteSelected )
-    fullHistoryGui.btnDeleteSelected := btnDeleteSelected
+    chkSelectAll := myGui.Add( "CheckBox", "x10 y+20", "Select All" )
+    chkSelectAll.OnEvent( "Click", OnSelectAllClicked )
+    myGui.chkSelectAll := chkSelectAll
 
-    _RefreshFullHistoryList()
-    fullHistoryGui.Show()
+    btnDelete := myGui.Add( "Button", "x+10 yp", "Delete Selected" )
+    btnDelete.OnEvent( "Click", OnDeleteSelected )
+    myGui.btnDeleteSelected := btnDelete
+
+    AppState.FullHistoryGui := myGui
+    RefreshFullHistoryList()
+    myGui.Show()
+}
+
+RefreshFullHistoryList() {
+    myGui := AppState.FullHistoryGui
+    lv := myGui.ListView
+    lv.Delete()
+    filter := myGui.SearchBox.Text
+    filter := Trim( filter )
+    idx := 0
+    for i, item in AppState.History {
+        content := item[ "text" ]
+        display := StrReplace( SubStr( content, 1, 100 ), "`n", " " )
+        if StrLen( content ) > 100
+            display .= "..."
+        if filter != "" && !InStr( display, filter ) && !InStr( content, filter )
+            continue
+        idx++
+        lv.Add(, idx, display )
+    }
+    lv.ModifyCol( 1, "AutoHdr" )
+    lv.ModifyCol( 2, "AutoHdr" )
+    myGui.chkSelectAll.Value := 0
+}
+
+ResizeFullHistoryGui( guiObj, minmax, width, height ) {
+    lv := guiObj.ListView
+    lv.Move( 10, 40, width - 20, height - 140 )
+    guiObj.btnPaste.Move( 10, height - 80 )
+    guiObj.btnClose.Move( 120, height - 80 )
+    guiObj.chkSelectAll.Move( 10, height - 40 )
+    guiObj.btnDeleteSelected.Move( 120, height - 40 )
 }

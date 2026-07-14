@@ -1,11 +1,9 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+Persistent()
 
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOn.wav, SND_ON
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
-
-A_HotkeyInterval := 2000
-A_MaxHotkeysPerInterval := 200
 
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
@@ -18,13 +16,12 @@ A_MaxHotkeysPerInterval := 200
 #Include "Core\ImageToPdf.ahk"
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
-#Include "Core\FolderOperations.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
 #Include "History\HistoryPaste.ahk"
 #Include "History\HistoryDelete.ahk"
-#Include "History\fullHistoryGui.ahk"
+#Include "History\FullHistoryGui.ahk"
 #Include "History\FullHistoryHandlers.ahk"
 
 #Include "Hotkeys\HotkeyBindings.ahk"
@@ -38,11 +35,10 @@ A_MaxHotkeysPerInterval := 200
 #Include "UI\PreviewGui.ahk"
 
 #Include "Utils\ResourceSound.ahk"
-#Include "Utils\MathUtils.ahk"
-#Include "Utils\FileContentMerger.ahk"
+#Include "Utils\MethodsUtils.ahk"
 
-LoadHistory()
-LoadConfig()
+HistoryManager.Load()
+ConfigManager.Load()
 TraySetup()
-OnClipboardChange( HandleHistoryUpdate )
-Persistent()
+OnClipboardChange( OnClipboardChange )
+OnExit( CleanupManager.OnExit )

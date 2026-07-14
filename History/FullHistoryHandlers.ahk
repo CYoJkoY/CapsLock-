@@ -1,176 +1,112 @@
 #Requires AutoHotkey v2.0
 
-_RefreshFullHistoryList() {
-    global clipboardHistory, fullHistoryGui
-
-    lv := fullHistoryGui.ListView
-    lv.Delete()
-
-    for idx, item in clipboardHistory {
-        try {
-            if ( Type( item ) = "Map" && item.Has( "text" ) ) {
-                content := item[ "text" ]
-            } else {
-                content := String( item ?? "" )
-            }
-        } catch {
-            content := "[Invalid History Entry]"
-        }
-        display := StrReplace( SubStr( content, 1, 100 ), "`n", " " )
-        if ( StrLen( content ) > 100 ) {
-            display .= "..."
-        }
-        lv.Add(, idx, display )
-    }
-
-    lv.ModifyCol( 1, "AutoHdr" )
-    lv.ModifyCol( 2, "AutoHdr" )
-    fullHistoryGui.chkSelectAll.Value := 0
-}
-
-_ResizeFullHistoryGui( guiObj, windowMinMax, width, height ) {
-    lv := guiObj.ListView
-    lv.Move( 10, 10, width - 20, height - 100 )
-
-    guiObj.btnPaste.Move( 10, height - 80 )
-    guiObj.btnClose.Move( 120, height - 80 )
-    guiObj.chkSelectAll.Move( 10, height - 40 )
-    guiObj.btnDeleteSelected.Move( 120, height - 40 )
-}
-
-_OnFullHistoryDoubleClick( lv, row ) {
-    if ( row = 0 ) {
+OnFullHistoryDoubleClick( lv, row ) {
+    if row == 0
         return
-    }
-    selectedHistory := clipboardHistory[ row ]
-    PasteAsMultipleFiles( [
-        selectedHistory
-    ] )
+    selected := AppState.History[ row ]
+    PasteSingleFile( selected, false )
 }
 
-_OnFullHistoryContextMenu( lv, row, isRightClick, x, y ) {
-    if ( row = 0 ) {
+OnFullHistoryContextMenu( lv, row, isRightClick, x, y ) {
+    if row == 0
         return
-    }
-    selectedHistory := clipboardHistory[ row ]
-    contextMenu := Menu()
-    contextMenu.Add( "📄 Paste as File", ( * ) => PasteAsMultipleFiles( [
-        selectedHistory
-    ] ) )
-    contextMenu.Add( "🔍 Preview", ( * ) => ShowPreviewGui( selectedHistory[ "text" ] ) )
-    contextMenu.Add( "❌ Delete", ( * ) => DeleteFromFullHistory( row ) )
-    contextMenu.Show( x, y )
+    selected := AppState.History[ row ]
+    myMenu := Menu()
+    myMenu.Add( "📄 Paste as File", ( * ) => PasteAsMultipleFiles( [ selected ] ) )
+    myMenu.Add( "🔍 Preview", ( * ) => ShowPreviewGui( selected[ "text" ] ) )
+    myMenu.Add( "❌ Delete", ( * ) => DeleteFromFullHistory( row ) )
+    myMenu.Show( x, y )
 }
 
-_PasteSelectedFromFullHistory() {
-    global clipboardHistory, fullHistoryGui, targetWindow
-
-    lv := fullHistoryGui.ListView
+PasteSelectedFromFullHistory() {
+    myGui := AppState.FullHistoryGui
+    lv := myGui.ListView
     fileList := []
     row := 0
-    while ( row := lv.GetNext( row, "Checked" ) ) {
-        fileList.Push( clipboardHistory[ row ] )
+    while row := lv.GetNext( row, "Checked" ) {
+        fileList.Push( AppState.History[ row ] )
     }
-
-    if ( fileList.Length = 0 ) {
-        ShowToolTip( "Please select at least one item", 1500 )
+    if fileList.Length == 0 {
+        ShowToolTip( "请至少选择一个条目", 1500 )
         return
     }
 
-    if !WinExist( "ahk_id " targetWindow ) {
-        currentWin := WinExist( "A" )
-        if ( currentWin && currentWin != fullHistoryGui.Hwnd ) {
-            targetWindow := currentWin
-        } else {
-            ShowToolTip( "Target window closed.`nSwitch to desired window within 2 seconds...", 2500 )
+    if !WinExist( "ahk_id " AppState.TargetWindow ) {
+        current := WinExist( "A" )
+        if current && current != myGui.Hwnd
+            AppState.TargetWindow := current
+        else {
+            ShowToolTip( "目标窗口已关闭，请在2秒内切换至目标窗口...", 2500 )
             loop 20 {
                 Sleep( 100 )
-                currentWin := WinExist( "A" )
-                if ( currentWin && currentWin != fullHistoryGui.Hwnd ) {
-                    targetWindow := currentWin
+                current := WinExist( "A" )
+                if current && current != myGui.Hwnd {
+                    AppState.TargetWindow := current
                     break
                 }
             }
-            if !targetWindow {
-                ShowToolTip( "No new window detected, operation cancelled", 2000 )
+            if !AppState.TargetWindow {
+                ShowToolTip( "未检测到新窗口，操作取消", 2000 )
                 return
             }
         }
     }
-
-    state := WinGetMinMax( "ahk_id " targetWindow )
-    if ( state = -1 ) {
-        WinRestore( "ahk_id " targetWindow )
-    }
-    WinActivate( "ahk_id " targetWindow )
-    if !WinWaitActive( "ahk_id " targetWindow, , 1 ) {
-        ShowToolTip( "Cannot activate target window, please click it manually", 2000 )
-        return
-    }
+    WinActivate( "ahk_id " AppState.TargetWindow )
     Sleep( 100 )
-
     for item in fileList {
-        PasteSingleFile( item[ "text" ], false )
+        PasteSingleFile( item, false )
         Sleep( 200 )
     }
-    ShowToolTip( "Paste completed", 1500 )
+    ShowToolTip( "粘贴完成", 1500 )
 }
 
-_OnSelectAllClicked( chk, info ) {
+OnSelectAllClicked( chk, info ) {
     lv := chk.Gui.ListView
     total := lv.GetCount()
     checked := 0
     row := 0
-    while ( row := lv.GetNext( row, "Checked" ) ) {
+    while row := lv.GetNext( row, "Checked" )
         checked++
-    }
-    if ( checked = total ) {
-        loop total {
+    if checked == total {
+        loop total
             lv.Modify( A_Index, "-Check" )
-        }
         chk.Value := 0
     } else {
-        loop total {
+        loop total
             lv.Modify( A_Index, "Check" )
-        }
         chk.Value := 1
     }
 }
 
-_OnDeleteSelected( * ) {
-    global clipboardHistory, fullHistoryGui
-
-    lv := fullHistoryGui.ListView
+OnDeleteSelected( * ) {
+    myGui := AppState.FullHistoryGui
+    lv := myGui.ListView
     rowsToDelete := []
     row := 0
-    while ( row := lv.GetNext( row, "Checked" ) ) {
+    while row := lv.GetNext( row, "Checked" )
         rowsToDelete.Push( row )
-    }
-    if ( rowsToDelete.Length = 0 ) {
-        ShowToolTip( "No checked items", 1500 )
+    if rowsToDelete.Length == 0 {
+        ShowToolTip( "未选中任何条目", 1500 )
         return
     }
     loop rowsToDelete.Length {
         idx := rowsToDelete[ rowsToDelete.Length - A_Index + 1 ]
-        clipboardHistory.RemoveAt( idx )
+        HistoryManager.Delete( idx )
     }
-    SaveHistory()
-    _RefreshFullHistoryList()
+    RefreshFullHistoryList()
 }
 
-_UpdateSelectAllCheckbox() {
-    global fullHistoryGui
+OnItemCheck( lv, row, checked ) {
+    UpdateSelectAllCheckbox()
+}
 
-    lv := fullHistoryGui.ListView
+UpdateSelectAllCheckbox() {
+    myGui := AppState.FullHistoryGui
+    lv := myGui.ListView
     total := lv.GetCount()
     checked := 0
     row := 0
-    while ( row := lv.GetNext( row, "Checked" ) ) {
+    while row := lv.GetNext( row, "Checked" )
         checked++
-    }
-    fullHistoryGui.chkSelectAll.Value := ( checked = total ) ? 1 : 0
-}
-
-_OnItemCheck( lv, row, checked ) {
-    _UpdateSelectAllCheckbox()
+    myGui.chkSelectAll.Value := ( checked == total ) ? 1 : 0
 }

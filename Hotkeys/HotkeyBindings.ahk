@@ -1,17 +1,14 @@
 #Requires AutoHotkey v2.0
 
 *CapsLock:: {
-    if !( A_PriorKey = "CapsLock" ) {
+    if !( A_PriorKey = "CapsLock" )
         return
-    }
-    if ( A_TimeSincePriorHotkey > 300 || A_TimeSincePriorHotkey < 50 ) {
+    if ( A_TimeSincePriorHotkey > 300 || A_TimeSincePriorHotkey < 50 )
         return
-    }
-    if GetKeyState( "CapsLock", "T" ) {
+    if GetKeyState( "CapsLock", "T" )
         SetCapsLockState( "AlwaysOff" )
-    } else {
+    else
         SetCapsLockState( "AlwaysOn" )
-    }
 }
 
 #HotIf GetKeyState( "CapsLock", "P" )
@@ -40,9 +37,8 @@
 
     LButton:: {
         AdjustOpacity( 20 )
-        if KeyWait( "LButton", "T0.3" ) {
+        if KeyWait( "LButton", "T0.3" )
             return
-        }
         while GetKeyState( "LButton", "P" ) {
             AdjustOpacity( 5 )
             Sleep( 50 )
@@ -51,9 +47,8 @@
 
     RButton:: {
         AdjustOpacity( -20 )
-        if KeyWait( "RButton", "T0.3" ) {
+        if KeyWait( "RButton", "T0.3" )
             return
-        }
         while GetKeyState( "RButton", "P" ) {
             AdjustOpacity( -5 )
             Sleep( 50 )
@@ -62,22 +57,20 @@
 
     MButton:: {
         hwnd := WinExist( "A" )
-        currentTrans := WinGetTransparent( hwnd )
-        if ( currentTrans = "" || currentTrans = 255 ) {
+        current := WinGetTransparent( hwnd )
+        if current == "" || current == 255
             WinSetTransparent( 10, hwnd )
-        } else {
+        else
             WinSetTransparent( 255, hwnd )
-        }
     }
 
     w::
     8::
     Numpad8:: {
-        if WinGetMinMax( "A" ) = 1 {
+        if WinGetMinMax( "A" ) == 1
             WinRestore( "A" )
-        } else {
+        else
             WinMaximize( "A" )
-        }
     }
 
     s::
