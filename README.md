@@ -17,7 +17,7 @@
   <p style="word-spacing: 6px; margin-top: 20px;">
     <a href="#-shortcut-quick-reference" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Shortcut Quick Reference</a> &nbsp;•&nbsp;
     <a href="#-installation--setup" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Installation & Setup</a> &nbsp;•&nbsp;
-    <a href="#%EF%B8%8F-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration & Parameters</a> &nbsp;•&nbsp;
+    <a href="#️-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration & Parameters</a> &nbsp;•&nbsp;
     <a href="#-support-the-author" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Support the Author</a>
   </p>
 </div>
@@ -60,7 +60,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
 </div>
 
 <div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">🪟 Window &amp; Tabs</h3>
+  <h3 style="margin-top: 0; color: #D6D2CC;">🪟 Window & Tabs</h3>
   <ul style="color: #BEB8AE;">
     <li>Hold CapsLock + mouse → transparency</li>
     <li>Middle‑click → ghost mode (10% ↔ 100%)</li>
@@ -73,47 +73,50 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
 
 ## 🎹 Shortcut Quick Reference
 
-*All shortcuts below require **holding `CapsLock`** while pressing the corresponding key (except double-click `CapsLock`).*
+_All shortcuts below require **holding `CapsLock`** while pressing the corresponding key (except double-click `CapsLock`)._
 
-| Category | Shortcut | Description |
-|:---|:---|:---|
-| **System** | `CapsLock` (double-click) | Toggle native CapsLock state (50~300ms double-click window) |
-| **Clipboard** | `C` | Copy selection as **plain text** (auto strip formatting) |
-| | `V` | **Smart paste** (multi-file/image-to-PDF/text with source) |
-| | `Shift+V` | Open **clipboard history** quick menu |
-| | `F` | **Swap case** of clipboard text |
-| **Navigation** | `←` / `→` | Move cursor left/right **by one word** |
-| | `↑` / `↓` | Jump to **beginning** / **end of line** |
-| | `Space` | Select the **entire word** under the cursor |
-| **Selection** | `Shift+←` / `→` | Select left/right **by word** |
-| | `Shift+↑` / `↓` | Select left/right **by line** (to start/end of line) |
-| **Editing** | `A` / `D` | `Backspace` / `Delete` (delete single character) |
-| | `Shift+A` / `D` | Delete left/right **entire word** |
-| | `Backspace` / `Delete` | Delete **entire line** (from start to end) |
-| **Window** | `T` | Toggle current window **always on top** |
-| | `W` / `8` / `Num8` | **Maximize / Restore** current window |
-| | `S` / `2` / `Num2` | **Minimize** current window |
-| **Mouse** | `Left Button` (click/hold) | **Increase** window transparency (click +20, hold +100 per second) |
-| | `Right Button` (click/hold) | **Decrease** window transparency (click -20, hold -100 per second) |
-| | `Middle Button` | **Toggle** transparency: 10% (ghost mode) ↔ 100% (normal) |
-| **Tabs** | `Q` / `E` | Switch to **previous** / **next** tab (`Ctrl+PgUp/PgDn`) |
+| Category       | Shortcut                    | Description                                                        |
+| :------------- | :-------------------------- | :----------------------------------------------------------------- |
+| **System**     | `CapsLock` (double-click)   | Toggle native CapsLock state (50~300ms double-click window)        |
+| **Clipboard**  | `C`                         | Copy selection as **plain text** (auto strip formatting)           |
+|                | `V`                         | **Smart paste** (multi-file/image-to-PDF/text with source)         |
+|                | `Shift+V`                   | Open **clipboard history** quick menu                              |
+|                | `F`                         | **Swap case** of clipboard text                                    |
+| **Navigation** | `←` / `→`                   | Move cursor left/right **by one word**                             |
+|                | `↑` / `↓`                   | Jump to **beginning** / **end of line**                            |
+|                | `Space`                     | Select the **entire word** under the cursor                        |
+| **Selection**  | `Shift+←` / `→`             | Select left/right **by word**                                      |
+|                | `Shift+↑` / `↓`             | Select left/right **by line** (to start/end of line)               |
+| **Editing**    | `A` / `D`                   | `Backspace` / `Delete` (delete single character)                   |
+|                | `Shift+A` / `D`             | Delete left/right **entire word**                                  |
+|                | `Backspace` / `Delete`      | Delete **entire line** (from start to end)                         |
+| **Window**     | `T`                         | Toggle current window **always on top**                            |
+|                | `W` / `8` / `Num8`          | **Maximize / Restore** current window                              |
+|                | `S` / `2` / `Num2`          | **Minimize** current window                                        |
+| **Mouse**      | `Left Button` (click/hold)  | **Increase** window transparency (click +20, hold +100 per second) |
+|                | `Right Button` (click/hold) | **Decrease** window transparency (click -20, hold -100 per second) |
+|                | `Middle Button`             | **Toggle** transparency: 10% (ghost mode) ↔ 100% (normal)          |
+| **Tabs**       | `Q` / `E`                   | Switch to **previous** / **next** tab (`Ctrl+PgUp/PgDn`)           |
 
 ---
 
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-1. **AutoHotkey v2** – Download and install from [autohotkey.com](https://www.autohotkey.com/)  
+
+1. **AutoHotkey v2** – Download and install from [autohotkey.com](https://www.autohotkey.com/)
 2. **ImageMagick** (optional) – Required for "Image set to PDF" feature; install from [imagemagick.org](https://imagemagick.org/) (check "Install legacy utilities" during setup)
 
 ### Quick Start
-1. **Download the project** and extract `CapsLock-.ahk` along with the `modules/` folder to any directory  
-2. **Run the script**: Double-click `CapsLock-.ahk`, a new icon will appear in the system tray  
+
+1. **Download the project** and extract `CapsLock-.ahk` along with the `modules/` folder to any directory
+2. **Run the script**: Double-click `CapsLock-.ahk`, a new icon will appear in the system tray
 3. **(Optional) Auto-start with Windows**: Right-click the tray icon → check **"Load on start up"**
 
 ### Configure ImageMagick (only for image-to-PDF)
-1. Right-click the tray icon → click **"ImageMagick: Not Set"**  
-2. Browse to the ImageMagick installation directory and select `magick.exe` (e.g., `C:\Program Files\ImageMagick-7.x.x-Q16\magick.exe`)  
+
+1. Right-click the tray icon → click **"ImageMagick: Not Set"**
+2. Browse to the ImageMagick installation directory and select `magick.exe` (e.g., `C:\Program Files\ImageMagick-7.x.x-Q16\magick.exe`)
 3. The path will be saved automatically to `configs/Config.ini`, and the status will change to **"ImageMagick: Valid"**
 
 ---
@@ -122,23 +125,25 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
 
 ### Tray Menu Settings
 
-| Menu Item | Description |
-|:---|:---|
-| `ImageMagick: Not Set / Valid` | Set the path to the ImageMagick executable |
-| `Open Temp Folder` | Open the temporary folder (`%TEMP%`, where temporary paste files are stored) |
-| `Delete Mode` | Temporary file cleanup mode: 1=delayed delete, 2=batch cleanup, 3=never delete |
-| `Mode1: Set Delete Delay...` | Delay in seconds for Mode 1 (default 10 seconds) |
-| `Mode2: Set Cleanup Interval...` | Cleanup interval in seconds for Mode 2 (default 30 seconds) |
-| `Set Max History Limit...` | Maximum number of clipboard history entries (0 disables history, default 10000) |
-| `Paste Mode` | Paste mode: 1=paste as temporary txt file, 2=paste as plain text with source markers |
-| `Load on start up` | Toggle auto-start with Windows (writes to registry `HKCU\Run`) |
-| `Reload` | Reload the script |
-| `Exit` | Exit the script |
+| Menu Item                        | Description                                                                                                      |
+| :------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `ImageMagick: Not Set / Valid`   | Set the path to the ImageMagick executable                                                                       |
+| `Open Temp Folder`               | Open the temporary folder (`%TEMP%`, where temporary paste files are stored)                                     |
+| `Delete Mode`                    | Temporary file cleanup mode: 1=delayed delete, 2=batch cleanup, 3=never delete                                   |
+| `Mode1: Set Delete Delay...`     | Delay in seconds for Mode 1 (default 10 seconds)                                                                 |
+| `Mode2: Set Cleanup Interval...` | Cleanup interval in seconds for Mode 2 (default 30 seconds)                                                      |
+| `Set Max History Limit...`       | Maximum number of clipboard history entries (0 disables history, default 10000)                                  |
+| `Paste Mode`                     | Paste mode: 1=paste as temporary txt file, 2=paste as plain text with source markers                             |
+| `Ignore Rules`                   | Edit regular expression patterns to exclude certain files from being processed (e.g., temporary or system files) |
+| `Language`                       | Switch the UI language (requires `lang.csv`; supported: en, fr, zh, ja, ko, zh_TW, ru, pl, es, pt, de, tr, it)   |
+| `Load on start up`               | Toggle auto-start with Windows (writes to registry `HKCU\Run`)                                                   |
+| `Reload`                         | Reload the script                                                                                                |
+| `Exit`                           | Exit the script                                                                                                  |
 
-### Configuration File `configs/Config.ini` (auto-generated)
-
+### Configuration File `configs/Config.ini`
 
 📁 configs/Config.ini
+
 ```ini
 [Cleanup]
 deleteMode=1          ; 1=delayed 2=batch 3=never
@@ -153,16 +158,23 @@ pasteMode=1           ; 1=paste as file 2=paste as text with source
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
+
+[Ignore]
+Rules=                ; newline-separated regular expressions
+; Example:
+; ^C:\\Windows\\.*      # ignore all files under Windows folder
+; \\.tmp$               # ignore .tmp files
 ```
 
 ### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 
-| Variable | Default | Description |
-|:---|:---|:---|
-| `ENCRYPT_KEY` | `0x5A` | XOR encryption key (0 means plaintext history) |
-| `MAX_VISIBLE_MENU` | `15` | Maximum entries shown in the history quick menu |
-| `TextFormats` | 50+ common extensions | List of extensions treated as "text files" |
-| `ImageFormats` | png, jpg, bmp… | Image formats supported for PDF conversion |
+| Variable           | Default               | Description                                            |
+| :----------------- | :-------------------- | :----------------------------------------------------- |
+| `ENCRYPT_KEY`      | `0x5A`                | XOR encryption key (0 means plaintext history)         |
+| `MAX_VISIBLE_MENU` | `15`                  | Maximum entries shown in the history quick menu        |
+| `TextFormats`      | 50+ common extensions | List of extensions treated as "text files"             |
+| `ImageFormats`     | png, jpg, bmp…        | Image formats supported for PDF conversion             |
+| `IgnorePatterns`   | (empty)               | Default ignore rules (can be overridden via Tray menu) |
 
 ---
 
@@ -171,8 +183,8 @@ Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
 ```tree
 CapsLock-
 ├── 📁 assets
-│   ├── 🎵 AlwaysOnTopOff.wav
 │   ├── 🎵 AlwaysOnTopOn.wav
+│   ├── 🎵 AlwaysOnTopOff.wav
 │   ├── 🖼️ bar.svg
 │   ├── 🖼️ CapsLock-.ico
 │   ├── 🖼️ Config.ico
@@ -185,21 +197,18 @@ CapsLock-
 │   └── 🖼️ Utils.ico
 ├── 📁 Config
 │   ├── 📄 ConfigManager.ahk
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 Encryption.ahk
 │   └── 📄 Globals.ahk
 ├── 📁 Core
 │   ├── 📄 Cleanup.ahk
 │   ├── 📄 Clipboard.ahk
 │   ├── 📄 ClipboardPaste.ahk
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 FileOperations.ahk
 │   ├── 📄 FileValidation.ahk
 │   ├── 📄 FolderOperations.ahk
 │   ├── 📄 ImageToPdf.ahk
 │   └── 📄 WindowUtils.ahk
 ├── 📁 History
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 FullHistoryGui.ahk
 │   ├── 📄 FullHistoryHandlers.ahk
 │   ├── 📄 HistoryDelete.ahk
@@ -207,27 +216,23 @@ CapsLock-
 │   ├── 📄 HistoryPaste.ahk
 │   └── 📄 HistoryStorage.ahk
 ├── 📁 Hotkeys
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 HotkeyActions.ahk
 │   ├── 📄 HotkeyBindings.ahk
 │   └── 📄 PasteHandler.ahk
 ├── 📁 Tray
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 TrayMenu.ahk
 │   └── 📄 TraySettings.ahk
 ├── 📁 UI
-│   ├── ⚙️ desktop.ini
 │   ├── 📄 OSD.ahk
 │   └── 📄 PreviewGui.ahk
 ├── 📁 Utils
-│   ├── ⚙️ desktop.ini
-│   ├── 📄 FileContentMerger.ahk
-│   ├── 📄 MathUtils.ahk
+│   ├── 📄 Language.ahk
+│   ├── 📄 MethodsUtils.ahk
 │   └── 📄 ResourceSound.ahk
 ├── 📄 CapsLock-.ahk
-├── ⚙️ desktop.ini
 ├── ⚖️ LICENSE
-└── 📖 README.md
+├── 📖 README.md
+└── 🌐 lang.csv
 ```
 
 ---
@@ -239,6 +244,8 @@ CapsLock-
 - **Encrypted history storage** – Employs simple XOR stream encryption to obfuscate the history file, deterring casual snooping (for high‑security needs, set `ENCRYPT_KEY` to 0 and rely on Windows EFS/BitLocker).
 - **Delayed / batch cleanup mechanism** – Supports two temporary file cleanup strategies: delayed deletion (each file has its own timer) and batch scanning (reduces I/O pressure).
 - **Modular design** – Each functional domain is separated into its own `.ahk` file for easy maintenance and further development.
+- **Multi‑language support** – Uses a CSV‑based translation system; users can switch languages on the fly via the tray menu.
+- **File ignore rules** – Allows users to define regex patterns to exclude specific files or folders from being processed during paste operations, improving safety and performance.
 
 ---
 
@@ -246,22 +253,23 @@ CapsLock-
 
 > ⚠️ The history file `configs/ClipHistory.bin` is encrypted using a **fixed XOR key** (default `0x5A`). This is **only intended to prevent casual viewing and offers no cryptographic strength**.
 
-If you handle highly sensitive data, it is recommended to:  
-1. Set `ENCRYPT_KEY` to `0` (disable encryption)  
+If you handle highly sensitive data, it is recommended to:
+
+1. Set `ENCRYPT_KEY` to `0` (disable encryption)
 2. Use Windows built-in **EFS** or **BitLocker** to encrypt the entire configuration folder
 
 ---
 
 ## 🤝 Contributing & Feedback
 
-Issues and Pull Requests are welcome.  
+Issues and Pull Requests are welcome.
 Please ensure your code conforms to AHK v2 syntax and follows the existing modular style.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.  
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
 See the [LICENSE](LICENSE) file for details.
 
 ---
