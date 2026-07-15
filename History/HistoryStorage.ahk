@@ -113,3 +113,24 @@ class HistoryManager {
         return ""
     }
 }
+
+ClipboardChanged( DataType ) {
+    global AppState, HistoryManager
+    if AppState.IgnoreNextClipChange {
+        AppState.IgnoreNextClipChange := false
+        return
+    }
+    if DataType != 1
+        return
+    text := A_Clipboard
+    if InStr( text, A_Temp "\ClipTemp_" )
+        return
+    AppState.LastManualClipboard := text
+    if AppState.MaxHistory == 0
+        return
+    try sourceTitle := WinGetTitle( "A" )
+    catch
+        sourceTitle := "Unknown Window"
+
+    HistoryManager.Add( text, sourceTitle )
+}

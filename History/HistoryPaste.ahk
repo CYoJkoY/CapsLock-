@@ -5,7 +5,7 @@ PasteAsFile( historyItem ) {
         return
     if AppState.PasteMode == 1 {
         if PathDetector.IsMultiFolderPathText( historyItem[ "text" ] ) {
-            folders := PathDetector.GetValidPathsFromText( historyItem[ "text" ], "PathDetector.IsFolderPath" )
+            folders := PathDetector.GetValidPathsFromText( historyItem[ "text" ], "folder" )
             if folders.Length > 0 {
                 merged := FileHelper.ReadMultipleFoldersAsText( folders )
                 sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
@@ -54,8 +54,8 @@ TryPasteFolderOrFileAsText( targetText ) {
     }
 
     if PathDetector.IsMixedPathsText( targetText ) {
-        files := PathDetector.GetValidPathsFromText( targetText, "FileExist" )
-        folders := PathDetector.GetValidPathsFromText( targetText, "PathDetector.IsFolderPath" )
+        files := PathDetector.GetValidPathsFromText( targetText, "file" )
+        folders := PathDetector.GetValidPathsFromText( targetText, "folder" )
         combined := ""
         if files.Length > 0
             combined .= FileHelper.ReadMultipleFilesAsText( files )
@@ -68,7 +68,7 @@ TryPasteFolderOrFileAsText( targetText ) {
     }
 
     if PathDetector.IsMultiFolderPathText( targetText ) {
-        folders := PathDetector.GetValidPathsFromText( targetText, "PathDetector.IsFolderPath" )
+        folders := PathDetector.GetValidPathsFromText( targetText, "folder" )
         if folders.Length > 0 {
             merged := FileHelper.ReadMultipleFoldersAsText( folders )
             PastePlainTextWithBackup( merged, "粘贴 " folders.Length " 个文件夹内容" )
@@ -77,7 +77,7 @@ TryPasteFolderOrFileAsText( targetText ) {
     }
 
     if PathDetector.IsMultiFilePathText( targetText ) {
-        files := PathDetector.GetValidPathsFromText( targetText, "FileExist" )
+        files := PathDetector.GetValidPathsFromText( targetText, "file" )
         if files.Length > 0 {
             merged := FileHelper.ReadMultipleFilesAsText( files )
             PastePlainTextWithBackup( merged, "粘贴 " files.Length " 个文件内容" )

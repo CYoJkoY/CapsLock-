@@ -94,14 +94,21 @@ class PathDetector {
         return false
     }
 
-    static GetValidPathsFromText( text, validateFunc ) {
+    static GetValidPathsFromText( text, mode ) {
         lines := StrSplit( text, "`n", "`r" )
         valid := []
         for line in lines {
             line := Trim( line )
             if line == ""
                 continue
-            if ( %validateFunc%( line ) )
+            isValid := false
+            if ( mode == "folder" ) {
+                isValid := this.IsFolderPath( line )
+            } else if ( mode == "file" ) {
+                attrs := FileExist( line )
+                isValid := ( attrs != "" && !InStr( attrs, "D" ) )
+            }
+            if isValid
                 valid.Push( line )
         }
         return valid

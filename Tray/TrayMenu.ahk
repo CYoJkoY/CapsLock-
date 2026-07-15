@@ -46,10 +46,17 @@ RefreshImStatus() {
     newText := valid ? "ImageMagick: 已设置 (点击更改)" : "ImageMagick: 未设置/无效"
     if AppState.currentImMenuText == newText
         return
+
     Tray := AppState.TrayMenu
-    if AppState.currentImMenuText != ""
-        Tray.Delete( AppState.currentImMenuText )
-    Tray.Insert( 1, newText, ( * ) => SetImPath() )
+    oldText := AppState.currentImMenuText
+
+    if oldText != "" {
+        try Tray.Delete( oldText )
+        Tray.Insert( 1, newText, ( * ) => SetImPath() )
+    } else {
+        Tray.Add( newText, ( * ) => SetImPath() )
+    }
+
     if valid
         Tray.Check( newText )
     else
