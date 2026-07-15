@@ -34,6 +34,10 @@ ShowFullHistoryGui( ItemName?, ItemPos?, MyMenu? ) {
     btnPaste.OnEvent( "Click", ( * ) => PasteSelectedFromFullHistory() )
     myGui.btnPaste := btnPaste
 
+    btnPasteText := myGui.Add( "Button", "x+10 yp", "Paste as Text" )
+    btnPasteText.OnEvent( "Click", ( * ) => PasteSelectedFromFullHistoryText() )
+    myGui.btnPasteText := btnPasteText
+
     btnClose := myGui.Add( "Button", "x+10 yp", "Close" )
     btnClose.OnEvent( "Click", ( * ) => myGui.Destroy() )
     myGui.btnClose := btnClose
@@ -76,8 +80,11 @@ RefreshFullHistoryList() {
 ResizeFullHistoryGui( guiObj, minmax, width, height ) {
     lv := guiObj.ListView
     lv.Move( 10, 40, width - 20, height - 140 )
+
     guiObj.btnPaste.Move( 10, height - 80 )
-    guiObj.btnClose.Move( 120, height - 80 )
+    guiObj.btnPasteText.Move( 120, height - 80 )
+    guiObj.btnClose.Move( 230, height - 80 )
+
     guiObj.chkSelectAll.Move( 10, height - 40 )
     guiObj.btnDeleteSelected.Move( 120, height - 40 )
 }

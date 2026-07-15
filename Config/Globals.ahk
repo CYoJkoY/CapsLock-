@@ -44,4 +44,5 @@ class AppState {
     static modeMenu := ""
     static pasteModeMenu := ""
     static currentImMenuText := ""
+    static IgnorePatterns := []
 }

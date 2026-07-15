@@ -3,6 +3,7 @@
 PasteAsFile( historyItem ) {
     if AppState.PasteMode == 2 && TryPasteFolderOrFileAsText( historyItem[ "text" ] )
         return
+
     if AppState.PasteMode == 1 {
         if PathDetector.IsMultiFolderPathText( historyItem[ "text" ] ) {
             folders := PathDetector.GetValidPathsFromText( historyItem[ "text" ], "folder" )
@@ -27,6 +28,11 @@ PasteAsFile( historyItem ) {
     }
 
     if PathDetector.IsFilePath( historyItem[ "text" ] ) && FileExist( historyItem[ "text" ] ) {
+        if FileHelper.ShouldIgnore( historyItem[ "text" ] ) {
+            ShowToolTip( "文件被忽略规则跳过", 1500 )
+            return
+        }
+
         PasteSingleFile( historyItem, true )
     } else {
         PastePlainTextWithSource( historyItem )
@@ -123,10 +129,17 @@ PasteSingleFile( historyItem, activate := true ) {
         textToPaste := historyItem[ "text" ]
     else
         textToPaste := historyItem
+
+    if FileHelper.ShouldIgnore( textToPaste ) {
+        ShowToolTip( "文件被忽略规则跳过", 1500 )
+        return
+    }
+
     if PathDetector.IsImagePathsText( textToPaste ) {
         PasteImagesAsPdf( textToPaste )
         return
     }
+
     sourceInfo := ""
     if Type( historyItem ) == "Map" {
         sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
@@ -140,6 +153,7 @@ PasteSingleFile( historyItem, activate := true ) {
         if sourceInfo == ""
             sourceInfo := "Source: (Pasted from History) | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
     }
+
     fullContent := "; " sourceInfo "`n`n" textToPaste
     tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
     FileAppend( fullContent, tempFile, "UTF-8" )
@@ -149,6 +163,7 @@ PasteSingleFile( historyItem, activate := true ) {
     } else {
         Send( "^v" )
     }
+
     CleanupManager.ScheduleDeletion( tempFile )
 }
 

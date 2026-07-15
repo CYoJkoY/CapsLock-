@@ -95,3 +95,40 @@ SetImPath( * ) {
     RefreshImStatus()
     MsgBox( "ImageMagick 路径已设置`n" SelectedFile, "成功", "Iconi T2" )
 }
+
+SetIgnorePatterns( * ) {
+    global AppState, ConfigManager
+    myGui := Gui( "+AlwaysOnTop", "忽略规则设置" )
+    myGui.SetFont( "s10", "Microsoft YaHei" )
+    myGui.Add( "Text", , "每行一个正则表达式，匹配的文件路径将被跳过：" )
+
+    myEdit := myGui.Add( "Edit", "Multi VScroll w500 h200", "" )
+    current := ""
+    for pattern in AppState.IgnorePatterns
+        current .= pattern "`n"
+    myEdit.Value := RTrim( current, "`n" )
+
+    btnOK := myGui.Add( "Button", "Default w80", "确定" )
+    btnCancel := myGui.Add( "Button", "x+10 w80", "取消" )
+
+    btnOK.OnEvent( "Click", ( * ) => SaveIgnoreRules( myEdit.Text, myGui ) )
+    btnCancel.OnEvent( "Click", ( * ) => myGui.Destroy() )
+    myGui.OnEvent( "Escape", ( * ) => myGui.Destroy() )
+    myGui.Show()
+}
+
+SaveIgnoreRules( text, myGui ) {
+    global AppState, ConfigManager
+    newPatterns := []
+    lines := StrSplit( text, "`n", "`r" )
+    for line in lines {
+        line := Trim( line )
+        if line != ""
+            newPatterns.Push( line )
+    }
+    AppState.IgnorePatterns := newPatterns
+    ConfigManager.Save()
+    myGui.Destroy()
+    ToolTip( "忽略规则已更新" )
+    SetTimer( () => ToolTip(), -2000 )
+}

@@ -1,6 +1,17 @@
 #Requires AutoHotkey v2.0
 
 class FileHelper {
+    static ShouldIgnore( filePath ) {
+        for pattern in AppState.IgnorePatterns {
+            try {
+                if RegExMatch( filePath, pattern )
+                    return true
+            } catch {
+            }
+        }
+        return false
+    }
+
     static ReadMultipleFilesAsText( filePaths ) {
         result := ""
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss" )
@@ -8,6 +19,10 @@ class FileHelper {
             filePath := Trim( filePath )
             if filePath == ""
                 continue
+
+            if this.ShouldIgnore( filePath )
+                continue
+
             result .= this.BuildFileHeader( filePath, timestamp )
             result .= this.ReadFileContentSafe( filePath )
         }

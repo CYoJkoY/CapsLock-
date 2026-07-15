@@ -60,6 +60,58 @@ PasteSelectedFromFullHistory() {
     ShowToolTip( "粘贴完成", 1500 )
 }
 
+PasteSelectedFromFullHistoryText() {
+    myGui := AppState.FullHistoryGui
+    lv := myGui.ListView
+    textList := []
+    row := 0
+    while row := lv.GetNext( row, "Checked" ) {
+        item := AppState.History[ row ]
+        textList.Push( item[ "text" ] )
+    }
+
+    if textList.Length == 0 {
+        ShowToolTip( "请至少选择一个条目", 1500 )
+        return
+    }
+
+    combined := ""
+    for t in textList
+        combined .= t "`n"
+    combined := RTrim( combined, "`n" )
+
+    backup := A_Clipboard
+    A_Clipboard := combined
+    if !WinExist( "ahk_id " AppState.TargetWindow ) {
+        current := WinExist( "A" )
+        if current && current != myGui.Hwnd
+            AppState.TargetWindow := current
+        else {
+            ShowToolTip( "目标窗口已关闭，请在2秒内切换至目标窗口...", 2500 )
+            loop 20 {
+                Sleep( 100 )
+                current := WinExist( "A" )
+                if current && current != myGui.Hwnd {
+                    AppState.TargetWindow := current
+                    break
+                }
+            }
+
+            if !AppState.TargetWindow {
+                ShowToolTip( "未检测到新窗口，操作取消", 2000 )
+                return
+            }
+
+        }
+    }
+    WinActivate( "ahk_id " AppState.TargetWindow )
+    Sleep( 100 )
+    Send( "^v" )
+    Sleep( 50 )
+    A_Clipboard := backup
+    ShowToolTip( "粘贴完成 (" textList.Length " 条)", 1500 )
+}
+
 OnSelectAllClicked( chk, info ) {
     lv := chk.Gui.ListView
     total := lv.GetCount()

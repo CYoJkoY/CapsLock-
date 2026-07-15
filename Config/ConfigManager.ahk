@@ -12,8 +12,10 @@ class ConfigManager {
                 FileDelete( oldPath )
             }
         }
+
         if !FileExist( cfg )
             return
+
         try {
             AppState.DeleteMode := IniRead( cfg, "Cleanup", "deleteMode", 1 )
             AppState.DeleteDelay := IniRead( cfg, "Cleanup", "deleteDelay", 10 )
@@ -21,6 +23,14 @@ class ConfigManager {
             AppState.ImageMagickExe := IniRead( cfg, "ImageMagick", "Path", "" )
             AppState.MaxHistory := IniRead( cfg, "History", "maxHistory", 10000 )
             AppState.PasteMode := IniRead( cfg, "General", "pasteMode", 1 )
+            ignoreStr := IniRead( cfg, "Ignore", "Rules", "" )
+
+            if ignoreStr != "" {
+                AppState.IgnorePatterns := StrSplit( ignoreStr, "`n", "`r" )
+            } else {
+                AppState.IgnorePatterns := []
+            }
+
         } catch {
         }
     }
@@ -33,6 +43,14 @@ class ConfigManager {
             IniWrite( AppState.CleanupInterval, cfg, "Cleanup", "cleanupInterval" )
             IniWrite( AppState.MaxHistory, cfg, "History", "maxHistory" )
             IniWrite( AppState.PasteMode, cfg, "General", "pasteMode" )
+
+            ignoreStr := ""
+            for pattern in AppState.IgnorePatterns
+                ignoreStr .= pattern "`n"
+            ignoreStr := RTrim( ignoreStr, "`n" )
+
+            IniWrite( ignoreStr, cfg, "Ignore", "Rules" )
+
         } catch {
         }
     }

@@ -28,6 +28,7 @@ TraySetup() {
     pasteModeMenu.Add( "1 - 粘贴为文件", ( * ) => SetPasteMode( 1 ) )
     pasteModeMenu.Add( "2 - 粘贴为文本（带来源）", ( * ) => SetPasteMode( 2 ) )
     Tray.Add( "粘贴模式", pasteModeMenu )
+    Tray.Add( "忽略规则设置", ( * ) => SetIgnorePatterns() )
 
     Tray.Add()
     Tray.Add( "开机自启", ToggleAutoStart )
