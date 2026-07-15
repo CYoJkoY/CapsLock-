@@ -2,7 +2,7 @@
 
 ShowHistoryMenu( isReturning := false ) {
     if AppState.History.Length == 0 {
-        ToolTip( "没有手动复制历史" )
+        ToolTip( Lang( "MSG_NO_HISTORY" ) )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
@@ -29,7 +29,7 @@ ShowHistoryMenu( isReturning := false ) {
     }
     if total > AppState.MAX_VISIBLE_MENU {
         myMenu.Add()
-        myMenu.Add( "📋 查看完整历史 (" total " 项)...", ShowFullHistoryGui )
+        myMenu.Add( Lang( "HISTORY_MENU_VIEW_FULL", , total ), ShowFullHistoryGui )
     }
     myMenu.Show( AppState.MenuPosX, AppState.MenuPosY )
 }
@@ -38,10 +38,10 @@ ActionPickerHandler( ItemName, ItemPos, MyMenu ) {
     AppState.SelectedIndex := ItemPos
     AppState.SelectedItem := AppState.History[ ItemPos ]
     action := Menu()
-    action.Add( "📄 粘贴为文件", ( * ) => PasteAsFile( AppState.SelectedItem ) )
-    action.Add( "🔍 预览内容", ( * ) => ShowPreviewGui( AppState.SelectedItem[ "text" ] ) )
-    action.Add( "❌ 从历史删除", ( * ) => ( HistoryManager.Delete( AppState.SelectedIndex ), ShowToolTip( "已删除", 1000 ) ) )
+    action.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsFile( AppState.SelectedItem ) )
+    action.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( AppState.SelectedItem[ "text" ] ) )
+    action.Add( Lang( "CONTEXT_DELETE" ), ( * ) => ( HistoryManager.Delete( AppState.SelectedIndex ), ShowToolTip( Lang( "MSG_DELETED" ), 1000 ) ) )
     action.Add()
-    action.Add( "⬅️ 返回列表", ( * ) => SetTimer( () => ShowHistoryMenu( true ), -10 ) )
+    action.Add( Lang( "CONTEXT_BACK" ), ( * ) => SetTimer( () => ShowHistoryMenu( true ), -10 ) )
     action.Show()
 }

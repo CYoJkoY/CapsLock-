@@ -10,30 +10,41 @@ TraySetup() {
     RefreshImStatus()
 
     Tray.Add()
-    Tray.Add( "打开临时文件夹", ( * ) => Run( "explore " A_Temp ) )
+    Tray.Add( Lang( "MENU_OPEN_TEMP" ), ( * ) => Run( "explore " A_Temp ) )
 
     modeMenu := Menu()
-    modeMenu.Add( "1 - 延迟删除", ( * ) => SetDeleteMode( 1 ) )
-    modeMenu.Add( "2 - 批量清理", ( * ) => SetDeleteMode( 2 ) )
-    modeMenu.Add( "3 - 永不删除", ( * ) => SetDeleteMode( 3 ) )
-    Tray.Add( "删除模式", modeMenu )
+    modeMenu.Add( Lang( "MENU_MODE1" ), ( * ) => SetDeleteMode( 1 ) )
+    modeMenu.Add( Lang( "MENU_MODE2" ), ( * ) => SetDeleteMode( 2 ) )
+    modeMenu.Add( Lang( "MENU_MODE3" ), ( * ) => SetDeleteMode( 3 ) )
+    Tray.Add( Lang( "MENU_DELETE_MODE" ), modeMenu )
 
-    Tray.Add( "模式1: 设置延迟时间...", ( * ) => SetDeleteDelay() )
-    Tray.Add( "模式2: 设置清理间隔...", ( * ) => SetCleanupInterval() )
+    Tray.Add( Lang( "MENU_SET_DELAY" ), ( * ) => SetDeleteDelay() )
+    Tray.Add( Lang( "MENU_SET_INTERVAL" ), ( * ) => SetCleanupInterval() )
 
     Tray.Add()
-    Tray.Add( "设置最大历史数量...", ( * ) => SetMaxHistory() )
+    Tray.Add( Lang( "MENU_MAX_HISTORY" ), ( * ) => SetMaxHistory() )
 
     pasteModeMenu := Menu()
-    pasteModeMenu.Add( "1 - 粘贴为文件", ( * ) => SetPasteMode( 1 ) )
-    pasteModeMenu.Add( "2 - 粘贴为文本（带来源）", ( * ) => SetPasteMode( 2 ) )
-    Tray.Add( "粘贴模式", pasteModeMenu )
-    Tray.Add( "忽略规则设置", ( * ) => SetIgnorePatterns() )
+    pasteModeMenu.Add( Lang( "MENU_PASTE_FILE" ), ( * ) => SetPasteMode( 1 ) )
+    pasteModeMenu.Add( Lang( "MENU_PASTE_TEXT" ), ( * ) => SetPasteMode( 2 ) )
+    Tray.Add( Lang( "MENU_PASTE_MODE" ), pasteModeMenu )
+    Tray.Add( Lang( "MENU_IGNORE_RULES" ), ( * ) => SetIgnorePatterns() )
+
+    langMenu := Menu()
+    currentLang := Language.GetCurrent()
+    for code in Language.GetLanguages() {
+        langDisplay := Lang( "LANG_" . StrUpper( code ), code )
+        langMenu.Add( langDisplay, SwitchLanguage.Bind( code ) )
+        if ( code = currentLang ) {
+            langMenu.Check( langDisplay )
+        }
+    }
+    Tray.Add( Lang( "MENU_LANGUAGE" ), langMenu )
 
     Tray.Add()
-    Tray.Add( "开机自启", ToggleAutoStart )
-    Tray.Add( "重新加载", ( * ) => Reload() )
-    Tray.Add( "退出", ( * ) => ExitApp() )
+    Tray.Add( Lang( "MENU_AUTOSTART" ), ToggleAutoStart )
+    Tray.Add( Lang( "MENU_RELOAD" ), ( * ) => Reload() )
+    Tray.Add( Lang( "MENU_EXIT" ), ( * ) => ExitApp() )
 
     AppState.modeMenu := modeMenu
     AppState.pasteModeMenu := pasteModeMenu
@@ -69,28 +80,28 @@ TrayMenuRefresh() {
     global AppState
     Tray := AppState.TrayMenu
     modeMenu := AppState.modeMenu
-    modeMenu.Uncheck( "1 - 延迟删除" )
-    modeMenu.Uncheck( "2 - 批量清理" )
-    modeMenu.Uncheck( "3 - 永不删除" )
+    modeMenu.Uncheck( Lang( "MENU_MODE1" ) )
+    modeMenu.Uncheck( Lang( "MENU_MODE2" ) )
+    modeMenu.Uncheck( Lang( "MENU_MODE3" ) )
     if AppState.DeleteMode == 1
-        modeMenu.Check( "1 - 延迟删除" )
+        modeMenu.Check( Lang( "MENU_MODE1" ) )
     else if AppState.DeleteMode == 2
-        modeMenu.Check( "2 - 批量清理" )
+        modeMenu.Check( Lang( "MENU_MODE2" ) )
     else if AppState.DeleteMode == 3
-        modeMenu.Check( "3 - 永不删除" )
+        modeMenu.Check( Lang( "MENU_MODE3" ) )
 
     pasteMenu := AppState.pasteModeMenu
-    pasteMenu.Uncheck( "1 - 粘贴为文件" )
-    pasteMenu.Uncheck( "2 - 粘贴为文本（带来源）" )
+    pasteMenu.Uncheck( Lang( "MENU_PASTE_FILE" ) )
+    pasteMenu.Uncheck( Lang( "MENU_PASTE_TEXT" ) )
     if AppState.PasteMode == 1
-        pasteMenu.Check( "1 - 粘贴为文件" )
+        pasteMenu.Check( Lang( "MENU_PASTE_FILE" ) )
     else if AppState.PasteMode == 2
-        pasteMenu.Check( "2 - 粘贴为文本（带来源）" )
+        pasteMenu.Check( Lang( "MENU_PASTE_TEXT" ) )
 
     if IsAutoStartEnabled()
-        Tray.Check( "开机自启" )
+        Tray.Check( Lang( "MENU_AUTOSTART" ) )
     else
-        Tray.Uncheck( "开机自启" )
+        Tray.Uncheck( Lang( "MENU_AUTOSTART" ) )
 }
 
 ToggleAutoStart( * ) {
@@ -100,12 +111,12 @@ ToggleAutoStart( * ) {
     Tray := AppState.TrayMenu
     if IsAutoStartEnabled() {
         RegDelete( "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Uncheck( "开机自启" )
-        MsgBox( "开机自启已关闭", "成功", "Iconi T2" )
+        Tray.Uncheck( Lang( "MENU_AUTOSTART" ) )
+        MsgBox( Lang( "MSG_AUTOSTART_OFF" ), Lang( "MSG_SUCCESS" ), "Iconi T2" )
     } else {
         RegWrite( '"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Check( "开机自启" )
-        MsgBox( "开机自启已开启", "成功", "Iconi T2" )
+        Tray.Check( Lang( "MENU_AUTOSTART" ) )
+        MsgBox( Lang( "MSG_AUTOSTART_ON" ), Lang( "MSG_SUCCESS" ), "Iconi T2" )
     }
 }
 
@@ -115,5 +126,17 @@ IsAutoStartEnabled() {
         return true
     } catch {
         return false
+    }
+}
+
+SwitchLanguage( code, * ) {
+    if Language.SetLanguage( code ) {
+        TraySetup()
+        if IsObject( AppState.FullHistoryGui ) {
+            try AppState.FullHistoryGui.Destroy()
+            AppState.FullHistoryGui := ""
+        }
+        ToolTip( Lang( "MSG_LANG_CHANGED", , code ) )
+        SetTimer( () => ToolTip(), -1500 )
     }
 }

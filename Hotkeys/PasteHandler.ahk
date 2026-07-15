@@ -4,7 +4,7 @@ PasteWithCurrentMode() {
     global AppState, PathDetector
     target := GetTargetText()
     if target == "" {
-        ShowToolTip( "剪贴板为空，请先复制内容", 2000 )
+        ShowToolTip( Lang( "MSG_CLIPBOARD_EMPTY" ), 2000 )
         return
     }
     if AppState.PasteMode == 2 && TryPasteFolderOrFileAsText( target )

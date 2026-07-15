@@ -23,7 +23,7 @@ PasteFile( filePath, fileType := "auto" ) {
     ActivateAndPaste()
     if fileType == "pdf" && InStr( filePath, A_Temp "\ClipTemp_" )
         CleanupManager.ScheduleDeletion( filePath )
-    ShowToolTip( "已粘贴 " fileType " 文件", 1500 )
+    ShowToolTip( Lang( "MSG_PASTE_FILE_TYPE", , fileType ), 1500 )
 }
 
 ActivateAndPaste() {

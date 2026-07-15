@@ -12,9 +12,9 @@ OnFullHistoryContextMenu( lv, row, isRightClick, x, y ) {
         return
     selected := AppState.History[ row ]
     myMenu := Menu()
-    myMenu.Add( "📄 Paste as File", ( * ) => PasteAsMultipleFiles( [ selected ] ) )
-    myMenu.Add( "🔍 Preview", ( * ) => ShowPreviewGui( selected[ "text" ] ) )
-    myMenu.Add( "❌ Delete", ( * ) => DeleteFromFullHistory( row ) )
+    myMenu.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsMultipleFiles( [ selected ] ) )
+    myMenu.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( selected[ "text" ] ) )
+    myMenu.Add( Lang( "CONTEXT_DELETE" ), ( * ) => DeleteFromFullHistory( row ) )
     myMenu.Show( x, y )
 }
 
@@ -27,7 +27,7 @@ PasteSelectedFromFullHistory() {
         fileList.Push( AppState.History[ row ] )
     }
     if fileList.Length == 0 {
-        ShowToolTip( "请至少选择一个条目", 1500 )
+        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
         return
     }
 
@@ -36,7 +36,7 @@ PasteSelectedFromFullHistory() {
         if current && current != myGui.Hwnd
             AppState.TargetWindow := current
         else {
-            ShowToolTip( "目标窗口已关闭，请在2秒内切换至目标窗口...", 2500 )
+            ShowToolTip( Lang( "MSG_TARGET_CLOSED" ), 2500 )
             loop 20 {
                 Sleep( 100 )
                 current := WinExist( "A" )
@@ -46,7 +46,7 @@ PasteSelectedFromFullHistory() {
                 }
             }
             if !AppState.TargetWindow {
-                ShowToolTip( "未检测到新窗口，操作取消", 2000 )
+                ShowToolTip( Lang( "MSG_NO_TARGET" ), 2000 )
                 return
             }
         }
@@ -57,7 +57,7 @@ PasteSelectedFromFullHistory() {
         PasteSingleFile( item, false )
         Sleep( 200 )
     }
-    ShowToolTip( "粘贴完成", 1500 )
+    ShowToolTip( Lang( "MSG_PASTE_COMPLETE" ), 1500 )
 }
 
 PasteSelectedFromFullHistoryText() {
@@ -71,7 +71,7 @@ PasteSelectedFromFullHistoryText() {
     }
 
     if textList.Length == 0 {
-        ShowToolTip( "请至少选择一个条目", 1500 )
+        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
         return
     }
 
@@ -87,7 +87,7 @@ PasteSelectedFromFullHistoryText() {
         if current && current != myGui.Hwnd
             AppState.TargetWindow := current
         else {
-            ShowToolTip( "目标窗口已关闭，请在2秒内切换至目标窗口...", 2500 )
+            ShowToolTip( Lang( "MSG_TARGET_CLOSED" ), 2500 )
             loop 20 {
                 Sleep( 100 )
                 current := WinExist( "A" )
@@ -98,7 +98,7 @@ PasteSelectedFromFullHistoryText() {
             }
 
             if !AppState.TargetWindow {
-                ShowToolTip( "未检测到新窗口，操作取消", 2000 )
+                ShowToolTip( Lang( "MSG_NO_TARGET" ), 2000 )
                 return
             }
 
@@ -109,7 +109,7 @@ PasteSelectedFromFullHistoryText() {
     Send( "^v" )
     Sleep( 50 )
     A_Clipboard := backup
-    ShowToolTip( "粘贴完成 (" textList.Length " 条)", 1500 )
+    ShowToolTip( Lang( "MSG_PASTE_MULTI_COMPLETE", , textList.Length ), 1500 )
 }
 
 OnSelectAllClicked( chk, info ) {
@@ -138,7 +138,7 @@ OnDeleteSelected( * ) {
     while row := lv.GetNext( row, "Checked" )
         rowsToDelete.Push( row )
     if rowsToDelete.Length == 0 {
-        ShowToolTip( "未选中任何条目", 1500 )
+        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
         return
     }
     loop rowsToDelete.Length {

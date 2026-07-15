@@ -16,7 +16,7 @@ PasteAsFile( historyItem ) {
                 ClipboardHelper.SetClipboardFile( tempFile )
                 ActivateAndPaste()
                 CleanupManager.ScheduleDeletion( tempFile )
-                ShowToolTip( "已粘贴合并的文件夹内容", 2000 )
+                ShowToolTip( Lang( "MSG_FOLDER_MERGED" ), 2000 )
                 return
             }
         }
@@ -29,7 +29,7 @@ PasteAsFile( historyItem ) {
 
     if PathDetector.IsFilePath( historyItem[ "text" ] ) && FileExist( historyItem[ "text" ] ) {
         if FileHelper.ShouldIgnore( historyItem[ "text" ] ) {
-            ShowToolTip( "文件被忽略规则跳过", 1500 )
+            ShowToolTip( Lang( "MSG_FILE_IGNORED" ), 1500 )
             return
         }
 
@@ -54,7 +54,7 @@ TryPasteFolderOrFileAsText( targetText ) {
             for p in pathList
                 combined .= p "`n"
             combined := Trim( combined, "`n" )
-            PastePlainTextWithBackup( combined, "粘贴图片路径 (" pathList.Length " 个文件)" )
+            PastePlainTextWithBackup( combined, Lang( "MSG_PASTE_IMAGE_PATHS", , pathList.Length ) )
             return true
         }
     }
@@ -68,7 +68,7 @@ TryPasteFolderOrFileAsText( targetText ) {
         if folders.Length > 0
             combined .= FileHelper.ReadMultipleFoldersAsText( folders )
         if combined != "" {
-            PastePlainTextWithBackup( combined, "粘贴混合路径内容 (" files.Length " 文件, " folders.Length " 文件夹)" )
+            PastePlainTextWithBackup( combined, Lang( "MSG_PASTE_MIXED", , files.Length, folders.Length ) )
             return true
         }
     }
@@ -77,7 +77,7 @@ TryPasteFolderOrFileAsText( targetText ) {
         folders := PathDetector.GetValidPathsFromText( targetText, "folder" )
         if folders.Length > 0 {
             merged := FileHelper.ReadMultipleFoldersAsText( folders )
-            PastePlainTextWithBackup( merged, "粘贴 " folders.Length " 个文件夹内容" )
+            PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_FOLDERS", , folders.Length ) )
             return true
         }
     }
@@ -86,7 +86,7 @@ TryPasteFolderOrFileAsText( targetText ) {
         files := PathDetector.GetValidPathsFromText( targetText, "file" )
         if files.Length > 0 {
             merged := FileHelper.ReadMultipleFilesAsText( files )
-            PastePlainTextWithBackup( merged, "粘贴 " files.Length " 个文件内容" )
+            PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_FILES", , files.Length ) )
             return true
         }
     }
@@ -99,7 +99,7 @@ PasteImagesAsPdf( imagePathText ) {
     pdfPath := ProcessImagePathsToPDF()
     A_Clipboard := original
     if pdfPath == "" {
-        ShowToolTip( "创建PDF失败", 2000 )
+        ShowToolTip( Lang( "MSG_IMAGE_PDF_FAIL" ), 2000 )
         return
     }
     PasteFile( pdfPath, "pdf" )
@@ -131,7 +131,7 @@ PasteSingleFile( historyItem, activate := true ) {
         textToPaste := historyItem
 
     if FileHelper.ShouldIgnore( textToPaste ) {
-        ShowToolTip( "文件被忽略规则跳过", 1500 )
+        ShowToolTip( Lang( "MSG_FILE_IGNORED" ), 1500 )
         return
     }
 

@@ -34,8 +34,11 @@ Persistent()
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 
+#Include "Utils\Language.ahk"
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
+
+Language.Load()
 
 HistoryManager.Load()
 ConfigManager.Load()

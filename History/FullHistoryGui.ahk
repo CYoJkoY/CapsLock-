@@ -14,7 +14,7 @@ ShowFullHistoryGui( ItemName?, ItemPos?, MyMenu? ) {
         }
     }
 
-    myGui := Gui( "+Resize +AlwaysOnTop", "Clipboard History (Full)" )
+    myGui := Gui( "+Resize +AlwaysOnTop", Lang( "GUI_FULL_TITLE" ) )
     myGui.SetFont( "s10", "Microsoft YaHei" )
     myGui.OnEvent( "Close", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
     myGui.OnEvent( "Escape", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
@@ -30,23 +30,23 @@ ShowFullHistoryGui( ItemName?, ItemPos?, MyMenu? ) {
     lv.OnEvent( "ItemCheck", OnItemCheck )
     myGui.ListView := lv
 
-    btnPaste := myGui.Add( "Button", "Default", "Paste as File" )
+    btnPaste := myGui.Add( "Button", "Default", Lang( "GUI_FULL_PASTE_FILE" ) )
     btnPaste.OnEvent( "Click", ( * ) => PasteSelectedFromFullHistory() )
     myGui.btnPaste := btnPaste
 
-    btnPasteText := myGui.Add( "Button", "x+10 yp", "Paste as Text" )
+    btnPasteText := myGui.Add( "Button", "x+10 yp", Lang( "GUI_FULL_PASTE_TEXT" ) )
     btnPasteText.OnEvent( "Click", ( * ) => PasteSelectedFromFullHistoryText() )
     myGui.btnPasteText := btnPasteText
 
-    btnClose := myGui.Add( "Button", "x+10 yp", "Close" )
+    btnClose := myGui.Add( "Button", "x+10 yp", Lang( "GUI_FULL_CLOSE" ) )
     btnClose.OnEvent( "Click", ( * ) => myGui.Destroy() )
     myGui.btnClose := btnClose
 
-    chkSelectAll := myGui.Add( "CheckBox", "x10 y+20", "Select All" )
+    chkSelectAll := myGui.Add( "CheckBox", "x10 y+20", Lang( "GUI_FULL_SELECT_ALL" ) )
     chkSelectAll.OnEvent( "Click", OnSelectAllClicked )
     myGui.chkSelectAll := chkSelectAll
 
-    btnDelete := myGui.Add( "Button", "x+10 yp", "Delete Selected" )
+    btnDelete := myGui.Add( "Button", "x+10 yp", Lang( "GUI_FULL_DELETE_SELECTED" ) )
     btnDelete.OnEvent( "Click", OnDeleteSelected )
     myGui.btnDeleteSelected := btnDelete
 
@@ -81,10 +81,27 @@ ResizeFullHistoryGui( guiObj, minmax, width, height ) {
     lv := guiObj.ListView
     lv.Move( 10, 40, width - 20, height - 140 )
 
-    guiObj.btnPaste.Move( 10, height - 80 )
-    guiObj.btnPasteText.Move( 120, height - 80 )
-    guiObj.btnClose.Move( 230, height - 80 )
+    btnPaste := guiObj.btnPaste
+    btnPasteText := guiObj.btnPasteText
+    btnClose := guiObj.btnClose
+    chkSelectAll := guiObj.chkSelectAll
+    btnDelete := guiObj.btnDeleteSelected
 
-    guiObj.chkSelectAll.Move( 10, height - 40 )
-    guiObj.btnDeleteSelected.Move( 120, height - 40 )
+    btnPaste.GetPos(, , &w1 )
+    btnPasteText.GetPos(, , &w2 )
+    btnClose.GetPos(, , &w3 )
+    spacing := 10
+
+    totalBtnWidth := w1 + w2 + w3 + spacing * 2
+    startX := width - totalBtnWidth - 10
+    btnPaste.Move( startX, height - 80 )
+    btnPasteText.Move( startX + w1 + spacing, height - 80 )
+    btnClose.Move( startX + w1 + spacing + w2 + spacing, height - 80 )
+
+    chkSelectAll.GetPos(, , &w4 )
+    btnDelete.GetPos(, , &w5 )
+    totalWidth2 := w4 + w5 + spacing
+    startX2 := width - totalWidth2 - 10
+    chkSelectAll.Move( startX2, height - 40 )
+    btnDelete.Move( startX2 + w4 + spacing, height - 40 )
 }

@@ -10,7 +10,7 @@ class OSD {
         myOSD := Gui( "+AlwaysOnTop -Caption +ToolWindow +E0x20" )
         myOSD.BackColor := "1E1E1E"
         myOSD.SetFont( "s12 cWhite bold", "Segoe UI" )
-        text := isOnTop ? "📌 Always Top" : "📌 Unpinned"
+        text := isOnTop ? Lang( "UI_ALWAYS_TOP" ) : Lang( "UI_UNPINNED" )
         myOSD.Add( "Text", "w120 Center", text )
         try {
             WinGetPos( &wx, &wy, &ww, &wh, targetHwnd )

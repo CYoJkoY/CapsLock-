@@ -3,7 +3,7 @@
 ProcessImagePathsToPDF() {
     exe := AppState.ImageMagickExe
     if exe == "" || !FileExist( exe ) {
-        MsgBox( "请先在托盘菜单中设置 ImageMagick 的 magick.exe 路径", "错误", "Iconx" )
+        MsgBox( Lang( "MSG_IMAGEMAGICK_ERROR" ), Lang( "MSG_ERROR" ), "Iconx" )
         return ""
     }
     paths := []
@@ -19,7 +19,7 @@ ProcessImagePathsToPDF() {
     }
 
     if paths.Length == 0 {
-        ShowToolTip( "剪贴板中没有有效的图片文件", 2000 )
+        ShowToolTip( Lang( "MSG_NO_IMAGE_FILES" ), 2000 )
         return ""
     }
 
@@ -29,15 +29,15 @@ ProcessImagePathsToPDF() {
         RunWait( cmd, , "Hide" )
 
         if FileExist( outputPdf ) {
-            ShowToolTip( "PDF 创建成功", 2000 )
+            ShowToolTip( Lang( "MSG_IMAGE_PDF_SUCCESS" ), 2000 )
             return outputPdf
         } else {
-            ShowToolTip( "PDF 创建失败（ImageMagick 执行错误）", 2000 )
+            ShowToolTip( Lang( "MSG_PDF_IM_ERROR" ), 2000 )
             return ""
         }
 
     } catch as err {
-        ShowToolTip( "PDF 创建失败: " err.Message, 3000 )
+        ShowToolTip( Lang( "MSG_PDF_IM_EXCEPTION", , err.Message ), 3000 )
         return ""
     }
 }

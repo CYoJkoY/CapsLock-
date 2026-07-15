@@ -11,12 +11,12 @@ CopyAsPlainTextAndAddToHistory() {
 ChangeCaseOfLastCopy() {
     source := ( AppState.LastManualClipboard != "" ) ? AppState.LastManualClipboard : A_Clipboard
     if source == "" {
-        ToolTip( "没有文本，请先复制" )
+        ToolTip( Lang( "MSG_NO_TEXT" ) )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
     if !RegExMatch( source, "[a-zA-Z]", &match ) {
-        ToolTip( "没有英文字母" )
+        ToolTip( Lang( "MSG_NO_ENGLISH_LETTERS" ) )
         SetTimer( () => ToolTip(), -1500 )
         return
     }
