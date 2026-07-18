@@ -41,10 +41,3 @@ ProcessImagePathsToPDF() {
         return ""
     }
 }
-
-Join( arr, sep := " " ) {
-    s := ""
-    for v in arr
-        s .= v . sep
-    return SubStr( s, 1, -StrLen( sep ) )
-}

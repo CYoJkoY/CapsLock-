@@ -1,28 +1,38 @@
 #Requires AutoHotkey v2.0
 
 PasteWithCurrentMode() {
-    global AppState, PathDetector
-    target := GetTargetText()
+    target := A_Clipboard
     if target == "" {
         ShowToolTip( Lang( "MSG_CLIPBOARD_EMPTY" ), 2000 )
         return
     }
-    if AppState.PasteMode == 2 && TryPasteFolderOrFileAsText( target )
-        return
-    if PathDetector.IsImagePathsText( target ) {
-        PasteImagesAsPdf( target )
+
+    validLines := []
+    ignoredCount := 0
+    lines := StrSplit( target, "`n", "`r" )
+    for line in lines {
+        line := Trim( line )
+        if line == ""
+            continue
+
+        if FileExist( line ) && FileHelper.ShouldIgnore( line ) {
+            ignoredCount++
+            continue
+        }
+        validLines.Push( line )
+    }
+
+    if validLines.Length == 0 {
+        ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 2000 )
         return
     }
 
-    item := Map( "text", target, "source", "Direct Paste", "time", FormatTime(, "yyyy-MM-dd HH:mm:ss" ) )
-    PastePlainTextWithSource( item )
-}
+    newTarget := ""
+    for line in validLines
+        newTarget .= line . "`n"
+    newTarget := RTrim( newTarget, "`n" )
 
-GetTargetText() {
-    global AppState
-    current := A_Clipboard
-    target := ( AppState.LastManualClipboard != "" ) ? AppState.LastManualClipboard : current
-    if current != "" && !InStr( current, A_Temp "\ClipTemp_" )
-        AppState.LastManualClipboard := current
-    return target
+    item := Map( "text", newTarget, "source", "Direct Paste", "time", FormatTime(, "yyyy-MM-dd HH:mm:ss" ) )
+    PasteAsFile( item )
+
 }

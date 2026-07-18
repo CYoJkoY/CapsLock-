@@ -1,14 +1,35 @@
 #Requires AutoHotkey v2.0
 
 PasteAsFile( historyItem ) {
-    if AppState.PasteMode == 2 && TryPasteFolderOrFileAsText( historyItem[ "text" ] )
-        return
+    target := historyItem[ "text" ]
 
-    if AppState.PasteMode == 1 {
-        if PathDetector.IsMultiFolderPathText( historyItem[ "text" ] ) {
-            folders := PathDetector.GetValidPathsFromText( historyItem[ "text" ], "folder" )
-            if folders.Length > 0 {
-                merged := FileHelper.ReadMultipleFoldersAsText( folders )
+    if !PathDetector.IsFilePath( target ) && !PathDetector.IsMultiFilePathText( target )
+    && !PathDetector.IsMultiFolderPathText( target ) && !PathDetector.IsMixedPathsText( target ) {
+        PastePlainTextWithSource( historyItem )
+        return
+    }
+
+    if PathDetector.IsImagePathsText( target ) {
+        PasteImagesAsPdf( target )
+        return
+    }
+
+    if AppState.PasteMode == 1 && PathDetector.IsMultiFolderPathText( target ) {
+        folders := PathDetector.GetValidPathsFromText( target, "folder" )
+        if folders.Length > 0 {
+            validFolders := []
+            for fd in folders {
+                if !FileHelper.ShouldIgnore( fd )
+                    validFolders.Push( fd )
+            }
+
+            if validFolders.Length == 0 {
+                ShowToolTip( Lang( "MSG_ALL_FOLDERS_IGNORED" ), 1500 )
+                return
+            }
+
+            merged := FileHelper.ReadMultipleFoldersAsText( validFolders )
+            if merged != "" {
                 sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
                 full := "; " sourceInfo "`n`n" merged
                 tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
@@ -18,79 +39,105 @@ PasteAsFile( historyItem ) {
                 CleanupManager.ScheduleDeletion( tempFile )
                 ShowToolTip( Lang( "MSG_FOLDER_MERGED" ), 2000 )
                 return
+            } else {
+                ShowToolTip( Lang( "MSG_FOLDER_EMPTY_OR_IGNORED" ), 1500 )
+                return
             }
         }
     }
 
-    if PathDetector.IsImagePathsText( historyItem[ "text" ] ) {
-        PasteImagesAsPdf( historyItem[ "text" ] )
-        return
-    }
-
-    if PathDetector.IsFilePath( historyItem[ "text" ] ) && FileExist( historyItem[ "text" ] ) {
-        if FileHelper.ShouldIgnore( historyItem[ "text" ] ) {
+    if PathDetector.IsFilePath( target ) && FileExist( target ) {
+        if FileHelper.ShouldIgnore( target ) {
             ShowToolTip( Lang( "MSG_FILE_IGNORED" ), 1500 )
             return
         }
 
         PasteSingleFile( historyItem, true )
-    } else {
-        PastePlainTextWithSource( historyItem )
-    }
-}
-
-TryPasteFolderOrFileAsText( targetText ) {
-    global PathDetector, FileHelper
-    if PathDetector.IsImagePathsText( targetText ) {
-        lines := StrSplit( targetText, "`n", "`r" )
-        pathList := []
-        for line in lines {
-            line := Trim( line )
-            if line != "" && FileExist( line ) && !InStr( FileExist( line ), "D" )
-                pathList.Push( line )
-        }
-        if pathList.Length > 0 {
-            combined := ""
-            for p in pathList
-                combined .= p "`n"
-            combined := Trim( combined, "`n" )
-            PastePlainTextWithBackup( combined, Lang( "MSG_PASTE_IMAGE_PATHS", , pathList.Length ) )
-            return true
-        }
+        return
     }
 
-    if PathDetector.IsMixedPathsText( targetText ) {
-        files := PathDetector.GetValidPathsFromText( targetText, "file" )
-        folders := PathDetector.GetValidPathsFromText( targetText, "folder" )
-        combined := ""
-        if files.Length > 0
-            combined .= FileHelper.ReadMultipleFilesAsText( files )
-        if folders.Length > 0
-            combined .= FileHelper.ReadMultipleFoldersAsText( folders )
-        if combined != "" {
-            PastePlainTextWithBackup( combined, Lang( "MSG_PASTE_MIXED", , files.Length, folders.Length ) )
-            return true
-        }
-    }
-
-    if PathDetector.IsMultiFolderPathText( targetText ) {
-        folders := PathDetector.GetValidPathsFromText( targetText, "folder" )
-        if folders.Length > 0 {
-            merged := FileHelper.ReadMultipleFoldersAsText( folders )
-            PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_FOLDERS", , folders.Length ) )
-            return true
-        }
-    }
-
-    if PathDetector.IsMultiFilePathText( targetText ) {
-        files := PathDetector.GetValidPathsFromText( targetText, "file" )
+    if PathDetector.IsMultiFilePathText( target ) {
+        files := PathDetector.GetValidPathsFromText( target, "file" )
         if files.Length > 0 {
-            merged := FileHelper.ReadMultipleFilesAsText( files )
-            PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_FILES", , files.Length ) )
-            return true
+            validFiles := []
+            for f in files {
+                if !FileHelper.ShouldIgnore( f )
+                    validFiles.Push( f )
+            }
+
+            if validFiles.Length == 0 {
+                ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 1500 )
+                return
+            }
+
+            if AppState.PasteMode == 2 {
+                merged := FileHelper.ReadMultipleFilesAsText( validFiles )
+                if merged != "" {
+                    PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_FILES", , validFiles.Length ) )
+                } else {
+                    ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
+                }
+            } else {
+                items := []
+                for f in validFiles {
+                    items.Push( Map( "text", f, "source", historyItem[ "source" ], "time", historyItem[ "time" ] ) )
+                }
+                PasteAsMultipleFiles( items )
+            }
+            return
         }
     }
-    return false
+
+    if PathDetector.IsMixedPathsText( target ) {
+        files := PathDetector.GetValidPathsFromText( target, "file" )
+        folders := PathDetector.GetValidPathsFromText( target, "folder" )
+        validFiles := []
+        for f in files {
+            if !FileHelper.ShouldIgnore( f )
+                validFiles.Push( f )
+        }
+        validFolders := []
+        for fd in folders {
+            if !FileHelper.ShouldIgnore( fd )
+                validFolders.Push( fd )
+        }
+        if validFiles.Length == 0 && validFolders.Length == 0 {
+            ShowToolTip( Lang( "MSG_ALL_PATHS_IGNORED" ), 1500 )
+            return
+        }
+
+        allFiles := []
+        for f in validFiles
+            allFiles.Push( f )
+        for fd in validFolders {
+            collected := FileHelper.CollectFilesFromFolder( fd, true )
+            for cf in collected {
+                if !FileHelper.ShouldIgnore( cf )
+                    allFiles.Push( cf )
+            }
+        }
+        if allFiles.Length == 0 {
+            ShowToolTip( Lang( "MSG_NO_VALID_FILES" ), 1500 )
+            return
+        }
+        if AppState.PasteMode == 2 {
+            merged := FileHelper.ReadMultipleFilesAsText( allFiles )
+            if merged != "" {
+                PastePlainTextWithBackup( merged, Lang( "MSG_PASTE_MIXED", , validFiles.Length, validFolders.Length ) )
+            } else {
+                ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
+            }
+        } else {
+            items := []
+            for f in allFiles {
+                items.Push( Map( "text", f, "source", historyItem[ "source" ], "time", historyItem[ "time" ] ) )
+            }
+            PasteAsMultipleFiles( items )
+        }
+        return
+    }
+
+    PastePlainTextWithSource( historyItem )
 }
 
 PasteImagesAsPdf( imagePathText ) {

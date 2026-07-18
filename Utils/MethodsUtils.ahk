@@ -7,3 +7,10 @@ ShowToolTip( msg, durationMs := 1500 ) {
     if durationMs > 0
         SetTimer( () => ToolTip(), -durationMs )
 }
+
+Join( arr, sep := " " ) {
+    s := ""
+    for v in arr
+        s .= v . sep
+    return SubStr( s, 1, -StrLen( sep ) )
+}

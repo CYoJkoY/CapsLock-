@@ -24,12 +24,7 @@ class ConfigManager {
             AppState.MaxHistory := IniRead( cfg, "History", "maxHistory", 10000 )
             AppState.PasteMode := IniRead( cfg, "General", "pasteMode", 1 )
             ignoreStr := IniRead( cfg, "Ignore", "Rules", "" )
-
-            if ignoreStr != "" {
-                AppState.IgnorePatterns := StrSplit( ignoreStr, "`n", "`r" )
-            } else {
-                AppState.IgnorePatterns := []
-            }
+            AppState.IgnorePatterns := ignoreStr ? StrSplit( ignoreStr, "|" ) : []
 
         } catch {
         }
@@ -44,11 +39,7 @@ class ConfigManager {
             IniWrite( AppState.MaxHistory, cfg, "History", "maxHistory" )
             IniWrite( AppState.PasteMode, cfg, "General", "pasteMode" )
 
-            ignoreStr := ""
-            for pattern in AppState.IgnorePatterns
-                ignoreStr .= pattern "`n"
-            ignoreStr := RTrim( ignoreStr, "`n" )
-
+            ignoreStr := Join( AppState.IgnorePatterns, "|" )
             IniWrite( ignoreStr, cfg, "Ignore", "Rules" )
 
         } catch {

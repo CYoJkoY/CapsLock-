@@ -1,65 +1,20 @@
 #Requires AutoHotkey v2.0
 
 class FileHelper {
-    static globCache := Map()
+    static PATH_MATCH_SPEC := DllCall( "GetModuleHandle", "Str", "shlwapi", "Ptr" ) || DllCall( "LoadLibrary", "Str", "shlwapi", "Ptr" )
 
     static ShouldIgnore( filePath ) {
-        filePath := StrReplace( filePath, "\", "/" )
+        SplitPath( filePath, &fileName )
+
         for pattern in AppState.IgnorePatterns {
-            try {
-                if InStr( pattern, "*" ) || InStr( pattern, "?" ) {
-                    if !this.globCache.Has( pattern )
-                        this.globCache[ pattern ] := "i)" . this.GlobToRegex( pattern )
-                    if RegExMatch( filePath, this.globCache[ pattern ] )
-                        return true
-                } else {
-                    if RegExMatch( filePath, "i)" pattern )
-                        return true
-                }
-            } catch {
-            }
+            if this.PathMatchSpec( filePath, pattern ) || this.PathMatchSpec( fileName, pattern )
+                return true
         }
         return false
     }
 
-    static GlobToRegex( pattern ) {
-        pattern := StrReplace( pattern, "\", "/" )
-
-        if !InStr( pattern, "/" ) && !InStr( pattern, "**" ) {
-            pattern := "**/" . pattern
-        }
-
-        result := ""
-        i := 1
-        len := StrLen( pattern )
-        while i <= len {
-            char := SubStr( pattern, i, 1 )
-            if char == "*" {
-                if ( i < len && SubStr( pattern, i + 1, 1 ) == "*" ) {
-                    result .= ".*"
-                    i += 2
-                    continue
-                } else {
-                    result .= "[^/]*"
-                    i++
-                    continue
-                }
-            } else if char == "?" {
-                result .= "[^/]"
-                i++
-                continue
-            } else {
-                if InStr( ".+^$()[]{}|", char )
-                    result .= "\" . char
-                else
-                    result .= char
-                i++
-            }
-        }
-
-        result := StrReplace( result, "/", "[\\\\/]" )
-
-        return "^" result "$"
+    static PathMatchSpec( filePath, pattern ) {
+        return DllCall( "shlwapi\PathMatchSpecW", "Str", filePath, "Str", pattern, "Int" )
     }
 
     static ReadMultipleFilesAsText( filePaths ) {
@@ -107,8 +62,12 @@ class FileHelper {
             return fileList
 
         try {
-            loop files, folderPath "\*", "F"
+            loop files, folderPath "\*", "F" {
+                if this.ShouldIgnore( A_LoopFileFullPath )
+                    continue
                 fileList.Push( A_LoopFileFullPath )
+            }
+
             if recursive {
                 loop files, folderPath "\*", "D"
                     this.CollectFilesFromFolder( A_LoopFileFullPath, true, fileList )

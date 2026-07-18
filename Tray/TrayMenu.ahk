@@ -55,17 +55,16 @@ RefreshImStatus() {
     global AppState
     exe := AppState.ImageMagickExe
     valid := exe != "" && InStr( StrLower( exe ), "magick.exe" ) && FileExist( exe )
-    newText := valid ? "ImageMagick: 已设置 (点击更改)" : "ImageMagick: 未设置/无效"
+    newText := valid ? Lang( "MENU_IM_STATUS_SET" ) : Lang( "MENU_IM_STATUS_NOTSET" )
     if AppState.currentImMenuText == newText
         return
 
     Tray := AppState.TrayMenu
     oldText := AppState.currentImMenuText
 
-    if oldText != "" {
-        try Tray.Delete( oldText )
+    try {
         Tray.Insert( 1, newText, ( * ) => SetImPath() )
-    } else {
+    } catch {
         Tray.Add( newText, ( * ) => SetImPath() )
     }
 
@@ -73,6 +72,11 @@ RefreshImStatus() {
         Tray.Check( newText )
     else
         Tray.Uncheck( newText )
+
+    if oldText != "" && oldText != newText {
+        try Tray.Delete( oldText )
+    }
+
     AppState.currentImMenuText := newText
 }
 
