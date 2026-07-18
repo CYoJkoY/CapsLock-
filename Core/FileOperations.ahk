@@ -24,6 +24,11 @@ class FileHelper {
 
     static GlobToRegex( pattern ) {
         pattern := StrReplace( pattern, "\", "/" )
+
+        if !InStr( pattern, "/" ) && !InStr( pattern, "**" ) {
+            pattern := "**/" . pattern
+        }
+
         result := ""
         i := 1
         len := StrLen( pattern )
