@@ -28,10 +28,16 @@ PasteFile( filePath, fileType := "auto" ) {
 
 ActivateAndPaste() {
     if AppState.TargetWindow && WinExist( "ahk_id " AppState.TargetWindow ) {
-        WinActivate( "ahk_id " AppState.TargetWindow )
+        activeHwnd := WinExist( "A" )
+        if ( activeHwnd != AppState.TargetWindow ) {
+            WinActivate( "A" )
+        } else {
+            WinActivate( "ahk_id " AppState.TargetWindow )
+        }
     } else {
         WinActivate( "A" )
     }
+
     Sleep( 100 )
     Send( "^v" )
 }

@@ -16,8 +16,16 @@ ShowFullHistoryGui( ItemName?, ItemPos?, MyMenu? ) {
 
     myGui := Gui( "+Resize +AlwaysOnTop", Lang( "GUI_FULL_TITLE" ) )
     myGui.SetFont( "s10", "Microsoft YaHei" )
-    myGui.OnEvent( "Close", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
-    myGui.OnEvent( "Escape", ( * ) => ( myGui.Destroy(), AppState.FullHistoryGui := "" ) )
+    myGui.OnEvent( "Close", ( * ) => (
+        myGui.Destroy(),
+        AppState.FullHistoryGui := "",
+        AppState.TargetWindow := 0
+    ) )
+    myGui.OnEvent( "Escape", ( * ) => (
+        myGui.Destroy(),
+        AppState.FullHistoryGui := "",
+        AppState.TargetWindow := 0
+    ) )
     myGui.OnEvent( "Size", ResizeFullHistoryGui )
 
     searchBox := myGui.Add( "Edit", "w600", "" )

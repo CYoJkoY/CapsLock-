@@ -71,27 +71,21 @@ class CleanupManager {
     }
 
     static OnExit() {
-
-        if this.pendingTimer != "" {
+        if this.HasProp( "pendingTimer" ) && this.pendingTimer != ""
             SetTimer( this.pendingTimer, 0 )
-            this.pendingTimer := ""
-        }
 
-        if AppState.CleanupTimer != "" {
+        if AppState.HasProp( "CleanupTimer" ) && AppState.CleanupTimer != ""
             SetTimer( AppState.CleanupTimer, 0 )
-            AppState.CleanupTimer := ""
-        }
 
-        loop files, A_Temp "\ClipTemp_*", "F"
+        loop files A_Temp . "\ClipTemp_*", "F"
             try FileDelete( A_LoopFileFullPath )
 
-        if IsObject( this.pending ) {
+        if this.HasProp( "pending" ) && IsObject( this.pending )
             for path in this.pending.Clone()
                 try FileDelete( path )
-            this.pending := unset
-        }
 
-        for path in AppState.PendingCleanup
-            try FileDelete( path )
+        if AppState.HasProp( "PendingCleanup" )
+            for path in AppState.PendingCleanup
+                try FileDelete( path )
     }
 }
