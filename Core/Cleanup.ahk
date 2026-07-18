@@ -7,7 +7,7 @@ class CleanupManager {
 
     static ScheduleDeletion( filePath ) {
         if AppState.DeleteMode == 1 {
-            if !IsSet( this.pending ) || !IsObject( this.pending ) {
+            if !IsObject( this.pending ) {
                 if this.scheduling
                     return
 
@@ -32,7 +32,7 @@ class CleanupManager {
     }
 
     static ProcessDeletions() {
-        if !IsSet( this.pending ) || !IsObject( this.pending )
+        if !IsObject( this.pending )
             return
 
         now := A_TickCount
@@ -81,11 +81,14 @@ class CleanupManager {
             SetTimer( AppState.CleanupTimer, 0 )
             AppState.CleanupTimer := ""
         }
+
         loop files, A_Temp "\ClipTemp_*", "F"
             try FileDelete( A_LoopFileFullPath )
-        if IsSet( this.pending ) && IsObject( this.pending )
+
+        if !IsObject( this.pending )
             for path in this.pending.Clone()
                 try FileDelete( path )
+
         for path in AppState.PendingCleanup
             try FileDelete( path )
     }
