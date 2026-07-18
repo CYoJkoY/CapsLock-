@@ -7,8 +7,10 @@ PasteWithCurrentMode() {
         return
     }
 
-    validLines := []
     lines := StrSplit( target, "`n", "`r" )
+    validLines := []
+    newTarget := ""
+    allImages := true
     for line in lines {
         line := Trim( line )
         if line == ""
@@ -18,11 +20,9 @@ PasteWithCurrentMode() {
             continue
 
         validLines.Push( line )
-    }
 
-    if validLines.Length == 0 {
-        ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 2000 )
-        return
+        if allImages && ( !FileExist( line ) || !PathDetector.IsImageExtension( line ) )
+            allImages := false
     }
 
     newTarget := ""
@@ -30,7 +30,7 @@ PasteWithCurrentMode() {
         newTarget .= line "`n"
     newTarget := RTrim( newTarget, "`n" )
 
-    if PathDetector.IsImagePathsText( newTarget ) && AppState.ImageMagickExe && FileExist( AppState.ImageMagickExe ) {
+    if allImages && AppState.ImageMagickExe && FileExist( AppState.ImageMagickExe ) {
         original := A_Clipboard
         A_Clipboard := newTarget
         pdfPath := ProcessImagePathsToPDF()
@@ -39,11 +39,9 @@ PasteWithCurrentMode() {
             PasteFile( pdfPath, "pdf" )
         else
             ShowToolTip( Lang( "MSG_IMAGE_PDF_FAIL" ), 2000 )
-
         return
     }
 
     item := Map( "text", newTarget, "source", "Direct Paste", "time", FormatTime(, "yyyy-MM-dd HH:mm:ss" ) )
     PasteAsFile( item )
-
 }

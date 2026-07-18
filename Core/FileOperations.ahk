@@ -4,12 +4,16 @@ class FileHelper {
     static PATH_MATCH_SPEC := DllCall( "GetModuleHandle", "Str", "shlwapi", "Ptr" ) || DllCall( "LoadLibrary", "Str", "shlwapi", "Ptr" )
 
     static ShouldIgnore( filePath ) {
+        if AppState.IgnorePatterns.Length == 0
+            return false
+
         SplitPath( filePath, &fileName )
 
         for pattern in AppState.IgnorePatterns {
             if this.PathMatchSpec( filePath, pattern ) || this.PathMatchSpec( fileName, pattern )
                 return true
         }
+
         return false
     }
 
@@ -63,9 +67,8 @@ class FileHelper {
 
         try {
             loop files, folderPath "\*", "F" {
-                if this.ShouldIgnore( A_LoopFileFullPath )
-                    continue
-                fileList.Push( A_LoopFileFullPath )
+                if !this.ShouldIgnore( A_LoopFileFullPath )
+                    fileList.Push( A_LoopFileFullPath )
             }
 
             if recursive {
@@ -73,6 +76,7 @@ class FileHelper {
                     this.CollectFilesFromFolder( A_LoopFileFullPath, true, fileList )
             }
         }
+
         return fileList
     }
 

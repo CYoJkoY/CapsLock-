@@ -61,12 +61,19 @@ RefreshFullHistoryList() {
     lv.Delete()
     if ( lv.GetCount( "Col" ) < 2 )
         lv.InsertCol( 1, , "Integer" )
-
     lv.ModifyCol( 1, 0 )
-    filter := myGui.SearchBox.Text
-    filter := Trim( filter )
+
+    filter := Trim( myGui.SearchBox.Text )
+    maxDisplay := 50
+    displayed := 0
 
     for i, item in AppState.History {
+        if displayed >= maxDisplay {
+            if displayed == maxDisplay
+                lv.Add(, i, "... (" . ( AppState.History.Length - maxDisplay ) . " more items)" )
+            break
+        }
+
         display := StrReplace( SubStr( item[ "text" ], 1, 100 ), "`n", " " )
         if StrLen( item[ "text" ] ) > 100
             display .= "..."
@@ -75,6 +82,7 @@ RefreshFullHistoryList() {
             continue
 
         lv.Add(, i, display )
+        displayed++
     }
 
     lv.ModifyCol( 2, "AutoHdr" )
