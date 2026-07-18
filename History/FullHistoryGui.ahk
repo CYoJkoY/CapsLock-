@@ -59,20 +59,24 @@ RefreshFullHistoryList() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
     lv.Delete()
+    if ( lv.GetCount( "Col" ) < 2 )
+        lv.InsertCol( 1, , "Integer" )
+
+    lv.ModifyCol( 1, 0 )
     filter := myGui.SearchBox.Text
     filter := Trim( filter )
-    idx := 0
+
     for i, item in AppState.History {
-        content := item[ "text" ]
-        display := StrReplace( SubStr( content, 1, 100 ), "`n", " " )
-        if StrLen( content ) > 100
+        display := StrReplace( SubStr( item[ "text" ], 1, 100 ), "`n", " " )
+        if StrLen( item[ "text" ] ) > 100
             display .= "..."
-        if filter != "" && !InStr( display, filter ) && !InStr( content, filter )
+
+        if filter != "" && !InStr( display, filter ) && !InStr( item[ "text" ], filter )
             continue
-        idx++
-        lv.Add(, idx, display )
+
+        lv.Add(, i, display )
     }
-    lv.ModifyCol( 1, "AutoHdr" )
+
     lv.ModifyCol( 2, "AutoHdr" )
     myGui.chkSelectAll.Value := 0
 }

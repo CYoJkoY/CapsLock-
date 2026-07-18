@@ -14,3 +14,13 @@ Join( arr, sep := " " ) {
         s .= v . sep
     return SubStr( s, 1, -StrLen( sep ) )
 }
+
+PasteTempText( content, tooltipMsg := "" ) {
+    tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_MSec ".txt"
+    FileAppend( content, tempFile, "UTF-8" )
+    ClipboardHelper.SetClipboardFile( tempFile )
+    ActivateAndPaste()
+    CleanupManager.ScheduleDeletion( tempFile )
+    if tooltipMsg
+        ShowToolTip( tooltipMsg, 2000 )
+}

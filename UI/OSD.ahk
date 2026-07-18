@@ -2,11 +2,18 @@
 
 class OSD {
     static currentOSD := ""
+    static fadeTimer := ""
+
     static ShowTopMostOSD( targetHwnd, isOnTop ) {
+        if this.fadeTimer != "" {
+            SetTimer( this.fadeTimer, 0 )
+            this.fadeTimer := ""
+        }
         if IsObject( this.currentOSD ) {
             try this.currentOSD.Destroy()
             this.currentOSD := ""
         }
+
         myOSD := Gui( "+AlwaysOnTop -Caption +ToolWindow +E0x20" )
         myOSD.BackColor := "1E1E1E"
         myOSD.SetFont( "s12 cWhite bold", "Segoe UI" )
@@ -21,36 +28,57 @@ class OSD {
             myOSD.Show( "x" posX " y" posY " NoActivate" )
             WinSetTransparent( 0, myOSD )
             this.currentOSD := myOSD
-            SetTimer( this.Fade.Bind( this, myOSD, "in" ), -10 )
+
+            this.fadeTimer := ObjBindMethod( this, "Fade", myOSD, "in" )
+            SetTimer( this.fadeTimer, -10 )
         } catch {
             myOSD.Destroy()
         }
     }
 
     static Fade( myOSD, state ) {
-        static step := 20, maxAlpha := 220, holdTime := 1000
         try {
+            if !IsObject( myOSD ) || !WinExist( "ahk_id " myOSD.Hwnd ) {
+                this.StopFade()
+                return
+            }
             trans := WinGetTransparent( myOSD )
         } catch {
+            this.StopFade()
             return
         }
+
+        static step := 20, maxAlpha := 220, holdTime := 1000
+
         if state == "in" {
             if trans < maxAlpha {
                 WinSetTransparent( trans + step, myOSD )
-                SetTimer( this.Fade.Bind( this, myOSD, "in" ), -16 )
+                this.fadeTimer := ObjBindMethod( this, "Fade", myOSD, "in" )
+                SetTimer( this.fadeTimer, -16 )
             } else {
-                SetTimer( this.Fade.Bind( this, myOSD, "hold" ), -holdTime )
+                this.fadeTimer := ObjBindMethod( this, "Fade", myOSD, "hold" )
+                SetTimer( this.fadeTimer, -holdTime )
             }
         } else if state == "hold" {
-            SetTimer( this.Fade.Bind( this, myOSD, "out" ), -16 )
+            this.fadeTimer := ObjBindMethod( this, "Fade", myOSD, "out" )
+            SetTimer( this.fadeTimer, -16 )
         } else if state == "out" {
             if trans > 0 {
                 WinSetTransparent( trans - step, myOSD )
-                SetTimer( this.Fade.Bind( this, myOSD, "out" ), -16 )
+                this.fadeTimer := ObjBindMethod( this, "Fade", myOSD, "out" )
+                SetTimer( this.fadeTimer, -16 )
             } else {
                 try myOSD.Destroy()
                 this.currentOSD := ""
+                this.StopFade()
             }
+        }
+    }
+
+    static StopFade() {
+        if this.fadeTimer != "" {
+            SetTimer( this.fadeTimer, 0 )
+            this.fadeTimer := ""
         }
     }
 }

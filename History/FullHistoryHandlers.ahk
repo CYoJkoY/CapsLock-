@@ -3,18 +3,21 @@
 OnFullHistoryDoubleClick( lv, row ) {
     if row == 0
         return
-    selected := AppState.History[ row ]
-    PasteSingleFile( selected, false )
+
+    realIndex := lv.GetText( row, 1 )
+    PasteSingleFile( AppState.History[ realIndex ], false )
 }
 
 OnFullHistoryContextMenu( lv, row, isRightClick, x, y ) {
     if row == 0
         return
-    selected := AppState.History[ row ]
+
+    realIdx := lv.GetText( row, 1 )
+    item := AppState.History[ realIdx ]
     myMenu := Menu()
-    myMenu.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsMultipleFiles( [ selected ] ) )
-    myMenu.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( selected[ "text" ] ) )
-    myMenu.Add( Lang( "CONTEXT_DELETE" ), ( * ) => DeleteFromFullHistory( row ) )
+    myMenu.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsMultipleFiles( [ item ] ) )
+    myMenu.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( item[ "text" ] ) )
+    myMenu.Add( Lang( "CONTEXT_DELETE" ), ( * ) => DeleteFromFullHistory( realIdx ) )
     myMenu.Show( x, y )
 }
 
@@ -24,8 +27,10 @@ PasteSelectedFromFullHistory() {
     fileList := []
     row := 0
     while row := lv.GetNext( row, "Checked" ) {
-        fileList.Push( AppState.History[ row ] )
+        realIdx := lv.GetText( row, 1 )
+        fileList.Push( AppState.History[ realIdx ] )
     }
+
     if fileList.Length == 0 {
         ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
         return
@@ -51,12 +56,14 @@ PasteSelectedFromFullHistory() {
             }
         }
     }
+
     WinActivate( "ahk_id " AppState.TargetWindow )
     Sleep( 100 )
     for item in fileList {
         PasteSingleFile( item, false )
         Sleep( 200 )
     }
+
     ShowToolTip( Lang( "MSG_PASTE_COMPLETE" ), 1500 )
 }
 
@@ -66,8 +73,8 @@ PasteSelectedFromFullHistoryText() {
     textList := []
     row := 0
     while row := lv.GetNext( row, "Checked" ) {
-        item := AppState.History[ row ]
-        textList.Push( item[ "text" ] )
+        realIdx := lv.GetText( row, 1 )
+        textList.Push( AppState.History[ realIdx ][ "text" ] )
     }
 
     if textList.Length == 0 {
@@ -80,8 +87,6 @@ PasteSelectedFromFullHistoryText() {
         combined .= t "`n"
     combined := RTrim( combined, "`n" )
 
-    backup := A_Clipboard
-    A_Clipboard := combined
     if !WinExist( "ahk_id " AppState.TargetWindow ) {
         current := WinExist( "A" )
         if current && current != myGui.Hwnd
@@ -104,6 +109,10 @@ PasteSelectedFromFullHistoryText() {
 
         }
     }
+
+    backup := A_Clipboard
+    A_Clipboard := combined
+
     WinActivate( "ahk_id " AppState.TargetWindow )
     Sleep( 100 )
     Send( "^v" )
@@ -119,6 +128,7 @@ OnSelectAllClicked( chk, info ) {
     row := 0
     while row := lv.GetNext( row, "Checked" )
         checked++
+
     if checked == total {
         loop total
             lv.Modify( A_Index, "-Check" )
@@ -137,14 +147,17 @@ OnDeleteSelected( * ) {
     row := 0
     while row := lv.GetNext( row, "Checked" )
         rowsToDelete.Push( row )
+
     if rowsToDelete.Length == 0 {
         ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
         return
     }
+
     loop rowsToDelete.Length {
         idx := rowsToDelete[ rowsToDelete.Length - A_Index + 1 ]
         HistoryManager.Delete( idx )
     }
+
     RefreshFullHistoryList()
 }
 
@@ -160,5 +173,6 @@ UpdateSelectAllCheckbox() {
     row := 0
     while row := lv.GetNext( row, "Checked" )
         checked++
+
     myGui.chkSelectAll.Value := ( checked == total ) ? 1 : 0
 }

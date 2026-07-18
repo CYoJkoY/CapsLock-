@@ -1,26 +1,40 @@
 #Requires AutoHotkey v2.0
 
 class CleanupManager {
-    static pending := Map()
+    static pending := unset
+    static pendingTimer := ""
+    static scheduling := false
 
     static ScheduleDeletion( filePath ) {
         if AppState.DeleteMode == 1 {
-            if !IsObject( this.pending ) {
+            if !IsSet( this.pending ) || !IsObject( this.pending ) {
+                if this.scheduling
+                    return
+
+                scheduling := true
                 this.pending := Map()
-                SetTimer( this.ProcessDeletions.Bind( this ), 1000 )
+                this.pendingTimer := ObjBindMethod( this, "ProcessDeletions" )
+                SetTimer( this.pendingTimer, 1000 )
             }
+
             this.pending[ filePath ] := A_TickCount + AppState.DeleteDelay * 1000
+
         } else if AppState.DeleteMode == 2 {
             AppState.PendingCleanup.Push( filePath )
             if AppState.CleanupTimer == "" {
-                AppState.CleanupTimer := SetTimer( this.PerformBatchCleanup.Bind( this ), AppState.CleanupInterval * 1000 )
+                bound := ObjBindMethod( this, "PerformBatchCleanup" )
+                AppState.CleanupTimer := bound
+                SetTimer( bound, AppState.CleanupInterval * 1000 )
             }
         }
+
+        scheduling := false
     }
 
     static ProcessDeletions() {
-        if !IsObject( this.pending )
+        if !IsSet( this.pending ) || !IsObject( this.pending )
             return
+
         now := A_TickCount
         for path, timeout in this.pending.Clone() {
             if now >= timeout {
@@ -28,9 +42,15 @@ class CleanupManager {
                 this.pending.Delete( path )
             }
         }
+
         if this.pending.Count == 0 {
-            this.pending := ""
-            SetTimer( this.ProcessDeletions, 0 )
+            this.pending := unset
+            this.scheduling := false
+
+            if this.pendingTimer != "" {
+                SetTimer( this.pendingTimer, 0 )
+                this.pendingTimer := ""
+            }
         }
     }
 
@@ -51,18 +71,22 @@ class CleanupManager {
     }
 
     static OnExit() {
-        loop files, A_Temp "\ClipTemp_*", "F" {
-            try FileDelete( A_LoopFileFullPath )
+
+        if this.pendingTimer != "" {
+            SetTimer( this.pendingTimer, 0 )
+            this.pendingTimer := ""
         }
 
-        if IsObject( this.pending ) {
+        if AppState.CleanupTimer != "" {
+            SetTimer( AppState.CleanupTimer, 0 )
+            AppState.CleanupTimer := ""
+        }
+        loop files, A_Temp "\ClipTemp_*", "F"
+            try FileDelete( A_LoopFileFullPath )
+        if IsSet( this.pending ) && IsObject( this.pending )
             for path in this.pending.Clone()
                 try FileDelete( path )
-            this.pending := ""
-        }
-
         for path in AppState.PendingCleanup
             try FileDelete( path )
-        AppState.PendingCleanup := []
     }
 }

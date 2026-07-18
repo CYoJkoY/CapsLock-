@@ -8,17 +8,15 @@ PasteWithCurrentMode() {
     }
 
     validLines := []
-    ignoredCount := 0
     lines := StrSplit( target, "`n", "`r" )
     for line in lines {
         line := Trim( line )
         if line == ""
             continue
 
-        if FileExist( line ) && FileHelper.ShouldIgnore( line ) {
-            ignoredCount++
+        if FileExist( line ) && FileHelper.ShouldIgnore( line )
             continue
-        }
+
         validLines.Push( line )
     }
 
@@ -29,8 +27,21 @@ PasteWithCurrentMode() {
 
     newTarget := ""
     for line in validLines
-        newTarget .= line . "`n"
+        newTarget .= line "`n"
     newTarget := RTrim( newTarget, "`n" )
+
+    if PathDetector.IsImagePathsText( newTarget ) && AppState.ImageMagickExe && FileExist( AppState.ImageMagickExe ) {
+        original := A_Clipboard
+        A_Clipboard := newTarget
+        pdfPath := ProcessImagePathsToPDF()
+        A_Clipboard := original
+        if pdfPath != ""
+            PasteFile( pdfPath, "pdf" )
+        else
+            ShowToolTip( Lang( "MSG_IMAGE_PDF_FAIL" ), 2000 )
+
+        return
+    }
 
     item := Map( "text", newTarget, "source", "Direct Paste", "time", FormatTime(, "yyyy-MM-dd HH:mm:ss" ) )
     PasteAsFile( item )

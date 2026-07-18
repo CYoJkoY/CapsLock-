@@ -36,14 +36,7 @@ PasteSingleFile( historyItem, activate := true ) {
 
     sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
     fullContent := "; " sourceInfo "`n`n" textToPaste
-    tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend( fullContent, tempFile, "UTF-8" )
-    ClipboardHelper.SetClipboardFile( tempFile )
-    if activate
-        ActivateAndPaste()
-    else
-        Send( "^v" )
-    CleanupManager.ScheduleDeletion( tempFile )
+    PasteTempText( fullContent, Lang( "MSG_PASTE_FILE_TYPE", , "text" ) )
 }
 
 PasteAsMultipleFiles( textArray ) {
@@ -70,11 +63,7 @@ PasteAsMultipleFiles( textArray ) {
 PastePlainTextWithSource( historyItem ) {
     sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
     fullContent := "; " sourceInfo "`n`n" historyItem[ "text" ]
-    tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-    FileAppend( fullContent, tempFile, "UTF-8" )
-    ClipboardHelper.SetClipboardFile( tempFile )
-    ActivateAndPaste()
-    CleanupManager.ScheduleDeletion( tempFile )
+    PasteTempText( fullContent )
 }
 
 HandleSingleFileText( historyItem ) {
@@ -98,20 +87,24 @@ HandleMultipleFilesText( historyItem ) {
     files := PathDetector.GetValidPathsFromText( target, "file" )
     if files.Length == 0
         return
+
     validFiles := []
     for f in files {
         if !FileHelper.ShouldIgnore( f )
             validFiles.Push( f )
     }
+
     if validFiles.Length == 0 {
         ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 1500 )
         return
     }
+
     merged := FileHelper.ReadMultipleFilesAsText( validFiles )
     if ( merged == "" ) {
         ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
         return
     }
+
     sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
     fullText := "; " sourceInfo "`n`n" merged
     PasteAsPlainText( fullText, Lang( "MSG_PASTE_FILES", , validFiles.Length ) )
@@ -226,68 +219,59 @@ PasteAsFile( historyItem ) {
             ShowToolTip( Lang( "MSG_FILE_IGNORED" ), 1500 )
             return
         }
+
         PasteSingleFile( historyItem, true )
         return
     }
 
     if PathDetector.IsMultiFilePathText( target ) {
         files := PathDetector.GetValidPathsFromText( target, "file" )
-        if files.Length > 0 {
-            validFiles := []
-            for f in files {
-                if !FileHelper.ShouldIgnore( f )
-                    validFiles.Push( f )
-            }
-            if validFiles.Length == 0 {
-                ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 1500 )
-                return
-            }
+        validFiles := []
+        for f in files {
+            if !FileHelper.ShouldIgnore( f )
+                validFiles.Push( f )
+        }
 
-            merged := FileHelper.ReadMultipleFilesAsText( validFiles )
-            if merged != "" {
-                sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
-                full := "; " sourceInfo "`n`n" merged
-                tempFile := A_Temp "\ClipTemp_MultiFile_" A_TickCount ".txt"
-                FileAppend( full, tempFile, "UTF-8" )
-                ClipboardHelper.SetClipboardFile( tempFile )
-                ActivateAndPaste()
-                CleanupManager.ScheduleDeletion( tempFile )
-                ShowToolTip( Lang( "MSG_PASTE_FILES", , validFiles.Length ), 2000 )
-            } else {
-                ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
-            }
+        if validFiles.Length == 0 {
+            ShowToolTip( Lang( "MSG_ALL_FILES_IGNORED" ), 1500 )
             return
         }
+
+        merged := FileHelper.ReadMultipleFilesAsText( validFiles )
+        if merged != "" {
+            sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
+            full := "; " sourceInfo "`n`n" merged
+            PasteTempText( full, Lang( "MSG_PASTE_FILES", , validFiles.Length ) )
+        } else {
+            ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
+        }
+        return
+
     }
 
     if PathDetector.IsMultiFolderPathText( target ) {
         folders := PathDetector.GetValidPathsFromText( target, "folder" )
-        if folders.Length > 0 {
-            validFolders := []
-            for fd in folders {
-                if !FileHelper.ShouldIgnore( fd )
-                    validFolders.Push( fd )
-            }
-            if validFolders.Length == 0 {
-                ShowToolTip( Lang( "MSG_ALL_FOLDERS_IGNORED" ), 1500 )
-                return
-            }
+        validFolders := []
+        for fd in folders {
+            if !FileHelper.ShouldIgnore( fd )
+                validFolders.Push( fd )
+        }
 
-            merged := FileHelper.ReadMultipleFoldersAsText( validFolders )
-            if merged != "" {
-                sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
-                full := "; " sourceInfo "`n`n" merged
-                tempFile := A_Temp "\ClipTemp_Combine_" A_TickCount ".txt"
-                FileAppend( full, tempFile, "UTF-8" )
-                ClipboardHelper.SetClipboardFile( tempFile )
-                ActivateAndPaste()
-                CleanupManager.ScheduleDeletion( tempFile )
-                ShowToolTip( Lang( "MSG_FOLDER_MERGED" ), 2000 )
-            } else {
-                ShowToolTip( Lang( "MSG_FOLDER_EMPTY_OR_IGNORED" ), 1500 )
-            }
+        if validFolders.Length == 0 {
+            ShowToolTip( Lang( "MSG_ALL_FOLDERS_IGNORED" ), 1500 )
             return
         }
+
+        merged := FileHelper.ReadMultipleFoldersAsText( validFolders )
+        if merged != "" {
+            sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
+            full := "; " sourceInfo "`n`n" merged
+            PasteTempText( full, Lang( "MSG_FOLDER_MERGED" ) )
+        } else {
+            ShowToolTip( Lang( "MSG_FOLDER_EMPTY_OR_IGNORED" ), 1500 )
+        }
+
+        return
     }
 
     if PathDetector.IsMixedPathsText( target ) {
@@ -298,18 +282,22 @@ PasteAsFile( historyItem ) {
             if !FileHelper.ShouldIgnore( f )
                 validFiles.Push( f )
         }
+
         validFolders := []
         for fd in folders {
             if !FileHelper.ShouldIgnore( fd )
                 validFolders.Push( fd )
         }
+
         if validFiles.Length == 0 && validFolders.Length == 0 {
             ShowToolTip( Lang( "MSG_ALL_PATHS_IGNORED" ), 1500 )
             return
         }
+
         allFiles := []
         for f in validFiles
             allFiles.Push( f )
+
         for fd in validFolders {
             collected := FileHelper.CollectFilesFromFolder( fd, true )
             for cf in collected {
@@ -317,21 +305,19 @@ PasteAsFile( historyItem ) {
                     allFiles.Push( cf )
             }
         }
+
         if allFiles.Length == 0
             return
+
         merged := FileHelper.ReadMultipleFilesAsText( allFiles )
         if merged != "" {
             sourceInfo := "Copied from: " historyItem[ "source" ] " (at " historyItem[ "time" ] ")"
             full := "; " sourceInfo "`n`n" merged
-            tempFile := A_Temp "\ClipTemp_Mixed_" A_TickCount ".txt"
-            FileAppend( full, tempFile, "UTF-8" )
-            ClipboardHelper.SetClipboardFile( tempFile )
-            ActivateAndPaste()
-            CleanupManager.ScheduleDeletion( tempFile )
-            ShowToolTip( Lang( "MSG_PASTE_MIXED", , validFiles.Length, validFolders.Length ), 2000 )
+            PasteTempText( full, Lang( "MSG_PASTE_MIXED", , validFiles.Length, validFolders.Length ) )
         } else {
             ShowToolTip( Lang( "MSG_FILES_EMPTY" ), 1500 )
         }
+
         return
     }
 

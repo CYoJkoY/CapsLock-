@@ -11,48 +11,32 @@ class HistoryManager {
         history := FileOpen( AppState.HistoryFile, "r" )
         if !IsObject( history )
             return
-        arrayLen := history.ReadInt()
-        if arrayLen == "" || arrayLen < 0 {
-            history.Close()
-            return
-        }
-        list := []
-        loop arrayLen {
-            strLenBytes := history.ReadInt()
-            if strLenBytes == "" || strLenBytes <= 0
-                break
-            buf := Buffer( strLenBytes )
-            if history.RawRead( buf, strLenBytes ) != strLenBytes
-                break
-            CryptBuffer( buf )
-            try {
-                line := StrGet( buf, "UTF-8" )
-                pos1 := InStr( line, " | " )
-                if pos1 > 0 {
-                    timeStr := SubStr( line, 1, pos1 - 1 )
-                    rest := SubStr( line, pos1 + 3 )
-                    pos2 := InStr( rest, " | " )
-                    if pos2 > 0 {
-                        sourceStr := SubStr( rest, 1, pos2 - 1 )
-                        textStr := SubStr( rest, pos2 + 3 )
-                    } else {
-                        sourceStr := "Unknown Source"
-                        textStr := rest
-                    }
-                } else {
-                    timeStr := ""
-                    sourceStr := "Unknown Source"
-                    textStr := line
-                }
-                item := Map( "time", timeStr, "source", sourceStr, "text", textStr )
-                list.Push( item )
-            } catch {
-                try {
-                    text := StrGet( buf, "UTF-8" )
-                    list.Push( Map( "time", "", "source", "Legacy Entry", "text", text ) )
-                } catch
-                    break
+        try {
+            count := history.ReadInt()
+            if count <= 0 {
+                history.Close()
+                return
             }
+            list := []
+            loop count {
+                size := history.ReadInt()
+                if size <= 0
+                    break
+                buf := Buffer( size )
+                if history.RawRead( buf, size ) != size
+                    break
+                CryptBuffer( buf )
+                p := 0
+                timeLen := NumGet( buf, p, "Int" ), p += 4
+                timeStr := StrGet( buf.Ptr + p, timeLen, "UTF-8" ), p += timeLen
+                srcLen := NumGet( buf, p, "Int" ), p += 4
+                srcStr := StrGet( buf.Ptr + p, srcLen, "UTF-8" ), p += srcLen
+                txtLen := NumGet( buf, p, "Int" ), p += 4
+                txtStr := StrGet( buf.Ptr + p, txtLen, "UTF-8" )
+                list.Push( Map( "time", timeStr, "source", srcStr, "text", txtStr ) )
+            }
+        } catch {
+            list := []
         }
         history.Close()
         while list.Length > AppState.MaxHistory
@@ -66,9 +50,23 @@ class HistoryManager {
             return
         history.WriteInt( AppState.History.Length )
         for item in AppState.History {
-            line := item[ "time" ] " | " item[ "source" ] " | " item[ "text" ]
-            buf := Buffer( StrPut( line, "UTF-8" ) - 1 )
-            StrPut( line, buf, "UTF-8" )
+            timeBuf := Buffer( StrPut( item[ "time" ], "UTF-8" ) )
+            StrPut( item[ "time" ], timeBuf, "UTF-8" )
+            srcBuf := Buffer( StrPut( item[ "source" ], "UTF-8" ) )
+            StrPut( item[ "source" ], srcBuf, "UTF-8" )
+            txtBuf := Buffer( StrPut( item[ "text" ], "UTF-8" ) )
+            StrPut( item[ "text" ], txtBuf, "UTF-8" )
+
+            total := 4 + timeBuf.Size + 4 + srcBuf.Size + 4 + txtBuf.Size
+            buf := Buffer( total )
+            p := 0
+            NumPut( "Int", timeBuf.Size, buf, p ), p += 4
+            DllCall( "RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", timeBuf.Ptr, "Ptr", timeBuf.Size ), p += timeBuf.Size
+            NumPut( "Int", srcBuf.Size, buf, p ), p += 4
+            DllCall( "RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", srcBuf.Ptr, "Ptr", srcBuf.Size ), p += srcBuf.Size
+            NumPut( "Int", txtBuf.Size, buf, p ), p += 4
+            DllCall( "RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", txtBuf.Ptr, "Ptr", txtBuf.Size )
+
             CryptBuffer( buf )
             history.WriteInt( buf.Size )
             history.RawWrite( buf, buf.Size )

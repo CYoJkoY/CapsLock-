@@ -10,34 +10,58 @@ class ClipboardHelper {
         StrPut( filePath, buf.Ptr + DROPFILES_SIZE, "UTF-16" )
         if !this.OpenClipboard()
             return
+
         DllCall( "EmptyClipboard" )
         hMem := DllCall( "GlobalAlloc", "UInt", 0x42, "Ptr", buf.Size, "Ptr" )
+        if !hMem {
+            this.CloseClipboard()
+            return
+        }
+
         pMem := DllCall( "GlobalLock", "Ptr", hMem, "Ptr" )
         DllCall( "RtlMoveMemory", "Ptr", pMem, "Ptr", buf.Ptr, "Ptr", buf.Size )
         DllCall( "GlobalUnlock", "Ptr", hMem )
-        DllCall( "SetClipboardData", "UInt", 0xF, "Ptr", hMem )
+
+        if !DllCall( "SetClipboardData", "UInt", 0xF, "Ptr", hMem ) {
+            DllCall( "GlobalFree", "Ptr", hMem )
+        }
+
         this.CloseClipboard()
     }
 
     static SetClipboardFiles( fileArray ) {
         static DROPFILES_SIZE := 20
-        totalBytes := this.CalcDropFilesSize( fileArray )
+        totalBytes := DROPFILES_SIZE + 2
+        for path in fileArray
+            totalBytes += ( StrLen( path ) + 1 ) * 2
+
         buf := Buffer( totalBytes, 0 )
         NumPut( "UInt", DROPFILES_SIZE, buf, 0 )
         NumPut( "UInt", 1, buf, 16 )
         offset := DROPFILES_SIZE
         for path in fileArray {
-            StrPut( path, buf.Ptr + offset, "UTF-16" )
-            offset += StrPut( path, "UTF-16" ) * 2
+            StrPut( path, buf.Ptr + offset, StrLen( path ) + 1, "UTF-16" )
+            offset += ( StrLen( path ) + 1 ) * 2
         }
+
         if !this.OpenClipboard()
             return
+
         DllCall( "EmptyClipboard" )
         hMem := DllCall( "GlobalAlloc", "UInt", 0x42, "Ptr", buf.Size, "Ptr" )
+        if !hMem {
+            this.CloseClipboard()
+            return
+        }
+
         pMem := DllCall( "GlobalLock", "Ptr", hMem, "Ptr" )
         DllCall( "RtlMoveMemory", "Ptr", pMem, "Ptr", buf.Ptr, "Ptr", buf.Size )
         DllCall( "GlobalUnlock", "Ptr", hMem )
-        DllCall( "SetClipboardData", "UInt", 0xF, "Ptr", hMem )
+
+        if !DllCall( "SetClipboardData", "UInt", 0xF, "Ptr", hMem ) {
+            DllCall( "GlobalFree", "Ptr", hMem )
+        }
+
         this.CloseClipboard()
     }
 
@@ -81,13 +105,5 @@ class ClipboardHelper {
 
     static CloseClipboard() {
         DllCall( "CloseClipboard" )
-    }
-
-    static CalcDropFilesSize( fileArray ) {
-        static DROPFILES_SIZE := 20
-        total := DROPFILES_SIZE
-        for path in fileArray
-            total += StrPut( path, "UTF-16" ) * 2
-        return total + 2
     }
 }

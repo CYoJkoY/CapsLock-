@@ -7,7 +7,7 @@ DeleteHistoryItem( * ) {
     }
 }
 
-DeleteFromFullHistory( index ) {
-    HistoryManager.Delete( index )
+DeleteFromFullHistory( realIndex ) {
+    HistoryManager.Delete( realIndex )
     RefreshFullHistoryList()
 }
