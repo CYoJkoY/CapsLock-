@@ -1,15 +1,60 @@
 #Requires AutoHotkey v2.0
 
 class FileHelper {
+    static globCache := Map()
+
     static ShouldIgnore( filePath ) {
+        filePath := StrReplace( filePath, "\", "/" )
         for pattern in AppState.IgnorePatterns {
             try {
-                if RegExMatch( filePath, pattern )
-                    return true
+                if InStr( pattern, "*" ) || InStr( pattern, "?" ) {
+                    if !this.globCache.Has( pattern )
+                        this.globCache[ pattern ] := "i)" . this.GlobToRegex( pattern )
+                    if RegExMatch( filePath, this.globCache[ pattern ] )
+                        return true
+                } else {
+                    if RegExMatch( filePath, "i)" pattern )
+                        return true
+                }
             } catch {
             }
         }
         return false
+    }
+
+    static GlobToRegex( pattern ) {
+        pattern := StrReplace( pattern, "\", "/" )
+        result := ""
+        i := 1
+        len := StrLen( pattern )
+        while i <= len {
+            char := SubStr( pattern, i, 1 )
+            if char == "*" {
+                if ( i < len && SubStr( pattern, i + 1, 1 ) == "*" ) {
+                    result .= ".*"
+                    i += 2
+                    continue
+                } else {
+                    result .= "[^/]*"
+                    i++
+                    continue
+                }
+            } else if char == "?" {
+                result .= "[^/]"
+                i++
+                continue
+            } else {
+                if InStr( ".+^$()[]{}|", char )
+                    result .= "\" . char
+                else
+                    result .= char
+                i++
+            }
+        }
+
+        result := StrReplace( result, "/", "[\\\\/]" )
+
+        return "^" result "$"
     }
 
     static ReadMultipleFilesAsText( filePaths ) {
@@ -52,6 +97,10 @@ class FileHelper {
     static CollectFilesFromFolder( folderPath, recursive := true, fileList := unset ) {
         if !IsSet( fileList )
             fileList := []
+
+        if this.ShouldIgnore( folderPath )
+            return fileList
+
         try {
             loop files, folderPath "\*", "F"
                 fileList.Push( A_LoopFileFullPath )
