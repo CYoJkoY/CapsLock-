@@ -20,6 +20,7 @@ class AppState {
     static HistoryFile := A_ScriptDir "\configs\ClipHistory.bin"
     static ENCRYPT_KEY := 0x5A
     static MAX_VISIBLE_MENU := 15
+    static MAX_FULL_HISTORY_DISPLAY := 50
     static TextFormats := [
         "txt", "log", "md", "rtf",
         "tex", "wri", "ini", "cfg",
