@@ -85,9 +85,11 @@ class CleanupManager {
         loop files, A_Temp "\ClipTemp_*", "F"
             try FileDelete( A_LoopFileFullPath )
 
-        if !IsObject( this.pending )
+        if IsObject( this.pending ) {
             for path in this.pending.Clone()
                 try FileDelete( path )
+            this.pending := unset
+        }
 
         for path in AppState.PendingCleanup
             try FileDelete( path )
