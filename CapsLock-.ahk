@@ -44,4 +44,7 @@ HistoryManager.Load()
 ConfigManager.Load()
 TraySetup()
 OnClipboardChange( ClipboardChanged )
-OnExit( ( * ) => CleanupManager.OnExit() )
+OnExit( ( * ) => (
+    HistoryManager.ForceSave(),
+    CleanupManager.OnExit()
+) )

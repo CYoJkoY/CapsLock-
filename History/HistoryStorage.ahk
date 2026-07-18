@@ -1,30 +1,39 @@
 #Requires AutoHotkey v2.0
 
 class HistoryManager {
+    static savePending := false
+    static saveTimer := ""
+
     static Load() {
         if AppState.MaxHistory == 0 {
             AppState.History := []
             return
         }
+
         if !FileExist( AppState.HistoryFile )
             return
+
         history := FileOpen( AppState.HistoryFile, "r" )
         if !IsObject( history )
             return
+
         try {
             count := history.ReadInt()
             if count <= 0 {
                 history.Close()
                 return
             }
+
             list := []
             loop count {
                 size := history.ReadInt()
                 if size <= 0
                     break
+
                 buf := Buffer( size )
                 if history.RawRead( buf, size ) != size
                     break
+
                 CryptBuffer( buf )
                 p := 0
                 timeLen := NumGet( buf, p, "Int" ), p += 4
@@ -44,10 +53,23 @@ class HistoryManager {
         AppState.History := list
     }
 
-    static Save() {
+    static ScheduleSave() {
+        if this.saveTimer
+            SetTimer( this.saveTimer, 0 )
+        this.savePending := true
+        this.saveTimer := ObjBindMethod( this, "DoSave" )
+        SetTimer( this.saveTimer, -2000 )
+    }
+
+    static DoSave() {
+        if !this.savePending
+            return
+
+        this.savePending := false
         history := FileOpen( AppState.HistoryFile, "w" )
         if !IsObject( history )
             return
+
         history.WriteInt( AppState.History.Length )
         for item in AppState.History {
             timeBuf := Buffer( StrPut( item[ "time" ], "UTF-8" ) )
@@ -71,6 +93,7 @@ class HistoryManager {
             history.WriteInt( buf.Size )
             history.RawWrite( buf, buf.Size )
         }
+
         history.Close()
     }
 
@@ -79,10 +102,13 @@ class HistoryManager {
             AppState.IgnoreNextClipChange := false
             return
         }
+
         if text == ""
             return
+
         if AppState.History.Length > 0 && AppState.History[ 1 ][ "text" ] == text
             return
+
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss" )
         item := Map( "text", text, "source", source, "time", timestamp, "process", "" )
 
@@ -92,16 +118,18 @@ class HistoryManager {
                 break
             }
         }
+
         AppState.History.InsertAt( 1, item )
         while AppState.History.Length > AppState.MaxHistory
             AppState.History.Pop()
-        this.Save()
+
+        this.ScheduleSave()
     }
 
     static Delete( index ) {
         if index <= AppState.History.Length {
             AppState.History.RemoveAt( index )
-            this.Save()
+            this.ScheduleSave()
         }
     }
 
@@ -109,6 +137,13 @@ class HistoryManager {
         if index <= AppState.History.Length
             return AppState.History[ index ]
         return ""
+    }
+
+    static ForceSave() {
+        if this.saveTimer
+            SetTimer( this.saveTimer, 0 )
+        if this.savePending
+            this.DoSave()
     }
 }
 
@@ -118,14 +153,18 @@ ClipboardChanged( DataType ) {
         AppState.IgnoreNextClipChange := false
         return
     }
+
     if DataType != 1
         return
+
     text := A_Clipboard
     if InStr( text, A_Temp "\ClipTemp_" )
         return
+
     AppState.LastManualClipboard := text
     if AppState.MaxHistory == 0
         return
+
     try sourceTitle := WinGetTitle( "A" )
     catch
         sourceTitle := "Unknown Window"
