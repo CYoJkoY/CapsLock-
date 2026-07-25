@@ -129,6 +129,9 @@ SaveIgnoreRules( text, myGui ) {
     AppState.IgnorePatterns := newPatterns
     ConfigManager.Save()
     myGui.Destroy()
+
+    FileHelper.BuildIgnoreRegexes()
+
     ToolTip( Lang( "MSG_IGNORE_UPDATED" ) )
     SetTimer( () => ToolTip(), -2000 )
 }

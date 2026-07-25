@@ -42,6 +42,9 @@ Language.Load()
 
 HistoryManager.Load()
 ConfigManager.Load()
+
+FileHelper.BuildIgnoreRegexes()
+
 TraySetup()
 OnClipboardChange( ClipboardChanged )
 OnExit( ( * ) => (
