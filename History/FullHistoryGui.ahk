@@ -158,9 +158,9 @@ RefreshFullHistoryList() {
     lv.ModifyCol(2, "AutoHdr")
 
     if myGui.HasProp("StatusBar") {
-        myGui.StatusBar.Text := "  " totalMatching " items"
-            . (filter ? " (filtered)" : "")
-            . "  |  Showing " Min(maxDisplay, totalMatching) " of " totalMatching
+        displayCount := Min(maxDisplay, totalMatching)
+        statusKey := filter ? "GUI_FULL_STATUSBAR_FILTERED" : "GUI_FULL_STATUSBAR"
+        myGui.StatusBar.Text := lang(statusKey, , totalMatching, displayCount)
     }
     myGui.chkSelectAll.Value := 0
 }
