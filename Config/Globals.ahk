@@ -27,16 +27,31 @@ class AppState {
     static HistoryFile := A_ScriptDir "\configs\ClipHistory.bin"
     static ENCRYPT_KEY := 0x5A
 
+    static _init := DirExist(A_ScriptDir "\configs") ? "" : DirCreate(A_ScriptDir "\configs")
+
     ; --- UI Constants ---
     static MAX_VISIBLE_MENU := 15
     static MAX_FULL_HISTORY_DISPLAY := 50
 
-    ; --- UI Theme ---
-    static THEME_BG := "0x1E1E1E"
-    static THEME_CONTROL_BG := "0x252526"
-    static THEME_FG := "0xD4D4D4"
-    static THEME_ACCENT := "0x007ACC"
-    static THEME_FONT := "Segoe UI"
+    ; --- UI Theme (Refined Dark) ---
+    static THEME_BG            := "0x1E1E2E"
+    static THEME_SURFACE       := "0x262637"
+    static THEME_ELEVATED      := "0x2E2E42"
+    static THEME_CONTROL_BG    := "0x313244"
+    static THEME_CONTROL_HOVER := "0x3E3E56"
+    static THEME_BORDER        := "0x45475A"
+    static THEME_FG            := "0xCDD6F4"
+    static THEME_FG_DIM        := "0xA6ADC8"
+    static THEME_FG_MUTED      := "0x7F849C"
+    static THEME_ACCENT        := "0x89B4FA"
+    static THEME_ACCENT_DARK   := "0x45608A"
+    static THEME_ACCENT_GLOW   := "0xB4D0FB"
+    static THEME_SUCCESS       := "0xA6E3A1"
+    static THEME_WARNING       := "0xF9E2AF"
+    static THEME_DANGER        := "0xF38BA8"
+    static THEME_FONT          := "Segoe UI"
+    static THEME_FONT_MONO     := "Cascadia Code"
+    static THEME_RADIUS        := 8
 
     ; --- File Types ---
     static TextFormats := [
@@ -68,4 +83,6 @@ class AppState {
     static pasteModeMenu := ""
     static currentImMenuText := ""
     static IgnorePatterns := []
+    static AutoCleanEnabled := false
+    static MaxHistoryItems := 500
 }

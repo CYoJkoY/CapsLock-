@@ -11,7 +11,7 @@ class CleanupManager {
                 if this.scheduling
                     return
 
-                scheduling := true
+                this.scheduling := true
                 this.pending := Map()
                 this.pendingTimer := ObjBindMethod( this, "ProcessDeletions" )
                 SetTimer( this.pendingTimer, 1000 )
@@ -28,7 +28,7 @@ class CleanupManager {
             }
         }
 
-        scheduling := false
+        this.scheduling := false
     }
 
     static ProcessDeletions() {

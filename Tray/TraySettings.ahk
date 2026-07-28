@@ -120,31 +120,40 @@ SetImPath(*) {
 }
 
 SetIgnorePatterns(*) {
-    myGui := Gui("+AlwaysOnTop", Lang("GUI_IGNORE_TITLE"))
+    myGui := Gui("+AlwaysOnTop +MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
 
-    myGui.Add("Text", , Lang("GUI_IGNORE_PROMPT"))
+    ; 标题
+    ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
+    ThemeHelper.AddSubtitle(myGui,
+        Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
 
+    ThemeHelper.AddSeparator(myGui, 500)
+
+    ; 编辑区 (等宽字体方便编辑规则)
+    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
     myEdit := myGui.Add(
         "Edit",
-        "Multi VScroll w500 h200 " ThemeHelper.GetEditOptions(),
+        "Multi VScroll w500 h200 y+12 " ThemeHelper.GetEditOptions(),
         ""
     )
+    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     current := ""
     for pattern in AppState.IgnorePatterns
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
+    ; 按钮
     btnOK := myGui.Add(
         "Button",
-        "Default w80 " ThemeHelper.GetButtonOptions(),
-        Lang("GUI_IGNORE_OK")
+        "Default w90 y+12 " ThemeHelper.GetButtonPrimary(),
+        "✓ " Lang("GUI_IGNORE_OK")
     )
     btnCancel := myGui.Add(
         "Button",
-        "x+10 w80 " ThemeHelper.GetButtonOptions(),
-        Lang("GUI_IGNORE_CANCEL")
+        "x+8 w90 " ThemeHelper.GetButtonSecondary(),
+        "✕ " Lang("GUI_IGNORE_CANCEL")
     )
 
     btnOK.OnEvent("Click", (*) => SaveIgnoreRules(myEdit.Text, myGui))

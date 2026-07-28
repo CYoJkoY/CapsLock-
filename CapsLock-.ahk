@@ -5,6 +5,12 @@ Persistent()
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOn.wav, SND_ON
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
 
+#Include "Utils\Language.ahk"
+#Include "Utils\ResourceSound.ahk"
+#Include "Utils\MethodsUtils.ahk"
+#Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\Utils.ahk"
+
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
@@ -23,6 +29,7 @@ Persistent()
 #Include "History\HistoryDelete.ahk"
 #Include "History\FullHistoryGui.ahk"
 #Include "History\FullHistoryHandlers.ahk"
+#Include "History\CustomMenu.ahk"
 
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
@@ -35,21 +42,19 @@ Persistent()
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
 
-#Include "Utils\Language.ahk"
-#Include "Utils\ResourceSound.ahk"
-#Include "Utils\MethodsUtils.ahk"
-#Include "Utils\DarkInputDialog.ahk"
-
+; ── 初始化顺序（优化）──
 Language.Load()
-HistoryManager.Load()
 ConfigManager.Load()
-
+HistoryManager.Load()
 FileHelper.BuildIgnoreRegexes()
 
-TraySetup()
+if AppState.AutoCleanEnabled
+    SetTimer(AutoCleanHistory, 60000)
 
-OnClipboardChange( ClipboardChanged )
-OnExit( ( * ) => (
+TraySetup()
+OnClipboardChange(ClipboardChanged)
+
+OnExit((*) => (
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()
-) )
+))

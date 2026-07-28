@@ -120,6 +120,7 @@ class HistoryManager {
         }
 
         AppState.History.InsertAt( 1, item )
+
         while AppState.History.Length > AppState.MaxHistory
             AppState.History.Pop()
 

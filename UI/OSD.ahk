@@ -6,9 +6,8 @@ class OSD {
     static fadeTimer := ""
     static autoDestroyTimer := ""
 
-    ; Show a modern toast notification
-    static ShowNotification(text, duration := 1500) {
-        ; Cancel any pending timers
+    static ShowNotification(text, duration := 1500, mytype := "info") {
+        ; 清理旧定时器
         if this.fadeTimer != "" {
             SetTimer(this.fadeTimer, 0)
             this.fadeTimer := ""
@@ -18,32 +17,50 @@ class OSD {
             this.autoDestroyTimer := ""
         }
 
-        ; Destroy previous OSD
+        ; 销毁旧 OSD
         if IsObject(this.currentOSD) {
             try this.currentOSD.Destroy()
             this.currentOSD := ""
             this.currentHwnd := 0
         }
 
-        ; Create Modern GUI
+        ; ── 根据类型选择颜色 ──
+        accentColor := AppState.THEME_ACCENT
+        icon := "💡"
+        switch mytype {
+            case "success": accentColor := AppState.THEME_SUCCESS, icon := "✅"
+            case "warning": accentColor := AppState.THEME_WARNING, icon := "⚠️"
+            case "error":   accentColor := AppState.THEME_DANGER,  icon := "❌"
+            default:        accentColor := AppState.THEME_ACCENT,  icon := "💡"
+        }
+
+        ; ── 创建 GUI ──
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
-        myOSD.BackColor := AppState.THEME_BG
+        myOSD.BackColor := AppState.THEME_SURFACE
+
+        ; 左侧强调色条 (4px 宽)
+        myOSD.Add("Text", "x0 y0 w4 h60 Background" accentColor)
+
+        ; 图标
+        myOSD.SetFont("s16", "Segoe UI Emoji")
+        myOSD.Add("Text", "x16 y12 Background" AppState.THEME_SURFACE, icon)
+
+        ; 文字
         myOSD.SetFont("s11 c" AppState.THEME_FG, AppState.THEME_FONT)
+        txtCtrl := myOSD.Add("Text", "x48 y16 Background" AppState.THEME_SURFACE, text)
 
-        ; Use a slightly larger text with padding
-        txtCtrl := myOSD.Add("Text", "x20 y10 w200 Center", text)
+        ; 底部时间戳
+        myOSD.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+        myOSD.Add("Text", "x48 y38 Background" AppState.THEME_SURFACE,
+            FormatTime(, "HH:mm:ss"))
 
-        ; Auto-size the GUI to fit text
+        ; 显示并定位
         myOSD.Show("Hide")
-        myOSD.GetPos(,, &ow, &oh)
-
-        ; Save hwnd immediately as an integer (survives Destroy)
+        myOSD.GetPos(, , &ow, &oh)
         savedHwnd := myOSD.Hwnd
 
         try {
-            ; Get active window or screen center
             activeHwnd := WinExist("A")
-
             posX := A_ScreenWidth / 2 - ow / 2
             posY := A_ScreenHeight / 2 - oh / 2 - 100
 
@@ -52,46 +69,43 @@ class OSD {
                     WinGetPos(&wx, &wy, &ww, &wh, activeHwnd)
                     posX := wx + (ww / 2) - (ow / 2)
                     posY := wy + (wh / 4)
-
                     if (posX + ow > A_ScreenWidth)
                         posX := A_ScreenWidth - ow - 10
                     if (posX < 0)
                         posX := 10
                     if (posY < 0)
                         posY := 10
-                } catch {
-                    ; Fallback to screen center
                 }
             }
 
             myOSD.Show("x" posX " y" posY " NoActivate")
-
-            ; Apply dark mode to the OSD window border
             ThemeHelper.ApplyImmersiveDarkMode(savedHwnd)
-
-            ; Ensure it starts invisible for fade-in
             WinSetTransparent(0, myOSD)
 
             this.currentOSD := myOSD
             this.currentHwnd := savedHwnd
 
-            ; Start fade-in
+            ; 淡入
             this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "in")
             SetTimer(this.fadeTimer, -10)
 
-            ; Auto destroy after duration (safety net)
-            ; Use savedHwnd (integer) instead of myOSD.Hwnd to avoid "Gui has no window"
+            ; 自动销毁
             this.autoDestroyTimer := ObjBindMethod(this, "AutoDestroyCheck", savedHwnd)
             SetTimer(this.autoDestroyTimer, -duration)
 
-        } catch as e {
+        } catch {
             try myOSD.Destroy()
             this.currentOSD := ""
             this.currentHwnd := 0
         }
     }
 
-    ; Safety check: only destroy if this is still the current OSD
+    static ShowTopMostOSD(targetHwnd, isOnTop) {
+        text := isOnTop ? Lang("UI_ALWAYS_TOP") : Lang("UI_UNPINNED")
+        mytype := isOnTop ? "success" : "info"
+        this.ShowNotification(text, 1500, mytype)
+    }
+
     static AutoDestroyCheck(savedHwnd) {
         this.autoDestroyTimer := ""
         if this.currentHwnd == savedHwnd && WinExist("ahk_id " savedHwnd) {
@@ -99,26 +113,15 @@ class OSD {
         }
     }
 
-    ; Keep original TopMost OSD for specific toggle feature but styled
-    static ShowTopMostOSD(targetHwnd, isOnTop) {
-        text := isOnTop ? Lang("UI_ALWAYS_TOP") : Lang("UI_UNPINNED")
-        this.ShowNotification(text, 1500)
-    }
-
-    ; Enhanced Fade Animation (uses savedHwnd integer instead of GUI object)
     static Fade(savedHwnd, state) {
-        ; Check if window still exists
         if !WinExist("ahk_id " savedHwnd) {
             this.StopFade()
             return
         }
-
-        ; If this is no longer the current OSD, stop
         if this.currentHwnd != savedHwnd {
             this.StopFade()
             return
         }
-
         try {
             trans := WinGetTransparent("ahk_id " savedHwnd)
         } catch {
@@ -126,9 +129,8 @@ class OSD {
             return
         }
 
-        static step := 15
-        static maxAlpha := 255
-        static holdTime := 1200
+        static step := 18
+        static maxAlpha := 245
 
         if state == "in" {
             if trans < maxAlpha {
@@ -136,14 +138,14 @@ class OSD {
                 WinSetTransparent(newVal, "ahk_id " savedHwnd)
                 if newVal < maxAlpha {
                     this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "in")
-                    SetTimer(this.fadeTimer, -15)
+                    SetTimer(this.fadeTimer, -12)
                 } else {
                     this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "hold")
-                    SetTimer(this.fadeTimer, -holdTime)
+                    SetTimer(this.fadeTimer, -1200)
                 }
             } else {
                 this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "hold")
-                SetTimer(this.fadeTimer, -holdTime)
+                SetTimer(this.fadeTimer, -1200)
             }
         } else if state == "hold" {
             this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "out")
@@ -154,7 +156,7 @@ class OSD {
                 WinSetTransparent(newVal, "ahk_id " savedHwnd)
                 if newVal > 0 {
                     this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "out")
-                    SetTimer(this.fadeTimer, -15)
+                    SetTimer(this.fadeTimer, -12)
                 } else {
                     this.DestroyOSD(savedHwnd)
                 }
@@ -164,7 +166,6 @@ class OSD {
         }
     }
 
-    ; Safely destroy the OSD window
     static DestroyOSD(savedHwnd) {
         if this.fadeTimer != "" {
             SetTimer(this.fadeTimer, 0)
