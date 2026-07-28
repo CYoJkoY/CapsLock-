@@ -46,7 +46,7 @@ class ThemeHelper {
 
     static GetButtonPrimary(extra := "") {
         return "Background" AppState.THEME_ACCENT_DARK
-            . " cWhite"
+            . " c" AppState.THEME_FG
             . (extra ? " " extra : "")
     }
 
@@ -58,7 +58,7 @@ class ThemeHelper {
 
     static GetButtonDanger(extra := "") {
         return "Background" AppState.THEME_DANGER
-            . " cWhite"
+            . " c" AppState.THEME_FG
             . (extra ? " " extra : "")
     }
 

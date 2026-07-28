@@ -123,14 +123,12 @@ SetIgnorePatterns(*) {
     myGui := Gui("+AlwaysOnTop +MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
 
-    ; 标题
     ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
 
     ThemeHelper.AddSeparator(myGui, 500)
 
-    ; 编辑区 (等宽字体方便编辑规则)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
     myEdit := myGui.Add(
         "Edit",
@@ -144,7 +142,6 @@ SetIgnorePatterns(*) {
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
-    ; 按钮
     btnOK := myGui.Add(
         "Button",
         "Default w90 y+12 " ThemeHelper.GetButtonPrimary(),

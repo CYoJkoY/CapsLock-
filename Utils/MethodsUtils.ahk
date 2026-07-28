@@ -11,7 +11,6 @@ Join(arr, sep := " ") {
         return ""
 
     s := ""
-
     for v in arr
         s .= v sep
 
@@ -20,13 +19,42 @@ Join(arr, sep := " ") {
 
 PasteTempText(content, tooltipMsg := "") {
     tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_MSec ".txt"
-
     FileAppend(content, tempFile, "UTF-8")
-    ClipboardHelper.SetClipboardFile(tempFile)
 
+    ClipboardHelper.SetClipboardFile(tempFile)
     ActivateAndPaste()
     CleanupManager.ScheduleDeletion(tempFile)
 
     if tooltipMsg
         ShowToolTip(tooltipMsg, 2000)
+}
+
+CapturePasteTarget() {
+    activeHwnd := WinExist("A")
+    if !activeHwnd
+        return
+
+    if IsSet(CustomMenu) && activeHwnd == CustomMenu.menuHwnd
+        return
+
+    if IsObject(AppState.FullHistoryGui) && activeHwnd == AppState.FullHistoryGui.Hwnd
+        return
+
+    AppState.TargetWindow := activeHwnd
+}
+
+AutoCleanHistory() {
+    if !AppState.AutoCleanEnabled
+        return
+
+    maxItems := AppState.MaxHistoryItems
+    if (maxItems <= 0)
+        return
+
+    if (AppState.History.Length > maxItems) {
+        while (AppState.History.Length > maxItems)
+            AppState.History.Pop()
+
+        HistoryManager.ScheduleSave()
+    }
 }

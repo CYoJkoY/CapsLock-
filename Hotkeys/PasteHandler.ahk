@@ -1,8 +1,9 @@
 #Requires AutoHotkey v2.0
 
 PasteWithCurrentMode() {
-    target := A_Clipboard
+    CapturePasteTarget()
 
+    target := A_Clipboard
     if target == "" {
         ShowToolTip(Lang("MSG_CLIPBOARD_EMPTY"), 2000)
         return
@@ -14,7 +15,6 @@ PasteWithCurrentMode() {
 
     for line in lines {
         line := Trim(line)
-
         if line == ""
             continue
 
@@ -36,7 +36,6 @@ PasteWithCurrentMode() {
 
     if allImages && AppState.ImageMagickExe && FileExist(AppState.ImageMagickExe) {
         original := A_Clipboard
-
         AppState.IgnoreNextClipChange := true
         A_Clipboard := newTarget
 

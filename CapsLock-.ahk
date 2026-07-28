@@ -9,7 +9,6 @@ Persistent()
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
 #Include "Utils\DarkInputDialog.ahk"
-#Include "Utils\Utils.ahk"
 
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
@@ -42,7 +41,6 @@ Persistent()
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
 
-; ── 初始化顺序（优化）──
 Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()

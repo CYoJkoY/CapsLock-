@@ -10,10 +10,7 @@ ShowHistoryMenu(isReturning := false) {
         MouseGetPos(&x, &y)
         AppState.MenuPosX := x
         AppState.MenuPosY := y
-
-        activeHwnd := WinExist("A")
-        if activeHwnd && activeHwnd != CustomMenu.menuHwnd
-            AppState.TargetWindow := activeHwnd
+        CapturePasteTarget()
     }
 
     menuItems := []
@@ -24,7 +21,6 @@ ShowHistoryMenu(isReturning := false) {
         idx := A_Index
         item := AppState.History[idx]
         timeInfo := SubStr(item["time"], 12, 5)
-
         label := idx ". [" timeInfo "] " CustomMenu.ClipLabel(item["text"], 32)
 
         menuItems.Push({
@@ -61,7 +57,6 @@ CreateShowFullHistoryCallback() {
 
 PasteHistoryByIndex(index) {
     item := HistoryManager.Get(index)
-
     if !IsObject(item) {
         ShowToolTip(Lang("MSG_NO_HISTORY"), 1200)
         return

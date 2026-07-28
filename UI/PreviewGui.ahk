@@ -4,10 +4,8 @@ ShowPreviewGui(text) {
     myGui := Gui("+AlwaysOnTop +Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
     ThemeHelper.StyleGui(myGui)
 
-    ; 标题
     ThemeHelper.AddTitle(myGui, "👁️ " Lang("GUI_PREVIEW_TITLE"), 600)
 
-    ; 内容统计
     lineCount := StrSplit(text, "`n").Length
     charCount := StrLen(text)
     ThemeHelper.AddSubtitle(myGui,
@@ -15,7 +13,6 @@ ShowPreviewGui(text) {
 
     ThemeHelper.AddSeparator(myGui, 600)
 
-    ; 内容编辑框 (等宽字体)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
     myEdit := myGui.Add(
         "Edit",
@@ -24,7 +21,6 @@ ShowPreviewGui(text) {
     )
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
-    ; 底部按钮
     btnCopy := myGui.Add(
         "Button",
         "Default " ThemeHelper.GetButtonPrimary("w100"),

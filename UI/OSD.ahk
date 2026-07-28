@@ -7,7 +7,6 @@ class OSD {
     static autoDestroyTimer := ""
 
     static ShowNotification(text, duration := 1500, mytype := "info") {
-        ; 清理旧定时器
         if this.fadeTimer != "" {
             SetTimer(this.fadeTimer, 0)
             this.fadeTimer := ""
@@ -17,14 +16,12 @@ class OSD {
             this.autoDestroyTimer := ""
         }
 
-        ; 销毁旧 OSD
         if IsObject(this.currentOSD) {
             try this.currentOSD.Destroy()
             this.currentOSD := ""
             this.currentHwnd := 0
         }
 
-        ; ── 根据类型选择颜色 ──
         accentColor := AppState.THEME_ACCENT
         icon := "💡"
         switch mytype {
@@ -34,27 +31,21 @@ class OSD {
             default:        accentColor := AppState.THEME_ACCENT,  icon := "💡"
         }
 
-        ; ── 创建 GUI ──
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
         myOSD.BackColor := AppState.THEME_SURFACE
 
-        ; 左侧强调色条 (4px 宽)
         myOSD.Add("Text", "x0 y0 w4 h60 Background" accentColor)
 
-        ; 图标
         myOSD.SetFont("s16", "Segoe UI Emoji")
         myOSD.Add("Text", "x16 y12 Background" AppState.THEME_SURFACE, icon)
 
-        ; 文字
         myOSD.SetFont("s11 c" AppState.THEME_FG, AppState.THEME_FONT)
         txtCtrl := myOSD.Add("Text", "x48 y16 Background" AppState.THEME_SURFACE, text)
 
-        ; 底部时间戳
         myOSD.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
         myOSD.Add("Text", "x48 y38 Background" AppState.THEME_SURFACE,
             FormatTime(, "HH:mm:ss"))
 
-        ; 显示并定位
         myOSD.Show("Hide")
         myOSD.GetPos(, , &ow, &oh)
         savedHwnd := myOSD.Hwnd
@@ -85,11 +76,9 @@ class OSD {
             this.currentOSD := myOSD
             this.currentHwnd := savedHwnd
 
-            ; 淡入
             this.fadeTimer := ObjBindMethod(this, "Fade", savedHwnd, "in")
             SetTimer(this.fadeTimer, -10)
 
-            ; 自动销毁
             this.autoDestroyTimer := ObjBindMethod(this, "AutoDestroyCheck", savedHwnd)
             SetTimer(this.autoDestroyTimer, -duration)
 

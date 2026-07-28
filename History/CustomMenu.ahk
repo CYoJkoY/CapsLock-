@@ -7,7 +7,6 @@ class CustomMenu {
     static lastHoveredEntry := ""
     static hoverTimer := ""
     static outsideTimer := ""
-
     static itemH := 34
     static sepH := 9
     static menuW := 400
@@ -21,7 +20,6 @@ class CustomMenu {
 
     static NormalizeItems(itemsArray) {
         out := []
-
         for entry in itemsArray {
             if !IsObject(entry)
                 continue
@@ -42,24 +40,25 @@ class CustomMenu {
                 txtCtrl: ""
             })
         }
-
         return out
     }
 
     static BuildAndShow(x, y) {
-        totalH := 16
+        if this.items.Length == 0
+            return
 
+        totalH := 16
         for entry in this.items
             totalH += entry.isSep ? this.sepH : this.itemH
 
         menuW := this.menuW
         menuH := totalH
 
-        myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border +E0x20")
+        myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         myGui.BackColor := AppState.THEME_SURFACE
+        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
         curY := 8
-
         for entry in this.items {
             if entry.isSep {
                 myGui.Add(
@@ -75,19 +74,18 @@ class CustomMenu {
                 "x4 y" curY " w" (menuW - 8) " h" this.itemH " +0x0100 Background" AppState.THEME_SURFACE
             )
 
-            myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-
             txtCtrl := myGui.Add(
                 "Text",
-                "x16 y" (curY + 8) " w" (menuW - 40) " h20 +0x0109 Background" AppState.THEME_SURFACE,
+                "x16 y" (curY + 8) " w" (menuW - 40) " h20 +0x0100 Background" AppState.THEME_SURFACE,
                 entry.label
             )
 
             entry.bgCtrl := bgCtrl
             entry.txtCtrl := txtCtrl
 
-            bgCtrl.OnEvent("Click", ObjBindMethod(this, "InvokeAndClose", entry.callback))
-            txtCtrl.OnEvent("Click", ObjBindMethod(this, "InvokeAndClose", entry.callback))
+            cb := ObjBindMethod(this, "InvokeAndClose", entry.callback)
+            bgCtrl.OnEvent("Click", cb)
+            txtCtrl.OnEvent("Click", cb)
 
             curY += this.itemH
         }
@@ -100,7 +98,6 @@ class CustomMenu {
 
         if this.hoverTimer == ""
             this.hoverTimer := ObjBindMethod(this, "CheckHover")
-
         if this.outsideTimer == ""
             this.outsideTimer := ObjBindMethod(this, "CheckOutsideClick")
 
@@ -155,7 +152,6 @@ class CustomMenu {
 
     static InvokeAndClose(cb, *) {
         this.Hide()
-
         if IsObject(cb)
             cb.Call()
     }
@@ -168,10 +164,8 @@ class CustomMenu {
         }
 
         MouseGetPos(&mx, &my)
-
         try {
             WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " this.menuHwnd)
-
             if (mx < wx || mx > wx + ww || my < wy || my > wy + wh) && GetKeyState("LButton", "P")
                 this.Hide()
         } catch {
@@ -182,7 +176,6 @@ class CustomMenu {
     static Hide() {
         if this.hoverTimer != ""
             SetTimer(this.hoverTimer, 0)
-
         if this.outsideTimer != ""
             SetTimer(this.outsideTimer, 0)
 
@@ -197,9 +190,8 @@ class CustomMenu {
     }
 
     static ClipLabel(text, maxUnits := 46) {
-        text := RegExReplace(String(text), "[\r\n\t\v\f]+", " ")
+        text := RegExReplace(String(text), "\s+", " ")
         text := Trim(text)
-
         if text == ""
             text := "(empty)"
 

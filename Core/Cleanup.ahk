@@ -1,25 +1,19 @@
 #Requires AutoHotkey v2.0
 
 class CleanupManager {
-    static _delayed := unset
+    static _delayed := Map()
     static _delayedTimer := ""
     static _batch := []
     static _batchTimer := ""
-    static _starting := false
 
     static ScheduleDeletion(filePath) {
         if AppState.DeleteMode == 1 {
-            if !IsObject(this._delayed) {
-                if this._starting
-                    return
+            this._delayed[filePath] := A_TickCount + AppState.DeleteDelay * 1000
 
-                this._starting := true
-                this._delayed := Map()
+            if this._delayedTimer == "" {
                 this._delayedTimer := ObjBindMethod(this, "ProcessDelayed")
                 SetTimer(this._delayedTimer, 1000)
             }
-
-            this._delayed[filePath] := A_TickCount + AppState.DeleteDelay * 1000
         } else if AppState.DeleteMode == 2 {
             this._batch.Push(filePath)
 
@@ -28,14 +22,9 @@ class CleanupManager {
                 SetTimer(this._batchTimer, AppState.CleanupInterval * 1000)
             }
         }
-
-        this._starting := false
     }
 
     static ProcessDelayed() {
-        if !IsObject(this._delayed)
-            return
-
         now := A_TickCount
 
         for path, timeout in this._delayed.Clone() {
@@ -45,13 +34,9 @@ class CleanupManager {
             }
         }
 
-        if this._delayed.Count == 0 {
-            this._delayed := unset
-
-            if this._delayedTimer != "" {
-                SetTimer(this._delayedTimer, 0)
-                this._delayedTimer := ""
-            }
+        if this._delayed.Count == 0 && this._delayedTimer != "" {
+            SetTimer(this._delayedTimer, 0)
+            this._delayedTimer := ""
         }
     }
 
@@ -61,7 +46,6 @@ class CleanupManager {
         for path in this._batch {
             if FileExist(path) {
                 try FileDelete(path)
-
                 if FileExist(path)
                     newList.Push(path)
             }
@@ -85,10 +69,8 @@ class CleanupManager {
         Loop Files, A_Temp "\ClipTemp_*", "F"
             try FileDelete(A_LoopFileFullPath)
 
-        if IsObject(this._delayed) {
-            for path in this._delayed.Clone()
-                try FileDelete(path)
-        }
+        for path, timeout in this._delayed.Clone()
+            try FileDelete(path)
 
         for path in this._batch
             try FileDelete(path)
