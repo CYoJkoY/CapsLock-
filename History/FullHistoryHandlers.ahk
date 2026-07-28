@@ -22,9 +22,9 @@ OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
     item := AppState.History[Integer(realIdx)]
 
     myMenu := Menu()
-    myMenu.Add(Lang("CONTEXT_PASTE_FILE"), (*) => PasteAsMultipleFiles([item]))
-    myMenu.Add(Lang("CONTEXT_PREVIEW"), (*) => ShowPreviewGui(item["text"]))
-    myMenu.Add(Lang("CONTEXT_DELETE"), (*) => DeleteFromFullHistory(Integer(realIdx)))
+    myMenu.Add("📄 " Lang("CONTEXT_PASTE_FILE"), (*) => PasteAsMultipleFiles([item]))
+    myMenu.Add("🔍 " Lang("CONTEXT_PREVIEW"), (*) => ShowPreviewGui(item["text"]))
+    myMenu.Add("❌ " Lang("CONTEXT_DELETE"), (*) => DeleteFromFullHistory(Integer(realIdx)))
     myMenu.Show(x, y)
 }
 

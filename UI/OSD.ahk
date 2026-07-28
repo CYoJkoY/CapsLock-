@@ -90,7 +90,7 @@ class OSD {
     }
 
     static ShowTopMostOSD(targetHwnd, isOnTop) {
-        text := isOnTop ? Lang("UI_ALWAYS_TOP") : Lang("UI_UNPINNED")
+        text := isOnTop ? "📌 " Lang("UI_ALWAYS_TOP") : "📌 " Lang("UI_UNPINNED")
         mytype := isOnTop ? "success" : "info"
         this.ShowNotification(text, 1500, mytype)
     }
