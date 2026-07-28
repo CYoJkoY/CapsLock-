@@ -10,35 +10,40 @@ ShowHistoryMenu(isReturning := false) {
         MouseGetPos(&x, &y)
         AppState.MenuPosX := x
         AppState.MenuPosY := y
+
+        activeHwnd := WinExist("A")
+        if activeHwnd && activeHwnd != CustomMenu.menuHwnd
+            AppState.TargetWindow := activeHwnd
     }
 
     menuItems := []
     total := AppState.History.Length
     displayCount := Min(total, AppState.MAX_VISIBLE_MENU)
 
-    loop displayCount {
-        index := A_Index
-        item := AppState.History[index]
-        content := item["text"]
-        display := StrReplace(SubStr(content, 1, 50), "`n", " ")
-        if StrLen(content) > 50
-            display .= "…"
-
+    Loop displayCount {
+        idx := A_Index
+        item := AppState.History[idx]
         timeInfo := SubStr(item["time"], 12, 5)
-        idx := index
+
+        label := idx ". [" timeInfo "] " CustomMenu.ClipLabel(item["text"], 32)
 
         menuItems.Push({
-            label: idx ". [" timeInfo "] " display,
-            callback: (*) => ShowActionPicker(idx),
+            label: label,
+            callback: CreateHistoryPasteCallback(idx),
             isSep: false
         })
     }
 
     if total > AppState.MAX_VISIBLE_MENU {
-        menuItems.Push({label: "", callback: "", isSep: true})
         menuItems.Push({
-            label: "📋 " Lang("HISTORY_MENU_VIEW_FULL", , total),
-            callback: (*) => ShowFullHistoryGui(),
+            label: "",
+            callback: "",
+            isSep: true
+        })
+
+        menuItems.Push({
+            label: "📋 " Lang("HISTORY_MENU_VIEW_FULL", "", total),
+            callback: CreateShowFullHistoryCallback(),
             isSep: false
         })
     }
@@ -46,31 +51,21 @@ ShowHistoryMenu(isReturning := false) {
     CustomMenu.ShowWithItems(AppState.MenuPosX, AppState.MenuPosY, menuItems)
 }
 
-ShowActionPicker(index) {
-    AppState.SelectedIndex := index
-    AppState.SelectedItem := AppState.History[index]
-
-    MouseGetPos(&x, &y)
-
-    actionItems := [
-        {label: "📄 " Lang("CONTEXT_PASTE_FILE"), callback: (*) => PasteAsFile(AppState.SelectedItem), isSep: false},
-        {label: "👁️ " Lang("CONTEXT_PREVIEW"), callback: (*) => ShowPreviewGui(AppState.SelectedItem["text"]), isSep: false},
-        {label: "🗑️ " Lang("CONTEXT_DELETE"), callback: (*) => (HistoryManager.Delete(AppState.SelectedIndex), ShowToolTip(Lang("MSG_DELETED"), 1000)), isSep: false},
-        {label: "", callback: "", isSep: true},
-        {label: "↩️ " Lang("CONTEXT_BACK"), callback: (*) => SetTimer(() => ShowHistoryMenu(true), -10), isSep: false}
-    ]
-
-    CustomMenu.ShowWithItems(x, y, actionItems)
+CreateHistoryPasteCallback(index) {
+    return (*) => PasteHistoryByIndex(index)
 }
 
-ActionPickerHandler( ItemName, ItemPos, MyMenu ) {
-    AppState.SelectedIndex := ItemPos
-    AppState.SelectedItem := AppState.History[ ItemPos ]
-    action := Menu()
-    action.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsFile( AppState.SelectedItem ) )
-    action.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( AppState.SelectedItem[ "text" ] ) )
-    action.Add( Lang( "CONTEXT_DELETE" ), ( * ) => ( HistoryManager.Delete( AppState.SelectedIndex ), ShowToolTip( Lang( "MSG_DELETED" ), 1000 ) ) )
-    action.Add()
-    action.Add( Lang( "CONTEXT_BACK" ), ( * ) => SetTimer( () => ShowHistoryMenu( true ), -10 ) )
-    action.Show()
+CreateShowFullHistoryCallback() {
+    return (*) => ShowFullHistoryGui()
+}
+
+PasteHistoryByIndex(index) {
+    item := HistoryManager.Get(index)
+
+    if !IsObject(item) {
+        ShowToolTip(Lang("MSG_NO_HISTORY"), 1200)
+        return
+    }
+
+    PasteAsFile(item)
 }

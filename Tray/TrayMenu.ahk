@@ -144,28 +144,3 @@ SwitchLanguage( code, * ) {
         SetTimer( () => ToolTip(), -1500 )
     }
 }
-
-CreateTrayMenu() {
-    trayMenu := A_TrayMenu
-    trayMenu.Delete()
-
-    trayMenu.Add(Lang("TRAY_HISTORY"), (*) => ShowFullHistoryGui())
-    trayMenu.Add()
-    trayMenu.Add(Lang("TRAY_FOLDER"), (*) => OpenHistoryFolder())
-    trayMenu.Add(Lang("TRAY_IGNORE"), (*) => SetIgnorePatterns())
-    trayMenu.Add()
-
-    if AppState.AutoCleanEnabled
-        trayMenu.Add(Lang("TRAY_AUTOCLEAN_ON"), (*) => ToggleAutoClean())
-    else
-        trayMenu.Add(Lang("TRAY_AUTOCLEAN_OFF"), (*) => ToggleAutoClean())
-
-    trayMenu.Add(Lang("TRAY_RELOAD"), (*) => Reload())
-    trayMenu.Add()
-    trayMenu.Add(Lang("TRAY_EXIT"), (*) => ExitApp())
-
-    ; 尝试设置深色 (Windows 11 生效)
-    try trayMenu.SetColor(AppState.THEME_SURFACE, false)
-
-    trayMenu.Default := Lang("TRAY_HISTORY")
-}

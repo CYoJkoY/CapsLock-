@@ -1,56 +1,61 @@
 #Requires AutoHotkey v2.0
 
-PasteFile( filePath, fileType := "auto" ) {
+PasteFile(filePath, fileType := "auto") {
     if fileType == "auto"
-        fileType := GetFileType( filePath )
+        fileType := GetFileType(filePath)
+
     if fileType == "pdf" || fileType == "image" {
-        ClipboardHelper.ClearClipboard()
-        ClipboardHelper.SetClipboardFile( filePath )
+        ClipboardHelper.SetClipboardFile(filePath)
     } else {
-        sourceInfo := "Copied from: File | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss" )
+        sourceInfo := "Copied from: File | Time: " FormatTime(, "yyyy-MM-dd HH:mm:ss")
+
         content := ""
-        try content := FileRead( filePath, "UTF-8" )
+        try content := FileRead(filePath, "UTF-8")
         catch
             content := "[File content could not be read]"
+
         full := "; " sourceInfo "`n`n" content
         tempFile := A_Temp "\ClipTemp_" A_TickCount ".txt"
-        FileAppend( full, tempFile, "UTF-8" )
-        ClipboardHelper.ClearClipboard()
-        ClipboardHelper.SetClipboardFile( tempFile )
-        CleanupManager.ScheduleDeletion( tempFile )
+
+        FileAppend(full, tempFile, "UTF-8")
+        ClipboardHelper.SetClipboardFile(tempFile)
+        CleanupManager.ScheduleDeletion(tempFile)
+
         filePath := tempFile
     }
+
     ActivateAndPaste()
-    if fileType == "pdf" && InStr( filePath, A_Temp "\ClipTemp_" )
-        CleanupManager.ScheduleDeletion( filePath )
-    ShowToolTip( Lang( "MSG_PASTE_FILE_TYPE", , fileType ), 1500 )
+
+    if fileType == "pdf" && InStr(filePath, A_Temp "\ClipTemp_")
+        CleanupManager.ScheduleDeletion(filePath)
+
+    ShowToolTip(Lang("MSG_PASTE_FILE_TYPE", "", fileType), 1500)
 }
 
 ActivateAndPaste() {
-    if AppState.TargetWindow && WinExist( "ahk_id " AppState.TargetWindow ) {
-        activeHwnd := WinExist( "A" )
-        if ( activeHwnd != AppState.TargetWindow ) {
-            WinActivate( "A" )
-        } else {
-            WinActivate( "ahk_id " AppState.TargetWindow )
-        }
-    } else {
-        WinActivate( "A" )
-    }
+    if AppState.TargetWindow && WinExist("ahk_id " AppState.TargetWindow)
+        WinActivate("ahk_id " AppState.TargetWindow)
+    else
+        WinActivate("A")
 
-    Sleep( 100 )
-    Send( "^v" )
+    Sleep(100)
+    Send("^v")
 }
 
-GetFileType( filePath ) {
-    ext := StrLower( SubStr( filePath, InStr( filePath, ".", , -1 ) + 1 ) )
+GetFileType(filePath) {
+    SplitPath(filePath, , , &ext)
+    ext := StrLower(ext)
+
     if ext == "pdf"
         return "pdf"
+
     for fmt in AppState.TextFormats
         if ext == fmt
             return "text"
+
     for fmt in AppState.ImageFormats
         if ext == fmt
             return "image"
+
     return "unknown"
 }

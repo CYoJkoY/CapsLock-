@@ -1,178 +1,200 @@
 #Requires AutoHotkey v2.0
 
-OnFullHistoryDoubleClick( lv, row ) {
+OnFullHistoryDoubleClick(lv, row) {
     if row == 0
         return
 
-    realIndex := lv.GetText( row, 1 )
-    PasteSingleFile( AppState.History[ realIndex ], false )
+    realIndex := lv.GetText(row, 1)
+    if !(realIndex ~= "^\d+$")
+        return
+
+    PasteSingleFile(AppState.History[Integer(realIndex)], false)
 }
 
-OnFullHistoryContextMenu( lv, row, isRightClick, x, y ) {
+OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
     if row == 0
         return
 
-    realIdx := lv.GetText( row, 1 )
-    item := AppState.History[ realIdx ]
+    realIdx := lv.GetText(row, 1)
+    if !(realIdx ~= "^\d+$")
+        return
+
+    item := AppState.History[Integer(realIdx)]
+
     myMenu := Menu()
-    myMenu.Add( Lang( "CONTEXT_PASTE_FILE" ), ( * ) => PasteAsMultipleFiles( [ item ] ) )
-    myMenu.Add( Lang( "CONTEXT_PREVIEW" ), ( * ) => ShowPreviewGui( item[ "text" ] ) )
-    myMenu.Add( Lang( "CONTEXT_DELETE" ), ( * ) => DeleteFromFullHistory( realIdx ) )
-    myMenu.Show( x, y )
+    myMenu.Add(Lang("CONTEXT_PASTE_FILE"), (*) => PasteAsMultipleFiles([item]))
+    myMenu.Add(Lang("CONTEXT_PREVIEW"), (*) => ShowPreviewGui(item["text"]))
+    myMenu.Add(Lang("CONTEXT_DELETE"), (*) => DeleteFromFullHistory(Integer(realIdx)))
+    myMenu.Show(x, y)
 }
 
 PasteSelectedFromFullHistory() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
     fileList := []
+
     row := 0
-    while row := lv.GetNext( row, "Checked" ) {
-        realIdx := lv.GetText( row, 1 )
-        fileList.Push( AppState.History[ realIdx ] )
+    while row := lv.GetNext(row, "Checked") {
+        realIdx := lv.GetText(row, 1)
+        if realIdx ~= "^\d+$"
+            fileList.Push(AppState.History[Integer(realIdx)])
     }
 
     if fileList.Length == 0 {
-        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1500)
         return
     }
 
-    if !WinExist( "ahk_id " AppState.TargetWindow ) {
-        current := WinExist( "A" )
-        if current && current != myGui.Hwnd
-            AppState.TargetWindow := current
-        else {
-            ShowToolTip( Lang( "MSG_TARGET_CLOSED" ), 2500 )
-            loop 20 {
-                Sleep( 100 )
-                current := WinExist( "A" )
-                if current && current != myGui.Hwnd {
-                    AppState.TargetWindow := current
-                    break
-                }
-            }
-            if !AppState.TargetWindow {
-                ShowToolTip( Lang( "MSG_NO_TARGET" ), 2000 )
-                return
-            }
-        }
-    }
+    if !EnsureFullHistoryTargetWindow(myGui)
+        return
 
-    WinActivate( "ahk_id " AppState.TargetWindow )
-    Sleep( 100 )
+    WinActivate("ahk_id " AppState.TargetWindow)
+    Sleep(100)
+
     for item in fileList {
-        PasteSingleFile( item, false )
-        Sleep( 200 )
+        PasteSingleFile(item, false)
+        Sleep(200)
     }
 
-    ShowToolTip( Lang( "MSG_PASTE_COMPLETE" ), 1500 )
+    ShowToolTip(Lang("MSG_PASTE_COMPLETE"), 1500)
 }
 
 PasteSelectedFromFullHistoryText() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
     textList := []
+
     row := 0
-    while row := lv.GetNext( row, "Checked" ) {
-        realIdx := lv.GetText( row, 1 )
-        textList.Push( AppState.History[ realIdx ][ "text" ] )
+    while row := lv.GetNext(row, "Checked") {
+        realIdx := lv.GetText(row, 1)
+        if realIdx ~= "^\d+$"
+            textList.Push(AppState.History[Integer(realIdx)]["text"])
     }
 
     if textList.Length == 0 {
-        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1500)
         return
     }
 
-    combined := ""
-    for t in textList
-        combined .= t "`n"
-    combined := RTrim( combined, "`n" )
+    combined := Join(textList, "`n")
 
-    if !WinExist( "ahk_id " AppState.TargetWindow ) {
-        current := WinExist( "A" )
-        if current && current != myGui.Hwnd
-            AppState.TargetWindow := current
-        else {
-            ShowToolTip( Lang( "MSG_TARGET_CLOSED" ), 2500 )
-            loop 20 {
-                Sleep( 100 )
-                current := WinExist( "A" )
-                if current && current != myGui.Hwnd {
-                    AppState.TargetWindow := current
-                    break
-                }
-            }
+    if !EnsureFullHistoryTargetWindow(myGui)
+        return
 
-            if !AppState.TargetWindow {
-                ShowToolTip( Lang( "MSG_NO_TARGET" ), 2000 )
-                return
-            }
-
-        }
-    }
-
-    backup := A_Clipboard
-    A_Clipboard := combined
-
-    WinActivate( "ahk_id " AppState.TargetWindow )
-    Sleep( 100 )
-    Send( "^v" )
-    Sleep( 50 )
-    A_Clipboard := backup
-    ShowToolTip( Lang( "MSG_PASTE_MULTI_COMPLETE", , textList.Length ), 1500 )
+    PasteAsPlainText(combined, Lang("MSG_PASTE_MULTI_COMPLETE", "", textList.Length))
 }
 
-OnSelectAllClicked( chk, info ) {
+OnSelectAllClicked(chk, info) {
     lv := chk.Gui.ListView
-    total := lv.GetCount()
-    checked := 0
-    row := 0
-    while row := lv.GetNext( row, "Checked" )
-        checked++
 
-    if checked == total {
-        loop total
-            lv.Modify( A_Index, "-Check" )
+    realRows := GetRealListViewRows(lv)
+    checkedRows := GetCheckedRealListViewRows(lv)
+
+    if checkedRows.Length == realRows.Length {
+        for r in realRows
+            lv.Modify(r, "-Check")
+
         chk.Value := 0
     } else {
-        loop total
-            lv.Modify( A_Index, "Check" )
+        for r in realRows
+            lv.Modify(r, "Check")
+
         chk.Value := 1
     }
 }
 
-OnDeleteSelected( * ) {
+OnDeleteSelected(*) {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
-    rowsToDelete := []
-    row := 0
-    while row := lv.GetNext( row, "Checked" )
-        rowsToDelete.Push( row )
 
-    if rowsToDelete.Length == 0 {
-        ShowToolTip( Lang( "MSG_SELECT_ITEM" ), 1500 )
+    indicesToDelete := []
+
+    row := 0
+    while row := lv.GetNext(row, "Checked") {
+        realIdx := lv.GetText(row, 1)
+        if realIdx ~= "^\d+$"
+            indicesToDelete.Push(Integer(realIdx))
+    }
+
+    if indicesToDelete.Length == 0 {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1500)
         return
     }
 
-    loop rowsToDelete.Length {
-        idx := rowsToDelete[ rowsToDelete.Length - A_Index + 1 ]
-        HistoryManager.Delete( idx )
+    while indicesToDelete.Length {
+        maxPos := 1
+
+        Loop indicesToDelete.Length {
+            if indicesToDelete[A_Index] > indicesToDelete[maxPos]
+                maxPos := A_Index
+        }
+
+        HistoryManager.Delete(indicesToDelete[maxPos])
+        indicesToDelete.RemoveAt(maxPos)
     }
 
     RefreshFullHistoryList()
 }
 
-OnItemCheck( lv, row, checked ) {
+OnItemCheck(lv, row, checked) {
     UpdateSelectAllCheckbox()
 }
 
 UpdateSelectAllCheckbox() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
-    total := lv.GetCount()
-    checked := 0
-    row := 0
-    while row := lv.GetNext( row, "Checked" )
-        checked++
 
-    myGui.chkSelectAll.Value := ( checked == total ) ? 1 : 0
+    realRows := GetRealListViewRows(lv)
+    checkedRows := GetCheckedRealListViewRows(lv)
+
+    myGui.chkSelectAll.Value := (realRows.Length > 0 && checkedRows.Length == realRows.Length) ? 1 : 0
+}
+
+EnsureFullHistoryTargetWindow(myGui) {
+    if AppState.TargetWindow && WinExist("ahk_id " AppState.TargetWindow)
+        return true
+
+    current := WinExist("A")
+    if current && current != myGui.Hwnd {
+        AppState.TargetWindow := current
+        return true
+    }
+
+    ShowToolTip(Lang("MSG_TARGET_CLOSED"), 2500)
+
+    Loop 20 {
+        Sleep(100)
+
+        current := WinExist("A")
+        if current && current != myGui.Hwnd {
+            AppState.TargetWindow := current
+            return true
+        }
+    }
+
+    ShowToolTip(Lang("MSG_NO_TARGET"), 2000)
+    return false
+}
+
+GetRealListViewRows(lv) {
+    rows := []
+
+    Loop lv.GetCount() {
+        if lv.GetText(A_Index, 1) ~= "^\d+$"
+            rows.Push(A_Index)
+    }
+
+    return rows
+}
+
+GetCheckedRealListViewRows(lv) {
+    rows := []
+
+    row := 0
+    while row := lv.GetNext(row, "Checked") {
+        if lv.GetText(row, 1) ~= "^\d+$"
+            rows.Push(row)
+    }
+
+    return rows
 }

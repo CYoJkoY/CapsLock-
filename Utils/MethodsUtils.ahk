@@ -1,24 +1,32 @@
 #Requires AutoHotkey v2.0
 
-Clamp( val, min, max ) => val < min ? min : ( val > max ? max : val )
+Clamp(val, min, max) => val < min ? min : (val > max ? max : val)
 
 ShowToolTip(msg, durationMs := 1500) {
     OSD.ShowNotification(msg, durationMs)
 }
 
-Join( arr, sep := " " ) {
+Join(arr, sep := " ") {
+    if arr.Length == 0
+        return ""
+
     s := ""
+
     for v in arr
-        s .= v . sep
-    return SubStr( s, 1, -StrLen( sep ) )
+        s .= v sep
+
+    return SubStr(s, 1, -StrLen(sep))
 }
 
-PasteTempText( content, tooltipMsg := "" ) {
+PasteTempText(content, tooltipMsg := "") {
     tempFile := A_Temp "\ClipTemp_" A_TickCount "_" A_MSec ".txt"
-    FileAppend( content, tempFile, "UTF-8" )
-    ClipboardHelper.SetClipboardFile( tempFile )
+
+    FileAppend(content, tempFile, "UTF-8")
+    ClipboardHelper.SetClipboardFile(tempFile)
+
     ActivateAndPaste()
-    CleanupManager.ScheduleDeletion( tempFile )
+    CleanupManager.ScheduleDeletion(tempFile)
+
     if tooltipMsg
-        ShowToolTip( tooltipMsg, 2000 )
+        ShowToolTip(tooltipMsg, 2000)
 }
