@@ -33,19 +33,21 @@ Persistent()
 
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
+#Include "UI\ThemeHelper.ahk"
 
 #Include "Utils\Language.ahk"
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
+#Include "Utils\DarkInputDialog.ahk"
 
 Language.Load()
-
 HistoryManager.Load()
 ConfigManager.Load()
 
 FileHelper.BuildIgnoreRegexes()
 
 TraySetup()
+
 OnClipboardChange( ClipboardChanged )
 OnExit( ( * ) => (
     HistoryManager.ForceSave(),
