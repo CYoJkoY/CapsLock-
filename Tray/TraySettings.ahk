@@ -23,10 +23,8 @@ SetMaxHistory(*) {
         Lang("INPUT_MAX_HISTORY_TITLE"),
         AppState.MaxHistory
     )
-
     if input.Result != "OK" || !IsNumber(input.Value)
         return
-
     newMax := Integer(input.Value)
     if newMax < 0
         newMax := 0
@@ -68,7 +66,6 @@ SetDeleteDelay(*) {
         Lang("INPUT_DELAY_TITLE"),
         AppState.DeleteDelay
     )
-
     if input.Result == "OK" && IsNumber(input.Value) && input.Value > 0 {
         AppState.DeleteDelay := Integer(input.Value)
         ConfigManager.Save()
@@ -83,7 +80,6 @@ SetCleanupInterval(*) {
         Lang("INPUT_INTERVAL_TITLE"),
         AppState.CleanupInterval
     )
-
     if input.Result == "OK" && IsNumber(input.Value) && input.Value > 0 {
         AppState.CleanupInterval := Integer(input.Value)
         ConfigManager.Save()
@@ -96,24 +92,20 @@ SetImPath(*) {
     SelectedFile := Trim(FileSelect(1, A_ProgramFiles, Lang("GUI_IM_SELECT_TITLE"), Lang("GUI_IM_SELECT_FILTER")))
     if SelectedFile == ""
         return
-
     if !InStr(StrLower(SelectedFile), "magick.exe") {
         MsgBox(Lang("MSG_IM_SELECT_ERROR"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-
     if !FileExist(SelectedFile) {
         MsgBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-
     try {
         IniWrite(SelectedFile, AppState.ConfigFile, "ImageMagick", "Path")
     } catch {
         MsgBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-
     AppState.ImageMagickExe := SelectedFile
     RefreshImStatus()
     MsgBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
@@ -122,11 +114,9 @@ SetImPath(*) {
 SetIgnorePatterns(*) {
     myGui := Gui("+AlwaysOnTop +MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
-
     ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
-
     ThemeHelper.AddSeparator(myGui, 500)
 
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
@@ -142,21 +132,12 @@ SetIgnorePatterns(*) {
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
-    btnOK := myGui.Add(
-        "Button",
-        "Default w90 y+12 " ThemeHelper.GetButtonPrimary(),
-        "✓ " Lang("GUI_IGNORE_OK")
-    )
-    btnCancel := myGui.Add(
-        "Button",
-        "x+8 w90 " ThemeHelper.GetButtonSecondary(),
-        "✕ " Lang("GUI_IGNORE_CANCEL")
-    )
-
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", "✓ " Lang("GUI_IGNORE_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_IGNORE_CANCEL"))
     btnOK.OnEvent("Click", (*) => SaveIgnoreRules(myEdit.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
-    myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
+    myGui.OnEvent("Escape", (*) => myGui.Destroy())
     myGui.Show()
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 }
@@ -172,9 +153,7 @@ SaveIgnoreRules(text, myGui) {
     AppState.IgnorePatterns := newPatterns
     ConfigManager.Save()
     myGui.Destroy()
-
     FileHelper.BuildIgnoreRegexes()
-
     ToolTip(Lang("MSG_IGNORE_UPDATED"))
     SetTimer(() => ToolTip(), -2000)
 }

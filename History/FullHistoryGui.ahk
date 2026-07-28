@@ -18,7 +18,6 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
 
     myGui := Gui("+Resize +AlwaysOnTop +MinSize680x500", Lang("GUI_FULL_TITLE"))
     ThemeHelper.StyleGui(myGui)
-
     myGui.OnEvent("Close", (*) => CloseFullHistoryGui(myGui))
     myGui.OnEvent("Escape", (*) => CloseFullHistoryGui(myGui))
     myGui.OnEvent("Size", ResizeFullHistoryGui)
@@ -37,14 +36,13 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     ThemeHelper.AddTitle(myGui, "📋 " Lang("GUI_FULL_TITLE"), 640)
     ThemeHelper.AddSubtitle(
         myGui,
-        Lang("GUI_FULL_SUBTITLE", "", "Double-click to paste • Right-click for options"),
+        Lang("GUI_FULL_SUBTITLE", "", Lang("GUI_FULL_SUBTITLE_0")),
         640
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
     myGui.SetFont("s10 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
     searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
-
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     searchBox := myGui.Add(
         "Edit",
@@ -54,7 +52,6 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
         AppState.MAX_FULL_HISTORY_DISPLAY := 50,
         RefreshFullHistoryList()
     ))
-
     myGui.SearchBox := searchBox
     myGui.SearchIcon := searchIcon
 
@@ -63,40 +60,26 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
         "x" margin " y" lvY " r18 w640 Checked Multi " ThemeHelper.GetLVOptions(),
         ["#", "Content", "Time"]
     )
-
     lv.ModifyCol(1, "Integer")
     lv.ModifyCol(1, 50)
     lv.ModifyCol(3, 80)
-
     lv.OnEvent("DoubleClick", OnFullHistoryDoubleClick)
     lv.OnEvent("ContextMenu", OnFullHistoryContextMenu)
     lv.OnEvent("ItemCheck", OnItemCheck)
-
     myGui.ListView := lv
+    ThemeHelper.StyleListView(lv)
 
     ThemeHelper.AddSeparator(myGui, 640)
 
-    btnPaste := myGui.Add(
-        "Button",
-        "Default " ThemeHelper.GetButtonPrimary("w120"),
-        "📄 " Lang("GUI_FULL_PASTE_FILE")
-    )
+    btnPaste := ThemeHelper.AddButton(myGui, "Default w120", "📄 " Lang("GUI_FULL_PASTE_FILE"), "primary")
     btnPaste.OnEvent("Click", (*) => PasteSelectedFromFullHistory())
     myGui.btnPaste := btnPaste
 
-    btnPasteText := myGui.Add(
-        "Button",
-        "x+8 yp " ThemeHelper.GetButtonSecondary("w120"),
-        "📝 " Lang("GUI_FULL_PASTE_TEXT")
-    )
+    btnPasteText := ThemeHelper.AddButton(myGui, "x+8 yp w120", "📝 " Lang("GUI_FULL_PASTE_TEXT"))
     btnPasteText.OnEvent("Click", (*) => PasteSelectedFromFullHistoryText())
     myGui.btnPasteText := btnPasteText
 
-    btnClose := myGui.Add(
-        "Button",
-        "x+8 yp " ThemeHelper.GetButtonSecondary("w80"),
-        Lang("GUI_FULL_CLOSE")
-    )
+    btnClose := ThemeHelper.AddButton(myGui, "x+8 yp w80", Lang("GUI_FULL_CLOSE"))
     btnClose.OnEvent("Click", (*) => CloseFullHistoryGui(myGui))
     myGui.btnClose := btnClose
 
@@ -108,19 +91,11 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     chkSelectAll.OnEvent("Click", OnSelectAllClicked)
     myGui.chkSelectAll := chkSelectAll
 
-    btnDelete := myGui.Add(
-        "Button",
-        "x+12 yp " ThemeHelper.GetButtonDanger("w100"),
-        "🗑️ " Lang("GUI_FULL_DELETE_SELECTED")
-    )
+    btnDelete := ThemeHelper.AddButton(myGui, "x+12 yp w100", "🗑️ " Lang("GUI_FULL_DELETE_SELECTED"), "danger")
     btnDelete.OnEvent("Click", OnDeleteSelected)
     myGui.btnDeleteSelected := btnDelete
 
-    btnLoadMore := myGui.Add(
-        "Button",
-        "x+12 yp " ThemeHelper.GetButtonSecondary("w100"),
-        "⬇️ " Lang("GUI_FULL_LOAD_MORE", "", "Load More")
-    )
+    btnLoadMore := ThemeHelper.AddButton(myGui, "x+12 yp w100", "⬇️ " Lang("GUI_FULL_LOAD_MORE", "", "Load More"))
     btnLoadMore.OnEvent("Click", OnLoadMoreClicked)
     myGui.btnLoadMore := btnLoadMore
 
@@ -129,24 +104,20 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
         "Text",
         "x16 y+12 w640",
         " " Lang("GUI_FULL_STATUS", "", "Ready") " | "
-        . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
+            . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
     )
-
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     myGui.StatusBar := statusBar
 
     AppState.FullHistoryGui := myGui
     myGui.Show("w680 h580")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
-
     RefreshFullHistoryList()
 }
 
 CloseFullHistoryGui(myGui) {
     AppState.MAX_FULL_HISTORY_DISPLAY := 50
-
     try myGui.Destroy()
-
     AppState.FullHistoryGui := ""
     AppState.TargetWindow := 0
 }
@@ -160,35 +131,27 @@ RefreshFullHistoryList() {
     myGui := AppState.FullHistoryGui
     if !IsObject(myGui)
         return
-
     lv := myGui.ListView
     lv.Delete()
 
     filter := Trim(myGui.SearchBox.Text)
     maxDisplay := AppState.MAX_FULL_HISTORY_DISPLAY
     matching := []
-
     for i, item in AppState.History {
         display := RegExReplace(SubStr(item["text"], 1, 80), "[\r\n\t\v\f]+", " ")
-
         if StrLen(item["text"]) > 80
             display .= "…"
-
         timeShort := SubStr(item["time"], 12, 5)
-
         if filter != "" && !InStr(display, filter) && !InStr(item["text"], filter)
             continue
-
         matching.Push({ index: i, display: display, time: timeShort })
     }
 
     totalMatching := matching.Length
-
     Loop Min(maxDisplay, totalMatching) {
         entry := matching[A_Index]
         lv.Add(, entry.index, entry.display, entry.time)
     }
-
     if totalMatching > maxDisplay
         lv.Add(, "…", "… (" (totalMatching - maxDisplay) " more)", "")
 
@@ -199,7 +162,6 @@ RefreshFullHistoryList() {
             . (filter ? " (filtered)" : "")
             . "  |  Showing " Min(maxDisplay, totalMatching) " of " totalMatching
     }
-
     myGui.chkSelectAll.Value := 0
 }
 
@@ -217,56 +179,44 @@ ResizeFullHistoryGui(guiObj, minmax, width, height) {
     gap := 10
 
     searchY := margin + titleAreaH + separatorH + gap
-
     if guiObj.HasProp("SearchIcon")
         try guiObj.SearchIcon.Move(margin, searchY)
-
     if guiObj.HasProp("SearchBox")
         try guiObj.SearchBox.Move(margin + 22, searchY - 2, width - margin * 2 - 22)
 
     lvY := searchY + searchAreaH + gap
     lvH := height - lvY - btnAreaH - toolAreaH - statusH - gap * 3
-
     if lvH < 100
         lvH := 100
-
     guiObj.ListView.Move(margin, lvY, width - margin * 2, lvH)
 
     btnY := lvY + lvH + gap
-
     btnPaste := guiObj.btnPaste
     btnPasteText := guiObj.btnPasteText
     btnClose := guiObj.btnClose
-
     if IsObject(btnPaste) && IsObject(btnPasteText) && IsObject(btnClose) {
         btnPaste.GetPos(, , &w1)
         btnPasteText.GetPos(, , &w2)
         btnClose.GetPos(, , &w3)
-
         spacing := 8
         totalBtnWidth := w1 + w2 + w3 + spacing * 2
         startX := width - totalBtnWidth - margin
-
         btnPaste.Move(startX, btnY)
         btnPasteText.Move(startX + w1 + spacing, btnY)
         btnClose.Move(startX + w1 + spacing + w2 + spacing, btnY)
     }
 
     toolY := btnY + btnAreaH + gap
-
     chkSelectAll := guiObj.chkSelectAll
     btnDelete := guiObj.btnDeleteSelected
     btnLoadMore := guiObj.btnLoadMore
-
     if IsObject(chkSelectAll) && IsObject(btnDelete) && IsObject(btnLoadMore) {
         chkSelectAll.GetPos(, , &w4)
         btnDelete.GetPos(, , &w5)
         btnLoadMore.GetPos(, , &w6)
-
         spacing := 12
         totalWidth2 := w4 + w5 + w6 + spacing * 2
         startX2 := width - totalWidth2 - margin
-
         chkSelectAll.Move(startX2, toolY)
         btnDelete.Move(startX2 + w4 + spacing, toolY)
         btnLoadMore.Move(startX2 + w4 + spacing + w5 + spacing, toolY)

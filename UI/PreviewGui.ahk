@@ -3,14 +3,12 @@
 ShowPreviewGui(text) {
     myGui := Gui("+AlwaysOnTop +Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
     ThemeHelper.StyleGui(myGui)
-
     ThemeHelper.AddTitle(myGui, "👁️ " Lang("GUI_PREVIEW_TITLE"), 600)
 
     lineCount := StrSplit(text, "`n").Length
     charCount := StrLen(text)
     ThemeHelper.AddSubtitle(myGui,
         lineCount " lines  •  " charCount " characters", 600)
-
     ThemeHelper.AddSeparator(myGui, 600)
 
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
@@ -21,21 +19,13 @@ ShowPreviewGui(text) {
     )
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
-    btnCopy := myGui.Add(
-        "Button",
-        "Default " ThemeHelper.GetButtonPrimary("w100"),
-        "📋 Copy"
-    )
+    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 Copy", "primary")
     btnCopy.OnEvent("Click", (*) => (
         A_Clipboard := text,
         ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1000)
     ))
 
-    btn := myGui.Add(
-        "Button",
-        "x+8 yp " ThemeHelper.GetButtonSecondary("w80"),
-        Lang("GUI_PREVIEW_CLOSE")
-    )
+    btn := ThemeHelper.AddButton(myGui, "x+8 yp w80", Lang("GUI_PREVIEW_CLOSE"))
     btn.OnEvent("Click", (*) => myGui.Destroy())
 
     myGui.OnEvent("Size", (obj, minmax, w, h) => (

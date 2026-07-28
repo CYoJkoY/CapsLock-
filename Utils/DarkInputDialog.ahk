@@ -7,7 +7,6 @@ class DarkInputDialog {
 
         myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", title)
         ThemeHelper.StyleGui(myGui)
-
         ThemeHelper.AddTitle(myGui, "⚙️ " title, width - 20)
 
         myGui.SetFont("s10 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
@@ -21,16 +20,8 @@ class DarkInputDialog {
         )
         editCtrl.Focus()
 
-        btnOK := myGui.Add(
-            "Button",
-            "Default w90 y+16 " ThemeHelper.GetButtonPrimary(),
-            "✓ OK"
-        )
-        btnCancel := myGui.Add(
-            "Button",
-            "x+8 w90 " ThemeHelper.GetButtonSecondary(),
-            "✕ Cancel"
-        )
+        btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ OK", "primary")
+        btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ Cancel")
 
         OnOK(*) {
             resultValue := editCtrl.Value
@@ -41,7 +32,6 @@ class DarkInputDialog {
             resultAction := "Cancel"
             myGui.Destroy()
         }
-
         btnOK.OnEvent("Click", OnOK)
         btnCancel.OnEvent("Click", OnCancel)
         myGui.OnEvent("Escape", OnCancel)
@@ -50,7 +40,6 @@ class DarkInputDialog {
         myGui.Show("AutoSize Center")
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
         WinWaitClose("ahk_id " myGui.Hwnd)
-
         return { Result: resultAction, Value: resultValue }
     }
 }

@@ -1,6 +1,10 @@
 #Requires AutoHotkey v2.0
 
 class ThemeHelper {
+    static _btnBrushes := Map()
+    static _brushCache := Map()
+    static _fgColorRef := 0
+    static _ctlHooked := false
 
     static StyleGui(myGui, variant := "default") {
         myGui.BackColor := AppState.THEME_BG
@@ -9,25 +13,56 @@ class ThemeHelper {
         myGui.MarginY := 16
     }
 
+    static RgbToColorRef(colorStr) {
+        rgb := Integer(colorStr)
+        return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
+    }
+
+    static ButtonColor(style := "secondary") {
+        switch style {
+            case "primary": return AppState.THEME_ACCENT_DARK
+            case "danger":  return AppState.THEME_DANGER
+            default:        return AppState.THEME_CONTROL_BG
+        }
+    }
+
+    static StyleButton(ctrl, bgColor := "") {
+        if (bgColor = "")
+            bgColor := this.ButtonColor("secondary")
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "ptr", 0, "ptr", 0)
+        if !this._brushCache.Has(bgColor)
+            this._brushCache[bgColor] := DllCall("gdi32\CreateSolidBrush", "uint", this.RgbToColorRef(bgColor), "ptr")
+        this._btnBrushes[ctrl.Hwnd] := { brush: this._brushCache[bgColor], cref: this.RgbToColorRef(bgColor) }
+        if !this._fgColorRef
+            this._fgColorRef := this.RgbToColorRef(AppState.THEME_FG)
+        this._HookCtlColors()
+        ctrl.Redraw()
+    }
+
+    static _HookCtlColors() {
+        if this._ctlHooked
+            return
+        OnMessage(0x0135, ThemeHelper_OnCtlColorBtn)
+        this._ctlHooked := true
+    }
+
+    static StyleListView(ctrl) {
+        this.StyleScrollbar(ctrl)
+        headerHwnd := SendMessage(0x101F, 0, 0, ctrl.Hwnd)
+        if headerHwnd
+            try DllCall("uxtheme\SetWindowTheme", "ptr", headerHwnd, "wstr", "DarkMode_ItemsView", "ptr", 0)
+        ctrl.Redraw()
+    }
+
+    static StyleScrollbar(ctrl) {
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_Explorer", "ptr", 0)
+    }
+
     static ApplyImmersiveDarkMode(hwnd) {
-        try {
-            DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hwnd, "Int", 20, "Int*", 1, "Int", 4)
-        }
-
-        try {
-            borderColor := Integer("0x" SubStr(AppState.THEME_BORDER, 3))
-            DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hwnd, "Int", 34, "Int*", borderColor, "Int", 4)
-        }
-
-        try {
-            captionColor := Integer("0x" SubStr(AppState.THEME_SURFACE, 3))
-            DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hwnd, "Int", 35, "Int*", captionColor, "Int", 4)
-        }
-
-        try {
-            textColor := Integer("0x" SubStr(AppState.THEME_FG, 3))
-            DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", hwnd, "Int", 36, "Int*", textColor, "Int", 4)
-        }
+        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 20, "int*", 1, "int", 4)
+        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 34, "int*", this.RgbToColorRef(AppState.THEME_BORDER),  "int", 4)
+        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 35, "int*", this.RgbToColorRef(AppState.THEME_SURFACE), "int", 4)
+        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 36, "int*", this.RgbToColorRef(AppState.THEME_FG),      "int", 4)
     }
 
     static GetEditOptions(extra := "") {
@@ -44,26 +79,28 @@ class ThemeHelper {
             . (extra ? " " extra : "")
     }
 
+    static AddButton(myGui, options, label, style := "secondary") {
+        btn := myGui.Add("Button", options " " this.GetButtonOptions(style), label)
+        this.StyleButton(btn, this.ButtonColor(style))
+        return btn
+    }
+
     static GetButtonPrimary(extra := "") {
-        return "Background" AppState.THEME_ACCENT_DARK
-            . " c" AppState.THEME_FG
-            . (extra ? " " extra : "")
+        return this.GetButtonOptions("primary", extra)
     }
 
     static GetButtonSecondary(extra := "") {
-        return "Background" AppState.THEME_CONTROL_BG
-            . " c" AppState.THEME_FG
-            . (extra ? " " extra : "")
+        return this.GetButtonOptions("secondary", extra)
     }
 
     static GetButtonDanger(extra := "") {
-        return "Background" AppState.THEME_DANGER
-            . " c" AppState.THEME_FG
-            . (extra ? " " extra : "")
+        return this.GetButtonOptions("danger", extra)
     }
 
-    static GetButtonOptions(extra := "") {
-        return this.GetButtonSecondary(extra)
+    static GetButtonOptions(style := "secondary", extra := "") {
+        return "Background" this.ButtonColor(style)
+            . " c" AppState.THEME_FG
+            . (extra ? " " extra : "")
     }
 
     static GetCheckBoxOptions(extra := "") {
@@ -114,4 +151,13 @@ class ThemeHelper {
             opt .= " " title
         return myGui.Add("GroupBox", opt)
     }
+}
+
+ThemeHelper_OnCtlColorBtn(wParam, lParam, msg, hwnd) {
+    if !ThemeHelper._btnBrushes.Has(lParam)
+        return
+    entry := ThemeHelper._btnBrushes[lParam]
+    DllCall("SetTextColor", "ptr", wParam, "uint", ThemeHelper._fgColorRef)
+    DllCall("SetBkColor",   "ptr", wParam, "uint", entry.cref)
+    return entry.brush
 }
