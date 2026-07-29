@@ -20,6 +20,9 @@ class AppState {
     static MenuPosY := 0
     static ImageMagickExe := ""
 
+    ; --- Language ---
+    static CurrentLanguage := ""
+
     ; --- Paths ---
     static ConfigFile := A_ScriptDir "\configs\Config.ini"
     static HistoryFile := A_ScriptDir "\configs\ClipHistory.bin"
