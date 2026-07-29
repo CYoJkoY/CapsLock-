@@ -20,8 +20,8 @@ class DarkInputDialog {
         )
         editCtrl.Focus()
 
-        btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ OK", "primary")
-        btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ Cancel")
+        btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
+        btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
 
         OnOK(*) {
             resultValue := editCtrl.Value

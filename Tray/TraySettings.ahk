@@ -132,8 +132,8 @@ SetIgnorePatterns(*) {
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
-    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", "✓ " Lang("GUI_IGNORE_OK"), "primary")
-    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_IGNORE_CANCEL"))
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", "✓ " Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
     btnOK.OnEvent("Click", (*) => SaveIgnoreRules(myEdit.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 

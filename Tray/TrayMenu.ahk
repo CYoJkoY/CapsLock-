@@ -43,12 +43,43 @@ TraySetup() {
 
     Tray.Add()
     Tray.Add( Lang( "MENU_AUTOSTART" ), ToggleAutoStart )
+    devMenu := Menu()
+    devMenu.Add( Lang( "MENU_REBUILD_LANG"), ( * ) => RebuildLangCache() )
+    Tray.Add( Lang("MENU_DEBUG"), devMenu )
     Tray.Add( Lang( "MENU_RELOAD" ), ( * ) => Reload() )
     Tray.Add( Lang( "MENU_EXIT" ), ( * ) => ExitApp() )
 
     AppState.modeMenu := modeMenu
     AppState.pasteModeMenu := pasteModeMenu
     TrayMenuRefresh()
+}
+
+RebuildLangCache( * ) {
+    global AppState
+    csvPath := A_ScriptDir "\lang.csv"
+
+    if !FileExist( csvPath ) {
+        MsgBox( Lang( "MSG_LANG_CSV_NOT_FOUND", "", csvPath ), Lang( "MSG_ERROR" ), "Iconx" )
+        return
+    }
+
+    cacheDir := A_ScriptDir "\langs"
+    if DirExist( cacheDir ) {
+        Loop Files, cacheDir "\*.lang", "F" {
+            try FileDelete( A_LoopFileFullPath )
+        }
+    }
+
+    if LanguagePack.BuildAllFromCSV( csvPath ) {
+        LanguagePack.Init()
+        LanguagePack.Load( Language.GetCurrent() )
+        count := Language.GetLanguages().Length
+        MsgBox( Lang( "MSG_LANG_REBUILT", "", count ),
+                Lang( "MSG_SUCCESS" ), "Iconi T2" )
+        TraySetup()
+    } else {
+        MsgBox( Lang( "MSG_LANG_REBUILD_FAIL"), Lang( "MSG_ERROR" ), "Iconx" )
+    }
 }
 
 RefreshImStatus() {
