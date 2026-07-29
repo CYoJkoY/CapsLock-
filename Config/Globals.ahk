@@ -31,21 +31,29 @@ class AppState {
     static MAX_FULL_HISTORY_DISPLAY := 50
 
     ; --- UI Theme ---
-    static THEME_BG            := "0x1E1E2E"
-    static THEME_SURFACE       := "0x262637"
-    static THEME_ELEVATED      := "0x2E2E42"
-    static THEME_CONTROL_BG    := "0x313244"
-    static THEME_CONTROL_HOVER := "0x3E3E56"
-    static THEME_BORDER        := "0x45475A"
-    static THEME_FG            := "0xCDD6F4"
-    static THEME_FG_DIM        := "0xA6ADC8"
-    static THEME_FG_MUTED      := "0x7F849C"
-    static THEME_ACCENT        := "0x89B4FA"
-    static THEME_ACCENT_DARK   := "0x45608A"
-    static THEME_ACCENT_GLOW   := "0xB4D0FB"
-    static THEME_SUCCESS       := "0xA6E3A1"
-    static THEME_WARNING       := "0xF9E2AF"
-    static THEME_DANGER        := "0xF38BA8"
+    static THEME_BG            := "0x14141D"
+    static THEME_SURFACE       := "0x1B1B27"
+    static THEME_ELEVATED      := "0x232332"
+    static THEME_CONTROL_BG    := "0x282838"
+    static THEME_CONTROL_HOVER := "0x33334A"
+    static THEME_BORDER        := "0x3A3A52"
+
+    ; Foreground Text
+    static THEME_FG            := "0xB0B4CC"
+    static THEME_FG_DIM        := "0x8088A0"
+    static THEME_FG_MUTED      := "0x5E6478"
+
+    ; Accent Color
+    static THEME_ACCENT        := "0x5B86C9"
+    static THEME_ACCENT_DARK   := "0x3A5A8C"
+    static THEME_ACCENT_GLOW   := "0x82A8E0"
+
+    ; State Color
+    static THEME_SUCCESS       := "0x6FA572"
+    static THEME_WARNING       := "0xC4A95E"
+    static THEME_DANGER        := "0xC06070"
+
+    ; Text Font
     static THEME_FONT          := "Segoe UI"
     static THEME_FONT_MONO     := "Cascadia Code"
     static THEME_RADIUS        := 8
