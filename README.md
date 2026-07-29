@@ -144,6 +144,7 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | `Set Delay...`                 | Delay in seconds for Mode 1 (default 10 seconds)                                       |
 | `Set Cleanup Interval...`      | Cleanup interval in seconds for Mode 2 (default 30 seconds)                            |
 | `Set Max History...`           | Maximum clipboard history entries (0 disables history, default 10000)                  |
+| `Auto Clean History`           | Periodically trims history down to `maxHistoryItems` (off by default)                 |
 | `Paste Mode`                   | Paste mode: 1=paste as temp file, 2=paste as plain text with source markers            |
 | `Ignore Rules`                 | Edit a list of regex patterns; matched files/paths are skipped during paste operations |
 | `Language`                     | Switch UI language (based on `lang.csv`; 13 languages supported)                       |
@@ -166,6 +167,8 @@ maxHistory=10000      ; max history entries
 
 [General]
 pasteMode=1           ; 1=paste as file 2=paste as text with source
+autoClean=0           ; 1=enable periodic auto-trim of history (runs every 60s)
+maxHistoryItems=500   ; when autoClean is on, history is trimmed to this size
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
@@ -182,7 +185,8 @@ Rules=                ; multiple regexes separated by |
 | Variable           | Default               | Description                                      |
 | :----------------- | :-------------------- | :----------------------------------------------- |
 | `ENCRYPT_KEY`      | `0x5A`                | XOR encryption key (0 = plaintext history)       |
-| `MAX_VISIBLE_MENU` | `15`                  | Maximum entries shown in the history quick menu  |
+| `MAX_VISIBLE_MENU` | `5`                   | Maximum entries shown in the history quick menu  |
+| `MAX_FULL_HISTORY_DISPLAY` | `50`          | Initial rows shown in the full history window    |
 | `TextFormats`      | 50+ common extensions | List of extensions treated as "text files"       |
 | `ImageFormats`     | png, jpg, bmp…        | Image formats supported for PDF conversion       |
 | `IgnorePatterns`   | (empty)               | Default ignore rules (overridable via Tray menu) |
@@ -252,10 +256,12 @@ CapsLock-
 - **In‑memory file paste** – Constructs a `DROPFILES` structure directly in memory to write multiple file paths to the clipboard.
 - **Smart loop prevention** – Uses the `ignoreNextClipChange` flag to prevent temporary files (`ClipTemp_*.txt`) from triggering infinite `OnClipboardChange` loops.
 - **Encrypted history storage** – Employs simple XOR stream encryption to obfuscate the history file; for high‑security needs, combine with Windows EFS or BitLocker.
-- **Delayed / batch cleanup** – Two strategies for temporary file cleanup to control I/O pressure and disk usage.
+- **Delayed / batch / off cleanup** – Three strategies (`DeleteMode` 1–3) for temporary file cleanup to control I/O pressure and disk usage.
 - **Modular design** – Each functional domain is separated into its own `.ahk` file for easy maintenance and extension.
 - **Multi‑language support** – CSV‑based translation system; 13 languages switchable on the fly from the tray menu.
-- **Ignore rules** – Regex‑based filtering to safely exclude unwanted files or paths from paste operations.
+- **Ignore rules** – Regex‑based filtering (gitignore syntax) to safely exclude unwanted files or paths from paste operations.
+- **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI, replacing the native `Menu` control for history and context menus.
+- **OSD notification system** – `OSD` class provides a single‑line, auto‑dismissing notification banner used throughout the app for status feedback.
 
 ---
 
