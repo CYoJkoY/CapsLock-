@@ -107,9 +107,7 @@ MSG_INFO=Informacja
 MSG_LANG_CSV_NOT_FOUND=lang.csv nie znaleziono w {1}
 MSG_LANG_REBUILT=Pamięć podręczna języka została pomyślnie przebudowana! ({1} języków)
 MSG_LANG_REBUILD_FAIL=Nie udało się odbudować pamięci podręcznej języka
-MSG_PDF_PROGRESS=Tworzenie pliku PDF... Bieżąca partia: {1} / {2}, sukcesy/porażki: {3} / {4}
-MSC_PNG2PDF_FAILED=Niepowodzenie PNG2PDF, ponowna próba z JPEG...
-MSG_MERGEING_PDF_BATCHES=Łączenie {1} partii PDF...
+MSG_PROCESSING_IMAGE_PDF=Konwersja obrazów do PDF, proszę nie przełączać okna…
 INPUT_MAX_HISTORY_TITLE=Maks. historia
 INPUT_MAX_HISTORY_PROMPT=Wprowadź maks. liczbę historii (0=wyłącz):
 INPUT_DELAY_TITLE=Opóźnienie usuwania

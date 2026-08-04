@@ -107,9 +107,7 @@ MSG_INFO=Bilgi
 MSG_LANG_CSV_NOT_FOUND={1} konumunda lang.csv bulunamadı
 MSG_LANG_REBUILT=Dil önbelleği başarıyla yeniden oluşturuldu! ({1} dil)
 MSG_LANG_REBUILD_FAIL=Dil önbelleği yeniden oluşturulamadı
-MSG_PDF_PROGRESS=PDF oluşturuluyor... Geçerli parti: {1} / {2}, başarı/başarısızlık sayısı: {3} / {4}
-MSC_PNG2PDF_FAILED=PNG2PDF başarısız, JPEG ile yeniden deneniyor...
-MSG_MERGEING_PDF_BATCHES={1} PDF grubu birleştiriliyor...
+MSG_PROCESSING_IMAGE_PDF=Görüntüler PDF'ye dönüştürülüyor, lütfen pencereyi değiştirmeyin…
 INPUT_MAX_HISTORY_TITLE=Maks. Geçmiş
 INPUT_MAX_HISTORY_PROMPT=Maks. geçmiş sayısını girin (0=devre dışı):
 INPUT_DELAY_TITLE=Silme Gecikmesi

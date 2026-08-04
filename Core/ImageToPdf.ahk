@@ -6,6 +6,7 @@ ProcessImagePathsToPDF() {
         MsgBox( Lang( "MSG_IMAGEMAGICK_ERROR" ), Lang( "MSG_ERROR" ), "Iconx" )
         return ""
     }
+
     paths := []
     lines := StrSplit( A_Clipboard, "`n", "`r" )
     for line in lines {
@@ -23,10 +24,25 @@ ProcessImagePathsToPDF() {
         return ""
     }
 
+    progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
+    progressGui.BackColor := AppState.THEME_SURFACE
+    progressGui.SetFont("s12 c" AppState.THEME_FG, AppState.THEME_FONT)
+    tipText := Lang("MSG_PROCESSING_IMAGE_PDF", "")
+    progressGui.Add("Text", "x20 y20", tipText)
+    progressGui.Show("AutoSize Center")
+    Try ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+
     outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
     cmd := '"' exe '" ' . Join( paths, " " ) . ' -density 150 -quality 100 "' outputPdf '"'
+
+    guiDestroyed := false
     try {
         RunWait( cmd, , "Hide" )
+
+        if IsObject(progressGui) {
+            progressGui.Destroy()
+            guiDestroyed := true
+        }
 
         if FileExist( outputPdf ) {
             ShowToolTip( Lang( "MSG_IMAGE_PDF_SUCCESS" ), 2000 )
@@ -37,6 +53,10 @@ ProcessImagePathsToPDF() {
         }
 
     } catch as err {
+        if !guiDestroyed && IsObject(progressGui) {
+            try progressGui.Destroy()
+        }
+
         ShowToolTip( Lang( "MSG_PDF_IM_EXCEPTION", , err.Message ), 3000 )
         return ""
     }
