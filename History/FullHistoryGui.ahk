@@ -124,44 +124,76 @@ CloseFullHistoryGui(myGui) {
 
 OnLoadMoreClicked(btn, info) {
     AppState.MAX_FULL_HISTORY_DISPLAY += 50
-    RefreshFullHistoryList()
+    RefreshFullHistoryList(true)
 }
 
-RefreshFullHistoryList() {
+RefreshFullHistoryList(isIncremental := false) {
     myGui := AppState.FullHistoryGui
     if !IsObject(myGui)
         return
-    lv := myGui.ListView
-    lv.Delete()
 
+    lv := myGui.ListView
     filter := Trim(myGui.SearchBox.Text)
     maxDisplay := AppState.MAX_FULL_HISTORY_DISPLAY
-    matching := []
-    for i, item in AppState.History {
-        display := RegExReplace(SubStr(item["text"], 1, 80), "[\r\n\t\v\f]+", " ")
-        if StrLen(item["text"]) > 80
-            display .= "…"
-        timeShort := SubStr(item["time"], 12, 5)
-        if filter != "" && !InStr(display, filter) && !InStr(item["text"], filter)
-            continue
-        matching.Push({ index: i, display: display, time: timeShort })
+
+    needRebuild := !isIncremental
+        || !myGui.HasProp("cachedMatching")
+        || (myGui.HasProp("lastFilter") && myGui.lastFilter != filter)
+
+    if needRebuild {
+        matching := []
+        for i, item in AppState.History {
+            display := RegExReplace(SubStr(item["text"], 1, 80), "[\r\n\t\v\f]+", " ")
+            if StrLen(item["text"]) > 80
+                display .= "…"
+
+            timeShort := SubStr(item["time"], 12, 5)
+            if filter != "" && !InStr(display, filter) && !InStr(item["text"], filter)
+                continue
+
+            matching.Push({ index: i, display: display, time: timeShort })
+        }
+
+        myGui.cachedMatching := matching
+        myGui.lastFilter := filter
+        myGui.displayedCount := 0
+
+        SendMessage(0x000B, 0, 0, lv.Hwnd)
+        lv.Delete()
+    } else {
+        SendMessage(0x000B, 0, 0, lv.Hwnd)
     }
 
+    matching := myGui.cachedMatching
     totalMatching := matching.Length
-    Loop Min(maxDisplay, totalMatching) {
-        entry := matching[A_Index]
-        lv.Add(, entry.index, entry.display, entry.time)
-    }
-    if totalMatching > maxDisplay
-        lv.Add(, "…", "… (" (totalMatching - maxDisplay) " more)", "")
+    prevDisplayed := myGui.HasProp("displayedCount") ? myGui.displayedCount : 0
 
-    lv.ModifyCol(2, "AutoHdr")
+    startIdx := prevDisplayed + 1
+    endIdx := Min(maxDisplay, totalMatching)
+
+    if startIdx <= endIdx {
+        Loop endIdx - startIdx + 1 {
+            entry := matching[startIdx + A_Index - 1]
+            lv.Add(, entry.index, entry.display, entry.time)
+        }
+        myGui.displayedCount := endIdx
+    }
+
+    SendMessage(0x000B, 1, 0, lv.Hwnd)
+    DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
+
+    if needRebuild {
+        lv.ModifyCol(2, "AutoHdr")
+        if lv.GetCount() > 0
+            SendMessage(0x1017, 0, 0, lv.Hwnd)
+    }
 
     if myGui.HasProp("StatusBar") {
         displayCount := Min(maxDisplay, totalMatching)
         statusKey := filter ? "GUI_FULL_STATUSBAR_FILTERED" : "GUI_FULL_STATUSBAR"
         myGui.StatusBar.Text := lang(statusKey, , totalMatching, displayCount)
     }
+
     myGui.chkSelectAll.Value := 0
 }
 
