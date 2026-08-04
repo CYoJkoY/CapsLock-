@@ -46,28 +46,30 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
     <li><code>Shift</code> + arrows for smart text selection</li>
     <li><code>Space</code> selects whole word under cursor</li>
     <li><code>A</code>/<code>D</code> delete char, <code>Shift+A/D</code> delete word</li>
+    <li><code>Backspace</code>/<code>Delete</code> delete entire line</li>
   </ul>
 </div>
 
 <div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
   <h3 style="margin-top: 0; color: #D6D2CC;">📋 Advanced Clipboard</h3>
   <ul style="color: #BEB8AE;">
-    <li><code>C</code> copy as plain text</li>
-    <li><code>V</code> smart paste (multi‑file merging, image→PDF, path content merge, etc.)</li>
+    <li><code>C</code> copy as plain text (auto strip formatting)</li>
+    <li><code>V</code> smart paste — multi‑file merging, image→PDF conversion, mixed path handling, recursive folder collection</li>
     <li><code>Shift+V</code> encrypted history quick menu with preview, single/batch paste, delete</li>
-    <li><code>F</code> instant case swap of clipboard text</li>
-    <li>Custom ignore rules to exclude sensitive or temporary files during paste</li>
+    <li><code>F</code> instant case swap of clipboard text (preserves original in clipboard)</li>
+    <li>Custom ignore rules (gitignore syntax) to exclude sensitive or temporary files during paste</li>
   </ul>
 </div>
 
 <div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
   <h3 style="margin-top: 0; color: #D6D2CC;">🪟 Window & Tabs</h3>
   <ul style="color: #BEB8AE;">
-    <li>Hold CapsLock + Left/Right mouse button to adjust window opacity</li>
+    <li>Hold CapsLock + Left/Right mouse button to adjust window opacity (click +/−20, hold +/−100 per second)</li>
     <li>Middle mouse button toggles "ghost mode" (10% ↔ 100%)</li>
     <li><code>T</code> toggle always on top (with sound and OSD feedback)</li>
     <li><code>W</code>/<code>8</code>/<code>Num8</code> maximize/restore, <code>S</code>/<code>2</code>/<code>Num2</code> minimize</li>
-    <li><code>Q</code>/<code>E</code> previous / next tab</li>
+    <li><code>Q</code>/<code>E</code> previous / next tab (<code>Ctrl+PgUp</code> / <code>Ctrl+PgDn</code>)</li>
+    <li><code>Shift+Q</code>/<code>Shift+E</code> window cycling (<code>Alt+Esc</code> / <code>Alt+Shift+Esc</code>)</li>
   </ul>
 </div>
 
@@ -77,6 +79,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
     <li>Open full clipboard history window via bottom entry of the history menu</li>
     <li>Supports search, multi‑select, batch paste as file or text</li>
     <li>Delete entries directly from the window with real‑time updates</li>
+    <li>"Load More" button for paginated browsing (50 items per page)</li>
   </ul>
 </div>
 
@@ -96,18 +99,19 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | **Navigation** | `←` / `→`                   | Move cursor left/right **by one word**                                     |
 |                | `↑` / `↓`                   | Jump to **beginning** / **end of line**                                    |
 |                | `Space`                     | Select the **entire word** under the cursor                                |
-| **Selection**  | `Shift+←` / `→`             | Extend selection left/right **by word**                                    |
-|                | `Shift+↑` / `↓`             | Extend selection from cursor to start/end of line                          |
+| **Selection**  | `Shift+←` / `Shift+→`       | Extend selection left/right **by word**                                    |
+|                | `Shift+↑` / `Shift+↓`       | Extend selection from cursor to start/end of line                          |
 | **Editing**    | `A` / `D`                   | `Backspace` / `Delete` (delete single character)                           |
-|                | `Shift+A` / `D`             | Delete left/right **entire word**                                          |
-|                | `Backspace` / `Delete`      | Delete **entire line**                                                     |
-| **Window**     | `T`                         | Toggle current window **always on top**                                    |
+|                | `Shift+A` / `Shift+D`       | Delete left/right **entire word**                                          |
+|                | `Backspace` / `Delete`      | Delete **entire line** (Home+Shift+End+Delete)                             |
+| **Window**     | `T`                         | Toggle current window **always on top** (with sound & OSD)                 |
 |                | `W` / `8` / `Num8`          | **Maximize / Restore** current window                                      |
 |                | `S` / `2` / `Num2`          | **Minimize** current window                                                |
 | **Mouse**      | `Left Button` (click/hold)  | **Increase** window transparency (click +20, hold +100 per second)         |
 |                | `Right Button` (click/hold) | **Decrease** window transparency (click -20, hold -100 per second)         |
 |                | `Middle Button`             | **Toggle** transparency: 10% (ghost mode) ↔ 100% (normal)                  |
 | **Tabs**       | `Q` / `E`                   | Switch to **previous** / **next** tab (`Ctrl+PgUp` / `Ctrl+PgDn`)          |
+|                | `Shift+Q` / `Shift+E`       | **Cycle windows** (`Alt+Esc` / `Alt+Shift+Esc`)                            |
 
 ---
 
@@ -144,9 +148,8 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | `Set Delay...`                 | Delay in seconds for Mode 1 (default 10 seconds)                                       |
 | `Set Cleanup Interval...`      | Cleanup interval in seconds for Mode 2 (default 30 seconds)                            |
 | `Set Max History...`           | Maximum clipboard history entries (0 disables history, default 10000)                  |
-| `Auto Clean History`           | Periodically trims history down to `maxHistoryItems` (off by default)                 |
 | `Paste Mode`                   | Paste mode: 1=paste as temp file, 2=paste as plain text with source markers            |
-| `Ignore Rules`                 | Edit a list of regex patterns; matched files/paths are skipped during paste operations |
+| `Ignore Rules`                 | Edit a list of gitignore‑style patterns; matched files/paths are skipped during paste  |
 | `Language`                     | Switch UI language (based on `lang.csv`; 13 languages supported)                       |
 | `Load on start up`             | Toggle auto‑start with Windows (registry `HKCU\Run`)                                   |
 | `Reload`                       | Reload the script                                                                      |
@@ -167,29 +170,46 @@ maxHistory=10000      ; max history entries
 
 [General]
 pasteMode=1           ; 1=paste as file 2=paste as text with source
-autoClean=0           ; 1=enable periodic auto-trim of history (runs every 60s)
+autoClean=0           ; 1=enable periodic auto‑trim of history (runs every 60s)
 maxHistoryItems=500   ; when autoClean is on, history is trimmed to this size
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
 
 [Ignore]
-Rules=                ; multiple regexes separated by |
+Rules=                ; multiple patterns separated by |
 ; Examples (in the UI editor each pattern is on its own line):
 ; ^C:\\Windows\\.*    # ignore all files under Windows folder
 ; \\.tmp$             # ignore .tmp files
+; *.log               # ignore all .log files
 ```
 
 ### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 
-| Variable           | Default               | Description                                      |
-| :----------------- | :-------------------- | :----------------------------------------------- |
-| `ENCRYPT_KEY`      | `0x5A`                | XOR encryption key (0 = plaintext history)       |
-| `MAX_VISIBLE_MENU` | `5`                   | Maximum entries shown in the history quick menu  |
-| `MAX_FULL_HISTORY_DISPLAY` | `50`          | Initial rows shown in the full history window    |
-| `TextFormats`      | 50+ common extensions | List of extensions treated as "text files"       |
-| `ImageFormats`     | png, jpg, bmp…        | Image formats supported for PDF conversion       |
-| `IgnorePatterns`   | (empty)               | Default ignore rules (overridable via Tray menu) |
+| Variable               | Default               | Description                                      |
+| :--------------------- | :-------------------- | :----------------------------------------------- |
+| `ENCRYPT_KEY`          | `0x5A`                | XOR encryption key (0 = plaintext history)       |
+| `MAX_VISIBLE_MENU`     | `5`                   | Maximum entries shown in the history quick menu  |
+| `MAX_FULL_HISTORY_DISPLAY` | `50`            | Initial rows shown in the full history window    |
+| `TextFormats`          | 50+ common extensions | List of extensions treated as "text files"       |
+| `ImageFormats`         | png, jpg, bmp…        | Image formats supported for PDF conversion       |
+| `IgnorePatterns`       | (empty)               | Default ignore rules (overridable via Tray menu) |
+| `AutoCleanEnabled`     | `false`               | Enable periodic history trimming                 |
+| `MaxHistoryItems`      | `500`                 | Trim target when autoClean is enabled            |
+
+### Theme Colors (modifiable in `Globals.ahk`)
+
+The script uses a built‑in dark theme with configurable color values:
+
+| Variable            | Default   | Purpose                        |
+| :------------------ | :-------- | :----------------------------- |
+| `THEME_BG`          | `0x14141D`| Main window background         |
+| `THEME_SURFACE`     | `0x1B1B27`| Card / surface background      |
+| `THEME_ACCENT`      | `0x5B86C9`| Primary accent color           |
+| `THEME_SUCCESS`     | `0x6FA572`| Success state color            |
+| `THEME_DANGER`      | `0xC06070`| Danger / delete state color    |
+| `THEME_FONT`        | `Segoe UI` | UI font                        |
+| `THEME_FONT_MONO`   | `Cascadia Code` | Monospace font for code views |
 
 ---
 
@@ -223,6 +243,7 @@ CapsLock-
 │   ├── 📄 ImageToPdf.ahk
 │   └── 📄 WindowUtils.ahk
 ├── 📁 History
+│   ├── 📄 CustomMenu.ahk
 │   ├── 📄 FullHistoryGui.ahk
 │   ├── 📄 FullHistoryHandlers.ahk
 │   ├── 📄 HistoryDelete.ahk
@@ -238,8 +259,10 @@ CapsLock-
 │   └── 📄 TraySettings.ahk
 ├── 📁 UI
 │   ├── 📄 OSD.ahk
-│   └── 📄 PreviewGui.ahk
+│   ├── 📄 PreviewGui.ahk
+│   └── 📄 ThemeHelper.ahk
 ├── 📁 Utils
+│   ├── 📄 DarkInputDialog.ahk
 │   ├── 📄 Language.ahk
 │   ├── 📄 MethodsUtils.ahk
 │   └── 📄 ResourceSound.ahk
@@ -254,14 +277,15 @@ CapsLock-
 ## 🧠 Implementation Highlights
 
 - **In‑memory file paste** – Constructs a `DROPFILES` structure directly in memory to write multiple file paths to the clipboard.
-- **Smart loop prevention** – Uses the `ignoreNextClipChange` flag to prevent temporary files (`ClipTemp_*.txt`) from triggering infinite `OnClipboardChange` loops.
+- **Smart loop prevention** – Uses the `IgnoreNextClipChange` flag to prevent temporary files (`ClipTemp_*.txt`) from triggering infinite `OnClipboardChange` loops.
 - **Encrypted history storage** – Employs simple XOR stream encryption to obfuscate the history file; for high‑security needs, combine with Windows EFS or BitLocker.
 - **Delayed / batch / off cleanup** – Three strategies (`DeleteMode` 1–3) for temporary file cleanup to control I/O pressure and disk usage.
 - **Modular design** – Each functional domain is separated into its own `.ahk` file for easy maintenance and extension.
 - **Multi‑language support** – CSV‑based translation system; 13 languages switchable on the fly from the tray menu.
-- **Ignore rules** – Regex‑based filtering (gitignore syntax) to safely exclude unwanted files or paths from paste operations.
+- **Ignore rules** – Gitignore‑style pattern matching (with full regex conversion) to safely exclude unwanted files or paths from paste operations.
 - **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI, replacing the native `Menu` control for history and context menus.
 - **OSD notification system** – `OSD` class provides a single‑line, auto‑dismissing notification banner used throughout the app for status feedback.
+- **Immersive dark mode** – Uses `DwmSetWindowAttribute` APIs to enable native dark title bars and window borders on Windows.
 
 ---
 
@@ -271,7 +295,7 @@ CapsLock-
 
 If you handle highly sensitive data, it is recommended to:
 
-1. Set `ENCRYPT_KEY` to `0` (disable encryption)
+1. Set `ENCRYPT_KEY` to `0` (disable encryption) in `Config/Globals.ahk`
 2. Use Windows built‑in **EFS** or **BitLocker** to encrypt the entire configuration folder
 
 ---
