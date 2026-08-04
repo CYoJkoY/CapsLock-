@@ -107,6 +107,9 @@ MSG_INFO=Info
 MSG_LANG_CSV_NOT_FOUND=lang.csv introuvable sur {1}
 MSG_LANG_REBUILT=Cache linguistique reconstruit avec succès ! ({1} langues)
 MSG_LANG_REBUILD_FAIL=Échec de la reconstruction du cache de langue
+MSG_PROCESSING_TITLE=Traitement en cours...
+MSG_PROCESSING_SUBTITLE=Conversion de l'image en PDF, veuillez ne pas changer de fenêtre…
+MSG_PROCESSING_WAIT=... Veuillez patienter ...
 INPUT_MAX_HISTORY_TITLE=Nombre max d'historique
 INPUT_MAX_HISTORY_PROMPT=Entrez le nombre max d'historique (0=désactiver) :
 INPUT_DELAY_TITLE=Délai de suppression

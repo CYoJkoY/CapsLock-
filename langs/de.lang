@@ -107,6 +107,9 @@ MSG_INFO=Info
 MSG_LANG_CSV_NOT_FOUND=lang.csv nicht gefunden auf {1}
 MSG_LANG_REBUILT=Sprachcache erfolgreich neu aufgebaut! ({1} Sprachen)
 MSG_LANG_REBUILD_FAIL=Sprachcache konnte nicht neu aufgebaut werden
+MSG_PROCESSING_TITLE=Wird verarbeitet...
+MSG_PROCESSING_SUBTITLE=Konvertiere Bild in PDF, bitte Fenster nicht wechseln…
+MSG_PROCESSING_WAIT=…… Bitte warten Sie ……
 INPUT_MAX_HISTORY_TITLE=Max. Verlauf
 INPUT_MAX_HISTORY_PROMPT=Max. Verlauf eingeben (0=deaktivieren):
 INPUT_DELAY_TITLE=Löschverzögerung

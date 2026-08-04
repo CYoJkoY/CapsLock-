@@ -107,6 +107,9 @@ MSG_INFO=Информация
 MSG_LANG_CSV_NOT_FOUND=lang.csv не найден в {1}
 MSG_LANG_REBUILT=Языковой кеш успешно перестроен! ({1} языков)
 MSG_LANG_REBUILD_FAIL=Не удалось перестроить языковой кэш
+MSG_PROCESSING_TITLE=Обработка...
+MSG_PROCESSING_SUBTITLE=Преобразование изображения в PDF, пожалуйста, не переключайте окно…
+MSG_PROCESSING_WAIT=…… Пожалуйста, подождите ……
 INPUT_MAX_HISTORY_TITLE=Макс. история
 INPUT_MAX_HISTORY_PROMPT=Введите макс. количество записей (0=откл.):
 INPUT_DELAY_TITLE=Задержка удаления

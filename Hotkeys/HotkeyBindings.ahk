@@ -35,6 +35,9 @@
     e:: Send( "^{PgDn}" )
     q:: Send( "^{PgUp}" )
 
+    +e:: Send( "!+{Esc}" )
+    +q:: Send( "!{Esc}" )
+
     LButton:: {
         AdjustOpacity( 20 )
         if KeyWait( "LButton", "T0.3" )
