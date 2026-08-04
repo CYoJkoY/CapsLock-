@@ -25,12 +25,12 @@ ProcessImagePathsToPDF() {
     }
 
     progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
-    progressGui.BackColor := AppState.THEME_SURFACE
-    progressGui.SetFont("s12 c" AppState.THEME_FG, AppState.THEME_FONT)
-    tipText := Lang("MSG_PROCESSING_IMAGE_PDF", "")
-    progressGui.Add("Text", "x20 y20", tipText)
+    ThemeHelper.StyleGui(progressGui)
+    ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PROCESSING_TITLE", ""), 320)
+    ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PROCESSING_SUBTITLE", ""), 320)
+    progressGui.Add("Text", "x16 y+8 w300 center c" AppState.THEME_FG_DIM, Lang("MSG_PROCESSING_WAIT"))
     progressGui.Show("AutoSize Center")
-    Try ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+    ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
 
     outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
     cmd := '"' exe '" ' . Join( paths, " " ) . ' -density 150 -quality 100 "' outputPdf '"'

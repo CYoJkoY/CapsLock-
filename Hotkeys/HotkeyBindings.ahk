@@ -35,8 +35,8 @@
     e:: Send( "^{PgDn}" )
     q:: Send( "^{PgUp}" )
 
-    +e:: Send( "!{Esc}" )
-    +q:: Send( "!+{Esc}" )
+    +e:: Send( "!+{Esc}" )
+    +q:: Send( "!{Esc}" )
 
     LButton:: {
         AdjustOpacity( 20 )
