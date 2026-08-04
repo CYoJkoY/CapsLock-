@@ -24,7 +24,7 @@ ProcessImagePathsToPDF() {
     }
 
     outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
-    cmd := '"' exe '" ' . Join( paths, " " ) . ' -density 150 -quality 100 "' outputPdf '"'
+    cmd := '"' exe '" ' . Join( paths, " " ) . ' -resize "1200x>" -append -density 150 -quality 100 "' outputPdf '"'
     try {
         RunWait( cmd, , "Hide" )
 
