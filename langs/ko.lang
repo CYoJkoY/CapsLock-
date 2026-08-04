@@ -107,6 +107,9 @@ MSG_INFO=정보
 MSG_LANG_CSV_NOT_FOUND={1}에서 lang.csv를 찾을 수 없습니다
 MSG_LANG_REBUILT=언어 캐시 재구성 성공! ({1}개 언어)
 MSG_LANG_REBUILD_FAIL=언어 캐시 재구축 실패
+MSG_PDF_PROGRESS=PDF 생성 중... 현재 배치: {1} / {2}, 성공/실패 수: {3} / {4}
+MSC_PNG2PDF_FAILED=PNG2PDF 실패, JPEG로 재시도...
+MSG_MERGEING_PDF_BATCHES={1}개 PDF 배치 병합 중...
 INPUT_MAX_HISTORY_TITLE=최대 기록 수
 INPUT_MAX_HISTORY_PROMPT=최대 기록 수 입력 (0=비활성화):
 INPUT_DELAY_TITLE=삭제 지연

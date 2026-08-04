@@ -107,6 +107,9 @@ MSG_INFO=Info
 MSG_LANG_CSV_NOT_FOUND=lang.csv nicht gefunden auf {1}
 MSG_LANG_REBUILT=Sprachcache erfolgreich neu aufgebaut! ({1} Sprachen)
 MSG_LANG_REBUILD_FAIL=Sprachcache konnte nicht neu aufgebaut werden
+MSG_PDF_PROGRESS=PDF wird erstellt... Aktueller Stapel: {1} / {2}, Erfolge/Fehler: {3} / {4}
+MSC_PNG2PDF_FAILED=PNG2PDF fehlgeschlagen, Versuch mit JPEG...
+MSG_MERGEING_PDF_BATCHES={1} PDF-Batches werden zusammengeführt...
 INPUT_MAX_HISTORY_TITLE=Max. Verlauf
 INPUT_MAX_HISTORY_PROMPT=Max. Verlauf eingeben (0=deaktivieren):
 INPUT_DELAY_TITLE=Löschverzögerung

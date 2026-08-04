@@ -107,6 +107,9 @@ MSG_INFO=Informazioni
 MSG_LANG_CSV_NOT_FOUND=lang.csv non trovato in {1}
 MSG_LANG_REBUILT=Cache della lingua ricostruito con successo! ({1} lingue)
 MSG_LANG_REBUILD_FAIL=Ricostruzione della cache della lingua non riuscita
+MSG_PDF_PROGRESS=Creazione PDF in corso... Lotto corrente: {1} / {2}, riuscite/fallite: {3} / {4}
+MSC_PNG2PDF_FAILED=Errore PNG2PDF, riprova con JPEG...
+MSG_MERGEING_PDF_BATCHES=Unione di {1} lotti PDF...
 INPUT_MAX_HISTORY_TITLE=Cronologia max
 INPUT_MAX_HISTORY_PROMPT=Inserisci cronologia max (0=disabilita):
 INPUT_DELAY_TITLE=Ritardo eliminazione
