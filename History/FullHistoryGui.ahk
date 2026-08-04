@@ -128,9 +128,17 @@ OnLoadMoreClicked(btn, info) {
 }
 
 RefreshFullHistoryList() {
+    topIndex := 1
+    if (lv.GetCount() > 0) {
+        topIndex := SendMessage(0x100E, 0, 0, lv.Hwnd) + 1
+        if (topIndex < 1)
+            topIndex := 1
+    }
+
     myGui := AppState.FullHistoryGui
     if !IsObject(myGui)
         return
+
     lv := myGui.ListView
     lv.Delete()
 
@@ -141,9 +149,11 @@ RefreshFullHistoryList() {
         display := RegExReplace(SubStr(item["text"], 1, 80), "[\r\n\t\v\f]+", " ")
         if StrLen(item["text"]) > 80
             display .= "…"
+
         timeShort := SubStr(item["time"], 12, 5)
         if filter != "" && !InStr(display, filter) && !InStr(item["text"], filter)
             continue
+
         matching.Push({ index: i, display: display, time: timeShort })
     }
 
@@ -152,8 +162,15 @@ RefreshFullHistoryList() {
         entry := matching[A_Index]
         lv.Add(, entry.index, entry.display, entry.time)
     }
+
     if totalMatching > maxDisplay
         lv.Add(, "…", "… (" (totalMatching - maxDisplay) " more)", "")
+
+    if (lv.GetCount() > 0) {
+        if (topIndex > lv.GetCount())
+            topIndex := lv.GetCount()
+        SendMessage(0x1017, topIndex - 1, 0, lv.Hwnd)
+    }
 
     lv.ModifyCol(2, "AutoHdr")
 
@@ -162,6 +179,7 @@ RefreshFullHistoryList() {
         statusKey := filter ? "GUI_FULL_STATUSBAR_FILTERED" : "GUI_FULL_STATUSBAR"
         myGui.StatusBar.Text := lang(statusKey, , totalMatching, displayCount)
     }
+
     myGui.chkSelectAll.Value := 0
 }
 
