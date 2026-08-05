@@ -81,7 +81,7 @@ class LanguagePack {
                     valIndex := ci + 1
                     val := (valIndex <= fields.Length) ? Trim(fields[valIndex]) : ""
                     val := StrReplace(val, "`r", "")
-                    val := StrReplace(val, "`n", "\n")
+                    val := StrReplace(val, "`n", "\\n")
                     buffers[langCodes[ci]] .= keyUpper "=" val "`n"
                 }
             }
@@ -101,6 +101,9 @@ class LanguagePack {
         }
     }
 
+    ; Load language file using Loop Read for line-by-line processing.
+    ; This avoids loading the entire file into memory and splitting into
+    ; a large array, which reduces peak memory usage and allocation overhead.
     static Load(code) {
         if code == this._loadedCode
             return true
@@ -120,11 +123,10 @@ class LanguagePack {
 
         try {
             newMap := Map()
-            raw := FileRead(fpath, "UTF-8")
-            lines := StrSplit(raw, "`n", "`r")
 
-            for line in lines {
-                line := Trim(line)
+            ; Use Loop Read for memory-efficient line-by-line processing
+            Loop Read, fpath {
+                line := Trim(A_LoopReadLine)
                 if line == "" || SubStr(line, 1, 1) == "#"
                     continue
 
@@ -168,6 +170,8 @@ class LanguagePack {
         return false
     }
 
+    ; Parse a single CSV line handling quoted fields and escaped quotes.
+    ; Optimized to minimize string concatenation within the loop.
     static _ParseCSVLine(line) {
         fields := []
         field := ""

@@ -142,13 +142,20 @@ RefreshFullHistoryList(isIncremental := false) {
 
     if needRebuild {
         matching := []
+
+        ; Pre-calculate filter once, outside the loop
+        hasFilter := filter != ""
+
         for i, item in AppState.History {
-            display := RegExReplace(SubStr(item["text"], 1, 80), "[\r\n\t\v\f]+", " ")
-            if StrLen(item["text"]) > 80
+            rawText := item["text"]
+            ; Cache the raw text for filter comparison
+            display := RegExReplace(SubStr(rawText, 1, 80), "[\r\n\t\v\f]+", " ")
+            if StrLen(rawText) > 80
                 display .= "…"
 
             timeShort := SubStr(item["time"], 12, 5)
-            if filter != "" && !InStr(display, filter) && !InStr(item["text"], filter)
+
+            if hasFilter && !InStr(display, filter) && !InStr(rawText, filter)
                 continue
 
             matching.Push({ index: i, display: display, time: timeShort })

@@ -310,6 +310,9 @@ _FilterIgnored(paths) {
     return valid
 }
 
+; Collect all files from a mix of individual files and folders.
+; FileHelper.CollectFilesFromFolder() already applies ShouldIgnore internally,
+; so we skip redundant ShouldIgnore checks on collected files.
 _CollectAllFiles(files, folders) {
     allFiles := []
 
@@ -318,11 +321,9 @@ _CollectAllFiles(files, folders) {
 
     for fd in folders {
         collected := FileHelper.CollectFilesFromFolder(fd, true)
-
-        for cf in collected {
-            if !FileHelper.ShouldIgnore(cf)
-                allFiles.Push(cf)
-        }
+        ; No redundant ShouldIgnore here - CollectFilesFromFolder already filters
+        for cf in collected
+            allFiles.Push(cf)
     }
 
     return allFiles

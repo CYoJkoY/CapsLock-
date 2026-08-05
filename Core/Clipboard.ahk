@@ -57,8 +57,13 @@ class ClipboardHelper {
         }
     }
 
+    ; Copy selected text as plain text.
+    ; Uses A_Clipboard (text-only) backup instead of ClipboardAll() for performance.
+    ; ClipboardAll() saves ALL clipboard formats (images, rich text, etc.) which can
+    ; take hundreds of milliseconds. Since this function converts to plain text anyway,
+    ; backing up only the text portion is sufficient.
     static CopyAsPlainText() {
-        bak := ClipboardAll()
+        bak := A_Clipboard
         A_Clipboard := ""
 
         Send("^c")

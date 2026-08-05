@@ -17,6 +17,12 @@ class ThemeHelper {
     static _bgBrushRef := 0
     static _hooked     := false
 
+    ; Cached GDI pen objects to avoid repeated CreatePen/DeleteObject calls
+    static _borderPen    := 0
+    static _focusPen     := 0
+    static _borderPenRef := 0
+    static _focusPenRef  := 0
+
     static StyleGui(myGui, variant := "default") {
         myGui.BackColor := AppState.THEME_BG
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
@@ -184,6 +190,24 @@ class ThemeHelper {
         if (title != "") opt .= " " title
         return myGui.Add("GroupBox", opt)
     }
+
+    ; Release cached GDI resources (call on theme change or exit)
+    static ReleaseResources() {
+        if this._borderPen {
+            DllCall("gdi32\DeleteObject", "ptr", this._borderPen)
+            this._borderPen := 0
+            this._borderPenRef := 0
+        }
+        if this._focusPen {
+            DllCall("gdi32\DeleteObject", "ptr", this._focusPen)
+            this._focusPen := 0
+            this._focusPenRef := 0
+        }
+        for cref, brush in this._brushCache {
+            DllCall("gdi32\DeleteObject", "ptr", brush)
+        }
+        this._brushCache := Map()
+    }
 }
 
 _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
@@ -213,14 +237,32 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     DllCall("SetDCBrushColor", "Ptr", hdc, "UInt", fillColor)
     DllCall("FillRect", "Ptr", hdc, "Ptr", rcPtr, "Ptr", ThemeHelper._dcBrush)
 
-    borderRgb := (itemState & _ODS_FOCUS)
-        ? ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
-        : ThemeHelper.RgbToColorRef(AppState.THEME_BORDER)
-    pen    := DllCall("gdi32\CreatePen", "int", 0, "int", 1, "uint", borderRgb, "ptr")
+    ; Use cached GDI pens to avoid repeated CreatePen/DeleteObject calls.
+    ; Pens are created once per border/focus color and reused across all DrawItem calls.
+    if (itemState & _ODS_FOCUS) {
+        focusRef := ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
+        if !ThemeHelper._focusPen || ThemeHelper._focusPenRef != focusRef {
+            if ThemeHelper._focusPen
+                DllCall("gdi32\DeleteObject", "ptr", ThemeHelper._focusPen)
+            ThemeHelper._focusPen := DllCall("gdi32\CreatePen", "int", 0, "int", 1, "uint", focusRef, "ptr")
+            ThemeHelper._focusPenRef := focusRef
+        }
+        pen := ThemeHelper._focusPen
+    } else {
+        borderRef := ThemeHelper.RgbToColorRef(AppState.THEME_BORDER)
+        if !ThemeHelper._borderPen || ThemeHelper._borderPenRef != borderRef {
+            if ThemeHelper._borderPen
+                DllCall("gdi32\DeleteObject", "ptr", ThemeHelper._borderPen)
+            ThemeHelper._borderPen := DllCall("gdi32\CreatePen", "int", 0, "int", 1, "uint", borderRef, "ptr")
+            ThemeHelper._borderPenRef := borderRef
+        }
+        pen := ThemeHelper._borderPen
+    }
+
     oldPen := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", pen, "ptr")
     DllCall("gdi32\Rectangle", "ptr", hdc, "int", rcLeft, "int", rcTop, "int", rcRight, "int", rcBot)
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldPen, "ptr")
-    DllCall("gdi32\DeleteObject", "ptr", pen)
+    ; Pen is NOT deleted - it's cached for reuse
 
     txtColor := (itemState & _ODS_DISABLED)
         ? ThemeHelper.RgbToColorRef(AppState.THEME_FG_MUTED)
