@@ -83,6 +83,17 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
   </ul>
 </div>
 
+<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
+  <h3 style="margin-top: 0; color: #D6D2CC;">🖱️ Custom Dark‑Themed Tray Menu</h3>
+  <ul style="color: #BEB8AE;">
+    <li>Right‑click tray icon opens a fully custom dark‑themed popup menu with sub‑menu support</li>
+    <li>Settings organized into collapsible sub‑menus: Cleanup, History & Paste, Language</li>
+    <li>Menu auto‑flips upward to avoid overflowing into the taskbar</li>
+    <li>DPI‑aware anchor offset for accurate tray icon alignment</li>
+    <li>Language can be switched on the fly from the tray sub‑menu (13 languages supported)</li>
+  </ul>
+</div>
+
 ---
 
 ## 🎹 Shortcut Quick Reference
@@ -150,7 +161,8 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | `Set Max History...`           | Maximum clipboard history entries (0 disables history, default 10000)                  |
 | `Paste Mode`                   | Paste mode: 1=paste as temp file, 2=paste as plain text with source markers            |
 | `Ignore Rules`                 | Edit a list of gitignore‑style patterns; matched files/paths are skipped during paste  |
-| `Language`                     | Switch UI language (based on `lang.csv`; 13 languages supported)                       |
+| `Language`                     | Switch UI language (based on `lang.csv`; 13 languages supported, default: `zh`)        |
+| `Rebuild Language Cache`       | Rebuild language cache files from `lang.csv` into `langs/` directory                   |
 | `Load on start up`             | Toggle auto‑start with Windows (registry `HKCU\Run`)                                   |
 | `Reload`                       | Reload the script                                                                      |
 | `Exit`                         | Exit the script                                                                        |
@@ -172,6 +184,7 @@ maxHistory=10000      ; max history entries
 pasteMode=1           ; 1=paste as file 2=paste as text with source
 autoClean=0           ; 1=enable periodic auto‑trim of history (runs every 60s)
 maxHistoryItems=500   ; when autoClean is on, history is trimmed to this size
+language=zh           ; UI language code (en, zh, ja, etc.)
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
@@ -189,27 +202,39 @@ Rules=                ; multiple patterns separated by |
 | Variable               | Default               | Description                                      |
 | :--------------------- | :-------------------- | :----------------------------------------------- |
 | `ENCRYPT_KEY`          | `0x5A`                | XOR encryption key (0 = plaintext history)       |
-| `MAX_VISIBLE_MENU`     | `5`                   | Maximum entries shown in the history quick menu  |
-| `MAX_FULL_HISTORY_DISPLAY` | `50`            | Initial rows shown in the full history window    |
+| `MAX_VISIBLE_MENU`     | `12`                  | Maximum entries shown in the history quick menu  |
+| `MAX_FULL_HISTORY_DISPLAY` | `50`              | Initial rows shown in the full history window    |
 | `TextFormats`          | 50+ common extensions | List of extensions treated as "text files"       |
-| `ImageFormats`         | png, jpg, bmp…        | Image formats supported for PDF conversion       |
+| `ImageFormats`         | png, jpg, bmp, heic…  | Image formats supported for PDF conversion       |
 | `IgnorePatterns`       | (empty)               | Default ignore rules (overridable via Tray menu) |
 | `AutoCleanEnabled`     | `false`               | Enable periodic history trimming                 |
 | `MaxHistoryItems`      | `500`                 | Trim target when autoClean is enabled            |
+| `CurrentLanguage`      | `"zh"`                | Current UI language code                         |
 
 ### Theme Colors (modifiable in `Globals.ahk`)
 
 The script uses a built‑in dark theme with configurable color values:
 
-| Variable            | Default   | Purpose                        |
-| :------------------ | :-------- | :----------------------------- |
-| `THEME_BG`          | `0x14141D`| Main window background         |
-| `THEME_SURFACE`     | `0x1B1B27`| Card / surface background      |
-| `THEME_ACCENT`      | `0x5B86C9`| Primary accent color           |
-| `THEME_SUCCESS`     | `0x6FA572`| Success state color            |
-| `THEME_DANGER`      | `0xC06070`| Danger / delete state color    |
-| `THEME_FONT`        | `Segoe UI` | UI font                        |
-| `THEME_FONT_MONO`   | `Cascadia Code` | Monospace font for code views |
+| Variable               | Default   | Purpose                           |
+| :--------------------- | :-------- | :-------------------------------- |
+| `THEME_BG`             | `0x14141D`| Main window background            |
+| `THEME_SURFACE`        | `0x1B1B27`| Card / surface background         |
+| `THEME_ELEVATED`       | `0x232332`| Elevated surface (hover states)   |
+| `THEME_CONTROL_BG`     | `0x282838`| Input control background          |
+| `THEME_CONTROL_HOVER`  | `0x33334A`| Control hover background          |
+| `THEME_BORDER`         | `0x3A3A52`| Border / separator color          |
+| `THEME_FG`             | `0xB0B4CC`| Primary foreground text           |
+| `THEME_FG_DIM`         | `0x8088A0`| Dimmed secondary text             |
+| `THEME_FG_MUTED`       | `0x5E6478`| Muted / disabled text             |
+| `THEME_ACCENT`         | `0x5B86C9`| Primary accent color              |
+| `THEME_ACCENT_DARK`    | `0x3A5A8C`| Darker accent (button backgrounds)|
+| `THEME_ACCENT_GLOW`    | `0x82A8E0`| Accent glow (hover highlight)     |
+| `THEME_SUCCESS`        | `0x6FA572`| Success state color               |
+| `THEME_WARNING`        | `0xC4A95E`| Warning state color               |
+| `THEME_DANGER`         | `0xC06070`| Danger / delete state color       |
+| `THEME_FONT`           | `Segoe UI` | UI font                          |
+| `THEME_FONT_MONO`      | `Cascadia Code` | Monospace font for code views |
+| `THEME_RADIUS`         | `8`       | Corner radius (px)                |
 
 ---
 
@@ -266,6 +291,7 @@ CapsLock-
 │   ├── 📄 Language.ahk
 │   ├── 📄 MethodsUtils.ahk
 │   └── 📄 ResourceSound.ahk
+├── 📁 langs                (language cache files, auto-generated from lang.csv)
 ├── 📄 CapsLock-.ahk
 ├── ⚖️ LICENSE
 ├── 📖 README.md
@@ -281,11 +307,16 @@ CapsLock-
 - **Encrypted history storage** – Employs simple XOR stream encryption to obfuscate the history file; for high‑security needs, combine with Windows EFS or BitLocker.
 - **Delayed / batch / off cleanup** – Three strategies (`DeleteMode` 1–3) for temporary file cleanup to control I/O pressure and disk usage.
 - **Modular design** – Each functional domain is separated into its own `.ahk` file for easy maintenance and extension.
-- **Multi‑language support** – CSV‑based translation system; 13 languages switchable on the fly from the tray menu.
-- **Ignore rules** – Gitignore‑style pattern matching (with full regex conversion) to safely exclude unwanted files or paths from paste operations.
-- **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI, replacing the native `Menu` control for history and context menus.
-- **OSD notification system** – `OSD` class provides a single‑line, auto‑dismissing notification banner used throughout the app for status feedback.
+- **Multi‑language support** – CSV‑based translation system with compiled cache files in `langs/` directory; 13 languages switchable on the fly from the tray menu. Language cache can be rebuilt from `lang.csv` via the tray menu.
+- **Ignore rules** – Gitignore‑style pattern matching with hybrid engine: fast `PathMatchSpecW` API for simple patterns, regex fallback for complex patterns (e.g., `**` and `?`).
+- **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI with sub‑menu support, replacing the native `Menu` control for both the history quick menu and the tray icon context menu.
+- **GDI resource caching** – `ThemeHelper` caches `CreateSolidBrush` objects, border pens, and focus pens to avoid repeated GDI object creation/destruction during custom button drawing.
+- **Debounced history save** – `HistoryManager` uses a 3000ms debounce timer to batch writes to `ClipHistory.bin`, reducing disk I/O during rapid clipboard operations. `ForceSave()` ensures no data loss on exit.
+- **OSD notification system** – `OSD` class provides a single‑line, auto‑dismissing notification banner with icon, accent color bar, and timestamp, used throughout the app for status feedback.
 - **Immersive dark mode** – Uses `DwmSetWindowAttribute` APIs to enable native dark title bars and window borders on Windows.
+- **Resource‑embedded sound** – Always‑on‑top toggle sounds (`AlwaysOnTopOn.wav` / `AlwaysOnTopOff.wav`) are embedded as binary resources and played via `PlaySoundW` without external files.
+- **Fast plain‑text copy** – `CopyAsPlainText()` backs up only `A_Clipboard` (text) instead of `ClipboardAll()` (all formats), significantly reducing backup time for rich clipboard content.
+- **Recursive file enumeration** – `CollectFilesFromFolder()` uses native `Loop Files, "FR"` for deep directory trees, avoiding slow manual recursion.
 
 ---
 
