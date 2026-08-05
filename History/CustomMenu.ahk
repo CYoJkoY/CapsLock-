@@ -19,11 +19,13 @@ class CustomMenu {
     static subMenuLastHoveredEntry := ""
     static subMenuParentEntry := ""
 
-    static ShowWithItems(x, y, itemsArray) {
+    ; ShowWithItems accepts an optional anchorBottom flag.
+    ; When true, the menu's bottom-left corner aligns with (x, y).
+    static ShowWithItems(x, y, itemsArray, anchorBottom := false) {
         this.Hide()
         this.items := this.NormalizeItems(itemsArray)
         this.lastHoveredEntry := ""
-        this.BuildAndShow(x, y)
+        this.BuildAndShow(x, y, anchorBottom)
     }
 
     static NormalizeItems(itemsArray) {
@@ -59,7 +61,32 @@ class CustomMenu {
         return out
     }
 
-    static BuildAndShow(x, y) {
+    ; Calculate the total menu height without building the GUI.
+    ; Used to pre-compute offset for bottom-anchored menus.
+    static CalcTotalHeight() {
+        itemH := this.itemH
+        sepH := this.sepH
+        topPad := this.topPad
+
+        totalH := topPad
+        for entry in this.items
+            totalH += entry.isSep ? sepH : itemH
+
+        maxAllowed := A_ScreenHeight * 0.75
+        if totalH > maxAllowed {
+            ratio := maxAllowed / totalH
+            itemH := Max(Integer(itemH * ratio), 22)
+            sepH := Max(Integer(sepH * ratio), 4)
+            topPad := Max(Integer(topPad * ratio), 6)
+            totalH := topPad
+            for entry in this.items
+                totalH += entry.isSep ? sepH : itemH
+        }
+
+        return totalH
+    }
+
+    static BuildAndShow(x, y, anchorBottom := false) {
         if this.items.Length == 0
             return
 
@@ -84,6 +111,11 @@ class CustomMenu {
 
         menuW := this.menuW
         menuH := totalH
+
+        ; When anchorBottom is true, shift Y up by the menu height
+        ; so the menu's bottom-left corner aligns with the original (x, y).
+        if anchorBottom
+            y := y - menuH
 
         myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         myGui.BackColor := AppState.THEME_SURFACE
@@ -156,6 +188,9 @@ class CustomMenu {
         }
     }
 
+    ; Sub-menu expands upward by default: its bottom edge aligns with
+    ; the bottom edge of the parent entry. Falls back to downward expansion
+    ; only if upward would push the menu off the top of the screen.
     static ShowSubMenu(parentEntry) {
         if !parentEntry.HasProp("children")
             return
@@ -225,11 +260,19 @@ class CustomMenu {
             subCurY += subItemH
         }
 
-        ; Position sub-menu to right of parent, flip if near right edge
+        ; Position sub-menu to the right of parent, expanding upward.
+        ; Bottom of sub-menu aligns with bottom of parent entry.
         subX := px + pw + 4
-        subY := py
+        subY := py + ph - subTotalH
+
+        ; Flip horizontally if near right edge
         if subX + subMenuW > A_ScreenWidth - 5
             subX := px - subMenuW - 4
+
+        ; Fall back to downward expansion if upward would go off-screen
+        if subY < 5
+            subY := py
+
         subY := Clamp(subY, 5, A_ScreenHeight - subTotalH - 5)
 
         this.subMenuGui := subMyGui

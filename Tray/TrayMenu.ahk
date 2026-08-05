@@ -2,7 +2,18 @@
 
 TrayMsgHandler(wParam, lParam, msg, hwnd) {
     if (lParam == 0x205) {
-        MouseGetPos(&x, &y)
+        ; Use GetMessagePos to get the exact cursor position
+        ; at the time the message was generated, not the current
+        ; cursor position. This is more reliable than MouseGetPos
+        ; inside an OnMessage callback.
+        msgPos := DllCall("GetMessagePos", "UInt")
+        x := msgPos & 0xFFFF
+        y := (msgPos >> 16) & 0xFFFF
+        ; Fix sign extension for negative coordinates (multi-monitor)
+        if (x & 0x8000)
+            x := x | 0xFFFF0000
+        if (y & 0x8000)
+            y := y | 0xFFFF0000
         ShowTrayCustomMenu(x, y)
     }
 }
@@ -20,7 +31,8 @@ ShowTrayCustomMenu(x, y) {
     items := BuildTrayMenuItems()
     if items.Length == 0
         return
-    CustomMenu.ShowWithItems(x, y, items)
+    ; anchorBottom: true — menu's bottom-left corner aligns with tray icon position
+    CustomMenu.ShowWithItems(x, y, items, true)
 }
 
 BuildTrayMenuItems() {
