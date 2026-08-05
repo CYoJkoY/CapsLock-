@@ -7,8 +7,8 @@ class AppState {
     static TargetWindow := 0
 
     ; --- Settings ---
-    static PasteMode := 1       ; 1 = File, 2 = Text
-    static DeleteMode := 1      ; 1 = Delay, 2 = Batch, 3 = Never
+    static PasteMode := 1
+    static DeleteMode := 1
     static DeleteDelay := 10
     static CleanupInterval := 30
 
@@ -41,22 +41,18 @@ class AppState {
     static THEME_CONTROL_HOVER := "0x33334A"
     static THEME_BORDER        := "0x3A3A52"
 
-    ; Foreground Text
     static THEME_FG            := "0xB0B4CC"
     static THEME_FG_DIM        := "0x8088A0"
     static THEME_FG_MUTED      := "0x5E6478"
 
-    ; Accent Color
     static THEME_ACCENT        := "0x5B86C9"
     static THEME_ACCENT_DARK   := "0x3A5A8C"
     static THEME_ACCENT_GLOW   := "0x82A8E0"
 
-    ; State Color
     static THEME_SUCCESS       := "0x6FA572"
     static THEME_WARNING       := "0xC4A95E"
     static THEME_DANGER        := "0xC06070"
 
-    ; Text Font
     static THEME_FONT          := "Segoe UI"
     static THEME_FONT_MONO     := "Cascadia Code"
     static THEME_RADIUS        := 8
@@ -81,12 +77,6 @@ class AppState {
         "gif", "tiff", "tif", "webp",
         "ico", "heic"
     ]
-
-    ; --- Menus ---
-    static TrayMenu := ""
-    static modeMenu := ""
-    static pasteModeMenu := ""
-    static currentImMenuText := ""
 
     ; --- Ignore / Auto Clean ---
     static IgnorePatterns := []
