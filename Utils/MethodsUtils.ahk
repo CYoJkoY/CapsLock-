@@ -7,14 +7,27 @@ ShowToolTip(msg, durationMs := 1500) {
 }
 
 Join(arr, sep := " ") {
-    if arr.Length == 0
+    len := arr.Length
+    if len == 0
         return ""
+    if len == 1
+        return arr[1]
 
-    s := ""
+    ; Pre-calculate total length and pre-allocate string buffer
+    ; This eliminates repeated memory reallocations during concatenation
+    sepLen := StrLen(sep)
+    totalLen := sepLen * (len - 1)
     for v in arr
-        s .= v sep
+        totalLen += StrLen(v)
 
-    return SubStr(s, 1, -StrLen(sep))
+    result := ""
+    VarSetStrCapacity(&result, totalLen)
+
+    result := arr[1]
+    Loop len - 1 {
+        result .= sep . arr[A_Index + 1]
+    }
+    return result
 }
 
 PasteTempText(content, tooltipMsg := "") {
@@ -38,6 +51,10 @@ CapturePasteTarget() {
         return
 
     if IsObject(AppState.FullHistoryGui) && activeHwnd == AppState.FullHistoryGui.Hwnd
+        return
+
+    ; Skip redundant assignment if target hasn't changed
+    if AppState.TargetWindow == activeHwnd
         return
 
     AppState.TargetWindow := activeHwnd

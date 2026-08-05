@@ -4,13 +4,15 @@ class FileHelper {
     static MARKER_MID := Chr(1)
     static MARKER_END := Chr(2)
 
-    static _ignoreEntries := []
+    static _simplePatterns := []
+    static _regexPatterns := []
     static _regexReady := false
 
     static PATH_MATCH_SPEC := DllCall( "GetModuleHandle", "Str", "shlwapi", "Ptr" ) || DllCall( "LoadLibrary", "Str", "shlwapi", "Ptr" )
 
     static BuildIgnoreRegexes() {
-        this._ignoreEntries := []
+        this._simplePatterns := []
+        this._regexPatterns := []
         this._regexReady := false
 
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
@@ -25,20 +27,26 @@ class FileHelper {
             if SubStr(pattern, 1, 1) == "!"
                 continue
 
-            regexStr := this._GitignoreToRegex(pattern)
-            if regexStr != "" {
-                try {
-                    RegExMatch("", regexStr)
-                    this._ignoreEntries.Push({ pattern: pattern, regex: regexStr })
-                } catch {
+            ; Separate simple patterns (fast PathMatchSpecW) from complex patterns (slow regex)
+            ; Patterns with ** or ? require regex; everything else uses native API
+            if InStr(pattern, "**") || InStr(pattern, "?") {
+                regexStr := this._GitignoreToRegex(pattern)
+                if regexStr != "" {
+                    try {
+                        RegExMatch("", regexStr)
+                        this._regexPatterns.Push({ pattern: pattern, regex: regexStr })
+                    } catch {
+                    }
                 }
+            } else {
+                this._simplePatterns.Push(pattern)
             }
         }
 
         this._regexReady := true
     }
 
-    ; Converting gitignore-style patterns to AHK RegEx strings
+    ; Convert gitignore-style patterns to AHK RegEx strings
     ;
     ; Conversion rules:
     ;   /**/  ->  (?:[\/].*)?        (0+ intermediate directories)
@@ -114,7 +122,7 @@ class FileHelper {
                 continue
             }
 
-            if ch ~= "[\\.\\^\\$\\(\\)\\|\\[\\]\\{\\}\\+\\\\]"
+            if ch ~= "[\\.\\^\$\(\)\|\[\]\{\}\+\\\\]"
                 result .= "\\" ch
             else
                 result .= ch
@@ -136,23 +144,23 @@ class FileHelper {
         while SubStr(normalized, -1) == "/"
             normalized := SubStr(normalized, 1, StrLen(normalized) - 1)
 
-        for entry in this._ignoreEntries {
+        SplitPath(filePath, &fileName)
+
+        ; Check simple patterns first using fast PathMatchSpecW API
+        for pattern in this._simplePatterns {
             try {
-                if RegExMatch(normalized, entry.regex)
+                if DllCall("shlwapi\PathMatchSpecW", "str", normalized, "str", pattern, "int")
+                    return true
+                if DllCall("shlwapi\PathMatchSpecW", "str", fileName, "str", pattern, "int")
                     return true
             } catch {
             }
         }
 
-        SplitPath(filePath, &fileName)
-        for pattern in AppState.IgnorePatterns {
-            pat := Trim(pattern)
-            if pat == "" || SubStr(pat, 1, 1) == "#" || SubStr(pat, 1, 1) == "!"
-                continue
+        ; Check complex patterns with regex (only when necessary)
+        for entry in this._regexPatterns {
             try {
-                if DllCall("shlwapi\PathMatchSpecW", "str", normalized, "str", pat, "int")
-                    return true
-                if DllCall("shlwapi\PathMatchSpecW", "str", fileName, "str", pat, "int")
+                if RegExMatch(normalized, entry.regex)
                     return true
             } catch {
             }
@@ -200,6 +208,9 @@ class FileHelper {
         }
     }
 
+    ; Collect all files from a folder, optionally recursive.
+    ; Uses built-in recursive Loop Files (flag "FR") for significant speedup
+    ; over manual recursion, especially for deep directory trees.
     static CollectFilesFromFolder(folderPath, recursive := true, fileList := unset) {
         if !IsSet(fileList)
             fileList := []
@@ -210,16 +221,17 @@ class FileHelper {
             return fileList
 
         try {
-            loop files, folderPath "\*", "F" {
-                if !this.ShouldIgnore(A_LoopFileFullPath)
-                    fileList.Push(A_LoopFileFullPath)
-            }
-
             if recursive {
-                loop files, folderPath "\*", "D" {
-                    subDir := A_LoopFileFullPath
-                    if !this.ShouldIgnore(subDir)
-                        this.CollectFilesFromFolder(subDir, true, fileList)
+                ; Use native recursive file enumeration ("FR" = Files + Recurse)
+                ; This is significantly faster than manual recursive function calls
+                loop files, folderPath "\*", "FR" {
+                    if !this.ShouldIgnore(A_LoopFileFullPath)
+                        fileList.Push(A_LoopFileFullPath)
+                }
+            } else {
+                loop files, folderPath "\*", "F" {
+                    if !this.ShouldIgnore(A_LoopFileFullPath)
+                        fileList.Push(A_LoopFileFullPath)
                 }
             }
         }

@@ -72,7 +72,10 @@ class HistoryManager {
         this.savePending := true
         this.saveTimer := ObjBindMethod(this, "DoSave")
 
-        SetTimer(this.saveTimer, -2000)
+        ; Extended debounce from 2000ms to 3000ms to reduce disk I/O
+        ; during rapid clipboard operations. ForceSave() is called on exit
+        ; so no data is lost.
+        SetTimer(this.saveTimer, -3000)
     }
 
     static DoSave() {
@@ -88,28 +91,26 @@ class HistoryManager {
         history.WriteInt(AppState.History.Length)
 
         for item in AppState.History {
-            timeBuf := Buffer(StrPut(item["time"], "UTF-8"))
-            StrPut(item["time"], timeBuf, "UTF-8")
+            timeStr := item["time"]
+            srcStr := item["source"]
+            txtStr := item["text"]
 
-            srcBuf := Buffer(StrPut(item["source"], "UTF-8"))
-            StrPut(item["source"], srcBuf, "UTF-8")
+            ; Measure string sizes with StrPut
+            timeSize := StrPut(timeStr, "UTF-8")
+            srcSize := StrPut(srcStr, "UTF-8")
+            txtSize := StrPut(txtStr, "UTF-8")
 
-            txtBuf := Buffer(StrPut(item["text"], "UTF-8"))
-            StrPut(item["text"], txtBuf, "UTF-8")
-
-            total := 4 + timeBuf.Size + 4 + srcBuf.Size + 4 + txtBuf.Size
-            buf := Buffer(total)
+            ; Build buffer directly with StrPut (no intermediate buffers or RtlMoveMemory)
+            total := 4 + timeSize + 4 + srcSize + 4 + txtSize
+            buf := Buffer(total, 0)
 
             p := 0
-
-            NumPut("Int", timeBuf.Size, buf, p), p += 4
-            DllCall("RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", timeBuf.Ptr, "Ptr", timeBuf.Size), p += timeBuf.Size
-
-            NumPut("Int", srcBuf.Size, buf, p), p += 4
-            DllCall("RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", srcBuf.Ptr, "Ptr", srcBuf.Size), p += srcBuf.Size
-
-            NumPut("Int", txtBuf.Size, buf, p), p += 4
-            DllCall("RtlMoveMemory", "Ptr", buf.Ptr + p, "Ptr", txtBuf.Ptr, "Ptr", txtBuf.Size)
+            NumPut("Int", timeSize, buf, p), p += 4
+            StrPut(timeStr, buf.Ptr + p, timeSize, "UTF-8"), p += timeSize
+            NumPut("Int", srcSize, buf, p), p += 4
+            StrPut(srcStr, buf.Ptr + p, srcSize, "UTF-8"), p += srcSize
+            NumPut("Int", txtSize, buf, p), p += 4
+            StrPut(txtStr, buf.Ptr + p, txtSize, "UTF-8")
 
             CryptBuffer(buf)
 
@@ -129,18 +130,23 @@ class HistoryManager {
         if text == ""
             return
 
+        ; Fast check: most common duplicate case is the most recent entry
         if AppState.History.Length > 0 && AppState.History[1]["text"] == text
             return
 
-        timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-        item := Map("time", timestamp, "source", source, "text", text)
-
-        for index, existing in AppState.History {
-            if existing["text"] == text {
-                AppState.History.RemoveAt(index)
+        ; Search for duplicate from the end of the list.
+        ; Reverse iteration makes RemoveAt more efficient (fewer elements to shift).
+        idx := AppState.History.Length
+        while idx > 0 {
+            if AppState.History[idx]["text"] == text {
+                AppState.History.RemoveAt(idx)
                 break
             }
+            idx--
         }
+
+        timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        item := Map("time", timestamp, "source", source, "text", text)
 
         AppState.History.InsertAt(1, item)
 
