@@ -30,7 +30,7 @@ class AppState {
     static _init := DirExist(A_ScriptDir "\configs") ? "" : DirCreate(A_ScriptDir "\configs")
 
     ; --- UI Constants ---
-    static MAX_VISIBLE_MENU := 5
+    static MAX_VISIBLE_MENU := 12
     static MAX_FULL_HISTORY_DISPLAY := 50
 
     ; --- UI Theme ---
