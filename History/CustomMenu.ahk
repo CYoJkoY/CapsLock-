@@ -86,6 +86,35 @@ class CustomMenu {
         return totalH
     }
 
+    ; Calculate the DPI scaling factor for the screen.
+    ; Returns the ratio of current DPI to the baseline 96 DPI (100%).
+    ; At 125% DPI (120 dpi): returns 1.25
+    ; At 150% DPI (144 dpi): returns 1.50
+    static GetDpiScale() {
+        return Max(A_ScreenDPI, 96) / 96.0
+    }
+
+    ; Calculate the vertical offset needed to align the menu's bottom-left
+    ; corner with a tray icon click position.
+    ;
+    ; The offset compensates for:
+    ;   - Taskbar height (varies, typically 40-48 px at 100% DPI)
+    ;   - Tray icon vertical center offset (~12 px at 100% DPI)
+    ;   - Window non-client frame border (~8 px at 100% DPI)
+    ;
+    ; All of the above scale proportionally with the DPI setting,
+    ; so we compute a baseline at 96 DPI and multiply by the scale factor.
+    ;
+    ; Baseline values (empirically calibrated at 100% DPI / 96 dpi):
+    ;   BASE_TASKBAR   = 40  — typical single-row taskbar height
+    ;   BASE_ICON      = 12  — tray icon center-to-bottom offset
+    ;   BASE_FRAME     = 8   — +Border +ToolWindow non-client frame
+    ;   TOTAL BASE     = 60  — sum of the above
+    static GetAnchorOffset() {
+        static BASE_OFFSET := 60  ; calibrated at 96 DPI (100% scaling)
+        return Round(BASE_OFFSET * this.GetDpiScale())
+    }
+
     static BuildAndShow(x, y, anchorBottom := false) {
         if this.items.Length == 0
             return
@@ -111,11 +140,6 @@ class CustomMenu {
 
         menuW := this.menuW
         menuH := totalH
-
-        ; When anchorBottom is true, shift Y up by the menu height
-        ; so the menu's bottom-left corner aligns with the original (x, y).
-        if anchorBottom
-            y := y - menuH
 
         myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         myGui.BackColor := AppState.THEME_SURFACE
@@ -159,6 +183,15 @@ class CustomMenu {
             txtCtrl.OnEvent("Click", cb)
 
             curY += itemH
+        }
+
+        if anchorBottom {
+            ; Shift Y up so the menu's bottom-left corner aligns with the
+            ; tray icon click position. The offset is dynamically computed
+            ; based on the current DPI scaling factor to adapt to different
+            ; display resolutions and scaling settings.
+            offset := this.GetAnchorOffset()
+            y := y - menuH - offset
         }
 
         posX := Clamp(x, 5, A_ScreenWidth - menuW - 5)
