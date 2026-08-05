@@ -1,177 +1,158 @@
 #Requires AutoHotkey v2.0
 
+TrayMsgHandler(wParam, lParam, msg, hwnd) {
+    if (lParam == 0x205) {
+        MouseGetPos(&x, &y)
+        ShowTrayCustomMenu(x, y)
+    }
+}
+
 TraySetup() {
     global AppState
     A_IconTip := "CapsLock-"
-    AppState.TrayMenu := A_TrayMenu
-    Tray := AppState.TrayMenu
-    Tray.Delete()
 
-    RefreshImStatus()
+    A_TrayMenu.Delete()
 
-    Tray.Add()
-    Tray.Add( Lang( "MENU_OPEN_TEMP" ), ( * ) => Run( "explore " A_Temp ) )
-
-    modeMenu := Menu()
-    modeMenu.Add( Lang( "MENU_MODE1" ), ( * ) => SetDeleteMode( 1 ) )
-    modeMenu.Add( Lang( "MENU_MODE2" ), ( * ) => SetDeleteMode( 2 ) )
-    modeMenu.Add( Lang( "MENU_MODE3" ), ( * ) => SetDeleteMode( 3 ) )
-    Tray.Add( Lang( "MENU_DELETE_MODE" ), modeMenu )
-
-    Tray.Add( Lang( "MENU_SET_DELAY" ), ( * ) => SetDeleteDelay() )
-    Tray.Add( Lang( "MENU_SET_INTERVAL" ), ( * ) => SetCleanupInterval() )
-
-    Tray.Add()
-    Tray.Add( Lang( "MENU_MAX_HISTORY" ), ( * ) => SetMaxHistory() )
-
-    pasteModeMenu := Menu()
-    pasteModeMenu.Add( Lang( "MENU_PASTE_FILE" ), ( * ) => SetPasteMode( 1 ) )
-    pasteModeMenu.Add( Lang( "MENU_PASTE_TEXT" ), ( * ) => SetPasteMode( 2 ) )
-    Tray.Add( Lang( "MENU_PASTE_MODE" ), pasteModeMenu )
-    Tray.Add( Lang( "MENU_IGNORE_RULES" ), ( * ) => SetIgnorePatterns() )
-
-    langMenu := Menu()
-    currentLang := Language.GetCurrent()
-    for code in Language.GetLanguages() {
-        langDisplay := Lang( "LANG_" . StrUpper( code ), code )
-        langMenu.Add( langDisplay, SwitchLanguage.Bind( code ) )
-        if ( code = currentLang ) {
-            langMenu.Check( langDisplay )
-        }
-    }
-    Tray.Add( Lang( "MENU_LANGUAGE" ), langMenu )
-
-    Tray.Add()
-    Tray.Add( Lang( "MENU_AUTOSTART" ), ToggleAutoStart )
-    devMenu := Menu()
-    devMenu.Add( Lang( "MENU_REBUILD_LANG"), ( * ) => RebuildLangCache() )
-    Tray.Add( Lang("MENU_DEBUG"), devMenu )
-    Tray.Add( Lang( "MENU_RELOAD" ), ( * ) => Reload() )
-    Tray.Add( Lang( "MENU_EXIT" ), ( * ) => ExitApp() )
-
-    AppState.modeMenu := modeMenu
-    AppState.pasteModeMenu := pasteModeMenu
-    TrayMenuRefresh()
+    OnMessage(0x404, TrayMsgHandler)
 }
 
-RebuildLangCache( * ) {
+ShowTrayCustomMenu(x, y) {
+    items := BuildTrayMenuItems()
+    if items.Length == 0
+        return
+    CustomMenu.ShowWithItems(x, y, items)
+}
+
+BuildTrayMenuItems() {
+    items := []
+
+    ; --- ImageMagick status ---
+    exe := AppState.ImageMagickExe
+    valid := exe != "" && InStr(StrLower(exe), "magick.exe") && FileExist(exe)
+    imLabel := valid
+        ? "📦 " Lang("MENU_IM_STATUS_SET")
+        : "📦 " Lang("MENU_IM_STATUS_NOTSET")
+    items.Push({ label: imLabel, callback: (*) => SetImPath() })
+
+    items.Push({ isSep: true })
+
+    ; --- Open temp folder ---
+    items.Push({ label: "📂 " Lang("MENU_OPEN_TEMP"), callback: (*) => Run("explore " A_Temp) })
+
+    items.Push({ isSep: true })
+
+    ; --- Cleanup settings (sub-menu) ---
+    cleanupChildren := []
+    dm := AppState.DeleteMode
+    cleanupChildren.Push({ label: (dm == 1 ? "● " : "○ ") . Lang("MENU_MODE1"), callback: (*) => SetDeleteMode(1) })
+    cleanupChildren.Push({ label: (dm == 2 ? "● " : "○ ") . Lang("MENU_MODE2"), callback: (*) => SetDeleteMode(2) })
+    cleanupChildren.Push({ label: (dm == 3 ? "● " : "○ ") . Lang("MENU_MODE3"), callback: (*) => SetDeleteMode(3) })
+    cleanupChildren.Push({ label: "⏱️ " Lang("MENU_SET_DELAY"),   callback: (*) => SetDeleteDelay() })
+    cleanupChildren.Push({ label: "🔄 " Lang("MENU_SET_INTERVAL"), callback: (*) => SetCleanupInterval() })
+    items.Push({ label: "🧹 " Lang("MENU_CLEANUP_SETTINGS"), children: cleanupChildren })
+
+    ; --- History & Paste settings (sub-menu) ---
+    historyChildren := []
+    historyChildren.Push({ label: "📝 " Lang("MENU_MAX_HISTORY"), callback: (*) => SetMaxHistory() })
+    pm := AppState.PasteMode
+    historyChildren.Push({ label: (pm == 1 ? "● " : "○ ") . Lang("MENU_PASTE_FILE"), callback: (*) => SetPasteMode(1) })
+    historyChildren.Push({ label: (pm == 2 ? "● " : "○ ") . Lang("MENU_PASTE_TEXT"), callback: (*) => SetPasteMode(2) })
+    historyChildren.Push({ label: "🚫 " Lang("MENU_IGNORE_RULES"), callback: (*) => SetIgnorePatterns() })
+    items.Push({ label: "📋 " Lang("MENU_HISTORY_PASTE"), children: historyChildren })
+
+    ; --- Language (sub-menu) ---
+    langChildren := []
+    currentLang := Language.GetCurrent()
+    for code in Language.GetLanguages() {
+        langDisplay := Lang("LANG_" . StrUpper(code), code)
+        prefix := (code == currentLang) ? "● " : "○ "
+        langChildren.Push({ label: prefix . "🌐 " . langDisplay, callback: SwitchLanguage.Bind(code) })
+    }
+    items.Push({ label: "🌐 " Lang("MENU_LANGUAGE"), children: langChildren })
+
+    items.Push({ isSep: true })
+
+    ; --- Auto-start ---
+    autoStartEnabled := IsAutoStartEnabled()
+    items.Push({ label: (autoStartEnabled ? "✓ " : "") . "🚀 " . Lang("MENU_AUTOSTART"), callback: (*) => ToggleAutoStart() })
+
+    ; --- Rebuild language cache ---
+    items.Push({ label: "🔧 " Lang("MENU_REBUILD_LANG"), callback: (*) => RebuildLangCache() })
+
+    items.Push({ isSep: true })
+
+    ; --- Reload / Exit ---
+    items.Push({ label: "🔄 " Lang("MENU_RELOAD"), callback: (*) => Reload() })
+    items.Push({ label: "❌ " Lang("MENU_EXIT"),   callback: (*) => ExitApp() })
+
+    return items
+}
+
+RefreshImStatus() {
+}
+
+TrayMenuRefresh() {
+}
+
+RebuildLangCache(*) {
     global AppState
     csvPath := A_ScriptDir "\lang.csv"
 
-    if !FileExist( csvPath ) {
-        MsgBox( Lang( "MSG_LANG_CSV_NOT_FOUND", "", csvPath ), Lang( "MSG_ERROR" ), "Iconx" )
+    if !FileExist(csvPath) {
+        MsgBox(Lang("MSG_LANG_CSV_NOT_FOUND", "", csvPath), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
     cacheDir := A_ScriptDir "\langs"
-    if DirExist( cacheDir ) {
+    if DirExist(cacheDir) {
         Loop Files, cacheDir "\*.lang", "F" {
-            try FileDelete( A_LoopFileFullPath )
+            try FileDelete(A_LoopFileFullPath)
         }
     }
 
-    if LanguagePack.BuildAllFromCSV( csvPath ) {
+    if LanguagePack.BuildAllFromCSV(csvPath) {
         LanguagePack.Init()
-        LanguagePack.Load( Language.GetCurrent() )
+        LanguagePack.Load(Language.GetCurrent())
         count := Language.GetLanguages().Length
-        MsgBox( Lang( "MSG_LANG_REBUILT", "", count ),
-                Lang( "MSG_SUCCESS" ), "Iconi T2" )
-        TraySetup()
+        MsgBox(
+            Lang("MSG_LANG_REBUILT", "", count),
+            Lang("MSG_SUCCESS"), "Iconi T2"
+        )
     } else {
-        MsgBox( Lang( "MSG_LANG_REBUILD_FAIL"), Lang( "MSG_ERROR" ), "Iconx" )
+        MsgBox(Lang("MSG_LANG_REBUILD_FAIL"), Lang("MSG_ERROR"), "Iconx")
     }
 }
 
-RefreshImStatus() {
-    global AppState
-    exe := AppState.ImageMagickExe
-    valid := exe != "" && InStr( StrLower( exe ), "magick.exe" ) && FileExist( exe )
-    newText := valid ? Lang( "MENU_IM_STATUS_SET" ) : Lang( "MENU_IM_STATUS_NOTSET" )
-    if AppState.currentImMenuText == newText
-        return
-
-    Tray := AppState.TrayMenu
-    oldText := AppState.currentImMenuText
-
-    try {
-        Tray.Insert( 1, newText, ( * ) => SetImPath() )
-    } catch {
-        Tray.Add( newText, ( * ) => SetImPath() )
-    }
-
-    if valid
-        Tray.Check( newText )
-    else
-        Tray.Uncheck( newText )
-
-    if oldText != "" && oldText != newText {
-        try Tray.Delete( oldText )
-    }
-
-    AppState.currentImMenuText := newText
-}
-
-TrayMenuRefresh() {
-    global AppState
-    Tray := AppState.TrayMenu
-    modeMenu := AppState.modeMenu
-    modeMenu.Uncheck( Lang( "MENU_MODE1" ) )
-    modeMenu.Uncheck( Lang( "MENU_MODE2" ) )
-    modeMenu.Uncheck( Lang( "MENU_MODE3" ) )
-    if AppState.DeleteMode == 1
-        modeMenu.Check( Lang( "MENU_MODE1" ) )
-    else if AppState.DeleteMode == 2
-        modeMenu.Check( Lang( "MENU_MODE2" ) )
-    else if AppState.DeleteMode == 3
-        modeMenu.Check( Lang( "MENU_MODE3" ) )
-
-    pasteMenu := AppState.pasteModeMenu
-    pasteMenu.Uncheck( Lang( "MENU_PASTE_FILE" ) )
-    pasteMenu.Uncheck( Lang( "MENU_PASTE_TEXT" ) )
-    if AppState.PasteMode == 1
-        pasteMenu.Check( Lang( "MENU_PASTE_FILE" ) )
-    else if AppState.PasteMode == 2
-        pasteMenu.Check( Lang( "MENU_PASTE_TEXT" ) )
-
-    if IsAutoStartEnabled()
-        Tray.Check( Lang( "MENU_AUTOSTART" ) )
-    else
-        Tray.Uncheck( Lang( "MENU_AUTOSTART" ) )
-}
-
-ToggleAutoStart( * ) {
+ToggleAutoStart(*) {
     global AppState
     RegPath := "Software\Microsoft\Windows\CurrentVersion\Run"
     AppName := "CapsLock-"
-    Tray := AppState.TrayMenu
     if IsAutoStartEnabled() {
-        RegDelete( "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Uncheck( Lang( "MENU_AUTOSTART" ) )
-        MsgBox( Lang( "MSG_AUTOSTART_OFF" ), Lang( "MSG_SUCCESS" ), "Iconi T2" )
+        RegDelete("HKEY_CURRENT_USER\" RegPath, AppName)
+        MsgBox(Lang("MSG_AUTOSTART_OFF"), Lang("MSG_SUCCESS"), "Iconi T2")
     } else {
-        RegWrite( '"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName )
-        Tray.Check( Lang( "MENU_AUTOSTART" ) )
-        MsgBox( Lang( "MSG_AUTOSTART_ON" ), Lang( "MSG_SUCCESS" ), "Iconi T2" )
+        RegWrite('"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName)
+        MsgBox(Lang("MSG_AUTOSTART_ON"), Lang("MSG_SUCCESS"), "Iconi T2")
     }
 }
 
 IsAutoStartEnabled() {
     try {
-        RegRead( "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run", "CapsLock-" )
+        RegRead("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run", "CapsLock-")
         return true
     } catch {
         return false
     }
 }
 
-SwitchLanguage( code, * ) {
-    if Language.SetLanguage( code ) {
-        TraySetup()
-        if IsObject( AppState.FullHistoryGui ) {
+SwitchLanguage(code, *) {
+    if Language.SetLanguage(code) {
+        A_IconTip := "CapsLock-"
+        if IsObject(AppState.FullHistoryGui) {
             try AppState.FullHistoryGui.Destroy()
             AppState.FullHistoryGui := ""
         }
-        ToolTip( Lang( "MSG_LANG_CHANGED", , code ) )
-        SetTimer( () => ToolTip(), -1500 )
+        ToolTip(Lang("MSG_LANG_CHANGED", , code))
+        SetTimer(() => ToolTip(), -1500)
     }
 }

@@ -3,7 +3,6 @@
 SetPasteMode(mode) {
     AppState.PasteMode := mode
     ConfigManager.Save()
-    TrayMenuRefresh()
     ToolTip(mode == 1 ? Lang("MSG_PASTE_MODE_FILE") : Lang("MSG_PASTE_MODE_TEXT"))
     SetTimer(() => ToolTip(), -2000)
 }
@@ -11,7 +10,6 @@ SetPasteMode(mode) {
 SetDeleteMode(mode) {
     AppState.DeleteMode := mode
     ConfigManager.Save()
-    TrayMenuRefresh()
     msgs := [Lang("MSG_DELETE_MODE_DELAY"), Lang("MSG_DELETE_MODE_BATCH"), Lang("MSG_DELETE_MODE_NEVER")]
     ToolTip(msgs[mode])
     SetTimer(() => ToolTip(), -2000)
@@ -107,7 +105,6 @@ SetImPath(*) {
         return
     }
     AppState.ImageMagickExe := SelectedFile
-    RefreshImStatus()
     MsgBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
