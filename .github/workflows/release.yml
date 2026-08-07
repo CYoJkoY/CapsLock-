@@ -52,30 +52,21 @@ jobs:
             throw "Ahk2Exe.exe still not found at $ahk2exe"
           }
 
-          # Check if icon file exists (optional but helpful)
           $iconPath = "assets\CapsLock-.ico"
           if (-not (Test-Path $iconPath)) {
-            Write-Host "Warning: Icon file '$iconPath' not found. Compilation may fail."
+            Write-Host "Warning: Icon file '$iconPath' not found"
           }
 
-          # Use Start-Process to capture stdout/stderr and exit code
-          $arguments = @(
-            "/in", "CapsLock-.ahk",
-            "/out", "CapsLock-${{ github.ref_name }}.exe",
-            "/icon", $iconPath
-          )
-          Write-Host "Running: $ahk2exe $($arguments -join ' ')"
-          $process = Start-Process -FilePath $ahk2exe -ArgumentList $arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput "compile_stdout.txt" -RedirectStandardError "compile_stderr.txt"
-          $exitCode = $process.ExitCode
+          $outFile = "CapsLock-${{ github.ref_name }}.exe"
+          Write-Host "Compiling CapsLock-.ahk -> $outFile ..."
 
-          # Display captured output
-          if (Test-Path "compile_stdout.txt") {
-            Write-Host "=== STDOUT ==="
-            Get-Content "compile_stdout.txt"
-          }
-          if (Test-Path "compile_stderr.txt") {
-            Write-Host "=== STDERR ==="
-            Get-Content "compile_stderr.txt"
+          # Direct invocation, capture all output streams
+          $output = & $ahk2exe /in "CapsLock-.ahk" /out $outFile /icon $iconPath 2>&1
+          $exitCode = $LASTEXITCODE
+
+          if ($output) {
+            Write-Host "=== Ahk2Exe Output ==="
+            $output | ForEach-Object { Write-Host $_ }
           }
 
           Write-Host "Exit code: $exitCode"
@@ -83,10 +74,8 @@ jobs:
             throw "Ahk2Exe compilation failed with exit code $exitCode"
           }
 
-          # Verify output file exists
-          $outFile = "CapsLock-${{ github.ref_name }}.exe"
           if (-not (Test-Path $outFile)) {
-            throw "Compiled executable $outFile not found even though exit code 0"
+            throw "Compiled executable $outFile not found"
           }
           Write-Host "Compilation successful: $outFile ($((Get-Item $outFile).Length) bytes)"
 
