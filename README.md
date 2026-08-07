@@ -17,7 +17,7 @@
   <p style="word-spacing: 6px; margin-top: 20px;">
     <a href="#-shortcut-quick-reference" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Shortcut Quick Reference</a> &nbsp;•&nbsp;
     <a href="#-installation--setup" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Installation & Setup</a> &nbsp;•&nbsp;
-    <a href="#️-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration & Parameters</a> &nbsp;•&nbsp;
+    <a href="#%EF%B8%8F-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration & Parameters</a> &nbsp;•&nbsp;
     <a href="#-support-the-author" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Support the Author</a>
   </p>
 </div>
@@ -132,6 +132,7 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 
 1. **AutoHotkey v2** – Download and install from [autohotkey.com](https://www.autohotkey.com/)
 2. **ImageMagick** (optional) – Required for image‑to‑PDF feature; install from [imagemagick.org](https://imagemagick.org/) (check "Install legacy utilities" during setup)
+3. **Pandoc** (optional) – Required for document conversion feature; install from [pandoc.org](https://pandoc.org/)
 
 ### Quick Start
 
@@ -145,6 +146,12 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 2. Browse to your ImageMagick installation directory and select `magick.exe` (e.g., `C:\Program Files\ImageMagick-7.x.x-Q16\magick.exe`).
 3. The path is saved automatically to `configs/Config.ini` and the menu entry changes to **"ImageMagick: Valid"**.
 
+### Configure Pandoc (only needed for document conversion)
+
+1. Right‑click the tray icon → hover **"Pandoc: Not Set / Valid"** → click **"Set Pandoc Path"**.
+2. Browse to your Pandoc installation directory and select `pandoc.exe`.
+3. To change the output format, use the same sub‑menu → **"Set Pandoc Output"**.
+
 ---
 
 ## ⚙️ Configuration & Parameters
@@ -154,6 +161,7 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | Menu Item                      | Description                                                                            |
 | :----------------------------- | :------------------------------------------------------------------------------------- |
 | `ImageMagick: Not Set / Valid` | Set or change the ImageMagick executable path                                          |
+| `Pandoc: Not Set / Valid`      | Set Pandoc executable path and output format (sub‑menu)                                |
 | `Open Temp Folder`             | Open the temporary folder (`%TEMP%`, where temporary paste files are stored)           |
 | `Delete Mode`                  | Temp file cleanup strategy: 1=delayed delete, 2=batch cleanup, 3=never delete          |
 | `Set Delay...`                 | Delay in seconds for Mode 1 (default 10 seconds)                                       |
@@ -168,8 +176,6 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | `Exit`                         | Exit the script                                                                        |
 
 ### Configuration File `configs/Config.ini`
-
-📁 configs/Config.ini
 
 ```ini
 [Cleanup]
@@ -188,6 +194,10 @@ language=zh           ; UI language code (en, zh, ja, etc.)
 
 [ImageMagick]
 Path=C:\Program Files\ImageMagick-7.1.1-Q16\magick.exe
+
+[Pandoc]
+Path=C:\Program Files\Pandoc\pandoc.exe
+OutputFormat=docx     ; docx, html, markdown, pdf, rst, rtf, odt, epub, etc.
 
 [Ignore]
 Rules=                ; multiple patterns separated by |
@@ -210,31 +220,42 @@ Rules=                ; multiple patterns separated by |
 | `AutoCleanEnabled`     | `false`               | Enable periodic history trimming                 |
 | `MaxHistoryItems`      | `500`                 | Trim target when autoClean is enabled            |
 | `CurrentLanguage`      | `"zh"`                | Current UI language code                         |
+| `PandocInputFormats`   | 50+ formats           | Supported input formats for Pandoc conversion    |
+| `PandocOutputFormats`  | 70+ formats           | Supported output formats for Pandoc conversion   |
 
 ### Theme Colors (modifiable in `Globals.ahk`)
 
 The script uses a built‑in dark theme with configurable color values:
 
-| Variable               | Default   | Purpose                           |
-| :--------------------- | :-------- | :-------------------------------- |
-| `THEME_BG`             | `0x14141D`| Main window background            |
-| `THEME_SURFACE`        | `0x1B1B27`| Card / surface background         |
-| `THEME_ELEVATED`       | `0x232332`| Elevated surface (hover states)   |
-| `THEME_CONTROL_BG`     | `0x282838`| Input control background          |
-| `THEME_CONTROL_HOVER`  | `0x33334A`| Control hover background          |
-| `THEME_BORDER`         | `0x3A3A52`| Border / separator color          |
-| `THEME_FG`             | `0xB0B4CC`| Primary foreground text           |
-| `THEME_FG_DIM`         | `0x8088A0`| Dimmed secondary text             |
-| `THEME_FG_MUTED`       | `0x5E6478`| Muted / disabled text             |
-| `THEME_ACCENT`         | `0x5B86C9`| Primary accent color              |
-| `THEME_ACCENT_DARK`    | `0x3A5A8C`| Darker accent (button backgrounds)|
-| `THEME_ACCENT_GLOW`    | `0x82A8E0`| Accent glow (hover highlight)     |
-| `THEME_SUCCESS`        | `0x6FA572`| Success state color               |
-| `THEME_WARNING`        | `0xC4A95E`| Warning state color               |
-| `THEME_DANGER`         | `0xC06070`| Danger / delete state color       |
-| `THEME_FONT`           | `Segoe UI` | UI font                          |
-| `THEME_FONT_MONO`      | `Cascadia Code` | Monospace font for code views |
-| `THEME_RADIUS`         | `8`       | Corner radius (px)                |
+```autohotkey
+; Background & Surface
+THEME_BG            := "0x14141D"  ; Main window background
+THEME_SURFACE       := "0x1B1B27"  ; Card / surface background
+THEME_ELEVATED      := "0x232332"  ; Elevated surface (hover states)
+THEME_CONTROL_BG    := "0x282838"  ; Input control background
+THEME_CONTROL_HOVER := "0x33334A"  ; Control hover background
+THEME_BORDER        := "0x3A3A52"  ; Border / separator color
+
+; Foreground
+THEME_FG            := "0xB0B4CC"  ; Primary foreground text
+THEME_FG_DIM        := "0x8088A0"  ; Dimmed secondary text
+THEME_FG_MUTED      := "0x5E6478"  ; Muted / disabled text
+
+; Accent
+THEME_ACCENT        := "0x5B86C9"  ; Primary accent color
+THEME_ACCENT_DARK   := "0x3A5A8C"  ; Darker accent (button backgrounds)
+THEME_ACCENT_GLOW   := "0x82A8E0"  ; Accent glow (hover highlight)
+
+; State
+THEME_SUCCESS       := "0x6FA572"  ; Success state color
+THEME_WARNING       := "0xC4A95E"  ; Warning state color
+THEME_DANGER        := "0xC06070"  ; Danger / delete state color
+
+; Fonts
+THEME_FONT          := "Segoe UI"
+THEME_FONT_MONO     := "Cascadia Code"
+THEME_RADIUS        := 8            ; Corner radius (px)
+```
 
 ---
 
@@ -266,6 +287,7 @@ CapsLock-
 │   ├── 📄 FileOperations.ahk
 │   ├── 📄 FileValidation.ahk
 │   ├── 📄 ImageToPdf.ahk
+│   ├── 📄 Pandoc.ahk
 │   └── 📄 WindowUtils.ahk
 ├── 📁 History
 │   ├── 📄 CustomMenu.ahk
@@ -317,6 +339,8 @@ CapsLock-
 - **Resource‑embedded sound** – Always‑on‑top toggle sounds (`AlwaysOnTopOn.wav` / `AlwaysOnTopOff.wav`) are embedded as binary resources and played via `PlaySoundW` without external files.
 - **Fast plain‑text copy** – `CopyAsPlainText()` backs up only `A_Clipboard` (text) instead of `ClipboardAll()` (all formats), significantly reducing backup time for rich clipboard content.
 - **Recursive file enumeration** – `CollectFilesFromFolder()` uses native `Loop Files, "FR"` for deep directory trees, avoiding slow manual recursion.
+- **Pandoc integration** – `ConvertWithPandoc()` converts files between 50+ input formats and 70+ output formats, with progress GUI and batch processing support.
+- **Smart paste routing** – `PasteWithCurrentMode()` intelligently detects clipboard content type (single file, multiple files, folders, mixed paths, images) and routes to the appropriate paste handler.
 
 ---
 
