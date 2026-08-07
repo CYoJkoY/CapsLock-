@@ -254,11 +254,12 @@ class PromptManager {
 
     ; Unescape JSON string escapes.
     static _UnescapeJson(str) {
-        str := StrReplace(str, "\\", "\")
-        str := StrReplace(str, '\"', '"')
         str := StrReplace(str, "\n", "`n")
         str := StrReplace(str, "\r", "`r")
         str := StrReplace(str, "\t", "`t")
+        str := StrReplace(str, '\"', '"')
+        str := StrReplace(str, "\\", "\")
+        str := RegExReplace(str, "\\u([0-9A-Fa-f]{4})", (m) => Chr(Integer("0x" . m[1])))
         return str
     }
 }
