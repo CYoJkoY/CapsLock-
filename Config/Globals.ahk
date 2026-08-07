@@ -121,4 +121,5 @@ class AppState {
     static ApiMaxTokens := 2000
     static ApiTemperature := 0.7
     static ApiStreamMode := false   ; true = streaming, false = classic
+    static AIResultActive := false   ; UI flag
 }

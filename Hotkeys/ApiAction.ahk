@@ -45,6 +45,9 @@ class AIResultWindow {
 
         this.GuiObj := myGui
         myGui.Show("w640 h480")
+        WinActivate("ahk_id " myGui.Hwnd)
+        myGui.editCtrl.Focus()
+        AppState.AIResultActive := true
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
         ; Install the keyboard hook only once
@@ -57,6 +60,8 @@ class AIResultWindow {
 
     ; Close and clean up the window
     static Close() {
+        AppState.AIResultActive := false
+
         if this._updateTimer
             SetTimer(this._updateTimer, 0)
 
@@ -75,6 +80,7 @@ class AIResultWindow {
     static AppendToCurrent(text) {
         if !IsObject(this.GuiObj)
             return
+
         this._buffer .= text
         if !this._pending {
             this._pending := true
@@ -119,6 +125,12 @@ class AIResultWindow {
         if !IsObject(this.GuiObj) || this.GuiObj.Hwnd != hwnd
             return
 
+        if (hwnd != this.GuiObj.Hwnd) {
+            parent := DllCall("GetParent", "Ptr", hwnd, "Ptr")
+            if (parent != this.GuiObj.Hwnd)
+                return
+        }
+
         ; Ignore modifier keys to avoid interfering with normal shortcuts
         if GetKeyState("Ctrl", "P") || GetKeyState("Alt", "P") || GetKeyState("Shift", "P")
             return
@@ -129,6 +141,7 @@ class AIResultWindow {
             OSD.ShowNotification(Lang("GUI_AI_RESULT_COPY_TOAST"), 1500, "success")
             return 0
         }
+
         else if (vkCode == 0x4B) { ; K key – output content
             if (this.Content == "") {
                 OSD.ShowNotification(Lang("GUI_AI_RESULT_EMPTY"), 1500, "warning")
@@ -137,13 +150,15 @@ class AIResultWindow {
 
             target := this.TargetWindow
             ; Fallback to the currently active window if the captured one is gone
-            if !target || !WinExist("ahk_id " target) {
-                target := WinExist("A")
-                if !target {
+            if !target || !WinExist("ahk_id " target) || target == this.GuiObj.Hwnd {
+                active := WinExist("A")
+                if active && active != this.GuiObj.Hwnd {
+                    target := active
+                    this.TargetWindow := target
+                } else {
                     OSD.ShowNotification(Lang("MSG_NO_TARGET"), 2000, "error")
                     return 0
                 }
-                this.TargetWindow := target
             }
 
             ; Temporarily set clipboard to the content, paste, then restore
