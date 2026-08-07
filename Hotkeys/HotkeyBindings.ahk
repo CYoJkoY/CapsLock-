@@ -11,7 +11,7 @@
         SetCapsLockState( "AlwaysOn" )
 }
 
-#HotIf GetKeyState( "CapsLock", "P" )
+#HotIf GetKeyState( "CapsLock", "P" ) && !AppState.AIResultActive
 
     Left:: Send( "^{Left}" )
     Right:: Send( "^{Right}" )

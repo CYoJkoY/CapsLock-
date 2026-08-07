@@ -19,7 +19,7 @@ ShowPreviewGui(text) {
     )
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
-    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 Copy", "primary")
+    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
     btnCopy.OnEvent("Click", (*) => (
         A_Clipboard := text,
         ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1000)

@@ -45,6 +45,9 @@ class AIResultWindow {
 
         this.GuiObj := myGui
         myGui.Show("w640 h480")
+        WinActivate("ahk_id " myGui.Hwnd)
+        myGui.editCtrl.Focus()
+        AppState.AIResultActive := true
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
         ; Install the keyboard hook only once
@@ -57,6 +60,8 @@ class AIResultWindow {
 
     ; Close and clean up the window
     static Close() {
+        AppState.AIResultActive := false
+
         if this._updateTimer
             SetTimer(this._updateTimer, 0)
 
@@ -75,6 +80,7 @@ class AIResultWindow {
     static AppendToCurrent(text) {
         if !IsObject(this.GuiObj)
             return
+
         this._buffer .= text
         if !this._pending {
             this._pending := true
@@ -83,20 +89,34 @@ class AIResultWindow {
         }
     }
 
-    ; Flush accumulated buffer to the edit control
+    ; Flush accumulated buffer to the edit control using incremental insertion.
+    ; Normalizes line endings to CRLF so the Windows Edit control recognizes newlines.
     static FlushBuffer() {
         this._pending := false
         this._updateTimer := ""
         if !IsObject(this.GuiObj) || this._buffer == ""
             return
-        try {
-            if this.GuiObj.HasProp("editCtrl") {
-                current := this.GuiObj.editCtrl.Value
-                this.GuiObj.editCtrl.Value := current . this._buffer
-                SendMessage(0x00B1, 0, -1, this.GuiObj.editCtrl.Hwnd)   ; scroll to bottom
-                this._buffer := ""
-            }
-        }
+
+        ; Normalize line endings to CRLF for Windows Edit control
+        text := StrReplace(this._buffer, "`n", "`r`n")
+
+        editHwnd := this.GuiObj.editCtrl.Hwnd
+
+        ; 1. Place caret at the end of existing text
+        length := SendMessage(0x000E, 0, 0, editHwnd)   ; WM_GETTEXTLENGTH
+        SendMessage(0x00B1, length, length, editHwnd)   ; EM_SETSEL
+
+        ; 2. Temporarily disable read-only (required for EM_REPLACESEL)
+        SendMessage(0x00CF, 0, 0, editHwnd)             ; EM_SETREADONLY, FALSE
+
+        ; 3. Insert the normalized text at the caret position
+        SendMessage(0x00C2, 1, StrPtr(text), editHwnd)  ; EM_REPLACESEL
+
+        ; 4. Restore read-only state
+        SendMessage(0x00CF, 1, 0, editHwnd)             ; EM_SETREADONLY, TRUE
+
+        ; 5. Clear buffer
+        this._buffer := ""
     }
 
     ; WM_KEYDOWN handler – responds to C and K when the result window is active
@@ -104,6 +124,12 @@ class AIResultWindow {
         ; Ignore if the message does not belong to our window
         if !IsObject(this.GuiObj) || this.GuiObj.Hwnd != hwnd
             return
+
+        if (hwnd != this.GuiObj.Hwnd) {
+            parent := DllCall("GetParent", "Ptr", hwnd, "Ptr")
+            if (parent != this.GuiObj.Hwnd)
+                return
+        }
 
         ; Ignore modifier keys to avoid interfering with normal shortcuts
         if GetKeyState("Ctrl", "P") || GetKeyState("Alt", "P") || GetKeyState("Shift", "P")
@@ -115,6 +141,7 @@ class AIResultWindow {
             OSD.ShowNotification(Lang("GUI_AI_RESULT_COPY_TOAST"), 1500, "success")
             return 0
         }
+
         else if (vkCode == 0x4B) { ; K key – output content
             if (this.Content == "") {
                 OSD.ShowNotification(Lang("GUI_AI_RESULT_EMPTY"), 1500, "warning")
@@ -123,13 +150,15 @@ class AIResultWindow {
 
             target := this.TargetWindow
             ; Fallback to the currently active window if the captured one is gone
-            if !target || !WinExist("ahk_id " target) {
-                target := WinExist("A")
-                if !target {
+            if !target || !WinExist("ahk_id " target) || target == this.GuiObj.Hwnd {
+                active := WinExist("A")
+                if active && active != this.GuiObj.Hwnd {
+                    target := active
+                    this.TargetWindow := target
+                } else {
                     OSD.ShowNotification(Lang("MSG_NO_TARGET"), 2000, "error")
                     return 0
                 }
-                this.TargetWindow := target
             }
 
             ; Temporarily set clipboard to the content, paste, then restore
