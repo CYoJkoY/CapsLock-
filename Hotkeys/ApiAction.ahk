@@ -199,9 +199,10 @@ SendToApiAndPaste() {
         ; Define a callback that appends text to the window
         callback := (chunk) => AIResultWindow.AppendToCurrent(chunk)
         try {
-            responseText := ApiClient.Send(activeContent, clipboardContent, callback)
-            ; After completion, we have the full response in the window
-            ; We don't need to set responseText because it was streamed
+            ApiClient.Send(activeContent, clipboardContent, callback)
+            ; Streaming mode does not return a final content; it's displayed via callback.
+            ; Mark that we have started streaming successfully.
+            responseText := "STREAMING"   ; placeholder to avoid empty-response error
         } catch as err {
             hasError := true
             errorMessage := err.Message
@@ -221,16 +222,24 @@ SendToApiAndPaste() {
     try progressGui.Destroy()
 
     ; Handle errors
-    if hasError || responseText == "" {
+    if hasError {
         errorMsg := errorMessage != "" ? errorMessage : Lang("MSG_API_PARSE_ERROR", "Empty response from API.")
         ShowToolTip(errorMsg, 4000)
         return
     }
 
-    ; Trim common whitespace added by APIs
+    ; For streaming mode, we already displayed the response; nothing else to do.
+    if AppState.ApiStreamMode {
+        return
+    }
+
+    ; Classic mode: trim and display
     responseText := Trim(responseText, " `t`r`n")
+    if (responseText == "") {
+        ShowToolTip(Lang("MSG_API_PARSE_ERROR", "Empty response from API."), 4000)
+        return
+    }
 
     ; Show the result window (does not modify clipboard)
     AIResultWindow.Show(responseText, AppState.TargetWindow)
 }
-

@@ -4,6 +4,15 @@
 ; Supports any API endpoint that follows the OpenAI chat completions format.
 class ApiClient {
 
+    ; Static members for streaming process management
+    static _streamPid := 0
+    static _streamOutputFile := ""
+    static _streamTimer := ""
+    static _streamCallback := ""
+    static _streamLastPos := 0
+    static _streamFullContent := ""
+    static _streamComplete := false
+
     ; ------------------------------------------------------------------------
     ; Send a request. If stream mode is enabled and a callback is provided,
     ; it will stream the response chunks to the callback.
@@ -61,10 +70,13 @@ class ApiClient {
     }
 
     ; ----------------------------------------------------------------------------
-    ; Streaming request using curl via a temporary batch file.
-    ; Uses robust SSE parsing with multi-line support and generic content extraction.
+    ; Streaming request using curl via Run hidden + file polling.
+    ; No console window appears, and the main thread remains responsive.
     ; ----------------------------------------------------------------------------
     static _SendStream(systemPrompt, userContent, callback) {
+        ; Cancel any existing streaming process
+        this._CancelStream()
+
         url := AppState.ApiUrl
         if (url != "" && !RegExMatch(url, "i)/chat/completions$"))
             url := RTrim(url, "/") . "/chat/completions"
@@ -80,6 +92,14 @@ class ApiClient {
         try FileDelete(tempBody)
         FileAppend(body, tempBody, "UTF-8")
 
+        ; Create a temporary output file for curl's stdout/stderr
+        outputFile := A_Temp "\curl_output_" A_TickCount ".txt"
+        this._streamOutputFile := outputFile
+        this._streamLastPos := 0
+        this._streamFullContent := ""
+        this._streamCallback := callback
+        this._streamComplete := false
+
         dq := Chr(34)
         cmd := "curl -X POST -N -s --no-buffer"
             . " -H " . dq . "Content-Type: application/json" . dq
@@ -87,104 +107,178 @@ class ApiClient {
             . " -d @" . dq . tempBody . dq
             . " " . dq . url . dq
 
-        batFile := A_Temp "\curl_stream_" A_TickCount ".bat"
-        try FileDelete(batFile)
-        FileAppend("@echo off`n@" cmd "`n", batFile, "UTF-8")
+        ; Redirect stdout and stderr to the output file
+        fullCmd := A_ComSpec " /c " cmd . " > " . dq . outputFile . dq . " 2>&1"
 
-        ; === DEBUG: Log command and start ===
-        debugLog := A_Temp "\curl_debug_" A_TickCount ".txt"
-        FileAppend("=== CURL COMMAND ===`n" cmd "`n`n", debugLog, "UTF-8")
-        FileAppend("=== BATCH FILE CONTENT ===`n" "@" cmd "`n`n", debugLog, "UTF-8")
-        FileAppend("=== RAW OUTPUT START ===`n", debugLog, "UTF-8")
+        try {
+            ; Run hidden, get PID
+            Run(fullCmd, , "Hide", &pid)
+            this._streamPid := pid
 
-        shell := ComObject("WScript.Shell")
-        exec := shell.Exec(batFile)
-        fullContent := ""
-        dataBuffer := ""
+            ; Start polling timer (every 50 ms)
+            this._streamTimer := ObjBindMethod(this, "_StreamPoll")
+            SetTimer(this._streamTimer, 50)
 
-        ; Read stdout and log every line
-        while !exec.StdOut.AtEndOfStream {
-            line := exec.StdOut.ReadLine()
-            FileAppend("RAW: " line "`n", debugLog, "UTF-8")   ; log raw line
-
-            line := Trim(line)
-            if (line == "") {
-                if (dataBuffer != "") {
-                    dataPart := Trim(SubStr(dataBuffer, 6))
-                    if (dataPart != "[DONE]") {
-                        text := this._ExtractContent(dataPart)
-                        if (text != "") {
-                            fullContent .= text
-                            try callback.Call(text)
-                        }
-                    }
-                    dataBuffer := ""
-                }
-                continue
-            }
-            if (SubStr(line, 1, 5) == "data:") {
-                if (dataBuffer != "") {
-                    dataPart := Trim(SubStr(dataBuffer, 6))
-                    if (dataPart != "[DONE]") {
-                        text := this._ExtractContent(dataPart)
-                        if (text != "") {
-                            fullContent .= text
-                            try callback.Call(text)
-                        }
-                    }
-                }
-                dataBuffer := line
-            } else {
-                if (dataBuffer != "")
-                    dataBuffer .= "`n" . line
-            }
+            ; Note: We return immediately; the callback will receive chunks as they arrive.
+            ; The final full content is not returned; UI window holds the content.
+            return ""
+        } catch as err {
+            try FileDelete(tempBody)
+            try FileDelete(outputFile)
+            throw Error(Lang("MSG_API_REQUEST_FAILED", "Failed to start curl: {1}", err.Message))
         }
-
-        ; Flush remaining buffer
-        if (dataBuffer != "") {
-            dataPart := Trim(SubStr(dataBuffer, 6))
-            if (dataPart != "[DONE]") {
-                text := this._ExtractContent(dataPart)
-                if (text != "")
-                    fullContent .= text
-            }
-        }
-
-        ; Read stderr for errors
-        while !exec.StdErr.AtEndOfStream {
-            errLine := exec.StdErr.ReadLine()
-            FileAppend("STDERR: " errLine "`n", debugLog, "UTF-8")
-        }
-
-        FileAppend("=== RAW OUTPUT END ===`n", debugLog, "UTF-8")
-        ; === DEBUG END ===
-
-        try FileDelete(tempBody)
-        try FileDelete(batFile)
-        return fullContent
     }
 
     ; ----------------------------------------------------------------------------
-    ; Extract the value of the "content" field from a JSON string (any nesting).
-    ; Handles escape sequences and Unicode escapes.
+    ; Poll the output file for new data and feed it to the callback.
+    ; Called periodically by a timer.
+    ; ----------------------------------------------------------------------------
+    static _StreamPoll() {
+        if (this._streamOutputFile == "")
+            return
+
+        ; Check if the process is still running
+        if (this._streamPid && !ProcessExist(this._streamPid)) {
+            ; Process ended, read all remaining data and clean up
+            this._streamComplete := true
+            this._ReadRemaining()
+            this._CleanupStream()
+            return
+        }
+
+        ; Read new data from the file
+        this._ReadRemaining()
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Read the portion of the output file that hasn't been read yet.
+    ; ----------------------------------------------------------------------------
+    static _ReadRemaining() {
+        if (this._streamOutputFile == "" || !FileExist(this._streamOutputFile))
+            return
+
+        try {
+            ; Get current file size
+            fileSize := FileGetSize(this._streamOutputFile)
+            if (fileSize <= this._streamLastPos)
+                return
+
+            ; Read the new portion
+            myfile := FileOpen(this._streamOutputFile, "r", "UTF-8")
+            if !IsObject(myfile)
+                return
+
+            ; Seek to last read position (seek from beginning)
+            myfile.Seek(this._streamLastPos, 0)
+
+            ; Read the whole new portion
+            newData := myfile.Read(fileSize - this._streamLastPos)
+            myfile.Close()
+
+            this._streamLastPos := fileSize
+
+            ; Process the new data line by line (SSE events)
+            if (newData != "") {
+                this._ProcessStreamData(newData)
+            }
+        } catch {
+            ; Ignore read errors
+        }
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Process raw SSE data: split by lines and extract content.
+    ; ----------------------------------------------------------------------------
+    static _ProcessStreamData(rawData) {
+        static buffer := ""
+        buffer .= rawData
+
+        ; Split by newline
+        lines := StrSplit(buffer, "`n")
+        ; Keep the last incomplete line in buffer
+        if (SubStr(buffer, -1) != "`n") {
+            buffer := lines.Pop()
+        } else {
+            buffer := ""
+        }
+
+        for line in lines {
+            line := Trim(line)
+            if (line == "") {
+                ; Empty line may indicate end of an event, but we ignore it
+                continue
+            }
+            if (SubStr(line, 1, 5) == "data:") {
+                dataPart := Trim(SubStr(line, 6))
+                if (dataPart == "[DONE]") {
+                    this._streamComplete := true
+                    continue
+                }
+                ; Extract content from the JSON
+                text := this._ExtractContent(dataPart)
+                if (text != "") {
+                    this._streamFullContent .= text
+                    try this._streamCallback.Call(text)
+                }
+            }
+        }
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Clean up streaming resources (timer, file, process).
+    ; ----------------------------------------------------------------------------
+    static _CleanupStream() {
+        if (this._streamTimer != "") {
+            SetTimer(this._streamTimer, 0)
+            this._streamTimer := ""
+        }
+
+        if (this._streamPid) {
+            try ProcessClose(this._streamPid)
+            this._streamPid := 0
+        }
+
+        if (this._streamOutputFile != "") {
+            try FileDelete(this._streamOutputFile)
+            this._streamOutputFile := ""
+        }
+
+        this._streamCallback := ""
+        this._streamLastPos := 0
+        this._streamFullContent := ""
+        this._streamComplete := false
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Cancel the currently running streaming request (if any).
+    ; ----------------------------------------------------------------------------
+    static _CancelStream() {
+        if (this._streamPid) {
+            try ProcessClose(this._streamPid)
+            this._streamPid := 0
+        }
+        this._CleanupStream()
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Extract the "content" field from a JSON chunk.
+    ; (Same as before, kept for compatibility)
     ; ----------------------------------------------------------------------------
     static _ExtractContent(dataPart) {
-        ; Find the position of "content":
         pos := InStr(dataPart, '"content":')
         if !pos
             return ""
-        pos += 10   ; skip over '"content":'
-        ; Skip whitespace
+        pos += 10
         while SubStr(dataPart, pos, 1) == " " || SubStr(dataPart, pos, 1) == "`t"
             pos++
         if SubStr(dataPart, pos, 1) != '"'
             return ""
-        pos++   ; skip opening quote
+        pos++
         content := ""
         len := StrLen(dataPart)
         while pos <= len {
             ch := SubStr(dataPart, pos, 1)
-            if ch == '\' {   ; escape sequence
+            if ch == '\' {
                 pos++
                 if pos > len
                     break
@@ -196,12 +290,12 @@ class ApiClient {
                     case '"':  content .= '"'
                     case '\\': content .= "\"
                     case '/':  content .= "/"
-                    case 'u':  ; Unicode escape
+                    case 'u':
                         if pos + 4 <= len {
                             hexStr := SubStr(dataPart, pos + 1, 4)
                             pos += 4
                             try content .= Chr(Integer("0x" . hexStr))
-                            catch 
+                            catch
                                 content .= "?"
                         }
                     default:   content .= nextCh
@@ -209,7 +303,7 @@ class ApiClient {
                 pos++
                 continue
             }
-            if ch == '"' {   ; closing quote – end of content
+            if ch == '"' {
                 pos++
                 break
             }
@@ -220,112 +314,7 @@ class ApiClient {
     }
 
     ; ------------------------------------------------------------------------
-    ; Nested event sink for streaming responses.
-    ; ------------------------------------------------------------------------
-    class _StreamSink {
-        __New(callback) {
-            this.callback := callback
-            this._buffer := ""
-            this._fullContent := ""
-            this._complete := false
-            this._httpStatus := 0
-            this._errorMsg := ""
-            this._inData := false
-            this._dataBuffer := ""
-        }
-
-        OnResponseDataAvailable(Data) {
-            try {
-                pData := NumGet(ComObjValue(Data) + 4 + A_PtrSize, "Ptr")
-                size := Data.MaxIndex() + 1
-                if (size > 0) {
-                    buf := Buffer(size)
-                    DllCall("RtlMoveMemory", "Ptr", buf.Ptr, "Ptr", pData, "Ptr", size)
-                    chunk := StrGet(buf, size, "UTF-8")
-                    this._buffer .= chunk
-                    this._ProcessBuffer()
-                }
-            } catch {
-                ; ignore
-            }
-        }
-
-        OnResponseStart(Status, ContentType) {
-            this._httpStatus := Status
-        }
-
-        OnResponseCompleted() {
-            this._ProcessBuffer()
-            this._complete := true
-        }
-
-        OnError(ErrorNumber, ErrorDescription) {
-            this._errorMsg := ErrorDescription
-            this._complete := true
-        }
-
-        _ProcessBuffer() {
-            while (pos := InStr(this._buffer, "`n")) {
-                line := SubStr(this._buffer, 1, pos - 1)
-                this._buffer := SubStr(this._buffer, pos + 1)
-
-                if (line == "") {
-                    if (this._inData) {
-                        this._inData := false
-                        this._HandleEvent(this._dataBuffer)
-                        this._dataBuffer := ""
-                    }
-                    continue
-                }
-
-                if (SubStr(line, 1, 5) == "data:") {
-                    this._inData := true
-                    dataPart := Trim(SubStr(line, 6))
-                    if (dataPart == "[DONE]") {
-                        this._inData := false
-                        this._dataBuffer := ""
-                        continue
-                    }
-                    if (this._dataBuffer != "")
-                        this._dataBuffer .= "`n"
-                    this._dataBuffer .= dataPart
-                }
-            }
-        }
-
-        _HandleEvent(data) {
-            ; Extract from delta.content (streaming) first
-            if RegExMatch(data, '"delta":\s*\{[^}]*"content":\s*"((?:[^"\\]|\\.)*)"', &m) {
-                text := this._UnescapeJson(m[1])
-                if (text != "") {
-                    this._fullContent .= text
-                    try this.callback.Call(text)
-                }
-                return
-            }
-
-            ; Fallback for non-delta format (classic)
-            if RegExMatch(data, '"content":\s*"((?:[^"\\]|\\.)*)"', &m) {
-                text := this._UnescapeJson(m[1])
-                if (text != "") {
-                    this._fullContent .= text
-                    try this.callback.Call(text)
-                }
-            }
-        }
-
-        _UnescapeJson(str) {
-            str := StrReplace(str, "\n", "`n")
-            str := StrReplace(str, "\r", "`r")
-            str := StrReplace(str, "\t", "`t")
-            str := StrReplace(str, '\"', '"')
-            str := StrReplace(str, "\\", "\")
-            return str
-        }
-    }
-
-    ; ------------------------------------------------------------------------
-    ; Build JSON request body. The `stream` parameter toggles streaming.
+    ; Build JSON request body (unchanged).
     ; ------------------------------------------------------------------------
     static _BuildRequestBody(systemPrompt, userContent, model, maxTokens, temperature, stream) {
         json := '{'
@@ -342,24 +331,20 @@ class ApiClient {
     }
 
     ; ------------------------------------------------------------------------
-    ; Parse full (non‑streaming) response – now fully Unicode‑compliant.
+    ; Parse full (non‑streaming) response (unchanged).
     ; ------------------------------------------------------------------------
     static _ParseResponse(responseText) {
         contents := []
         searchPos := 1
         marker := '"content":"'
-
         while searchPos := InStr(responseText, marker, , searchPos) {
             searchPos += StrLen(marker)
             content := ""
-
             while searchPos <= StrLen(responseText) {
                 ch := SubStr(responseText, searchPos, 1)
-
                 if ch == '\' && searchPos + 1 <= StrLen(responseText) {
                     nextCh := SubStr(responseText, searchPos + 1, 1)
                     searchPos += 2
-
                     switch nextCh {
                         case 'n':  content .= "`n"
                         case 'r':  content .= "`r"
@@ -373,7 +358,7 @@ class ApiClient {
                                 searchPos += 4
                                 try {
                                     codePoint := Integer("0x" . hexStr)
-                                    content .= Chr(codePoint)   ; <--- fixed: any valid Unicode
+                                    content .= Chr(codePoint)
                                 } catch {
                                     content .= "?"
                                 }
@@ -389,20 +374,17 @@ class ApiClient {
                     searchPos++
                 }
             }
-
             if content != ""
                 contents.Push(content)
         }
-
         if contents.Length == 0 {
             throw Error(Lang("MSG_API_PARSE_ERROR", "Failed to parse API response. No content found."))
         }
-
         return contents[contents.Length]
     }
 
     ; ------------------------------------------------------------------------
-    ; Parse error response (unchanged)
+    ; Parse error response (unchanged).
     ; ------------------------------------------------------------------------
     static _ParseErrorResponse(responseText) {
         if RegExMatch(responseText, '"message"\s*:\s*"((?:[^"\\]|\\.)*)"', &m) {
@@ -417,7 +399,7 @@ class ApiClient {
     }
 
     ; ------------------------------------------------------------------------
-    ; JSON string escaper (unchanged)
+    ; JSON string escaper (unchanged).
     ; ------------------------------------------------------------------------
     static _JsonValue(str) {
         str := StrReplace(str, "\", "\\")
@@ -430,7 +412,7 @@ class ApiClient {
     }
 
     ; ------------------------------------------------------------------------
-    ; Test connection (unchanged)
+    ; Test connection (unchanged).
     ; ------------------------------------------------------------------------
     static TestConnection() {
         response := this.Send("You are a helpful assistant. Reply with just 'OK'.", "ping")
