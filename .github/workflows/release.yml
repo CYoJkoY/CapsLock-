@@ -29,9 +29,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path "ahk-v2" | Out-Null
           Expand-Archive -Path "ahk-v2.zip" -DestinationPath "ahk-v2" -ErrorAction Stop
 
-          $ahkExe = Get-ChildItem -Path "ahk-v2" -Recurse -Filter "AutoHotkey.exe" | Select-Object -First 1
+          Write-Host "Extracted files:"
+          Get-ChildItem -Path "ahk-v2" -Recurse | ForEach-Object { $_.FullName }
+
+          $ahkExe = Get-ChildItem -Path "ahk-v2" -Recurse -Include "AutoHotkey*.exe" | Select-Object -First 1
           if (-not $ahkExe) {
-            throw "AutoHotkey.exe not found in ahk-v2/"
+            throw "No AutoHotkey*.exe found in ahk-v2/"
           }
 
           $ahkDir = Split-Path -Parent $ahkExe.FullName
