@@ -26,6 +26,8 @@ jobs:
 
       - name: Download Ahk2Exe compiler
         shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $ahkDir = $env:AHK_DIR
           $compilerDir = Join-Path $ahkDir "Compiler"
@@ -40,7 +42,6 @@ jobs:
 
           $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe[0-9.]+\.zip$' } | Select-Object -First 1
           if (-not $asset) {
-            # Fallback: match any "Ahk2Exe*.zip"
             $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' } | Select-Object -First 1
           }
           if (-not $asset) { throw "No Ahk2Exe zip asset found" }
