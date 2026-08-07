@@ -4,46 +4,104 @@
 ; Convert files using Pandoc and paste the result
 ; ---------------------------------------------------------------------------
 ConvertWithPandoc() {
-    ; 1. Get file paths from clipboard (as text lines)
+    ; 1. Get raw text from clipboard
     text := A_Clipboard
     if (text == "") {
         ShowToolTip(Lang("MSG_CLIPBOARD_EMPTY", "Clipboard is empty"), 2000)
         return
     }
 
-    ; 2. Parse file paths (only existing files, not folders)
-    filePaths := PathDetector.GetValidPathsFromText(text, "file")
-    if (filePaths.Length == 0) {
-        ShowToolTip(Lang("MSG_NO_FILES_FOUND", "No valid files found in clipboard"), 2000)
+    ; 2. Parse all valid paths (files and folders)
+    allPaths := []
+    lines := StrSplit(text, "`n", "`r")
+    for line in lines {
+        line := Trim(line)
+        if (line == "")
+            continue
+        if FileExist(line)
+            allPaths.Push(line)
+    }
+    if (allPaths.Length == 0) {
+        ShowToolTip(Lang("MSG_NO_FILES_FOUND", "No valid files or folders found in clipboard"), 2000)
         return
     }
 
-    ; 3. Validate Pandoc executable
+    ; 3. Expand folders into individual files (recursive)
+    finalFiles := []
+    for path in allPaths {
+        if InStr(FileExist(path), "D") {          ; folder
+            collected := FileHelper.CollectFilesFromFolder(path, true)
+            for f in collected
+                finalFiles.Push(f)
+        } else {                                  ; file
+            finalFiles.Push(path)
+        }
+    }
+
+    ; 4. Apply ignore patterns
+    filteredFiles := []
+    for f in finalFiles {
+        if !FileHelper.ShouldIgnore(f)
+            filteredFiles.Push(f)
+    }
+    if (filteredFiles.Length == 0) {
+        ShowToolTip(Lang("MSG_ALL_FILES_IGNORED", "All files are ignored"), 2000)
+        return
+    }
+
+    ; 5. Validate Pandoc executable
     pandoc := AppState.PandocExe
     if (pandoc == "" || !FileExist(pandoc)) {
         ShowToolTip(Lang("MSG_PANDOC_NOT_FOUND", "Pandoc executable not found. Please set path in settings."), 3000)
         return
     }
 
-    ; 4. Get output format
+    ; 6. Validate output format
     outFormat := AppState.PandocOutputFormat
     if (!_IsOutputFormatSupported(outFormat)) {
         ShowToolTip(Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", outFormat), 2500)
         return
     }
 
-    ; 5. Convert each file
+    ; 7. Prepare progress GUI (if more than 1 file)
+    total := filteredFiles.Length
+    showProgress := (total > 1)
+    progressGui := ""
+    progressText := ""
+    progressBar := ""
+    if showProgress {
+        progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
+        ThemeHelper.StyleGui(progressGui)
+        ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
+        ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
+        progressGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
+        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG, 0)
+        progressGui.Show("AutoSize Center")
+        ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+    }
+
+    ; 8. Convert each file
     outputFiles := []
+    skippedFiles := []
     failedCount := 0
-    for idx, inFile in filePaths {
+
+    for idx, inFile in filteredFiles {
+        ; Update progress
+        if showProgress {
+            SplitPath(inFile, &fileName)
+            progressText.Text := Lang("MSG_PANDOC_PROGRESS", "Converting {1}/{2}: {3}", idx, total, fileName)
+            progressBar.Value := (idx / total) * 100
+        }
+
+        ; Detect input format
         inFormat := _DetectInputFormat(inFile)
         if (inFormat == "") {
-            ShowToolTip(Lang("MSG_PANDOC_UNSUPPORTED_INPUT", "Unsupported input format: {1}", inFile), 2000)
-            failedCount++
+            skippedFiles.Push(inFile)
             continue
         }
 
-        ; Generate output file path in temp folder
+        ; Build output file path
         outFile := _BuildOutputPath(inFile, outFormat)
         if (outFile == "") {
             failedCount++
@@ -60,22 +118,30 @@ ConvertWithPandoc() {
                 failedCount++
             }
         } catch as err {
-            ShowToolTip(Lang("MSG_PANDOC_FAILED", "Conversion failed: {1}", err.Message), 2500)
             failedCount++
         }
     }
 
-    ; 6. Paste results
+    ; 9. Destroy progress GUI
+    if showProgress {
+        try progressGui.Destroy()
+    }
+
+    ; 10. Report skipped files
+    if (skippedFiles.Length > 0) {
+        skippedMsg := Lang("MSG_PANDOC_SKIPPED_FILES", "Skipped unsupported files:`n{1}", Join(skippedFiles, "`n"))
+        ShowToolTip(skippedMsg, 3000)
+    }
+
+    ; 11. Paste results if any
     if (outputFiles.Length == 0) {
         ShowToolTip(Lang("MSG_PANDOC_NO_OUTPUT", "No files were converted successfully"), 2000)
         return
     }
 
-    ; Copy files to clipboard and paste
     ClipboardHelper.SetClipboardFiles(outputFiles)
     ActivateAndPaste()
 
-    ; Schedule cleanup of temporary files
     for f in outputFiles {
         CleanupManager.ScheduleDeletion(f)
     }

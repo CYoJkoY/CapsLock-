@@ -1,4 +1,4 @@
-﻿key,en,fr,zh,ja,ko,zh_TW,ru,pl,es,pt,de,tr,it
+key,en,fr,zh,ja,ko,zh_TW,ru,pl,es,pt,de,tr,it
 MENU_OPEN_TEMP,"Open Temp Folder","Ouvrir le dossier temporaire","打开临时文件夹","一時フォルダを開く","임시 폴더 열기","打開臨時文件夾","Открыть временную папку","Otwórz folder tymczasowy","Abrir carpeta temporal","Abrir pasta temporária","Temporären Ordner öffnen","Geçici Klasörü Aç","Apri cartella temporanea"
 MENU_DELETE_MODE,"Delete Mode","Mode de suppression","删除模式","削除モード","삭제 모드","刪除模式","Режим удаления","Tryb usuwania","Modo de eliminación","Modo de exclusão","Löschmodus","Silme Modu","Modalità eliminazione"
 MENU_MODE1,"Delete after delay","Supprimer après délai","延迟删除","遅延削除","지연 후 삭제","延遲刪除","Удалить после задержки","Usuń po opóźnieniu","Eliminar tras retraso","Excluir após atraso","Nach Verzögerung löschen","Gecikmeden sonra sil","Elimina dopo ritardo"
@@ -22,6 +22,8 @@ MENU_DEBUG,"Debug","Débogage","调试","デバッグ","디버그","除錯","О�
 MENU_CLEANUP_SETTINGS,"Clear Settings","Effacer les paramètres","清理设置","設定をクリア","설정 지우기","清除設定","Очистить настройки","Wyczyść ustawienia","Limpiar configuración","Limpar configurações","Einstellungen löschen","Ayarları temizle","Cancella impostazioni"
 MENU_HISTORY_PASTE,"History Paste","Coller l'historique","历史粘贴","履歴貼り付け","기록 붙여넣기","歷史貼上","Вставить историю","Wklej historię","Pegar historial","Colar histórico","Verlauf einfügen","Geçmişi yapıştır","Incolla cronologia"
 MENU_PANDOC,"Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc","Pandoc"
+MENU_PANDOC_STATUS_SET,"Pandoc: Set (click to change)","Pandoc : Défini (cliquer pour changer)","Pandoc: 已设置 (点击更改)","Pandoc: 設定済み (クリックで変更)","Pandoc: 설정됨 (클릭하여 변경)","Pandoc: 已設定 (點擊變更)","Pandoc: задан (нажмите для смены)","Pandoc: ustawiony (kliknij, aby zmienić)","Pandoc: establecido (clic para cambiar)","Pandoc: definido (clique para alterar)","Pandoc: gesetzt (Klick zum Ändern)","Pandoc: ayarlandı (değiştirmek için tıklayın)","Pandoc: impostato (clicca per cambiare)"
+MENU_PANDOC_STATUS_NOTSET,"Pandoc: Not set / Invalid","Pandoc : Non défini / Invalide","Pandoc: 未设置/无效","Pandoc: 未設定/無効","Pandoc: 설정 안 됨/무효","Pandoc: 未設定/無效","Pandoc: не задан / недействителен","Pandoc: nieustawiony / nieprawidłowy","Pandoc: no configurado / no válido","Pandoc: não definido / inválido","Pandoc: nicht gesetzt / ungültig","Pandoc: ayarlanmadı / geçersiz","Pandoc: non impostato / non valido"
 MENU_PANDOC_PATH,"Set Pandoc Path","Définir le chemin de Pandoc","设置 Pandoc 路径","Pandocのパスを設定","Pandoc 경로 설정","設定 Pandoc 路徑","Установить путь к Pandoc","Ustaw ścieżkę Pandoc","Establecer ruta de Pandoc","Definir caminho do Pandoc","Pandoc-Pfad festlegen","Pandoc Yolunu Ayarla","Imposta percorso Pandoc"
 MENU_PANDOC_OUTPUT,"Set Output Format","Définir le format de sortie","设置输出格式","出力形式を設定","출력 형식 설정","設定輸出格式","Установить формат вывода","Ustaw format wyjściowy","Establecer formato de salida","Definir formato de saída","Ausgabeformat festlegen","Çıktı Biçimini Ayarla","Imposta formato di output"
 LANG_EN,"English","English","English","English","English","English","English","English","English","English","English","English","English"
@@ -122,10 +124,27 @@ MSG_PANDOC_SUCCESS,"Converted {1} file(s).","{1} fichier(s) converti(s).","已�
 MSG_PANDOC_FAILED,"Conversion failed: {1}","Échec de la conversion : {1}","转换失败：{1}","変換に失敗しました：{1}","변환 실패: {1}","轉換失敗：{1}","Ошибка преобразования: {1}","Konwersja nie powiodła się: {1}","Error en la conversión: {1}","Falha na conversão: {1}","Konvertierung fehlgeschlagen: {1}","Dönüştürme başarısız: {1}","Conversione fallita: {1}"
 MSG_PANDOC_NO_OUTPUT,"No files were converted successfully.","Aucun fichier n'a été converti avec succès.","没有文件成功转换。","正常に変換されたファイルはありません。","성공적으로 변환된 파일이 없습니다.","沒有檔案成功轉換。","Файлы не были успешно преобразованы.","Żaden plik nie został pomyślnie przekonwertowany.","No se convirtió ningún archivo con éxito.","Nenhum arquivo foi convertido com sucesso.","Keine Dateien wurden erfolgreich konvertiert.","Hiçbir dosya başarıyla dönüştürülmedi.","Nessun file è stato convertito con successo."
 MSG_PANDOC_INVALID_OUTPUT,"Invalid output format: {1}","Format de sortie invalide : {1}","无效的输出格式：{1}","無効な出力形式：{1}","잘못된 출력 형식: {1}","無效的輸出格式：{1}","Недопустимый формат вывода: {1}","Nieprawidłowy format wyjściowy: {1}","Formato de salida no válido: {1}","Formato de saída inválido: {1}","Ungültiges Ausgabeformat: {1}","Geçersiz çıktı biçimi: {1}","Formato di output non valido: {1}"
-MSG_PANDOC_PATH_SET,"Pandoc path set successfully.","Chemin de Pandoc défini avec succès.","Pandoc 路径设置成功。","Pandocのパスを設定しました。","Pandoc 경로가 설정되었습니다.","Pandoc 路徑設定成功。","Путь к Pandoc успешно установлен.","Ścieżka Pandoc została ustawiona pomyślnie.","Ruta de Pandoc configurada correctamente.","Caminho do Pandoc definido com sucesso.","Pandoc-Pfad erfolgreich festgelegt.","Pandoc yolu başarıyla ayarlandı.","Percorso di Pandoc impostato con successo."
+MSG_PANDOC_PATH_SET,"Pandoc path set`n{1}","Chemin de Pandoc défini`n{1}","Pandoc 路径已设置`n{1}","Pandocのパスを設定しました`n{1}","Pandoc 경로가 설정되었습니다`n{1}","Pandoc 路徑已設定`n{1}","Путь к Pandoc установлен`n{1}","Ścieżka Pandoc ustawiona`n{1}","Ruta de Pandoc establecida`n{1}","Caminho do Pandoc definido`n{1}","Pandoc-Pfad gesetzt`n{1}","Pandoc yolu ayarlandı`n{1}","Percorso di Pandoc impostato`n{1}"
 MSG_PANDOC_OUTPUT_SET,"Output format set to: {1}","Format de sortie défini sur : {1}","输出格式设置为：{1}","出力形式を設定しました：{1}","출력 형식이 설정되었습니다: {1}","輸出格式設定為：{1}","Формат вывода установлен: {1}","Format wyjściowy ustawiony na: {1}","Formato de salida establecido en: {1}","Formato de saída definido como: {1}","Ausgabeformat festgelegt auf: {1}","Çıktı biçimi şu şekilde ayarlandı: {1}","Formato di output impostato su: {1}"
 MSG_PANDOC_SELECT_ERROR,"Please select pandoc.exe.","Veuillez sélectionner pandoc.exe.","请选择 pandoc.exe。","pandoc.exeを選択してください。","pandoc.exe를 선택하세요.","請選擇 pandoc.exe。","Пожалуйста, выберите pandoc.exe.","Wybierz pandoc.exe.","Seleccione pandoc.exe.","Selecione pandoc.exe.","Bitte wählen Sie pandoc.exe.","Lütfen pandoc.exe'yi seçin.","Seleziona pandoc.exe."
 MSG_PANDOC_FILE_NOT_EXIST,"File does not exist.","Le fichier n'existe pas.","文件不存在。","ファイルが存在しません。","파일이 존재하지 않습니다.","檔案不存在。","Файл не существует.","Plik nie istnieje.","El archivo no existe.","O arquivo não existe.","Datei existiert nicht.","Dosya mevcut değil.","Il file non esiste."
+MSG_PANDOC_PROGRESS_TITLE,"Converting files...","Conversion des fichiers en cours...","文件转换中...","ファイル変換中...","파일 변환 중...","檔案轉換中...","Преобразование файлов...","Konwertowanie plików...","Convirtiendo archivos...","Convertendo arquivos...","Konvertiere Dateien...","Dosyalar dönüştürülüyor...","Conversione file in corso..."
+MSG_PANDOC_PROGRESS_SUBTITLE,"Please wait...","Veuillez patienter...","请稍候...","お待ちください...","잠시만 기다려주세요...","請稍候...","Подождите...","Proszę czekać...","Por favor, espere...","Aguarde...","Bitte warten Sie...","Lütfen bekleyin...","Attendere prego..."
+MSG_PANDOC_PROGRESS,"Converting {1}/{2}: {3}","Conversion {1}/{2} : {3}","正在转换 {1}/{2}: {3}","変換中 {1}/{2}: {3}","변환 중 {1}/{2}: {3}","正在轉換 {1}/{2}: {3}","Преобразование {1}/{2}: {3}","Konwertowanie {1}/{2}: {3}","Convirtiendo {1}/{2}: {3}","Convertendo {1}/{2}: {3}","Konvertiere {1}/{2}: {3}","{1}/{2} dönüştürülüyor: {3}","Conversione {1}/{2}: {3}"
+MSG_PANDOC_SKIPPED_FILES,"Skipped unsupported files:
+{1}","Fichiers non pris en charge ignorés :
+{1}","跳过了不支持的文件：
+{1}","サポートされていないファイルをスキップしました：
+{1}","지원되지 않는 파일을 건너뛰었습니다：
+{1}","跳過了不支援的檔案：
+{1}","Пропущены неподдерживаемые файлы：
+{1}","Pominięto nieobsługiwane pliki：
+{1}","Archivos no compatibles omitidos：
+{1}","Arquivos não suportados ignorados：
+{1}","Nicht unterstützte Dateien übersprungen：
+{1}","Desteklenmeyen dosyalar atlandı：
+{1}","File non supportati saltati：
+{1}"
 INPUT_MAX_HISTORY_TITLE,"Max History","Nombre max d'historique","历史上限","履歴上限","최대 기록 수","歷史上限","Макс. история","Maks. historia","Máx. historial","Máx. histórico","Max. Verlauf","Maks. Geçmiş","Cronologia max"
 INPUT_MAX_HISTORY_PROMPT,"Enter max history count (0=disable):","Entrez le nombre max d'historique (0=désactiver) :","输入最大历史数量 (0=禁用):","最大履歴数を入力してください (0=無効):","최대 기록 수 입력 (0=비활성화):","輸入最大歷史數量 (0=禁用):","Введите макс. количество записей (0=откл.):","Wprowadź maks. liczbę historii (0=wyłącz):","Introduzca el máx. de historial (0=desactivar):","Digite o máx. de histórico (0=desativar):","Max. Verlauf eingeben (0=deaktivieren):","Maks. geçmiş sayısını girin (0=devre dışı):","Inserisci cronologia max (0=disabilita):"
 INPUT_DELAY_TITLE,"Delete Delay","Délai de suppression","延迟删除","削除遅延","삭제 지연","延遲刪除","Задержка удаления","Opóźnienie usuwania","Retraso de eliminación","Atraso de exclusão","Löschverzögerung","Silme Gecikmesi","Ritardo eliminazione"

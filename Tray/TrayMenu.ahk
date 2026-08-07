@@ -2,14 +2,9 @@
 
 TrayMsgHandler(wParam, lParam, msg, hwnd) {
     if (lParam == 0x205) {
-        ; Use GetMessagePos to get the exact cursor position
-        ; at the time the message was generated, not the current
-        ; cursor position. This is more reliable than MouseGetPos
-        ; inside an OnMessage callback.
         msgPos := DllCall("GetMessagePos", "UInt")
         x := msgPos & 0xFFFF
         y := (msgPos >> 16) & 0xFFFF
-        ; Fix sign extension for negative coordinates (multi-monitor)
         if (x & 0x8000)
             x := x | 0xFFFF0000
         if (y & 0x8000)
@@ -21,9 +16,7 @@ TrayMsgHandler(wParam, lParam, msg, hwnd) {
 TraySetup() {
     global AppState
     A_IconTip := "CapsLock-"
-
     A_TrayMenu.Delete()
-
     OnMessage(0x404, TrayMsgHandler)
 }
 
@@ -31,7 +24,6 @@ ShowTrayCustomMenu(x, y) {
     items := BuildTrayMenuItems()
     if items.Length == 0
         return
-    ; anchorBottom: true — menu's bottom-left corner aligns with tray icon position
     CustomMenu.ShowWithItems(x, y, items, true)
 }
 
@@ -50,7 +42,12 @@ BuildTrayMenuItems() {
     pandocChildren := []
     pandocChildren.Push({ label: "📁 " Lang("MENU_PANDOC_PATH"), callback: (*) => SetPandocPath() })
     pandocChildren.Push({ label: "📤 " Lang("MENU_PANDOC_OUTPUT", , AppState.PandocOutputFormat), callback: (*) => SetPandocOutput() })
-    items.Push({ label: "📄 " Lang("MENU_PANDOC"), children: pandocChildren })
+
+    pandocValid := AppState.PandocExe != "" && FileExist(AppState.PandocExe)
+    pandocLabel := pandocValid
+        ? "📄 " Lang("MENU_PANDOC_STATUS_SET")
+        : "📄 " Lang("MENU_PANDOC_STATUS_NOTSET")
+    items.Push({ label: pandocLabel, children: pandocChildren })
 
     items.Push({ isSep: true })
 

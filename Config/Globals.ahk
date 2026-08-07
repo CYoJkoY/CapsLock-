@@ -107,7 +107,7 @@ class AppState {
         "epub3", "fb2", "gfm", "haddock", "html", "html4", "html5", "icml",
         "ipynb", "jats", "jats_archiving", "jats_articleauthoring",
         "jats_publishing", "jira", "json", "latex", "man", "markdown",
-        "markdown_github", "markdown_mmd", "markdown_phpextra",
+        "markdown_mmd", "markdown_phpextra",
         "markdown_strict", "markua", "mediawiki", "ms", "muse", "native", "odt",
         "opendocument", "opml", "org", "pdf", "plain", "pptx", "revealjs", "rst",
         "rtf", "s5", "slideous", "slidy", "t2t", "tei", "texinfo", "textile",
