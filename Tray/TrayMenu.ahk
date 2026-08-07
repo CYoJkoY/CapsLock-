@@ -46,6 +46,12 @@ BuildTrayMenuItems() {
         : "📦 " Lang("MENU_IM_STATUS_NOTSET")
     items.Push({ label: imLabel, callback: (*) => SetImPath() })
 
+    ; --- Pandoc settings (sub-menu) ---
+    pandocChildren := []
+    pandocChildren.Push({ label: "📁 " Lang("MENU_PANDOC_PATH"), callback: (*) => SetPandocPath() })
+    pandocChildren.Push({ label: "📤 " Lang("MENU_PANDOC_OUTPUT", , AppState.PandocOutputFormat), callback: (*) => SetPandocOutput() })
+    items.Push({ label: "📄 " Lang("MENU_PANDOC"), children: pandocChildren })
+
     items.Push({ isSep: true })
 
     ; --- Open temp folder ---

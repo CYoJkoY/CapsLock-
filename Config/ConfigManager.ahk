@@ -26,6 +26,8 @@ class ConfigManager {
             AppState.PasteMode         := IniRead(cfg, "General",   "pasteMode",      1)
             AppState.AutoCleanEnabled  := IniRead(cfg, "General",   "autoClean",      "0") == "1"
             AppState.MaxHistoryItems   := Integer(IniRead(cfg, "General", "maxHistoryItems", "500"))
+            AppState.PandocExe          := IniRead(cfg, "Pandoc", "Path", "")
+            AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
 
             langVal := IniRead(cfg, "General", "language", "")
             if langVal != "" && AppState.HasProp("CurrentLanguage")
@@ -46,6 +48,8 @@ class ConfigManager {
             IniWrite(AppState.PasteMode,          cfg, "General",   "pasteMode")
             IniWrite(AppState.AutoCleanEnabled ? "1" : "0", cfg, "General", "autoClean")
             IniWrite(AppState.MaxHistoryItems,    cfg, "General",   "maxHistoryItems")
+            IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
+            IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
 
             if AppState.HasProp("CurrentLanguage") && AppState.CurrentLanguage != ""
                 IniWrite(AppState.CurrentLanguage, cfg, "General", "language")

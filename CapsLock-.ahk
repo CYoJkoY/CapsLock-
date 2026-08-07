@@ -21,6 +21,7 @@ Persistent()
 #Include "Core\ImageToPdf.ahk"
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
+#Include "Core\Pandoc.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"

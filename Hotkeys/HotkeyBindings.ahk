@@ -90,4 +90,6 @@
 
     t:: ToggleAlwaysOnTopWithOSD()
 
+    p:: ConvertWithPandoc()
+
 #HotIf

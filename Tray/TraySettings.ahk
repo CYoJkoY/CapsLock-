@@ -154,3 +154,49 @@ SaveIgnoreRules(text, myGui) {
     ToolTip(Lang("MSG_IGNORE_UPDATED"))
     SetTimer(() => ToolTip(), -2000)
 }
+
+SetPandocPath(*) {
+    SelectedFile := Trim(FileSelect(1, A_ProgramFiles, Lang("INPUT_PANDOC_PATH_TITLE", "Select Pandoc executable"), Lang("INPUT_PANDOC_PATH_FILTER", "Pandoc.exe")))
+    if (SelectedFile == "")
+        return
+
+    if !InStr(StrLower(SelectedFile), "pandoc.exe") {
+        MsgBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
+        return
+    }
+
+    if !FileExist(SelectedFile) {
+        MsgBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
+        return
+    }
+
+    AppState.PandocExe := SelectedFile
+    ConfigManager.Save()
+    ToolTip(Lang("MSG_PANDOC_PATH_SET", "Pandoc path set successfully"))
+    SetTimer(() => ToolTip(), -2000)
+}
+
+SetPandocOutput(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Enter output format (e.g., docx, html, markdown):"),
+        Lang("INPUT_PANDOC_OUTPUT_TITLE", "Set Pandoc Output Format"),
+        AppState.PandocOutputFormat
+    )
+
+    if (input.Result != "OK")
+        return
+
+    newFormat := Trim(input.Value)
+    if (newFormat == "")
+        return
+
+    if (!_IsOutputFormatSupported(newFormat)) {
+        MsgBox(Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", newFormat), Lang("MSG_ERROR"), "Iconx")
+        return
+    }
+
+    AppState.PandocOutputFormat := newFormat
+    ConfigManager.Save()
+    ToolTip(Lang("MSG_PANDOC_OUTPUT_SET", "Output format set to: {1}", newFormat))
+    SetTimer(() => ToolTip(), -2000)
+}
