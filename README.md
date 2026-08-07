@@ -1,10 +1,10 @@
 <div align="center" style="background-color: #1E1E1E; padding: 40px 20px; border-radius: 28px;">
 
   <div style="background: #2A2A2A; border-radius: 36px; padding: 42px 18px; margin-bottom: 28px;">
-    <img src="assets/CapsLock-.ico" alt="CapsLock Extended Logo" width="80">
-    <h1 style="color: #E6DED6; font-weight: 350; letter-spacing: 2px; margin: 18px 0 8px;">CapsLock Extended</h1>
+    <img src="assets/CapsLock-.ico" alt="CapsLock- Logo" width="80">
+    <h1 style="color: #E6DED6; font-weight: 350; letter-spacing: 2px; margin: 18px 0 8px;">CapsLock-</h1>
     <p style="color: #BEB8AE; font-size: 1.2em; max-width: 600px; margin: 0 auto;">Turn the most underrated key on your keyboard into your productivity command center</p>
-    <p style="color: #8A9E8B; font-size: 0.95em; margin-top: 12px;">A high-performance, Vim-style system enhancement tool based on AutoHotkey v2</p>
+    <p style="color: #8A9E8B; font-size: 0.95em; margin-top: 12px;">A high-performance, Vim‑style system enhancement tool based on AutoHotkey v2</p>
   </div>
 
   <p>
@@ -18,6 +18,7 @@
     <a href="#-shortcut-quick-reference" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Shortcut Quick Reference</a> &nbsp;•&nbsp;
     <a href="#-installation--setup" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Installation & Setup</a> &nbsp;•&nbsp;
     <a href="#%EF%B8%8F-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration & Parameters</a> &nbsp;•&nbsp;
+    <a href="#-ai-api-integration" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">AI API Integration</a> &nbsp;•&nbsp;
     <a href="#-support-the-author" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Support the Author</a>
   </p>
 </div>
@@ -28,8 +29,8 @@
 
 ## 📖 Overview
 
-**CapsLock Extended** redefines the purpose of the `CapsLock` key, turning it into a "super modifier key".  
-By holding `CapsLock` and combining it with other keys, you can perform Vim-style home row cursor movement, advanced clipboard management (including encrypted history), window transparency adjustment, tab switching, document format conversion via Pandoc, and other workflow automations—all without leaving the keyboard's home row.
+**CapsLock-** redefines the purpose of the `CapsLock` key, turning it into a "super modifier key".  
+By holding `CapsLock` and combining it with other keys, you can perform Vim‑style home row cursor movement, advanced clipboard management (including encrypted history), window transparency adjustment, tab switching, AI‑powered text processing, document format conversion via Pandoc, and many other workflow automations—all without leaving the keyboard's home row.
 
 > **Note**  
 > This script supports **AutoHotkey v2 only** and is not backward compatible with v1.
@@ -58,6 +59,17 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
     <li><code>Shift+V</code> encrypted history quick menu with preview, single/batch paste, delete</li>
     <li><code>F</code> instant case swap of clipboard text (preserves original in clipboard)</li>
     <li>Custom ignore rules (gitignore syntax) to exclude sensitive or temporary files during paste</li>
+  </ul>
+</div>
+
+<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
+  <h3 style="margin-top: 0; color: #D6D2CC;">🤖 AI API Integration</h3>
+  <ul style="color: #BEB8AE;">
+    <li><code>K</code> send clipboard content + custom prompt to any OpenAI‑compatible API</li>
+    <li>Full API settings GUI accessible from tray menu — configure URL, Key, Model, Max Tokens, Temperature</li>
+    <li>Manage multiple prompts with a built‑in editor (add, edit, delete, set active)</li>
+    <li>Streaming mode support with real‑time response display (toggle in tray menu)</li>
+    <li>Result window with <code>C</code> to copy, <code>K</code> to paste at cursor position</li>
   </ul>
 </div>
 
@@ -98,8 +110,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
   <ul style="color: #BEB8AE;">
     <li>Right‑click tray icon opens a fully custom dark‑themed popup menu with sub‑menu support</li>
     <li>Settings organized into collapsible sub‑menus: Cleanup, History & Paste, Language</li>
-    <li>Menu auto‑flips upward to avoid overflowing into the taskbar</li>
-    <li>DPI‑aware anchor offset for accurate tray icon alignment</li>
+    <li>Menu auto‑flips upward to avoid overflowing into the taskbar (DPI‑aware offset: 90px at 125% scaling)</li>
     <li>Language can be switched on the fly from the tray sub‑menu (13 languages supported)</li>
   </ul>
 </div>
@@ -115,9 +126,10 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 | **System**     | `CapsLock` (double‑click)   | Toggle native CapsLock state (50~300ms double‑click window)                |
 | **Clipboard**  | `C`                         | Copy selection as **plain text** (auto strip formatting)                   |
 |                | `V`                         | **Smart paste** (image paths→PDF / multi‑file content merge / mixed paths) |
-|                | `Shift+V`                   | Open **clipboard history** quick menu                                      |
+|                | `Shift+V`                   | Open **clipboard history** quick menu (up to 15 entries)                   |
 |                | `F`                         | **Swap case** of clipboard text and paste (original retained)              |
 |                | `P`                         | **Pandoc convert** clipboard file paths to configured output format        |
+|                | `K`                         | **AI API** — send clipboard + active prompt to AI, show result window      |
 | **Navigation** | `←` / `→`                   | Move cursor left/right **by one word**                                     |
 |                | `↑` / `↓`                   | Jump to **beginning** / **end of line**                                    |
 |                | `Space`                     | Select the **entire word** under the cursor                                |
@@ -134,6 +146,8 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 |                | `Middle Button`             | **Toggle** transparency: 10% (ghost mode) ↔ 100% (normal)                  |
 | **Tabs**       | `Q` / `E`                   | Switch to **previous** / **next** tab (`Ctrl+PgUp` / `Ctrl+PgDn`)          |
 |                | `Shift+Q` / `Shift+E`       | **Cycle windows** (`Alt+Esc` / `Alt+Shift+Esc`)                            |
+| **AI Result**  | `C` (in AI result window)   | **Copy** the full AI response to clipboard                                 |
+|                | `K` (in AI result window)   | **Paste** the AI response at the current cursor position                   |
 
 ---
 
@@ -164,6 +178,21 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 3. To change the output format, use the same sub‑menu → **"Set Pandoc Output"**.
 4. Once configured, use `CapsLock+P` to convert clipboard file paths to the selected output format.
 
+### Configure AI API (optional)
+
+1. Right‑click the tray icon → click **"🤖 AI Settings"**.
+2. In the settings window:
+   - Enter your API **URL** (e.g., `https://api.openai.com/v1` or any OpenAI‑compatible endpoint)
+   - Enter your **API Key**
+   - Select or type your **Model** (e.g., `gpt-3.5-turbo`, `gpt-4`, `claude-3-opus-20240229`)
+   - Adjust **Max Tokens** and **Temperature** as needed
+3. Manage your prompts in the lower section:
+   - Click **Add Prompt** to create a new prompt template
+   - Select a prompt and click **Set Active** to use it
+   - Use **Edit** or **Delete** to modify or remove prompts
+4. Click **Save** to persist your settings.
+5. (Optional) Toggle **Streaming Mode** in the tray menu for real‑time AI responses.
+
 ---
 
 ## ⚙️ Configuration & Parameters
@@ -172,6 +201,8 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 
 | Menu Item                      | Description                                                                            |
 | :----------------------------- | :------------------------------------------------------------------------------------- |
+| `AI Settings`                  | Open the AI API configuration GUI (URL, Key, Model, prompts)                           |
+| `Stream Mode`                  | Toggle streaming mode for AI responses (real‑time output)                              |
 | `ImageMagick: Not Set / Valid` | Set or change the ImageMagick executable path                                          |
 | `Pandoc: Not Set / Valid`      | Set Pandoc executable path and output format (sub‑menu)                                |
 | `Open Temp Folder`             | Open the temporary folder (`%TEMP%`, where temporary paste files are stored)           |
@@ -217,23 +248,32 @@ Rules=                ; multiple patterns separated by |
 ; ^C:\\Windows\\.*    # ignore all files under Windows folder
 ; \\.tmp$             # ignore .tmp files
 ; *.log               # ignore all .log files
+
+[AI]
+ApiUrl=https://api.openai.com/v1
+ApiKey=sk-...
+ApiModel=gpt-3.5-turbo
+ApiMaxTokens=2000
+ApiTemperature=0.7
+StreamMode=0          ; 0=classic (full response), 1=streaming
 ```
 
 ### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 
-| Variable               | Default               | Description                                      |
-| :--------------------- | :-------------------- | :----------------------------------------------- |
-| `ENCRYPT_KEY`          | `0x5A`                | XOR encryption key (0 = plaintext history)       |
-| `MAX_VISIBLE_MENU`     | `12`                  | Maximum entries shown in the history quick menu  |
-| `MAX_FULL_HISTORY_DISPLAY` | `50`              | Initial rows shown in the full history window    |
-| `TextFormats`          | 50+ common extensions | List of extensions treated as "text files"       |
-| `ImageFormats`         | png, jpg, bmp, heic…  | Image formats supported for PDF conversion       |
-| `IgnorePatterns`       | (empty)               | Default ignore rules (overridable via Tray menu) |
-| `AutoCleanEnabled`     | `false`               | Enable periodic history trimming                 |
-| `MaxHistoryItems`      | `500`                 | Trim target when autoClean is enabled            |
-| `CurrentLanguage`      | `"zh"`                | Current UI language code                         |
-| `PandocInputFormats`   | 50+ formats           | Supported input formats for Pandoc conversion    |
-| `PandocOutputFormats`  | 70+ formats           | Supported output formats for Pandoc conversion   |
+| Variable                    | Default               | Description                                      |
+| :-------------------------- | :-------------------- | :----------------------------------------------- |
+| `ENCRYPT_KEY`               | `0x5A`                | XOR encryption key (0 = plaintext history)       |
+| `MAX_VISIBLE_MENU`          | `15`                  | Maximum entries shown in the history quick menu  |
+| `MAX_FULL_HISTORY_DISPLAY`  | `50`                  | Initial rows shown in the full history window    |
+| `TextFormats`               | 50+ common extensions | List of extensions treated as "text files"       |
+| `ImageFormats`              | png, jpg, bmp, heic…  | Image formats supported for PDF conversion       |
+| `IgnorePatterns`            | (empty)               | Default ignore rules (overridable via Tray menu) |
+| `AutoCleanEnabled`          | `false`               | Enable periodic history trimming                 |
+| `MaxHistoryItems`           | `500`                 | Trim target when autoClean is enabled            |
+| `CurrentLanguage`           | `"zh"`                | Current UI language code                         |
+| `PandocInputFormats`        | 50+ formats           | Supported input formats for Pandoc conversion    |
+| `PandocOutputFormats`       | 70+ formats           | Supported output formats for Pandoc conversion   |
+| `ApiUrl` / `ApiKey` / etc.  | (empty)               | AI API configuration (also saved in Config.ini)  |
 
 ### Theme Colors (modifiable in `Globals.ahk`)
 
@@ -271,6 +311,51 @@ THEME_RADIUS        := 8            ; Corner radius (px)
 
 ---
 
+## 🤖 AI API Integration
+
+### Overview
+
+CapsLock- integrates with any OpenAI‑compatible chat completion API. The integration supports both classic (full response) and streaming modes.
+
+### Workflow
+
+1. **Configure** your API settings via the tray menu → **AI Settings**.
+2. **Create prompts** in the same GUI — each prompt has a name and content (the system instruction).
+3. **Select** a prompt as the active one.
+4. **Copy** content you want to process to the clipboard.
+5. Press `CapsLock+K` to send the active prompt + clipboard content to the API.
+6. The response appears in a dedicated result window:
+   - Press `C` to copy the entire response to the clipboard.
+   - Press `K` to paste the response at the current cursor position.
+
+### Streaming Mode
+
+When streaming is enabled (toggle via tray menu), responses appear character‑by‑character in the result window as they are generated, providing real‑time feedback. The result window remains open and fully interactive during streaming.
+
+### Prompt Management
+
+Prompts are stored in `configs/Prompts.json`:
+
+```json
+{
+  "active": "Translate to Chinese",
+  "prompts": [
+    {
+      "name": "Translate to Chinese",
+      "content": "Please translate the following text to Simplified Chinese..."
+    },
+    {
+      "name": "Summarize",
+      "content": "Please summarize the following text concisely..."
+    }
+  ]
+}
+```
+
+You can add, edit, delete, and set active prompts directly through the AI Settings GUI.
+
+---
+
 ## 🧱 Project Structure
 
 ```tree
@@ -289,47 +374,52 @@ CapsLock-
 │   ├── 🖼️ UI.ico
 │   └── 🖼️ Utils.ico
 ├── 📁 Config
-│   ├── 📄 ConfigManager.ahk
-│   ├── 📄 Encryption.ahk
-│   └── 📄 Globals.ahk
+│   ├── 📄 ConfigManager.ahk     ; INI config load/save (includes AI settings)
+│   ├── 📄 Encryption.ahk        ; XOR encryption for history storage
+│   ├── 📄 Globals.ahk           ; AppState class — all constants & settings
+│   └── 📄 PromptManager.ahk     ; Prompt JSON storage (add/edit/delete/active)
 ├── 📁 Core
-│   ├── 📄 Cleanup.ahk
-│   ├── 📄 Clipboard.ahk
-│   ├── 📄 ClipboardPaste.ahk
-│   ├── 📄 FileOperations.ahk
-│   ├── 📄 FileValidation.ahk
-│   ├── 📄 ImageToPdf.ahk
-│   ├── 📄 Pandoc.ahk
-│   └── 📄 WindowUtils.ahk
+│   ├── 📄 ApiClient.ahk         ; OpenAI‑compatible API client (streaming & classic)
+│   ├── 📄 Cleanup.ahk           ; Temp file cleanup (delayed/batch/off)
+│   ├── 📄 Clipboard.ahk         ; Clipboard helper (DROPFILES, plain text copy)
+│   ├── 📄 ClipboardPaste.ahk    ; Paste handlers (file, text, PDF)
+│   ├── 📄 FileOperations.ahk    ; File reading, ignore rules, folder collection
+│   ├── 📄 FileValidation.ahk    ; Path detection (file, folder, image, mixed)
+│   ├── 📄 ImageToPdf.ahk        ; Image → PDF conversion via ImageMagick
+│   ├── 📄 Pandoc.ahk            ; Pandoc document conversion
+│   └── 📄 WindowUtils.ahk       ; Window opacity utilities
 ├── 📁 History
-│   ├── 📄 CustomMenu.ahk
-│   ├── 📄 FullHistoryGui.ahk
-│   ├── 📄 FullHistoryHandlers.ahk
-│   ├── 📄 HistoryDelete.ahk
-│   ├── 📄 HistoryMenu.ahk
-│   ├── 📄 HistoryPaste.ahk
-│   └── 📄 HistoryStorage.ahk
+│   ├── 📄 CustomMenu.ahk        ; Custom dark‑themed popup menu (sub‑menu support)
+│   ├── 📄 FullHistoryGui.ahk    ; Full clipboard history browser GUI
+│   ├── 📄 FullHistoryHandlers.ahk ; Event handlers for full history GUI
+│   ├── 📄 HistoryDelete.ahk     ; History deletion utilities
+│   ├── 📄 HistoryMenu.ahk       ; Quick history menu (15 entries)
+│   ├── 📄 HistoryPaste.ahk      ; Paste logic from history items
+│   └── 📄 HistoryStorage.ahk    ; History load/save (encrypted binary)
 ├── 📁 Hotkeys
-│   ├── 📄 HotkeyActions.ahk
-│   ├── 📄 HotkeyBindings.ahk
-│   └── 📄 PasteHandler.ahk
+│   ├── 📄 ApiAction.ahk         ; AI API hotkey handler (CapsLock+K)
+│   ├── 📄 HotkeyActions.ahk     ; Action implementations (copy, case swap, etc.)
+│   ├── 📄 HotkeyBindings.ahk    ; All hotkey definitions
+│   └── 📄 PasteHandler.ahk      ; Smart paste (V key) logic
 ├── 📁 Tray
-│   ├── 📄 TrayMenu.ahk
-│   └── 📄 TraySettings.ahk
+│   ├── 📄 TrayMenu.ahk          ; Tray icon custom menu builder
+│   └── 📄 TraySettings.ahk      ; Tray menu setting handlers
 ├── 📁 UI
-│   ├── 📄 OSD.ahk
-│   ├── 📄 PreviewGui.ahk
-│   └── 📄 ThemeHelper.ahk
+│   ├── 📄 OSD.ahk               ; On‑screen notification system
+│   ├── 📄 PreviewGui.ahk        ; Text preview window
+│   ├── 📄 PromptEditDialog.ahk  ; Add/Edit prompt dialog
+│   ├── 📄 PromptSettingsGui.ahk ; AI API settings GUI
+│   └── 📄 ThemeHelper.ahk       ; Dark theme engine (GDI custom buttons, DWM)
 ├── 📁 Utils
-│   ├── 📄 DarkInputDialog.ahk
-│   ├── 📄 Language.ahk
-│   ├── 📄 MethodsUtils.ahk
-│   └── 📄 ResourceSound.ahk
-├── 📁 langs                (language cache files, auto-generated from lang.csv)
-├── 📄 CapsLock-.ahk
+│   ├── 📄 DarkInputDialog.ahk   ; Dark‑themed input dialog
+│   ├── 📄 Language.ahk          ; CSV‑based multi‑language support
+│   ├── 📄 MethodsUtils.ahk      ; Utility functions (Join, Clamp, etc.)
+│   └── 📄 ResourceSound.ahk     ; Embedded WAV resource playback
+├── 📁 langs                     ; Language cache files (auto‑generated from lang.csv)
+├── 📄 CapsLock-.ahk             ; Main entry point
 ├── ⚖️ LICENSE
 ├── 📖 README.md
-└── 🌐 lang.csv
+└── 🌐 lang.csv                  ; Translation source (13 languages)
 ```
 
 ---
@@ -343,7 +433,7 @@ CapsLock-
 - **Modular design** – Each functional domain is separated into its own `.ahk` file for easy maintenance and extension.
 - **Multi‑language support** – CSV‑based translation system with compiled cache files in `langs/` directory; 13 languages switchable on the fly from the tray menu. Language cache can be rebuilt from `lang.csv` via the tray menu.
 - **Ignore rules** – Gitignore‑style pattern matching with hybrid engine: fast `PathMatchSpecW` API for simple patterns, regex fallback for complex patterns (e.g., `**` and `?`).
-- **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI with sub‑menu support, replacing the native `Menu` control for both the history quick menu and the tray icon context menu.
+- **Custom dark‑themed menu** – `CustomMenu` builds a lightweight, hover‑aware popup GUI with sub‑menu support, replacing the native `Menu` control for both the history quick menu and the tray icon context menu. DPI‑aware bottom offset (90px at 125% scaling) ensures accurate tray icon alignment.
 - **GDI resource caching** – `ThemeHelper` caches `CreateSolidBrush` objects, border pens, and focus pens to avoid repeated GDI object creation/destruction during custom button drawing.
 - **Debounced history save** – `HistoryManager` uses a 3000ms debounce timer to batch writes to `ClipHistory.bin`, reducing disk I/O during rapid clipboard operations. `ForceSave()` ensures no data loss on exit.
 - **OSD notification system** – `OSD` class provides a single‑line, auto‑dismissing notification banner with icon, accent color bar, and timestamp, used throughout the app for status feedback.
@@ -354,6 +444,8 @@ CapsLock-
 - **Pandoc integration** – `ConvertWithPandoc()` converts files between 50+ input formats and 70+ output formats, with progress GUI and batch processing support. Triggered via `CapsLock+P`.
 - **Smart paste routing** – `PasteWithCurrentMode()` intelligently detects clipboard content type (single file, multiple files, folders, mixed paths, images) and routes to the appropriate paste handler.
 - **Auto history trimming** – Optional periodic cleanup (`AutoCleanEnabled`) automatically trims the history to `MaxHistoryItems` every 60 seconds, keeping memory and disk usage in check.
+- **AI API integration** – Full OpenAI‑compatible chat completion support with streaming, prompt management via JSON, and a dedicated result window with copy/paste shortcuts.
+- **Prompt persistence** – Prompts are stored in `configs/Prompts.json` with active prompt tracking; all operations (add/edit/delete/activate) are reflected immediately.
 
 ---
 
@@ -366,12 +458,19 @@ If you handle highly sensitive data, it is recommended to:
 1. Set `ENCRYPT_KEY` to `0` (disable encryption) in `Config/Globals.ahk`
 2. Use Windows built‑in **EFS** or **BitLocker** to encrypt the entire configuration folder
 
+> ⚠️ **API Keys** are stored in plaintext in `configs/Config.ini`. If you use this script with sensitive API keys, ensure the config directory is appropriately secured.
+
 ---
 
 ## 🤝 Contributing & Feedback
 
 Issues and Pull Requests are welcome.  
 Please ensure your code conforms to AHK v2 syntax and follows the existing modular style.
+
+**Code style requirements:**
+- All code comments must be in **pure English**
+- All UI text must use the `Lang()` internationalization function (no hardcoded strings)
+- Translations are added to `lang.csv` (columns: `key`, `en`, `fr`, `zh`, `ja`, `ko`, `zh_TW`, `ru`, `pl`, `es`, `pt`, `de`, `tr`, `it`)
 
 ---
 
