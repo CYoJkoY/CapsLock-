@@ -40,49 +40,49 @@ class PromptSettingsGui {
 
         ; --- API Configuration Section ---
         myGui.SetFont("s11 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        myGui.Add("Text", "x16 y+12 w580", Lang("GUI_AI_API_SECTION", "API Configuration"))
+        myGui.Add("Text", "x16 y+14 w580", Lang("GUI_AI_API_SECTION", "API Configuration"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
         ; API URL
-        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_URL", "API URL:"))
+        myGui.Add("Text", "x16 y+12 w100", Lang("GUI_AI_URL", "API URL:"))
         urlEdit := myGui.Add("Edit", "x120 yp-2 w460 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiUrl)
         this.UrlEdit := urlEdit
 
         ; API Key
-        myGui.Add("Text", "x16 y+8 w100", Lang("GUI_AI_KEY", "API Key:"))
+        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_KEY", "API Key:"))
         keyEdit := myGui.Add("Edit", "x120 yp-2 w460 r1 Password " . ThemeHelper.GetEditOptions(), AppState.ApiKey)
         this.KeyEdit := keyEdit
 
         ; Model
-        myGui.Add("Text", "x16 y+8 w100", Lang("GUI_AI_MODEL", "Model:"))
-        modelEdit := myGui.Add("Edit", "x120 yp-2 w200 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiModel)
+        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_MODEL", "Model:"))
+        modelEdit := myGui.Add("Edit", "x120 yp-2 w180 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiModel)
         this.ModelEdit := modelEdit
 
-        ; Max Tokens
-        myGui.Add("Text", "x340 yp+2 w80", Lang("GUI_AI_MAX_TOKENS", "Max Tokens:"))
-        maxTokensEdit := myGui.Add("Edit", "x430 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiMaxTokens)
+        ; Max Tokens (on same row as Model, with more room)
+        myGui.Add("Text", "x330 yp+2 w100", Lang("GUI_AI_MAX_TOKENS", "Max Tokens:"))
+        maxTokensEdit := myGui.Add("Edit", "x440 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiMaxTokens)
         this.MaxTokensEdit := maxTokensEdit
 
         ; Temperature
-        myGui.Add("Text", "x16 y+8 w100", Lang("GUI_AI_TEMPERATURE", "Temperature:"))
-        tempEdit := myGui.Add("Edit", "x120 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiTemperature)
+        myGui.Add("Text", "x16 y+10 w110", Lang("GUI_AI_TEMPERATURE", "Temperature:"))
+        tempEdit := myGui.Add("Edit", "x130 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiTemperature)
         this.TempEdit := tempEdit
 
         ; Test Connection button
-        btnTest := ThemeHelper.AddButton(myGui, "x+12 yp w140", "🔗 " . Lang("GUI_AI_TEST", "Test Connection"))
+        btnTest := ThemeHelper.AddButton(myGui, "x+16 yp w160", "🔗 " . Lang("GUI_AI_TEST", "Test Connection"))
         btnTest.OnEvent("Click", (*) => this.TestConnection())
 
         ; --- Prompts Section ---
         ThemeHelper.AddSeparator(myGui, 580)
 
         myGui.SetFont("s11 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        myGui.Add("Text", "x16 y+8 w580", Lang("GUI_AI_PROMPTS_SECTION", "Prompts"))
+        myGui.Add("Text", "x16 y+10 w580", Lang("GUI_AI_PROMPTS_SECTION", "Prompts"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
         ; Prompt ListView
         lv := myGui.Add(
             "ListView",
-            "x16 y+8 w568 r8 -Multi " . ThemeHelper.GetLVOptions(),
+            "x16 y+10 w568 r8 -Multi " . ThemeHelper.GetLVOptions(),
             [Lang("GUI_AI_PROMPT_NAME", "Name"), Lang("GUI_AI_PROMPT_CONTENT", "Content")]
         )
         lv.ModifyCol(1, 180)
@@ -92,19 +92,19 @@ class PromptSettingsGui {
         ThemeHelper.StyleListView(lv)
         this.PromptLV := lv
 
-        ; Prompt action buttons
-        btnAdd := ThemeHelper.AddButton(myGui, "x16 y+8 w90", "➕ " . Lang("GUI_AI_ADD_PROMPT", "Add"))
+        ; Prompt action buttons (wider to prevent text wrapping)
+        btnAdd := ThemeHelper.AddButton(myGui, "x16 y+10 w100", "➕ " . Lang("GUI_AI_ADD_PROMPT", "Add"))
         btnAdd.OnEvent("Click", (*) => this.AddPrompt())
 
-        btnEdit := ThemeHelper.AddButton(myGui, "x+8 yp w90", "✏️ " . Lang("GUI_AI_EDIT_PROMPT", "Edit"))
+        btnEdit := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✏️ " . Lang("GUI_AI_EDIT_PROMPT", "Edit"))
         btnEdit.OnEvent("Click", (*) => this.EditPrompt())
         this.BtnEdit := btnEdit
 
-        btnDelete := ThemeHelper.AddButton(myGui, "x+8 yp w90", "🗑️ " . Lang("GUI_AI_DELETE_PROMPT", "Delete"), "danger")
+        btnDelete := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑️ " . Lang("GUI_AI_DELETE_PROMPT", "Delete"), "danger")
         btnDelete.OnEvent("Click", (*) => this.DeletePrompt())
         this.BtnDelete := btnDelete
 
-        btnSetActive := ThemeHelper.AddButton(myGui, "x+8 yp w110", "⭐ " . Lang("GUI_AI_SET_ACTIVE", "Set Active"), "primary")
+        btnSetActive := ThemeHelper.AddButton(myGui, "x+8 yp w120", "⭐ " . Lang("GUI_AI_SET_ACTIVE", "Set Active"), "primary")
         btnSetActive.OnEvent("Click", (*) => this.SetActivePrompt())
         this.BtnSetActive := btnSetActive
 
@@ -112,18 +112,18 @@ class PromptSettingsGui {
         ThemeHelper.AddSeparator(myGui, 580)
         statusText := myGui.Add(
             "Text",
-            "x16 y+8 w568",
+            "x16 y+10 w568",
             this._BuildStatusText()
         )
         myGui.SetFont("s9 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
         this.StatusText := statusText
 
-        ; Bottom buttons
+        ; Bottom buttons (wider, more spacing)
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        btnSave := ThemeHelper.AddButton(myGui, "x16 y+12 w90", "💾 " . Lang("GUI_OK"), "primary")
+        btnSave := ThemeHelper.AddButton(myGui, "x16 y+14 w100", "💾 " . Lang("GUI_OK"), "primary")
         btnSave.OnEvent("Click", (*) => this.SaveAndClose())
 
-        btnCancel := ThemeHelper.AddButton(myGui, "x+8 yp w90", "✕ " . Lang("GUI_CANCEL"))
+        btnCancel := ThemeHelper.AddButton(myGui, "x+10 yp w100", "✕ " . Lang("GUI_CANCEL"))
         btnCancel.OnEvent("Click", (*) => this.Close())
 
         ; --- Events ---

@@ -26,7 +26,7 @@ MENU_PANDOC_STATUS_SET,"Pandoc: Set (click to change)","Pandoc : Défini (clique
 MENU_PANDOC_STATUS_NOTSET,"Pandoc: Not set / Invalid","Pandoc : Non défini / Invalide","Pandoc: 未设置/无效","Pandoc: 未設定/無効","Pandoc: 설정 안 됨/무효","Pandoc: 未設定/無效","Pandoc: не задан / недействителен","Pandoc: nieustawiony / nieprawidłowy","Pandoc: no configurado / no válido","Pandoc: não definido / inválido","Pandoc: nicht gesetzt / ungültig","Pandoc: ayarlanmadı / geçersiz","Pandoc: non impostato / non valido"
 MENU_PANDOC_PATH,"Set Pandoc Path","Définir le chemin de Pandoc","设置 Pandoc 路径","Pandocのパスを設定","Pandoc 경로 설정","設定 Pandoc 路徑","Установить путь к Pandoc","Ustaw ścieżkę Pandoc","Establecer ruta de Pandoc","Definir caminho do Pandoc","Pandoc-Pfad festlegen","Pandoc Yolunu Ayarla","Imposta percorso Pandoc"
 MENU_PANDOC_OUTPUT,"Set Output Format","Définir le format de sortie","设置输出格式","出力形式を設定","출력 형식 설정","設定輸出格式","Установить формат вывода","Ustaw format wyjściowy","Establecer formato de salida","Definir formato de saída","Ausgabeformat festlegen","Çıktı Biçimini Ayarla","Imposta formato di output"
-MENU_AI_SETTINGS,"AI Settings",,,
+MENU_AI_SETTINGS,"AI Settings","Paramètres IA","AI 设置","AI設定","AI 설정","AI 設定","Настройки ИИ","Ustawienia AI","Configuración de IA","Configurações de IA","KI-Einstellungen","AI Ayarları","Impostazioni AI"
 LANG_EN,"English","English","English","English","English","English","English","English","English","English","English","English","English"
 LANG_FR,"Français","Français","Français","Français","Français","Français","Français","Français","Français","Français","Français","Français","Français"
 LANG_ZH,"中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)","中文 (简体)"
