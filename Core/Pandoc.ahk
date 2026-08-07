@@ -4,6 +4,10 @@
 ; Convert files using Pandoc and paste the result
 ; ---------------------------------------------------------------------------
 ConvertWithPandoc() {
+    ; --- FIX: Capture current active window as paste target ---
+    ; Previously missing - caused pasting to wrong (cached) window.
+    CapturePasteTarget()
+
     ; 1. Get raw text from clipboard
     text := A_Clipboard
     if (text == "") {
@@ -94,7 +98,7 @@ ConvertWithPandoc() {
             progressBar.Value := (idx / total) * 100
         }
 
-        ; Detect input format
+        ; Detect input format (safely - returns "" on any error to skip file gracefully)
         inFormat := _DetectInputFormat(inFile)
         if (inFormat == "") {
             skippedFiles.Push(inFile)
@@ -151,9 +155,17 @@ ConvertWithPandoc() {
 
 ; ---------------------------------------------------------------------------
 ; Detect input format from file extension (returns format name or "")
+; FIXED: Lazy-init pattern with try-catch prevents crash when static map
+;        initialization fails (AHK v2 bug: static vars can enter unassigned
+;        state after a failed init, causing script-terminating error).
 ; ---------------------------------------------------------------------------
 _DetectInputFormat(filePath) {
-    SplitPath(filePath, , , &ext)
+    ; Safely extract extension - return "" on any failure
+    try {
+        SplitPath(filePath, , , &ext)
+    } catch {
+        return ""
+    }
     ext := StrLower(ext)
     if (ext == "") 
         return ""
@@ -166,57 +178,75 @@ _DetectInputFormat(filePath) {
     }
 
     ; 2. Common extension → format name mapping
-    static map := Map(
-        "adoc", "asciidoc",
-        "bib",  "bibtex",
-        "md",   "markdown",
-        "markdown", "markdown",
-        "mkd",  "markdown",
-        "mdown", "markdown",
-        "html", "html",
-        "htm",  "html",
-        "tex",  "latex",
-        "latex", "latex",
-        "rst",  "rst",
-        "rtf",  "rtf",
-        "odt",  "odt",
-        "epub", "epub",
-        "ipynb", "ipynb",
-        "mediawiki", "mediawiki",
-        "org",  "org",
-        "textile", "textile",
-        "t2t",  "t2t",
-        "csv",  "csv",
-        "tsv",  "tsv",
-        "json", "json",
-        "xml",  "xml",
-        "docx", "docx",
-        "pptx", "pptx",
-        "xlsx", "xlsx",
-        "jats", "jats",
-        "jira", "jira",
-        "ris",  "ris",
-        "pod",  "pod",
-        "man",  "man",
-        "mdoc", "mdoc",
-        "muse", "muse",
-        "native", "native",
-        "opml", "opml",
-        "typst", "typst",
-        "vimwiki", "vimwiki",
-        "djot", "djot",
-        "creole", "creole",
-        "dokuwiki", "dokuwiki",
-        "gfm", "gfm",
-        "haddock", "haddock",
-        "commonmark", "commonmark"
-    )
-    if (map.Has(ext)) {
-        return map[ext]
+    ;    Uses lazy-init with defensive check: if the static map failed to
+    ;    initialize on a previous call (leaving it unassigned), we detect
+    ;    that and retry initialization. This prevents the fatal error:
+    ;    "This static variable has not been assigned a value."
+    static extMap := ""
+
+    ; Check if extMap needs (re)initialization
+    if (extMap == "" || !IsObject(extMap)) {
+        try {
+            extMap := Map(
+                "adoc", "asciidoc",
+                "bib",  "bibtex",
+                "md",   "markdown",
+                "markdown", "markdown",
+                "mkd",  "markdown",
+                "mdown", "markdown",
+                "html", "html",
+                "htm",  "html",
+                "tex",  "latex",
+                "latex", "latex",
+                "rst",  "rst",
+                "rtf",  "rtf",
+                "odt",  "odt",
+                "epub", "epub",
+                "ipynb", "ipynb",
+                "mediawiki", "mediawiki",
+                "org",  "org",
+                "textile", "textile",
+                "t2t",  "t2t",
+                "csv",  "csv",
+                "tsv",  "tsv",
+                "json", "json",
+                "xml",  "xml",
+                "docx", "docx",
+                "pptx", "pptx",
+                "xlsx", "xlsx",
+                "jats", "jats",
+                "jira", "jira",
+                "ris",  "ris",
+                "pod",  "pod",
+                "man",  "man",
+                "mdoc", "mdoc",
+                "muse", "muse",
+                "native", "native",
+                "opml", "opml",
+                "typst", "typst",
+                "vimwiki", "vimwiki",
+                "djot", "djot",
+                "creole", "creole",
+                "dokuwiki", "dokuwiki",
+                "gfm", "gfm",
+                "haddock", "haddock",
+                "commonmark", "commonmark"
+            )
+        } catch {
+            ; If Map construction fails for any reason, return empty
+            ; to skip this file gracefully instead of crashing.
+            return ""
+        }
     }
 
-    ; 3. If extension itself is a valid Pandoc input format (e.g., "docx" already caught earlier)
-    ; but we already did that in step 1.
+    ; Safe access: only call .Has() if extMap is a valid object
+    try {
+        if (extMap.Has(ext)) {
+            return extMap[ext]
+        }
+    } catch {
+        ; Fall through to unsupported
+    }
 
     return ""  ; unsupported
 }
