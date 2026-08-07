@@ -83,21 +83,34 @@ class AIResultWindow {
         }
     }
 
-    ; Flush accumulated buffer to the edit control
+    ; Flush accumulated buffer to the edit control using incremental insertion.
+    ; Normalizes line endings to CRLF so the Windows Edit control recognizes newlines.
     static FlushBuffer() {
         this._pending := false
         this._updateTimer := ""
         if !IsObject(this.GuiObj) || this._buffer == ""
             return
-        try {
-            if this.GuiObj.HasProp("editCtrl") {
-                hEdit := this.GuiObj.editCtrl.Hwnd
-                current := this.GuiObj.editCtrl.Value
-                this.GuiObj.editCtrl.Value := current . this._buffer
-                this._buffer := ""
-                SendMessage(0x00B1, -1, -1, hEdit)
-            }
-        }
+
+        ; Normalize line endings to CRLF for Windows Edit control
+        text := StrReplace(this._buffer, "`n", "`r`n")
+
+        editHwnd := this.GuiObj.editCtrl.Hwnd
+
+        ; 1. Place caret at the end of existing text
+        length := SendMessage(0x000E, 0, 0, editHwnd)   ; WM_GETTEXTLENGTH
+        SendMessage(0x00B1, length, length, editHwnd)   ; EM_SETSEL
+
+        ; 2. Temporarily disable read-only (required for EM_REPLACESEL)
+        SendMessage(0x00CF, 0, 0, editHwnd)             ; EM_SETREADONLY, FALSE
+
+        ; 3. Insert the normalized text at the caret position
+        SendMessage(0x00C2, 1, StrPtr(text), editHwnd)  ; EM_REPLACESEL
+
+        ; 4. Restore read-only state
+        SendMessage(0x00CF, 1, 0, editHwnd)             ; EM_SETREADONLY, TRUE
+
+        ; 5. Clear buffer
+        this._buffer := ""
     }
 
     ; WM_KEYDOWN handler – responds to C and K when the result window is active
