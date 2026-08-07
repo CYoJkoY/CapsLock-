@@ -29,6 +29,7 @@ class AIResultWindow {
         ; Content edit – read‑only, multi‑line, monospace
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
         editCtrl := myGui.Add("Edit", "Multi VScroll ReadOnly w560 h300 " ThemeHelper.GetEditOptions(), content)
+        myGui.editCtrl := editCtrl   ; store reference
 
         ; Bottom hint
         myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
@@ -110,6 +111,21 @@ class AIResultWindow {
             return 0
         }
     }
+
+    ; Append text to the currently displayed result window (if any)
+    static AppendToCurrent(text) {
+        if !IsObject(this.GuiObj)
+            return
+        try {
+            ; Find the Edit control (we stored it as editCtrl)
+            if this.GuiObj.HasProp("editCtrl") {
+                current := this.GuiObj.editCtrl.Value
+                this.GuiObj.editCtrl.Value := current . text
+                ; Auto-scroll to bottom
+                SendMessage(0x00B1, 0, -1, this.GuiObj.editCtrl.Hwnd)   ; WM_VSCROLL, SB_BOTTOM
+            }
+        }
+    }
 }
 
 ; ---------------------------------------------------------------------------
@@ -153,11 +169,29 @@ SendToApiAndPaste() {
     responseText := ""
     hasError := false
     errorMessage := ""
-    try {
-        responseText := ApiClient.Send(activeContent, clipboardContent)
-    } catch as err {
-        hasError := true
-        errorMessage := err.Message
+
+    if AppState.ApiStreamMode {
+        ; Streaming mode: show result window immediately
+        AIResultWindow.Show("", AppState.TargetWindow)   ; empty content initially
+        ; Define a callback that appends text to the window
+        callback := (chunk) => AIResultWindow.AppendToCurrent(chunk)
+        try {
+            ApiClient.Send(activeContent, clipboardContent, callback)
+            ; After completion, we have the full response in the window
+            ; We don't need to set responseText because it was streamed
+        } catch as err {
+            hasError := true
+            errorMessage := err.Message
+            AIResultWindow.Close()
+        }
+    } else {
+        ; Classic mode: wait for full response
+        try {
+            responseText := ApiClient.Send(activeContent, clipboardContent)
+        } catch as err {
+            hasError := true
+            errorMessage := err.Message
+        }
     }
 
     ; Close progress GUI
@@ -176,3 +210,4 @@ SendToApiAndPaste() {
     ; Show the result window (does not modify clipboard)
     AIResultWindow.Show(responseText, AppState.TargetWindow)
 }
+

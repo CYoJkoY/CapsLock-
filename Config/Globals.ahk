@@ -120,4 +120,5 @@ class AppState {
     static ApiModel := "gpt-3.5-turbo"
     static ApiMaxTokens := 2000
     static ApiTemperature := 0.7
+    static ApiStreamMode := false   ; true = streaming, false = classic
 }
