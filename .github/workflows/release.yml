@@ -16,6 +16,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set AHK_DIR and create directory
+        shell: powershell
+        run: |
+          $ahkDir = Join-Path $env:GITHUB_WORKSPACE "Ahk2Exe"
+          New-Item -ItemType Directory -Force -Path $ahkDir | Out-Null
+          echo "AHK_DIR=$ahkDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "AHK_DIR set to $ahkDir"
+
       - name: Download Ahk2Exe compiler
         shell: powershell
         run: |
@@ -44,7 +52,7 @@ jobs:
           $ahkDir = $env:AHK_DIR
           $ahk2exe = Join-Path $ahkDir "Compiler\Ahk2Exe.exe"
           if (-not (Test-Path $ahk2exe)) {
-            throw "Ahk2Exe.exe still not found after installation at $ahk2exe"
+            throw "Ahk2Exe.exe still not found at $ahk2exe"
           }
           & $ahk2exe `
             /in "CapsLock-.ahk" `
