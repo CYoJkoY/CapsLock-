@@ -53,6 +53,7 @@ class ConfigManager {
             try AppState.ApiTemperature := Float(IniRead(cfg, "AI", "ApiTemperature", "0.7"))
             catch
                 AppState.ApiTemperature := 0.7
+            AppState.ApiStreamMode := IniRead(cfg, "AI", "StreamMode", "0") == "1"
         }
     }
 
@@ -81,6 +82,7 @@ class ConfigManager {
             IniWrite(AppState.ApiModel,       cfg, "AI", "ApiModel")
             IniWrite(AppState.ApiMaxTokens,   cfg, "AI", "ApiMaxTokens")
             IniWrite(AppState.ApiTemperature, cfg, "AI", "ApiTemperature")
+            IniWrite(AppState.ApiStreamMode ? "1" : "0", cfg, "AI", "StreamMode")
         }
     }
 }

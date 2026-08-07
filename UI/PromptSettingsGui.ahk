@@ -239,6 +239,7 @@ class PromptSettingsGui {
     }
 
     ; Test the API connection with current settings.
+    ; Returns true on success, throws on failure.
     static TestConnection() {
         ; Temporarily save current settings to AppState
         tempUrl := AppState.ApiUrl
@@ -260,7 +261,7 @@ class PromptSettingsGui {
 
         ; Show progress
         ShowToolTip(Lang("MSG_API_SENDING", "Testing API connection..."), 0)
-
+        osdHwnd := OSD.currentHwnd 
         hwnd := this.GuiObj.Hwnd
         WinSetAlwaysOnTop(0, "ahk_id " . hwnd)
 
@@ -277,6 +278,8 @@ class PromptSettingsGui {
                 Lang("MSG_ERROR", "Error"),
                 "Iconx T2"
             )
+        } finally {
+            OSD.DestroyOSD(osdHwnd)
         }
 
         WinSetAlwaysOnTop(1, "ahk_id " . hwnd)

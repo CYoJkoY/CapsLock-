@@ -32,6 +32,10 @@ BuildTrayMenuItems() {
 
     ; --- AI API Settings ---
     items.Push({ label: "🤖 " Lang("MENU_AI_SETTINGS"), callback: (*) => PromptSettingsGui.Show() })
+
+    ; --- Streaming mode toggle ---
+    streamLabel := (AppState.ApiStreamMode ? "● " : "○ ") . "⚡ " . Lang("MENU_STREAM_MODE")
+    items.Push({ label: streamLabel, callback: (*) => ToggleStreamMode() })
     items.Push({ isSep: true })
 
     ; --- ImageMagick status ---
@@ -174,4 +178,10 @@ SwitchLanguage(code, *) {
         ToolTip(Lang("MSG_LANG_CHANGED", , code))
         SetTimer(() => ToolTip(), -1500)
     }
+}
+
+ToggleStreamMode(*) {
+    AppState.ApiStreamMode := !AppState.ApiStreamMode
+    ConfigManager.Save()
+    ShowToolTip(AppState.ApiStreamMode ? Lang("MSG_STREAM_TOGGLED_ON") : Lang("MSG_STREAM_TOGGLED_OFF"), 2000)
 }

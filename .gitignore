@@ -1,4 +1,6 @@
 **/.vscode/
 **/configs/
+**/langs/
 
+*.lang
 CapsLock-.exe
