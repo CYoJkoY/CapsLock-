@@ -16,6 +16,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install AutoHotkey v2
+        shell: powershell
+        run: |
+          Write-Host "Installing AutoHotkey v2 via chocolatey..."
+          choco install autohotkey -y --no-progress
+          
+          # Verify installation
+          $ahkPath = "C:\Program Files\AutoHotkey\AutoHotkey64.exe"
+          if (Test-Path $ahkPath) {
+            Write-Host "AutoHotkey v2 installed: $ahkPath"
+            & $ahkPath --version 2>&1 | ForEach-Object { Write-Host $_ }
+          } else {
+            throw "AutoHotkey v2 installation failed: $ahkPath not found"
+          }
+
       - name: Set AHK_DIR and create directory
         shell: powershell
         run: |
@@ -49,27 +64,46 @@ jobs:
           $ahkDir = $env:AHK_DIR
           $ahk2exe = Join-Path $ahkDir "Compiler\Ahk2Exe.exe"
           if (-not (Test-Path $ahk2exe)) {
-            throw "Ahk2Exe.exe still not found at $ahk2exe"
+            throw "Ahk2Exe.exe not found at $ahk2exe"
           }
 
-          $iconPath = "assets\CapsLock-.ico"
-          if (-not (Test-Path $iconPath)) {
-            Write-Host "Warning: Icon file '$iconPath' not found"
+          # Path to AHK v2 interpreter (installed via chocolatey)
+          $ahkV2Base = "C:\Program Files\AutoHotkey\AutoHotkey64.exe"
+          if (-not (Test-Path $ahkV2Base)) {
+            throw "AutoHotkey v2 interpreter not found at $ahkV2Base"
           }
 
+          # Build the argument list
           $outFile = "CapsLock-${{ github.ref_name }}.exe"
-          Write-Host "Compiling CapsLock-.ahk -> $outFile ..."
+          $ahk2exeArgs = @(
+            "/in", "CapsLock-.ahk",
+            "/out", $outFile,
+            "/base", $ahkV2Base
+          )
 
-          # Direct invocation, capture all output streams
-          $output = & $ahk2exe /in "CapsLock-.ahk" /out $outFile /icon $iconPath 2>&1
-          $exitCode = $LASTEXITCODE
-
-          if ($output) {
-            Write-Host "=== Ahk2Exe Output ==="
-            $output | ForEach-Object { Write-Host $_ }
+          # Add icon only if it exists
+          $iconPath = "assets\CapsLock-.ico"
+          if (Test-Path $iconPath) {
+            $ahk2exeArgs += "/icon"
+            $ahk2exeArgs += $iconPath
+            Write-Host "Icon file found: $iconPath"
+          } else {
+            Write-Host "Warning: Icon file '$iconPath' not found, compiling without icon"
           }
 
+          Write-Host "Compiling CapsLock-.ahk -> $outFile ..."
+          Write-Host "Command: $ahk2exe $($ahk2exeArgs -join ' ')"
+
+          # Ahk2Exe is a GUI application; use Start-Process -Wait to capture exit code
+          $process = Start-Process -FilePath $ahk2exe `
+            -ArgumentList $ahk2exeArgs `
+            -Wait `
+            -NoNewWindow `
+            -PassThru
+
+          $exitCode = $process.ExitCode
           Write-Host "Exit code: $exitCode"
+
           if ($exitCode -ne 0) {
             throw "Ahk2Exe compilation failed with exit code $exitCode"
           }
