@@ -2,6 +2,8 @@
 #SingleInstance Force
 Persistent()
 
+FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
+
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOn.wav, SND_ON
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
 
