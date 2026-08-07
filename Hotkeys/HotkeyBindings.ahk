@@ -92,4 +92,6 @@
 
     p:: ConvertWithPandoc()
 
+    k:: SendToApiAndPaste()
+
 #HotIf

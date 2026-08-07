@@ -113,4 +113,11 @@ class AppState {
         "rtf", "s5", "slideous", "slidy", "t2t", "tei", "texinfo", "textile",
         "typst", "vimdoc", "xml", "xwiki", "zimwiki"
     ]
+
+    ; --- AI API Settings ---
+    static ApiUrl := ""
+    static ApiKey := ""
+    static ApiModel := "gpt-3.5-turbo"
+    static ApiMaxTokens := 2000
+    static ApiTemperature := 0.7
 }

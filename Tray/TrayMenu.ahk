@@ -30,6 +30,10 @@ ShowTrayCustomMenu(x, y) {
 BuildTrayMenuItems() {
     items := []
 
+    ; --- AI API Settings ---
+    items.Push({ label: "🤖 " Lang("MENU_AI_SETTINGS"), callback: (*) => PromptSettingsGui.Show() })
+    items.Push({ isSep: true })
+
     ; --- ImageMagick status ---
     exe := AppState.ImageMagickExe
     valid := exe != "" && InStr(StrLower(exe), "magick.exe") && FileExist(exe)

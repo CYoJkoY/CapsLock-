@@ -15,6 +15,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
+#Include "Config\PromptManager.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
@@ -24,6 +25,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
 #Include "Core\Pandoc.ahk"
+#Include "Core\ApiClient.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
@@ -32,6 +34,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "History\FullHistoryGui.ahk"
 #Include "History\FullHistoryHandlers.ahk"
 #Include "History\CustomMenu.ahk"
+#Include "Hotkeys\ApiAction.ahk"
 
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
@@ -43,9 +46,12 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
+#Include "UI\PromptEditDialog.ahk"
+#Include "UI\PromptSettingsGui.ahk"
 
 Language.Load()
 ConfigManager.Load()
+PromptManager.Load()
 HistoryManager.Load()
 FileHelper.BuildIgnoreRegexes()
 
