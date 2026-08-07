@@ -44,6 +44,15 @@ class ConfigManager {
 
             ignoreStr := IniRead(cfg, "Ignore", "Rules", "")
             AppState.IgnorePatterns := ignoreStr ? StrSplit(ignoreStr, "|") : []
+
+            ; ---- AI API Settings ----
+            AppState.ApiUrl         := IniRead(cfg, "AI", "ApiUrl",      "")
+            AppState.ApiKey         := IniRead(cfg, "AI", "ApiKey",      "")
+            AppState.ApiModel       := IniRead(cfg, "AI", "ApiModel",    "gpt-3.5-turbo")
+            AppState.ApiMaxTokens   := Integer(IniRead(cfg, "AI", "ApiMaxTokens", "2000"))
+            try AppState.ApiTemperature := Float(IniRead(cfg, "AI", "ApiTemperature", "0.7"))
+            catch
+                AppState.ApiTemperature := 0.7
         }
     }
 
@@ -65,6 +74,13 @@ class ConfigManager {
 
             ignoreStr := Join(AppState.IgnorePatterns, "|")
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
+
+            ; ---- AI API Settings ----
+            IniWrite(AppState.ApiUrl,         cfg, "AI", "ApiUrl")
+            IniWrite(AppState.ApiKey,         cfg, "AI", "ApiKey")
+            IniWrite(AppState.ApiModel,       cfg, "AI", "ApiModel")
+            IniWrite(AppState.ApiMaxTokens,   cfg, "AI", "ApiMaxTokens")
+            IniWrite(AppState.ApiTemperature, cfg, "AI", "ApiTemperature")
         }
     }
 }
