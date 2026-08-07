@@ -16,10 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download AutoHotkey v2 portable
+      - name: Download AutoHotkey v2 portable (from GitHub Releases)
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://www.autohotkey.com/download/ahk-v2.zip" -OutFile "ahk-v2.zip"
+          $version = "2.0.26"
+          $url = "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$version/AutoHotkey_$version.zip"
+          Write-Host "Downloading from $url"
+          Invoke-WebRequest -Uri $url -OutFile "ahk-v2.zip"
           Expand-Archive -Path "ahk-v2.zip" -DestinationPath "ahk-v2"
           echo "AHK_DIR=$env:GITHUB_WORKSPACE\ahk-v2" >> $env:GITHUB_ENV
 
