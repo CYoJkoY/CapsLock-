@@ -29,7 +29,7 @@
 ## 📖 Overview
 
 **CapsLock Extended** redefines the purpose of the `CapsLock` key, turning it into a "super modifier key".  
-By holding `CapsLock` and combining it with other keys, you can perform Vim-style home row cursor movement, advanced clipboard management (including encrypted history), window transparency adjustment, tab switching, and other workflow automations—all without leaving the keyboard's home row.
+By holding `CapsLock` and combining it with other keys, you can perform Vim-style home row cursor movement, advanced clipboard management (including encrypted history), window transparency adjustment, tab switching, document format conversion via Pandoc, and other workflow automations—all without leaving the keyboard's home row.
 
 > **Note**  
 > This script supports **AutoHotkey v2 only** and is not backward compatible with v1.
@@ -58,6 +58,16 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim-styl
     <li><code>Shift+V</code> encrypted history quick menu with preview, single/batch paste, delete</li>
     <li><code>F</code> instant case swap of clipboard text (preserves original in clipboard)</li>
     <li>Custom ignore rules (gitignore syntax) to exclude sensitive or temporary files during paste</li>
+  </ul>
+</div>
+
+<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
+  <h3 style="margin-top: 0; color: #D6D2CC;">📄 Document Conversion (Pandoc)</h3>
+  <ul style="color: #BEB8AE;">
+    <li><code>P</code> convert clipboard file paths via Pandoc — supports 50+ input and 70+ output formats</li>
+    <li>Automatically expands folders recursively, applies ignore rules, and shows a progress bar for batch jobs</li>
+    <li>Output format configurable from the tray menu (default: <code>docx</code>)</li>
+    <li>Pasted as multi‑file drop for immediate use in Explorer, chat apps, and more</li>
   </ul>
 </div>
 
@@ -107,6 +117,7 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 |                | `V`                         | **Smart paste** (image paths→PDF / multi‑file content merge / mixed paths) |
 |                | `Shift+V`                   | Open **clipboard history** quick menu                                      |
 |                | `F`                         | **Swap case** of clipboard text and paste (original retained)              |
+|                | `P`                         | **Pandoc convert** clipboard file paths to configured output format        |
 | **Navigation** | `←` / `→`                   | Move cursor left/right **by one word**                                     |
 |                | `↑` / `↓`                   | Jump to **beginning** / **end of line**                                    |
 |                | `Space`                     | Select the **entire word** under the cursor                                |
@@ -151,6 +162,7 @@ _All shortcuts below require **holding `CapsLock`** while pressing the correspon
 1. Right‑click the tray icon → hover **"Pandoc: Not Set / Valid"** → click **"Set Pandoc Path"**.
 2. Browse to your Pandoc installation directory and select `pandoc.exe`.
 3. To change the output format, use the same sub‑menu → **"Set Pandoc Output"**.
+4. Once configured, use `CapsLock+P` to convert clipboard file paths to the selected output format.
 
 ---
 
@@ -339,8 +351,9 @@ CapsLock-
 - **Resource‑embedded sound** – Always‑on‑top toggle sounds (`AlwaysOnTopOn.wav` / `AlwaysOnTopOff.wav`) are embedded as binary resources and played via `PlaySoundW` without external files.
 - **Fast plain‑text copy** – `CopyAsPlainText()` backs up only `A_Clipboard` (text) instead of `ClipboardAll()` (all formats), significantly reducing backup time for rich clipboard content.
 - **Recursive file enumeration** – `CollectFilesFromFolder()` uses native `Loop Files, "FR"` for deep directory trees, avoiding slow manual recursion.
-- **Pandoc integration** – `ConvertWithPandoc()` converts files between 50+ input formats and 70+ output formats, with progress GUI and batch processing support.
+- **Pandoc integration** – `ConvertWithPandoc()` converts files between 50+ input formats and 70+ output formats, with progress GUI and batch processing support. Triggered via `CapsLock+P`.
 - **Smart paste routing** – `PasteWithCurrentMode()` intelligently detects clipboard content type (single file, multiple files, folders, mixed paths, images) and routes to the appropriate paste handler.
+- **Auto history trimming** – Optional periodic cleanup (`AutoCleanEnabled`) automatically trims the history to `MaxHistoryItems` every 60 seconds, keeping memory and disk usage in check.
 
 ---
 
