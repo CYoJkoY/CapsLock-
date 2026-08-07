@@ -33,10 +33,15 @@ jobs:
 
           $releaseUrl = "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
           $release = Invoke-RestMethod -Uri $releaseUrl -UseBasicParsing
-          $asset = $release.assets | Where-Object { $_.name -match 'Ahk2Exe-\d+\.\d+\.\d+\.zip' } | Select-Object -First 1
-          if (-not $asset) { throw "No Ahk2Exe zip asset found" }
-          $downloadUrl = $asset.browser_download_url
 
+          $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe[0-9.]+\.zip$' } | Select-Object -First 1
+          if (-not $asset) {
+            # Fallback: match any "Ahk2Exe*.zip"
+            $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' } | Select-Object -First 1
+          }
+          if (-not $asset) { throw "No Ahk2Exe zip asset found" }
+
+          $downloadUrl = $asset.browser_download_url
           Write-Host "Downloading Ahk2Exe from $downloadUrl"
           Invoke-WebRequest -Uri $downloadUrl -OutFile "Ahk2Exe.zip" -UseBasicParsing -ErrorAction Stop
           Expand-Archive -Path "Ahk2Exe.zip" -DestinationPath $compilerDir -Force -ErrorAction Stop
