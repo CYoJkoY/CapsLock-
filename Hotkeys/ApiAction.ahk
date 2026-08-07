@@ -1,10 +1,122 @@
 #Requires AutoHotkey v2.0
 
-; Handles the CapsLock+K hotkey: sends active prompt + clipboard content
-; to the configured AI API and pastes the response at the cursor position.
+; =========================================================================
+; Handles the CapsLock+K hotkey: opens a read-only GUI window showing the
+; AI response. The user can press C to copy the entire content, or K to
+; output the content at the current cursor position.
+; =========================================================================
 
+; ---------------------------------------------------------------------------
+; AI Result Window – displays the response and handles C/K hotkeys
+; ---------------------------------------------------------------------------
+class AIResultWindow {
+    static GuiObj := ""
+    static TargetWindow := 0
+    static Content := ""
+
+    ; Show a new result window. Closes any existing window first.
+    static Show(content, targetHwnd) {
+        this.Close()
+        this.Content := content
+        this.TargetWindow := targetHwnd
+
+        myGui := Gui("+AlwaysOnTop +Resize +MinSize600x400", Lang("GUI_AI_RESULT_TITLE"))
+        ThemeHelper.StyleGui(myGui)
+
+        ; Title
+        ThemeHelper.AddTitle(myGui, "🤖 " . Lang("GUI_AI_RESULT_TITLE"), 560)
+
+        ; Content edit – read‑only, multi‑line, monospace
+        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
+        editCtrl := myGui.Add("Edit", "Multi VScroll ReadOnly w560 h300 " ThemeHelper.GetEditOptions(), content)
+
+        ; Bottom hint
+        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.Add("Text", "x16 y+8 w560 center", Lang("GUI_AI_RESULT_HINT"))
+
+        ; Event handlers
+        myGui.OnEvent("Close", (*) => this.Close())
+        myGui.OnEvent("Escape", (*) => this.Close())
+
+        this.GuiObj := myGui
+        myGui.Show("w640 h480")
+        ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+
+        ; Install the keyboard hook only once
+        static keyHandlerRegistered := false
+        if !keyHandlerRegistered {
+            OnMessage(0x100, this.KeyHandler.Bind(this))
+            keyHandlerRegistered := true
+        }
+    }
+
+    ; Close and clean up the window
+    static Close() {
+        if IsObject(this.GuiObj) {
+            try this.GuiObj.Destroy()
+            this.GuiObj := ""
+        }
+        this.Content := ""
+        this.TargetWindow := 0
+    }
+
+    ; WM_KEYDOWN handler – responds to C and K when the result window is active
+    static KeyHandler(wParam, lParam, msg, hwnd) {
+        ; Ignore if the message does not belong to our window
+        if !IsObject(this.GuiObj) || this.GuiObj.Hwnd != hwnd
+            return
+
+        ; Ignore modifier keys to avoid interfering with normal shortcuts
+        if GetKeyState("Ctrl", "P") || GetKeyState("Alt", "P") || GetKeyState("Shift", "P")
+            return
+
+        vkCode := wParam
+        if (vkCode == 0x43) { ; C key – copy all content
+            A_Clipboard := this.Content
+            OSD.ShowNotification(Lang("GUI_AI_RESULT_COPY_TOAST"), 1500, "success")
+            return 0
+        }
+        else if (vkCode == 0x4B) { ; K key – output content
+            if (this.Content == "") {
+                OSD.ShowNotification(Lang("GUI_AI_RESULT_EMPTY"), 1500, "warning")
+                return 0
+            }
+
+            target := this.TargetWindow
+            ; Fallback to the currently active window if the captured one is gone
+            if !target || !WinExist("ahk_id " target) {
+                target := WinExist("A")
+                if !target {
+                    OSD.ShowNotification(Lang("MSG_NO_TARGET"), 2000, "error")
+                    return 0
+                }
+                this.TargetWindow := target
+            }
+
+            ; Temporarily set clipboard to the content, paste, then restore
+            backup := A_Clipboard
+            AppState.IgnoreNextClipChange := true
+            A_Clipboard := this.Content
+
+            WinActivate("ahk_id " target)
+            Sleep(100)
+            Send("^v")
+            Sleep(50)
+
+            AppState.IgnoreNextClipChange := true
+            A_Clipboard := backup
+
+            OSD.ShowNotification(Lang("GUI_AI_RESULT_OUTPUT_TOAST"), 1500, "info")
+            return 0
+        }
+    }
+}
+
+; ---------------------------------------------------------------------------
+; Main entry point called by CapsLock+K
+; ---------------------------------------------------------------------------
 SendToApiAndPaste() {
-    ; Validate configuration
+    ; Validate API configuration
     if (AppState.ApiUrl == "" || AppState.ApiKey == "") {
         ShowToolTip(Lang("MSG_API_URL_NOT_SET"), 3000)
         return
@@ -24,13 +136,10 @@ SendToApiAndPaste() {
         return
     }
 
-    ; Capture the current target window for pasting
+    ; Capture the target window for later pasting (K key)
     CapturePasteTarget()
 
-    ; Save original clipboard to restore after
-    originalClipboard := A_Clipboard
-
-    ; Show progress notification
+    ; Show progress GUI
     progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
     ThemeHelper.StyleGui(progressGui)
     ThemeHelper.AddTitle(progressGui, "⏳ " . Lang("MSG_API_SENDING", "Sending request to AI..."), 360)
@@ -40,11 +149,10 @@ SendToApiAndPaste() {
     progressGui.Show("AutoSize Center")
     ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
 
-    ; Call API
+    ; Call the API
     responseText := ""
     hasError := false
     errorMessage := ""
-
     try {
         responseText := ApiClient.Send(activeContent, clipboardContent)
     } catch as err {
@@ -52,25 +160,19 @@ SendToApiAndPaste() {
         errorMessage := err.Message
     }
 
-    ; Destroy progress GUI
+    ; Close progress GUI
     try progressGui.Destroy()
 
-    ; Handle response
+    ; Handle errors
     if hasError || responseText == "" {
-        ; Show error
         errorMsg := errorMessage != "" ? errorMessage : Lang("MSG_API_PARSE_ERROR", "Empty response from API.")
         ShowToolTip(errorMsg, 4000)
-
-        ; Restore clipboard
-        AppState.IgnoreNextClipChange := true
-        A_Clipboard := originalClipboard
         return
     }
 
-    ; Paste the response
-    ; Trim any leading/trailing whitespace that APIs commonly add
+    ; Trim common whitespace added by APIs
     responseText := Trim(responseText, " `t`r`n")
 
-    ; Use PasteAsPlainText to handle the paste + clipboard restore
-    PasteAsPlainText(responseText, Lang("MSG_API_SUCCESS", "AI response pasted."))
+    ; Show the result window (does not modify clipboard)
+    AIResultWindow.Show(responseText, AppState.TargetWindow)
 }

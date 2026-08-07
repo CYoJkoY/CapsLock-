@@ -239,6 +239,7 @@ class PromptSettingsGui {
     }
 
     ; Test the API connection with current settings.
+    ; Returns true on success, throws on failure.
     static TestConnection() {
         ; Temporarily save current settings to AppState
         tempUrl := AppState.ApiUrl
@@ -264,6 +265,7 @@ class PromptSettingsGui {
         hwnd := this.GuiObj.Hwnd
         WinSetAlwaysOnTop(0, "ahk_id " . hwnd)
 
+        ; --- ADD TRY-CATCH HERE ---
         try {
             ApiClient.TestConnection()
             MsgBox(
@@ -278,6 +280,7 @@ class PromptSettingsGui {
                 "Iconx T2"
             )
         }
+        ; -------------------------
 
         WinSetAlwaysOnTop(1, "ahk_id " . hwnd)
 
