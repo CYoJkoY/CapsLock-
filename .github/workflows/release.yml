@@ -33,20 +33,7 @@ jobs:
           $compilerDir = Join-Path $ahkDir "Compiler"
           New-Item -ItemType Directory -Force -Path $compilerDir | Out-Null
 
-          $headers = @{
-            Authorization = "token $env:GITHUB_TOKEN"
-            Accept        = "application/vnd.github.v3+json"
-          }
-          $releaseUrl = "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
-          $release = Invoke-RestMethod -Uri $releaseUrl -Headers $headers -UseBasicParsing
-
-          $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe[0-9.]+\.zip$' } | Select-Object -First 1
-          if (-not $asset) {
-            $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' } | Select-Object -First 1
-          }
-          if (-not $asset) { throw "No Ahk2Exe zip asset found" }
-
-          $downloadUrl = $asset.browser_download_url
+          $downloadUrl = "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip"
           Write-Host "Downloading Ahk2Exe from $downloadUrl"
           Invoke-WebRequest -Uri $downloadUrl -OutFile "Ahk2Exe.zip" -UseBasicParsing -ErrorAction Stop
           Expand-Archive -Path "Ahk2Exe.zip" -DestinationPath $compilerDir -Force -ErrorAction Stop
@@ -68,6 +55,24 @@ jobs:
             /in "CapsLock-.ahk" `
             /out "CapsLock-${{ github.ref_name }}.exe" `
             /icon "assets\CapsLock-.ico"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Ahk2Exe compilation failed with exit code $LASTEXITCODE"
+          }
+          $outFile = "CapsLock-${{ github.ref_name }}.exe"
+          if (-not (Test-Path $outFile)) {
+            throw "Compiled executable $outFile not found"
+          }
+          Write-Host "Compilation successful: $outFile ($((Get-Item $outFile).Length) bytes)"
+
+      - name: List files for debugging
+        shell: powershell
+        run: |
+          Write-Host "=== Current directory contents ==="
+          Get-ChildItem | Select-Object Name, Length
+          Write-Host "=== Checking for CapsLock-*.exe ==="
+          Get-ChildItem -Filter "CapsLock-*.exe" | ForEach-Object {
+            Write-Host "Found: $($_.Name) (Size: $($_.Length) bytes)"
+          }
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
