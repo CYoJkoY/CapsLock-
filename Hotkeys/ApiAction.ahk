@@ -91,10 +91,11 @@ class AIResultWindow {
             return
         try {
             if this.GuiObj.HasProp("editCtrl") {
+                hEdit := this.GuiObj.editCtrl.Hwnd
                 current := this.GuiObj.editCtrl.Value
                 this.GuiObj.editCtrl.Value := current . this._buffer
-                SendMessage(0x00B1, 0, -1, this.GuiObj.editCtrl.Hwnd)   ; scroll to bottom
                 this._buffer := ""
+                SendMessage(0x00B1, -1, -1, hEdit)
             }
         }
     }
