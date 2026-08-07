@@ -29,18 +29,32 @@ jobs:
           New-Item -ItemType Directory -Force -Path "ahk-v2" | Out-Null
           Expand-Archive -Path "ahk-v2.zip" -DestinationPath "ahk-v2" -ErrorAction Stop
 
-          $exePath = "$env:GITHUB_WORKSPACE\ahk-v2\Compiler\Ahk2Exe.exe"
-          if (-not (Test-Path $exePath)) {
-            throw "Ahk2Exe.exe not found at $exePath"
+          $ahkExe = Get-ChildItem -Path "ahk-v2" -Recurse -Filter "AutoHotkey.exe" | Select-Object -First 1
+          if (-not $ahkExe) {
+            throw "AutoHotkey.exe not found in ahk-v2/"
           }
 
-          echo "AHK_DIR=$env:GITHUB_WORKSPACE\ahk-v2" >> $env:GITHUB_ENV
-          Write-Host "AHK_DIR set to $env:GITHUB_WORKSPACE\ahk-v2"
+          $ahkDir = Split-Path -Parent $ahkExe.FullName
+          echo "AHK_DIR=$ahkDir" >> $env:GITHUB_ENV
+          Write-Host "AHK_DIR set to $ahkDir"
+
+          $installScript = Join-Path $ahkDir "UX\install-ahk2exe.ahk"
+          if (-not (Test-Path $installScript)) {
+            throw "install-ahk2exe.ahk not found at $installScript"
+          }
+
+          Write-Host "Running install-ahk2exe.ahk to download compiler..."
+          & $ahkExe $installScript
 
       - name: Compile with Ahk2Exe
         shell: powershell
         run: |
-          & "$env:AHK_DIR\Compiler\Ahk2Exe.exe" `
+          $ahkDir = $env:AHK_DIR
+          $ahk2exe = Join-Path $ahkDir "Compiler\Ahk2Exe.exe"
+          if (-not (Test-Path $ahk2exe)) {
+            throw "Ahk2Exe.exe still not found after installation at $ahk2exe"
+          }
+          & $ahk2exe `
             /in "CapsLock-.ahk" `
             /out "CapsLock-${{ github.ref_name }}.exe" `
             /icon "assets\CapsLock-.ico"
