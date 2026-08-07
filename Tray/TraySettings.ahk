@@ -154,3 +154,106 @@ SaveIgnoreRules(text, myGui) {
     ToolTip(Lang("MSG_IGNORE_UPDATED"))
     SetTimer(() => ToolTip(), -2000)
 }
+
+SetPandocPath(*) {
+    SelectedFile := Trim(FileSelect(1, A_ProgramFiles, Lang("INPUT_PANDOC_PATH_TITLE", "Select Pandoc executable"), Lang("INPUT_PANDOC_PATH_FILTER", "Pandoc.exe")))
+    if (SelectedFile == "")
+        return
+
+    if !InStr(StrLower(SelectedFile), "pandoc.exe") {
+        MsgBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
+        return
+    }
+
+    if !FileExist(SelectedFile) {
+        MsgBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
+        return
+    }
+
+    AppState.PandocExe := SelectedFile
+    ConfigManager.Save()
+    MsgBox(Lang("MSG_PANDOC_PATH_SET", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
+}
+
+_SortStrings(arr) {
+    n := arr.Length
+    if n <= 1
+        return arr
+    Loop n - 1 {
+        swapped := false
+        Loop n - A_Index {
+            if (StrCompare(arr[A_Index], arr[A_Index + 1]) > 0) {
+                tmp := arr[A_Index]
+                arr[A_Index] := arr[A_Index + 1]
+                arr[A_Index + 1] := tmp
+                swapped := true
+            }
+        }
+        if !swapped
+            break
+    }
+    return arr
+}
+
+SetPandocOutput(*) {
+    myGui := Gui("+AlwaysOnTop", Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
+    ThemeHelper.StyleGui(myGui)
+    ThemeHelper.AddTitle(myGui, "📤 " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
+    ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
+    ThemeHelper.AddSeparator(myGui, 420)
+
+    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    formats := AppState.PandocOutputFormats.Clone()
+    _SortStrings(formats)
+
+    cbo := myGui.Add("ComboBox", "w320 vOutputFormat Choose1", formats)
+
+    current := AppState.PandocOutputFormat
+    Loop formats.Length {
+        if (formats[A_Index] == current) {
+            cbo.Choose(A_Index)
+            break
+        }
+    }
+
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+
+    btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
+    btnCancel.OnEvent("Click", (*) => myGui.Destroy())
+    myGui.OnEvent("Escape", (*) => myGui.Destroy())
+    myGui.Show("AutoSize Center")
+    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+}
+
+SavePandocOutput(newFormat, myGui) {
+    if (newFormat == "") {
+        myGui.Destroy()
+        return
+    }
+
+    if (!_IsOutputFormatSupported(newFormat)) {
+        hwnd := myGui.Hwnd
+        WinSetAlwaysOnTop(0, "ahk_id " hwnd)
+        MsgBox(
+            Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", newFormat),
+            Lang("MSG_ERROR"),
+            "Iconx T"
+        )
+        WinSetAlwaysOnTop(1, "ahk_id " hwnd)
+        myGui.Destroy()
+        return
+    }
+
+    AppState.PandocOutputFormat := newFormat
+    ConfigManager.Save()
+    hwnd := myGui.Hwnd
+    WinSetAlwaysOnTop(0, "ahk_id " hwnd)
+    MsgBox(
+        Lang("MSG_PANDOC_OUTPUT_SET", , newFormat),
+        Lang("MSG_SUCCESS"),
+        "Iconi T2"
+    )
+    WinSetAlwaysOnTop(1, "ahk_id " hwnd)
+    myGui.Destroy()
+}

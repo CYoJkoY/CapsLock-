@@ -26,6 +26,17 @@ class ConfigManager {
             AppState.PasteMode         := IniRead(cfg, "General",   "pasteMode",      1)
             AppState.AutoCleanEnabled  := IniRead(cfg, "General",   "autoClean",      "0") == "1"
             AppState.MaxHistoryItems   := Integer(IniRead(cfg, "General", "maxHistoryItems", "500"))
+            AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
+            AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
+
+            ; ---- Validate Pandoc output format ----
+            ; If the loaded format is not a valid string or not in the supported list,
+            ; reset to "docx" and update the config file immediately.
+            if !_IsPandocFormatSupported(AppState.PandocOutputFormat) {
+                AppState.PandocOutputFormat := "docx"
+                IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
+            }
+            ; -----------------------------------------
 
             langVal := IniRead(cfg, "General", "language", "")
             if langVal != "" && AppState.HasProp("CurrentLanguage")
@@ -46,6 +57,8 @@ class ConfigManager {
             IniWrite(AppState.PasteMode,          cfg, "General",   "pasteMode")
             IniWrite(AppState.AutoCleanEnabled ? "1" : "0", cfg, "General", "autoClean")
             IniWrite(AppState.MaxHistoryItems,    cfg, "General",   "maxHistoryItems")
+            IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
+            IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
 
             if AppState.HasProp("CurrentLanguage") && AppState.CurrentLanguage != ""
                 IniWrite(AppState.CurrentLanguage, cfg, "General", "language")
@@ -54,4 +67,17 @@ class ConfigManager {
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
         }
     }
+}
+
+; Helper function to check if a format is a valid string and exists in the supported list.
+; This function is defined here to avoid dependency on Pandoc.ahk.
+_IsPandocFormatSupported(format) {
+    ; Ensure format is a non-empty string
+    if !(format is String) || format == ""
+        return false
+    for f in AppState.PandocOutputFormats {
+        if (f == format)
+            return true
+    }
+    return false
 }
