@@ -31,8 +31,12 @@ jobs:
           $compilerDir = Join-Path $ahkDir "Compiler"
           New-Item -ItemType Directory -Force -Path $compilerDir | Out-Null
 
+          $headers = @{
+            Authorization = "token $env:GITHUB_TOKEN"
+            Accept        = "application/vnd.github.v3+json"
+          }
           $releaseUrl = "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
-          $release = Invoke-RestMethod -Uri $releaseUrl -UseBasicParsing
+          $release = Invoke-RestMethod -Uri $releaseUrl -Headers $headers -UseBasicParsing
 
           $asset = $release.assets | Where-Object { $_.name -match '^Ahk2Exe[0-9.]+\.zip$' } | Select-Object -First 1
           if (-not $asset) {
