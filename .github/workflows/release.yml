@@ -13,144 +13,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install AutoHotkey v2 (official release ZIP)
-        shell: powershell
-        run: |
-          $ahkVersion = "2.0.26"
-          $ahkInstallDir = "C:\Program Files\AutoHotkey"
-          $ahkZipUrl = "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$ahkVersion/AutoHotkey_$ahkVersion.zip"
+      - name: Build (x86)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-_x86.exe
+          icon: .\assets\CapsLock-.ico
+          target: x86
+          ahk-tag: v2.0.26
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-          Write-Host "Downloading AutoHotkey v$ahkVersion from GitHub Releases..."
-          Invoke-WebRequest -Uri $ahkZipUrl -OutFile "$env:TEMP\AutoHotkey.zip" -UseBasicParsing -ErrorAction Stop
-
-          Write-Host "Extracting to $ahkInstallDir ..."
-          New-Item -ItemType Directory -Force -Path $ahkInstallDir | Out-Null
-          Expand-Archive -Path "$env:TEMP\AutoHotkey.zip" -DestinationPath $ahkInstallDir -Force -ErrorAction Stop
-          Remove-Item "$env:TEMP\AutoHotkey.zip"
-
-          # Verify the v2 interpreter binary
-          $ahkExe = Join-Path $ahkInstallDir "AutoHotkey64.exe"
-          if (-not (Test-Path $ahkExe)) {
-            # Some ZIP layouts put it in a subfolder; attempt to locate
-            $found = Get-ChildItem -Path $ahkInstallDir -Recurse -Filter "AutoHotkey64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-              $ahkExe = $found.FullName
-              Write-Host "AutoHotkey64.exe found at: $ahkExe"
-            } else {
-              throw "AutoHotkey64.exe not found after extraction in $ahkInstallDir"
-            }
-          } else {
-            Write-Host "AutoHotkey64.exe found: $ahkExe"
-          }
-
-          # Output version info for debugging
-          & $ahkExe --version 2>&1 | ForEach-Object { Write-Host $_ }
-
-      - name: Set AHK_DIR and create directory
-        shell: powershell
-        run: |
-          $ahkDir = Join-Path $env:GITHUB_WORKSPACE "Ahk2Exe"
-          New-Item -ItemType Directory -Force -Path $ahkDir | Out-Null
-          echo "AHK_DIR=$ahkDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "AHK_DIR set to $ahkDir"
-
-      - name: Download Ahk2Exe compiler
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $ahkDir = $env:AHK_DIR
-          $compilerDir = Join-Path $ahkDir "Compiler"
-          New-Item -ItemType Directory -Force -Path $compilerDir | Out-Null
-
-          $downloadUrl = "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip"
-          Write-Host "Downloading Ahk2Exe from $downloadUrl"
-          Invoke-WebRequest -Uri $downloadUrl -OutFile "Ahk2Exe.zip" -UseBasicParsing -ErrorAction Stop
-          Expand-Archive -Path "Ahk2Exe.zip" -DestinationPath $compilerDir -Force -ErrorAction Stop
-          Remove-Item "Ahk2Exe.zip"
-
-          $ahk2exe = Join-Path $compilerDir "Ahk2Exe.exe"
-          if (-not (Test-Path $ahk2exe)) { throw "Ahk2Exe.exe not found after download" }
-          Write-Host "Ahk2Exe installed to $ahk2exe"
-
-      - name: Compile with Ahk2Exe
-        shell: powershell
-        run: |
-          $ahkDir = $env:AHK_DIR
-          $ahk2exe = Join-Path $ahkDir "Compiler\Ahk2Exe.exe"
-          if (-not (Test-Path $ahk2exe)) {
-            throw "Ahk2Exe.exe not found at $ahk2exe"
-          }
-
-          # Path to AHK v2 interpreter (installed from official ZIP)
-          $ahkV2Base = "C:\Program Files\AutoHotkey\AutoHotkey64.exe"
-          # Fallback: search recursively if the ZIP had a nested structure
-          if (-not (Test-Path $ahkV2Base)) {
-            $found = Get-ChildItem -Path "C:\Program Files\AutoHotkey" -Recurse -Filter "AutoHotkey64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) { $ahkV2Base = $found.FullName } else { throw "AutoHotkey v2 interpreter not found" }
-          }
-          Write-Host "Using AHK interpreter: $ahkV2Base"
-
-          # Build the argument list
-          $outFile = "CapsLock-${{ github.ref_name }}.exe"
-          $ahk2exeArgs = @(
-            "/in", "CapsLock-.ahk",
-            "/out", $outFile,
-            "/base", $ahkV2Base
-          )
-
-          # Add icon only if it exists
-          $iconPath = "assets\CapsLock-.ico"
-          if (Test-Path $iconPath) {
-            $ahk2exeArgs += "/icon"
-            $ahk2exeArgs += $iconPath
-            Write-Host "Icon file found: $iconPath"
-          } else {
-            Write-Host "Warning: Icon file '$iconPath' not found, compiling without icon"
-          }
-
-          Write-Host "Compiling CapsLock-.ahk -> $outFile ..."
-          Write-Host "Command: $ahk2exe $($ahk2exeArgs -join ' ')"
-
-          # Ahk2Exe is a GUI application; use Start-Process -Wait to capture exit code
-          $process = Start-Process -FilePath $ahk2exe `
-            -ArgumentList $ahk2exeArgs `
-            -Wait `
-            -NoNewWindow `
-            -PassThru
-
-          $exitCode = $process.ExitCode
-          Write-Host "Exit code: $exitCode"
-
-          if ($exitCode -ne 0) {
-            throw "Ahk2Exe compilation failed with exit code $exitCode"
-          }
-
-          if (-not (Test-Path $outFile)) {
-            throw "Compiled executable $outFile not found"
-          }
-          Write-Host "Compilation successful: $outFile ($((Get-Item $outFile).Length) bytes)"
-
-      - name: List files for debugging
-        shell: powershell
-        run: |
-          Write-Host "=== Current directory contents ==="
-          Get-ChildItem | Select-Object Name, Length
-          Write-Host "=== Checking for CapsLock-*.exe ==="
-          Get-ChildItem -Filter "CapsLock-*.exe" | ForEach-Object {
-            Write-Host "Found: $($_.Name) (Size: $($_.Length) bytes)"
-          }
+      - name: Build (x64)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-.exe
+          icon: .\assets\CapsLock-.ico
+          target: x64
+          ahk-tag: v2.0.26
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: CapsLock-${{ github.ref_name }}.exe
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          files: |
+            .\build\CapsLock-_x86.exe
+            .\build\CapsLock-.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
