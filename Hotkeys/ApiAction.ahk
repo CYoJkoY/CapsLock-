@@ -13,12 +13,16 @@ class AIResultWindow {
     static GuiObj := ""
     static TargetWindow := 0
     static Content := ""
+    static _buffer := ""
+    static _updateTimer := ""
+    static _pending := false
 
     ; Show a new result window. Closes any existing window first.
     static Show(content, targetHwnd) {
         this.Close()
         this.Content := content
         this.TargetWindow := targetHwnd
+        this._buffer := ""
 
         myGui := Gui("+AlwaysOnTop +Resize +MinSize600x400", Lang("GUI_AI_RESULT_TITLE"))
         ThemeHelper.StyleGui(myGui)
@@ -53,12 +57,46 @@ class AIResultWindow {
 
     ; Close and clean up the window
     static Close() {
+        if this._updateTimer
+            SetTimer(this._updateTimer, 0)
+
         if IsObject(this.GuiObj) {
             try this.GuiObj.Destroy()
             this.GuiObj := ""
         }
+
         this.Content := ""
         this.TargetWindow := 0
+        this._buffer := ""
+        this._pending := false
+    }
+
+    ; Append text to buffer and schedule a flush
+    static AppendToCurrent(text) {
+        if !IsObject(this.GuiObj)
+            return
+        this._buffer .= text
+        if !this._pending {
+            this._pending := true
+            this._updateTimer := ObjBindMethod(this, "FlushBuffer")
+            SetTimer(this._updateTimer, -50)   ; flush after 50ms of inactivity
+        }
+    }
+
+    ; Flush accumulated buffer to the edit control
+    static FlushBuffer() {
+        this._pending := false
+        this._updateTimer := ""
+        if !IsObject(this.GuiObj) || this._buffer == ""
+            return
+        try {
+            if this.GuiObj.HasProp("editCtrl") {
+                current := this.GuiObj.editCtrl.Value
+                this.GuiObj.editCtrl.Value := current . this._buffer
+                SendMessage(0x00B1, 0, -1, this.GuiObj.editCtrl.Hwnd)   ; scroll to bottom
+                this._buffer := ""
+            }
+        }
     }
 
     ; WM_KEYDOWN handler – responds to C and K when the result window is active
@@ -111,21 +149,6 @@ class AIResultWindow {
             return 0
         }
     }
-
-    ; Append text to the currently displayed result window (if any)
-    static AppendToCurrent(text) {
-        if !IsObject(this.GuiObj)
-            return
-        try {
-            ; Find the Edit control (we stored it as editCtrl)
-            if this.GuiObj.HasProp("editCtrl") {
-                current := this.GuiObj.editCtrl.Value
-                this.GuiObj.editCtrl.Value := current . text
-                ; Auto-scroll to bottom
-                SendMessage(0x00B1, 0, -1, this.GuiObj.editCtrl.Hwnd)   ; WM_VSCROLL, SB_BOTTOM
-            }
-        }
-    }
 }
 
 ; ---------------------------------------------------------------------------
@@ -176,7 +199,7 @@ SendToApiAndPaste() {
         ; Define a callback that appends text to the window
         callback := (chunk) => AIResultWindow.AppendToCurrent(chunk)
         try {
-            ApiClient.Send(activeContent, clipboardContent, callback)
+            responseText := ApiClient.Send(activeContent, clipboardContent, callback)
             ; After completion, we have the full response in the window
             ; We don't need to set responseText because it was streamed
         } catch as err {

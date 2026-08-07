@@ -184,7 +184,4 @@ ToggleStreamMode(*) {
     AppState.ApiStreamMode := !AppState.ApiStreamMode
     ConfigManager.Save()
     ShowToolTip(AppState.ApiStreamMode ? Lang("MSG_STREAM_TOGGLED_ON") : Lang("MSG_STREAM_TOGGLED_OFF"), 2000)
-    if IsObject(PromptSettingsGui.GuiObj) {
-        try PromptSettingsGui.StreamCheck.Value := AppState.ApiStreamMode
-    }
 }

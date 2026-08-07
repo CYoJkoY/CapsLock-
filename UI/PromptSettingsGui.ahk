@@ -108,12 +108,6 @@ class PromptSettingsGui {
         btnEdit.OnEvent("Click", (*) => this.EditPrompt())
         this.BtnEdit := btnEdit
 
-        ; Streaming mode checkbox
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        chkStream := myGui.Add("CheckBox", "x16 y+10 w200 " ThemeHelper.GetCheckBoxOptions(), Lang("GUI_AI_STREAM_MODE"))
-        chkStream.Value := AppState.ApiStreamMode
-        this.StreamCheck := chkStream
-
         btnDelete := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑️ " . Lang("GUI_AI_DELETE_PROMPT"), "danger")
         btnDelete.OnEvent("Click", (*) => this.DeletePrompt())
         this.BtnDelete := btnDelete
@@ -267,11 +261,10 @@ class PromptSettingsGui {
 
         ; Show progress
         ShowToolTip(Lang("MSG_API_SENDING", "Testing API connection..."), 0)
-
+        osdHwnd := OSD.currentHwnd 
         hwnd := this.GuiObj.Hwnd
         WinSetAlwaysOnTop(0, "ahk_id " . hwnd)
 
-        ; --- ADD TRY-CATCH HERE ---
         try {
             ApiClient.TestConnection()
             MsgBox(
@@ -285,8 +278,9 @@ class PromptSettingsGui {
                 Lang("MSG_ERROR", "Error"),
                 "Iconx T2"
             )
+        } finally {
+            OSD.DestroyOSD(osdHwnd)
         }
-        ; -------------------------
 
         WinSetAlwaysOnTop(1, "ahk_id " . hwnd)
 
@@ -322,8 +316,6 @@ class PromptSettingsGui {
         } catch {
             AppState.ApiTemperature := 0.7
         }
-
-        AppState.ApiStreamMode := this.StreamCheck.Value
 
         ConfigManager.Save()
         ShowToolTip(Lang("MSG_API_SETTINGS_SAVED", "API settings saved."), 1500)

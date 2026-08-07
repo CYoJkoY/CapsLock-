@@ -60,45 +60,163 @@ class ApiClient {
         return this._ParseResponse(whr.ResponseText)
     }
 
-    ; ------------------------------------------------------------------------
-    ; Streaming request – calls the callback for each new text fragment.
-    ; ------------------------------------------------------------------------
+    ; ----------------------------------------------------------------------------
+    ; Streaming request using curl via a temporary batch file.
+    ; Uses robust SSE parsing with multi-line support and generic content extraction.
+    ; ----------------------------------------------------------------------------
     static _SendStream(systemPrompt, userContent, callback) {
         url := AppState.ApiUrl
         if (url != "" && !RegExMatch(url, "i)/chat/completions$"))
             url := RTrim(url, "/") . "/chat/completions"
 
         key := AppState.ApiKey
-        if (url == "" || key == "") {
+        if (url == "" || key == "")
             throw Error(Lang("MSG_API_URL_NOT_SET", "API URL or key missing"))
-        }
 
         body := this._BuildRequestBody(systemPrompt, userContent, AppState.ApiModel,
                                         AppState.ApiMaxTokens, AppState.ApiTemperature, true)
 
-        sink := this._StreamSink(callback)   ; instantiate the nested class
+        tempBody := A_Temp "\curl_body_" A_TickCount ".json"
+        try FileDelete(tempBody)
+        FileAppend(body, tempBody, "UTF-8")
 
-        whr := ComObject("WinHttp.WinHttpRequest.5.1")
-        ComObjConnect(whr, sink)             ; wire events
+        dq := Chr(34)
+        cmd := "curl -X POST -N -s --no-buffer"
+            . " -H " . dq . "Content-Type: application/json" . dq
+            . " -H " . dq . "Authorization: Bearer " . key . dq
+            . " -d @" . dq . tempBody . dq
+            . " " . dq . url . dq
 
-        whr.Open("POST", url, true)          ; asynchronous
-        whr.SetRequestHeader("Content-Type", "application/json")
-        whr.SetRequestHeader("Authorization", "Bearer " . key)
-        whr.SetTimeouts(60000, 60000, 60000, 60000)
+        batFile := A_Temp "\curl_stream_" A_TickCount ".bat"
+        try FileDelete(batFile)
+        FileAppend("@echo off`n@" cmd "`n", batFile, "UTF-8")
 
-        whr.Send(body)
+        ; === DEBUG: Log command and start ===
+        debugLog := A_Temp "\curl_debug_" A_TickCount ".txt"
+        FileAppend("=== CURL COMMAND ===`n" cmd "`n`n", debugLog, "UTF-8")
+        FileAppend("=== BATCH FILE CONTENT ===`n" "@" cmd "`n`n", debugLog, "UTF-8")
+        FileAppend("=== RAW OUTPUT START ===`n", debugLog, "UTF-8")
 
-        ; Wait for completion (the sink sets _complete = true)
-        while !sink._complete {
-            Sleep(50)
+        shell := ComObject("WScript.Shell")
+        exec := shell.Exec(batFile)
+        fullContent := ""
+        dataBuffer := ""
+
+        ; Read stdout and log every line
+        while !exec.StdOut.AtEndOfStream {
+            line := exec.StdOut.ReadLine()
+            FileAppend("RAW: " line "`n", debugLog, "UTF-8")   ; log raw line
+
+            line := Trim(line)
+            if (line == "") {
+                if (dataBuffer != "") {
+                    dataPart := Trim(SubStr(dataBuffer, 6))
+                    if (dataPart != "[DONE]") {
+                        text := this._ExtractContent(dataPart)
+                        if (text != "") {
+                            fullContent .= text
+                            try callback.Call(text)
+                        }
+                    }
+                    dataBuffer := ""
+                }
+                continue
+            }
+            if (SubStr(line, 1, 5) == "data:") {
+                if (dataBuffer != "") {
+                    dataPart := Trim(SubStr(dataBuffer, 6))
+                    if (dataPart != "[DONE]") {
+                        text := this._ExtractContent(dataPart)
+                        if (text != "") {
+                            fullContent .= text
+                            try callback.Call(text)
+                        }
+                    }
+                }
+                dataBuffer := line
+            } else {
+                if (dataBuffer != "")
+                    dataBuffer .= "`n" . line
+            }
         }
 
-        if (sink._httpStatus != 200) {
-            throw Error(Lang("MSG_API_ERROR", "API error (HTTP {1}): {2}",
-                             sink._httpStatus, sink._errorMsg))
+        ; Flush remaining buffer
+        if (dataBuffer != "") {
+            dataPart := Trim(SubStr(dataBuffer, 6))
+            if (dataPart != "[DONE]") {
+                text := this._ExtractContent(dataPart)
+                if (text != "")
+                    fullContent .= text
+            }
         }
 
-        return sink._fullContent
+        ; Read stderr for errors
+        while !exec.StdErr.AtEndOfStream {
+            errLine := exec.StdErr.ReadLine()
+            FileAppend("STDERR: " errLine "`n", debugLog, "UTF-8")
+        }
+
+        FileAppend("=== RAW OUTPUT END ===`n", debugLog, "UTF-8")
+        ; === DEBUG END ===
+
+        try FileDelete(tempBody)
+        try FileDelete(batFile)
+        return fullContent
+    }
+
+    ; ----------------------------------------------------------------------------
+    ; Extract the value of the "content" field from a JSON string (any nesting).
+    ; Handles escape sequences and Unicode escapes.
+    ; ----------------------------------------------------------------------------
+    static _ExtractContent(dataPart) {
+        ; Find the position of "content":
+        pos := InStr(dataPart, '"content":')
+        if !pos
+            return ""
+        pos += 10   ; skip over '"content":'
+        ; Skip whitespace
+        while SubStr(dataPart, pos, 1) == " " || SubStr(dataPart, pos, 1) == "`t"
+            pos++
+        if SubStr(dataPart, pos, 1) != '"'
+            return ""
+        pos++   ; skip opening quote
+        content := ""
+        len := StrLen(dataPart)
+        while pos <= len {
+            ch := SubStr(dataPart, pos, 1)
+            if ch == '\' {   ; escape sequence
+                pos++
+                if pos > len
+                    break
+                nextCh := SubStr(dataPart, pos, 1)
+                switch nextCh {
+                    case 'n':  content .= "`n"
+                    case 'r':  content .= "`r"
+                    case 't':  content .= "`t"
+                    case '"':  content .= '"'
+                    case '\\': content .= "\"
+                    case '/':  content .= "/"
+                    case 'u':  ; Unicode escape
+                        if pos + 4 <= len {
+                            hexStr := SubStr(dataPart, pos + 1, 4)
+                            pos += 4
+                            try content .= Chr(Integer("0x" . hexStr))
+                            catch 
+                                content .= "?"
+                        }
+                    default:   content .= nextCh
+                }
+                pos++
+                continue
+            }
+            if ch == '"' {   ; closing quote – end of content
+                pos++
+                break
+            }
+            content .= ch
+            pos++
+        }
+        return content
     }
 
     ; ------------------------------------------------------------------------
@@ -176,7 +294,18 @@ class ApiClient {
         }
 
         _HandleEvent(data) {
-            if RegExMatch(data, '"content"\s*:\s*"((?:[^"\\]|\\.)*)"', &m) {
+            ; Extract from delta.content (streaming) first
+            if RegExMatch(data, '"delta":\s*\{[^}]*"content":\s*"((?:[^"\\]|\\.)*)"', &m) {
+                text := this._UnescapeJson(m[1])
+                if (text != "") {
+                    this._fullContent .= text
+                    try this.callback.Call(text)
+                }
+                return
+            }
+
+            ; Fallback for non-delta format (classic)
+            if RegExMatch(data, '"content":\s*"((?:[^"\\]|\\.)*)"', &m) {
                 text := this._UnescapeJson(m[1])
                 if (text != "") {
                     this._fullContent .= text
