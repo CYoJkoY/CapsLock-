@@ -26,99 +26,107 @@ class PromptSettingsGui {
             }
         }
 
-        myGui := Gui("+Resize +MinSize600x500 +OwnDialogs", Lang("GUI_AI_SETTINGS_TITLE", "AI API Settings"))
+        myGui := Gui("+Resize +MinSize800x720 +OwnDialogs", Lang("GUI_AI_SETTINGS_TITLE"))
         ThemeHelper.StyleGui(myGui)
 
         ; Store reference for resize handling
         this.GuiObj := myGui
 
+        ; Layout constant — wider than before to fit all content
+        contentW := 640
+
         ; --- Title ---
-        ThemeHelper.AddTitle(myGui, "🤖 " . Lang("GUI_AI_SETTINGS_TITLE", "AI API Settings"), 580)
+        ThemeHelper.AddTitle(myGui, "🤖 " . Lang("GUI_AI_SETTINGS_TITLE"), contentW)
         ThemeHelper.AddSubtitle(myGui,
-            Lang("GUI_AI_SETTINGS_SUBTITLE", "Configure API endpoint and manage prompts"), 580)
-        ThemeHelper.AddSeparator(myGui, 580)
+            Lang("GUI_AI_SETTINGS_SUBTITLE"), contentW)
+        ThemeHelper.AddSeparator(myGui, contentW)
 
         ; --- API Configuration Section ---
         myGui.SetFont("s11 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        myGui.Add("Text", "x16 y+14 w580", Lang("GUI_AI_API_SECTION", "API Configuration"))
+        myGui.Add("Text", "x16 y+14 w" contentW, Lang("GUI_AI_API_SECTION"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
         ; API URL
-        myGui.Add("Text", "x16 y+12 w100", Lang("GUI_AI_URL", "API URL:"))
-        urlEdit := myGui.Add("Edit", "x120 yp-2 w460 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiUrl)
+        myGui.Add("Text", "x16 y+12 w100", Lang("GUI_AI_URL"))
+        urlEdit := myGui.Add("Edit", "x120 yp-2 w" (contentW - 120) " r1 " . ThemeHelper.GetEditOptions(), AppState.ApiUrl)
         this.UrlEdit := urlEdit
 
+        ; API URL hint — tells user only base URL is needed
+        myGui.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+        myGui.Add("Text", "x120 y+2 w" (contentW - 120), Lang("GUI_AI_URL_HINT"))
+        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+
         ; API Key
-        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_KEY", "API Key:"))
-        keyEdit := myGui.Add("Edit", "x120 yp-2 w460 r1 Password " . ThemeHelper.GetEditOptions(), AppState.ApiKey)
+        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_KEY"))
+        keyEdit := myGui.Add("Edit", "x120 yp-2 w" (contentW - 120) " r1 Password " . ThemeHelper.GetEditOptions(), AppState.ApiKey)
         this.KeyEdit := keyEdit
 
         ; Model
-        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_MODEL", "Model:"))
-        modelEdit := myGui.Add("Edit", "x120 yp-2 w180 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiModel)
+        myGui.Add("Text", "x16 y+10 w100", Lang("GUI_AI_MODEL"))
+        modelEdit := myGui.Add("Edit", "x120 yp-2 w200 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiModel)
         this.ModelEdit := modelEdit
 
-        ; Max Tokens (on same row as Model, with more room)
-        myGui.Add("Text", "x330 yp+2 w100", Lang("GUI_AI_MAX_TOKENS", "Max Tokens:"))
-        maxTokensEdit := myGui.Add("Edit", "x440 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiMaxTokens)
+        ; Max Tokens (on same row as Model)
+        myGui.Add("Text", "x350 yp+2 w100", Lang("GUI_AI_MAX_TOKENS"))
+        maxTokensEdit := myGui.Add("Edit", "x460 yp-2 w80 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiMaxTokens)
         this.MaxTokensEdit := maxTokensEdit
 
         ; Temperature
-        myGui.Add("Text", "x16 y+10 w110", Lang("GUI_AI_TEMPERATURE", "Temperature:"))
+        myGui.Add("Text", "x16 y+10 w110", Lang("GUI_AI_TEMPERATURE"))
         tempEdit := myGui.Add("Edit", "x130 yp-2 w70 r1 " . ThemeHelper.GetEditOptions(), AppState.ApiTemperature)
         this.TempEdit := tempEdit
 
         ; Test Connection button
-        btnTest := ThemeHelper.AddButton(myGui, "x+16 yp w160", "🔗 " . Lang("GUI_AI_TEST", "Test Connection"))
+        btnTest := ThemeHelper.AddButton(myGui, "x+16 yp w160", "🔗 " . Lang("GUI_AI_TEST"))
         btnTest.OnEvent("Click", (*) => this.TestConnection())
 
         ; --- Prompts Section ---
-        ThemeHelper.AddSeparator(myGui, 580)
+        ThemeHelper.AddSeparator(myGui, contentW)
 
         myGui.SetFont("s11 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        myGui.Add("Text", "x16 y+10 w580", Lang("GUI_AI_PROMPTS_SECTION", "Prompts"))
+        myGui.Add("Text", "x16 y+10 w" contentW, Lang("GUI_AI_PROMPTS_SECTION"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
-        ; Prompt ListView
+        ; Prompt ListView — slightly wider, initial col 2 width uses contentW
         lv := myGui.Add(
             "ListView",
-            "x16 y+10 w568 r8 -Multi " . ThemeHelper.GetLVOptions(),
-            [Lang("GUI_AI_PROMPT_NAME", "Name"), Lang("GUI_AI_PROMPT_CONTENT", "Content")]
+            "x16 y+10 w" (contentW - 10) " r8 -Multi " . ThemeHelper.GetLVOptions(),
+            [Lang("GUI_AI_PROMPT_NAME"), Lang("GUI_AI_PROMPT_CONTENT")]
         )
         lv.ModifyCol(1, 180)
-        lv.ModifyCol(2, 370)
+        lv.ModifyCol(2, contentW - 200)
         lv.OnEvent("DoubleClick", (*) => this.EditPrompt())
         lv.OnEvent("ItemSelect", (*) => this.UpdateButtonStates())
         ThemeHelper.StyleListView(lv)
         this.PromptLV := lv
 
-        ; Prompt action buttons (wider to prevent text wrapping)
-        btnAdd := ThemeHelper.AddButton(myGui, "x16 y+10 w100", "➕ " . Lang("GUI_AI_ADD_PROMPT", "Add"))
+        ; Prompt action buttons
+        btnAdd := ThemeHelper.AddButton(myGui, "x16 y+10 w100", "➕ " . Lang("GUI_AI_ADD_PROMPT"))
         btnAdd.OnEvent("Click", (*) => this.AddPrompt())
 
-        btnEdit := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✏️ " . Lang("GUI_AI_EDIT_PROMPT", "Edit"))
+        btnEdit := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✏️ " . Lang("GUI_AI_EDIT_PROMPT"))
         btnEdit.OnEvent("Click", (*) => this.EditPrompt())
         this.BtnEdit := btnEdit
 
-        btnDelete := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑️ " . Lang("GUI_AI_DELETE_PROMPT", "Delete"), "danger")
+        btnDelete := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑️ " . Lang("GUI_AI_DELETE_PROMPT"), "danger")
         btnDelete.OnEvent("Click", (*) => this.DeletePrompt())
         this.BtnDelete := btnDelete
 
-        btnSetActive := ThemeHelper.AddButton(myGui, "x+8 yp w120", "⭐ " . Lang("GUI_AI_SET_ACTIVE", "Set Active"), "primary")
+        btnSetActive := ThemeHelper.AddButton(myGui, "x+8 yp w120", "⭐ " . Lang("GUI_AI_SET_ACTIVE"), "primary")
         btnSetActive.OnEvent("Click", (*) => this.SetActivePrompt())
         this.BtnSetActive := btnSetActive
 
         ; Status bar
-        ThemeHelper.AddSeparator(myGui, 580)
+        ThemeHelper.AddSeparator(myGui, contentW)
         statusText := myGui.Add(
             "Text",
-            "x16 y+10 w568",
+            "x16 y+10 w" contentW,
             this._BuildStatusText()
         )
         myGui.SetFont("s9 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
         this.StatusText := statusText
 
-        ; Bottom buttons (wider, more spacing)
+        ; Bottom buttons
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         btnSave := ThemeHelper.AddButton(myGui, "x16 y+14 w100", "💾 " . Lang("GUI_OK"), "primary")
         btnSave.OnEvent("Click", (*) => this.SaveAndClose())
@@ -135,7 +143,7 @@ class PromptSettingsGui {
         this.RefreshPromptList()
         this.UpdateButtonStates()
 
-        myGui.Show("w620 h580")
+        myGui.Show("w680 h640")
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     }
 
@@ -144,7 +152,7 @@ class PromptSettingsGui {
     ; Add a new prompt.
     static AddPrompt() {
         result := PromptEditDialog.Show(
-            Lang("TITLE_ADD_PROMPT", "Add New Prompt"),
+            Lang("TITLE_ADD_PROMPT"),
             "",
             ""
         )
@@ -153,19 +161,19 @@ class PromptSettingsGui {
             return
 
         if !PromptManager.Add(result.Name, result.Content) {
-            ShowToolTip(Lang("MSG_PROMPT_DUPLICATE", "A prompt with this name already exists."), 2500)
+            ShowToolTip(Lang("MSG_PROMPT_DUPLICATE"), 2500)
             return
         }
 
         this.RefreshPromptList()
-        ShowToolTip(Lang("MSG_PROMPT_SAVED", "Prompt saved."), 1500)
+        ShowToolTip(Lang("MSG_PROMPT_SAVED"), 1500)
     }
 
     ; Edit the selected prompt.
     static EditPrompt() {
         idx := this._GetSelectedIndex()
         if idx == 0 {
-            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT", "Please select a prompt first."), 1500)
+            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT"), 1500)
             return
         }
 
@@ -180,19 +188,19 @@ class PromptSettingsGui {
             return
 
         if !PromptManager.Update(idx, result.Name, result.Content) {
-            ShowToolTip(Lang("MSG_PROMPT_DUPLICATE", "A prompt with this name already exists."), 2500)
+            ShowToolTip(Lang("MSG_PROMPT_DUPLICATE"), 2500)
             return
         }
 
         this.RefreshPromptList()
-        ShowToolTip(Lang("MSG_PROMPT_SAVED", "Prompt saved."), 1500)
+        ShowToolTip(Lang("MSG_PROMPT_SAVED"), 1500)
     }
 
     ; Delete the selected prompt.
     static DeletePrompt() {
         idx := this._GetSelectedIndex()
         if idx == 0 {
-            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT", "Please select a prompt first."), 1500)
+            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT"), 1500)
             return
         }
 
@@ -202,8 +210,8 @@ class PromptSettingsGui {
         hwnd := this.GuiObj.Hwnd
         WinSetAlwaysOnTop(0, "ahk_id " . hwnd)
         confirm := MsgBox(
-            Lang("CONFIRM_DELETE_PROMPT", "Are you sure you want to delete the prompt '{1}'?", p.name),
-            Lang("MSG_CONFIRM", "Confirm"),
+            Lang("CONFIRM_DELETE_PROMPT", , p.name),
+            Lang("MSG_CONFIRM"),
             "YesNo Icon?"
         )
         WinSetAlwaysOnTop(1, "ahk_id " . hwnd)
@@ -213,21 +221,21 @@ class PromptSettingsGui {
 
         PromptManager.Delete(idx)
         this.RefreshPromptList()
-        ShowToolTip(Lang("MSG_PROMPT_DELETED", "Prompt deleted."), 1500)
+        ShowToolTip(Lang("MSG_PROMPT_DELETED"), 1500)
     }
 
     ; Set the selected prompt as active.
     static SetActivePrompt() {
         idx := this._GetSelectedIndex()
         if idx == 0 {
-            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT", "Please select a prompt first."), 1500)
+            ShowToolTip(Lang("GUI_AI_SELECT_PROMPT"), 1500)
             return
         }
 
         name := PromptManager.Prompts[idx].name
         PromptManager.SetActive(name)
         this.RefreshPromptList()
-        ShowToolTip(Lang("MSG_PROMPT_ACTIVE_SET", "Active prompt set to: {1}", name), 2000)
+        ShowToolTip(Lang("MSG_PROMPT_ACTIVE_SET", , name), 2000)
     }
 
     ; Test the API connection with current settings.
@@ -380,10 +388,10 @@ class PromptSettingsGui {
         active := PromptManager.ActivePrompt
 
         if active == "" {
-            return Lang("GUI_AI_NO_PROMPTS", "No prompts configured. Add one to get started.")
+            return Lang("GUI_AI_NO_PROMPTS")
         }
 
-        return total . " prompt(s) configured  |  Active: " . active
+        return Lang("GUI_AI_PROMPTS_CONFIGURED", , total, active)
     }
 
     ; Get the 1-based index of the selected prompt, or 0 if none.
@@ -408,13 +416,21 @@ class PromptSettingsGui {
             return
 
         margin := 16
-        minW := 600
+        minW := 680
         if w < minW
             w := minW
 
         ; Resize ListView
         lvW := w - margin * 2
+
+        ; Freeze redrawing to prevent vertical line artifacts during resize
+        SendMessage(0x000B, 0, 0, this.PromptLV.Hwnd)  ; WM_SETREDRAW, FALSE
+
         this.PromptLV.Move(margin, , lvW)
         this.PromptLV.ModifyCol(2, lvW - 190)
+
+        SendMessage(0x000B, 1, 0, this.PromptLV.Hwnd)  ; WM_SETREDRAW, TRUE
+        ; Force a single clean repaint after all changes
+        DllCall("InvalidateRect", "Ptr", this.PromptLV.Hwnd, "Ptr", 0, "Int", 1)
     }
 }

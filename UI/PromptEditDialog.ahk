@@ -23,7 +23,7 @@ class PromptEditDialog {
 
         ; Prompt name field
         myGui.SetFont("s10 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        myGui.Add("Text", "w480 y+10", Lang("GUI_AI_PROMPT_NAME", "Prompt Name"))
+        myGui.Add("Text", "w480 y+10", Lang("GUI_AI_PROMPT_NAME"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         nameEdit := myGui.Add(
             "Edit",
@@ -34,7 +34,7 @@ class PromptEditDialog {
 
         ; Prompt content field
         myGui.SetFont("s10 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        myGui.Add("Text", "w480 y+14", Lang("GUI_AI_PROMPT_CONTENT", "Prompt Content"))
+        myGui.Add("Text", "w480 y+14", Lang("GUI_AI_PROMPT_CONTENT"))
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
         contentEdit := myGui.Add(
             "Edit",
@@ -52,11 +52,11 @@ class PromptEditDialog {
             resultContent := Trim(contentEdit.Value, " `t`r`n")
 
             if resultName == "" {
-                ShowToolTip(Lang("MSG_PROMPT_NAME_EMPTY", "Prompt name cannot be empty."), 2000)
+                ShowToolTip(Lang("MSG_PROMPT_NAME_EMPTY"), 2000)
                 return
             }
             if resultContent == "" {
-                ShowToolTip(Lang("MSG_PROMPT_CONTENT_EMPTY", "Prompt content cannot be empty."), 2000)
+                ShowToolTip(Lang("MSG_PROMPT_CONTENT_EMPTY"), 2000)
                 return
             }
 

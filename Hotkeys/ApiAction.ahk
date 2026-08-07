@@ -6,21 +6,21 @@
 SendToApiAndPaste() {
     ; Validate configuration
     if (AppState.ApiUrl == "" || AppState.ApiKey == "") {
-        ShowToolTip(Lang("MSG_API_URL_NOT_SET", "API not configured. Open AI Settings to configure."), 3000)
+        ShowToolTip(Lang("MSG_API_URL_NOT_SET"), 3000)
         return
     }
 
     ; Check active prompt
     activeContent := PromptManager.GetActiveContent()
     if (activeContent == "") {
-        ShowToolTip(Lang("MSG_API_NO_PROMPT", "No active prompt selected. Open AI Settings to configure."), 3000)
+        ShowToolTip(Lang("MSG_API_NO_PROMPT"), 3000)
         return
     }
 
     ; Get clipboard content
     clipboardContent := A_Clipboard
     if (clipboardContent == "") {
-        ShowToolTip(Lang("MSG_API_CLIPBOARD_EMPTY", "Clipboard is empty. Copy some text first."), 2500)
+        ShowToolTip(Lang("MSG_API_CLIPBOARD_EMPTY"), 2500)
         return
     }
 

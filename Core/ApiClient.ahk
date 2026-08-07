@@ -12,7 +12,11 @@ class ApiClient {
     ;
     ; Returns: The assistant's response text.
     static Send(systemPrompt, userContent) {
+        ; Auto-append /chat/completions if user only provided the base URL
         url := AppState.ApiUrl
+        if (url != "" && !RegExMatch(url, "i)/chat/completions$"))
+            url := RTrim(url, "/") . "/chat/completions"
+
         key := AppState.ApiKey
         model := AppState.ApiModel
         maxTokens := AppState.ApiMaxTokens
@@ -20,10 +24,10 @@ class ApiClient {
 
         ; Validate configuration
         if (url == "") {
-            throw Error(Lang("MSG_API_URL_NOT_SET", "API URL is not configured. Please set it in AI Settings."))
+            throw Error(Lang("MSG_API_URL_NOT_SET"))
         }
         if (key == "") {
-            throw Error(Lang("MSG_API_KEY_NOT_SET", "API Key is not configured. Please set it in AI Settings."))
+            throw Error(Lang("MSG_API_KEY_NOT_SET"))
         }
 
         ; Build JSON request body
