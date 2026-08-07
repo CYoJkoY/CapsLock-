@@ -16,20 +16,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install AutoHotkey v2
+      - name: Install AutoHotkey v2 (official release ZIP)
         shell: powershell
         run: |
-          Write-Host "Installing AutoHotkey v2 via chocolatey..."
-          choco install autohotkey -y --no-progress
-          
-          # Verify installation
-          $ahkPath = "C:\Program Files\AutoHotkey\AutoHotkey64.exe"
-          if (Test-Path $ahkPath) {
-            Write-Host "AutoHotkey v2 installed: $ahkPath"
-            & $ahkPath --version 2>&1 | ForEach-Object { Write-Host $_ }
+          $ahkVersion = "2.0.26"
+          $ahkInstallDir = "C:\Program Files\AutoHotkey"
+          $ahkZipUrl = "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$ahkVersion/AutoHotkey_$ahkVersion.zip"
+
+          Write-Host "Downloading AutoHotkey v$ahkVersion from GitHub Releases..."
+          Invoke-WebRequest -Uri $ahkZipUrl -OutFile "$env:TEMP\AutoHotkey.zip" -UseBasicParsing -ErrorAction Stop
+
+          Write-Host "Extracting to $ahkInstallDir ..."
+          New-Item -ItemType Directory -Force -Path $ahkInstallDir | Out-Null
+          Expand-Archive -Path "$env:TEMP\AutoHotkey.zip" -DestinationPath $ahkInstallDir -Force -ErrorAction Stop
+          Remove-Item "$env:TEMP\AutoHotkey.zip"
+
+          # Verify the v2 interpreter binary
+          $ahkExe = Join-Path $ahkInstallDir "AutoHotkey64.exe"
+          if (-not (Test-Path $ahkExe)) {
+            # Some ZIP layouts put it in a subfolder; attempt to locate
+            $found = Get-ChildItem -Path $ahkInstallDir -Recurse -Filter "AutoHotkey64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              $ahkExe = $found.FullName
+              Write-Host "AutoHotkey64.exe found at: $ahkExe"
+            } else {
+              throw "AutoHotkey64.exe not found after extraction in $ahkInstallDir"
+            }
           } else {
-            throw "AutoHotkey v2 installation failed: $ahkPath not found"
+            Write-Host "AutoHotkey64.exe found: $ahkExe"
           }
+
+          # Output version info for debugging
+          & $ahkExe --version 2>&1 | ForEach-Object { Write-Host $_ }
 
       - name: Set AHK_DIR and create directory
         shell: powershell
@@ -67,11 +85,14 @@ jobs:
             throw "Ahk2Exe.exe not found at $ahk2exe"
           }
 
-          # Path to AHK v2 interpreter (installed via chocolatey)
+          # Path to AHK v2 interpreter (installed from official ZIP)
           $ahkV2Base = "C:\Program Files\AutoHotkey\AutoHotkey64.exe"
+          # Fallback: search recursively if the ZIP had a nested structure
           if (-not (Test-Path $ahkV2Base)) {
-            throw "AutoHotkey v2 interpreter not found at $ahkV2Base"
+            $found = Get-ChildItem -Path "C:\Program Files\AutoHotkey" -Recurse -Filter "AutoHotkey64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $ahkV2Base = $found.FullName } else { throw "AutoHotkey v2 interpreter not found" }
           }
+          Write-Host "Using AHK interpreter: $ahkV2Base"
 
           # Build the argument list
           $outFile = "CapsLock-${{ github.ref_name }}.exe"
