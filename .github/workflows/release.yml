@@ -16,15 +16,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download AutoHotkey v2 portable (from GitHub Releases)
+      - name: Download and extract AutoHotkey v2 portable
         shell: powershell
         run: |
           $version = "2.0.26"
           $url = "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$version/AutoHotkey_$version.zip"
+
           Write-Host "Downloading from $url"
-          Invoke-WebRequest -Uri $url -OutFile "ahk-v2.zip"
-          Expand-Archive -Path "ahk-v2.zip" -DestinationPath "ahk-v2"
+          Invoke-WebRequest -Uri $url -OutFile "ahk-v2.zip" -UseBasicParsing -ErrorAction Stop
+
+          Write-Host "Extracting..."
+          Expand-Archive -Path "ahk-v2.zip" -DestinationPath "." -ErrorAction Stop
+
+          if (Test-Path "AutoHotkey") {
+            Remove-Item -Path "ahk-v2" -Recurse -Force -ErrorAction SilentlyContinue
+            Move-Item -Path "AutoHotkey" -Destination "ahk-v2" -Force
+          } else {
+            throw "Expected folder 'AutoHotkey' not found after extraction"
+          }
+
+          $exePath = "$env:GITHUB_WORKSPACE\ahk-v2\Compiler\Ahk2Exe.exe"
+          if (-not (Test-Path $exePath)) {
+            throw "Ahk2Exe.exe not found at $exePath"
+          }
+
           echo "AHK_DIR=$env:GITHUB_WORKSPACE\ahk-v2" >> $env:GITHUB_ENV
+          Write-Host "AHK_DIR set to $env:GITHUB_WORKSPACE\ahk-v2"
 
       - name: Compile with Ahk2Exe
         shell: powershell
