@@ -11,19 +11,19 @@
  <img src= "https://img.shields.io/badge/Platform-Windows-9E8F7E?style=flat-square " alt= "Platform " >
  <a href= "https://cyojkoy.github.io/Payment/ " > <img src= "https://img.shields.io/badge/Support_Me-9E8F7E?logo=buy-me-a-coffee&logoColor=BEB8AE&style=flat-square " alt= "Support Me " > </a >
  </p >
-<p style= "word-spacing: 6px; margin-top: 20px; " >
- <a href= "#-shortcut-quick-reference " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Shortcut Quick Reference </a >  &nbsp;• &nbsp;
- <a href= "#-installation--setup " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Installation  & Setup </a >  &nbsp;• &nbsp;
- <a href= "#%EF%B8%8F-configuration--parameters " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Configuration  & Parameters </a >  &nbsp;• &nbsp;
- <a href= "#-ai-api-integration " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >AI API Integration </a >  &nbsp;• &nbsp;
- <a href= "#-support-the-author " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Support the Author </a >
+<p style="word-spacing: 6px; margin-top: 20px; " >
+ <a href="#-shortcut-quick-reference" style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Shortcut Quick Reference </a >  &nbsp;• &nbsp;
+ <a href="#-installation--setup" style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Installation  & Setup </a >  &nbsp;• &nbsp;
+ <a href="#%EF%B8%8F-configuration--parameters" style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Configuration  & Parameters </a >  &nbsp;• &nbsp;
+ <a href="#-ai-api-integration" style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >AI API Integration </a >  &nbsp;• &nbsp;
+ <a href="#-support-the-author" style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Support the Author </a >
  </p >
  </div >
 <div align= "center " >
  <img src= "assets/dots.svg " alt= "separator " width= "160 " height= "12 " >
  </div >
 
-📖 Overview
+## 📖 Overview
 
 CapsLock- redefines the purpose of the `CapsLock` key, turning it into a "super modifier key".
 
@@ -32,7 +32,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim‑st
 > **Note**
 > This script supports AutoHotkey v2 only and is not backward compatible with v1.
 
-✨ Core Features
+## ✨ Core Features
 
 <div style= "background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0; " >
  <h3 style= "margin-top: 0; color: #D6D2CC; " >⌨️ Vim‑Style Navigation </h3 >
@@ -120,7 +120,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim‑st
  </ul >
  </div >
 
-🎹 Shortcut Quick Reference
+## 🎹 Shortcut Quick Reference
 
 All shortcuts below require holding `CapsLock` while pressing the corresponding key (except double‑click `CapsLock`).
 
@@ -152,7 +152,7 @@ All shortcuts below require holding `CapsLock` while pressing the corresponding 
 | AI Result|C  (in AI result window)|Copy  the full AI response to clipboard|
 |  |K  (in AI result window)|Paste  the AI response at the current cursor position|
 
-🚀 Installation & Setup
+## 🚀 Installation & Setup
 
 Prerequisites
 
@@ -201,7 +201,7 @@ Configure Gist Sync (optional)
 3. Leave Gist ID empty to create a new Gist on first upload, or paste an existing Gist ID to update it.
 4. Use the Upload / Append / Overwrite buttons as needed.
 
-⚙️ Configuration & Parameters
+## ⚙️ Configuration & Parameters
 
 Tray Menu Settings
 
@@ -225,7 +225,7 @@ Tray Menu Settings
 | Reload|Reload the script|
 | Exit|Exit the script|
 
-Configuration File `configs/Config.ini`
+### Configuration File `configs/Config.ini`
 
 > **Note:** The config file is stored in an encrypted binary format (XOR stream cipher). It is not human‑readable in a text editor. All settings below are managed through the tray menu GUI.
 
@@ -272,7 +272,7 @@ Token=ghp_...         ; GitHub Personal Access Token
 GistId=               ; Gist ID (auto‑filled after first upload)
 ```
 
-Advanced Global Variables (modifiable in `Config/Globals.ahk`)
+### Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 
 | Variable|Default|Description|
 | ---|---|---|
@@ -290,7 +290,7 @@ Advanced Global Variables (modifiable in `Config/Globals.ahk`)
 | ApiUrl  /  ApiKey  / etc.|(empty)|AI API configuration (also saved in Config.ini)|
 | GistToken / GistId|(empty)|GitHub Gist sync credentials|
 
-Theme Colors (modifiable in `Globals.ahk`)
+### Theme Colors (modifiable in `Globals.ahk`)
 
 The script uses a built‑in dark theme with configurable color values:
 
@@ -324,7 +324,7 @@ THEME_FONT_MONO     := "Cascadia Code"
 THEME_RADIUS        := 8            ; Corner radius (px)
 ```
 
-🤖 AI API Integration
+## 🤖 AI API Integration
 
 Overview
 
@@ -358,7 +358,7 @@ configs/prompts/
 
 You can add, edit, delete, and set active prompts directly through the AI Settings GUI.
 
-🧱 Project Structure
+## 🧱 Project Structure
 
 ```
 CapsLock-
@@ -433,7 +433,7 @@ CapsLock-
 └── 🌐 lang.csv                  ; Translation source (13 languages)
 ```
 
-🧠 Implementation Highlights
+## 🧠 Implementation Highlights
 
 - **In‑memory file paste** – Constructs a `DROPFILES` structure directly in memory to write multiple file paths to the clipboard.
 - **Smart loop prevention** – Uses the `IgnoreNextClipChange` flag to prevent temporary files (`ClipTemp_*.txt`) from triggering infinite `OnClipboardChange` loops.
@@ -459,7 +459,7 @@ CapsLock-
 - **Gist cloud sync** – `GistSync` uploads/downloads the entire `configs/` folder to a private GitHub Gist. Supports three modes: create/update (upload), append (skip existing files), and overwrite (full replace). Non‑UTF‑8 files are Base64‑encoded automatically.
 - **Memory‑efficient language loading** – `Language.Load()` uses `Loop Read` for line‑by‑line processing instead of loading entire files into memory, reducing peak allocation during startup.
 
-🔐 Security Notes
+## 🔐 Security Notes
 
 > ⚠️ The history file `configs/ClipHistory.bin` is encrypted using a fixed XOR key (default `0x5A`). This is only intended to prevent casual viewing and offers no cryptographic strength.
 
@@ -470,7 +470,7 @@ If you handle highly sensitive data, it is recommended to:
 - Use Windows built‑in EFS or BitLocker to encrypt the entire configuration folder
 - Restrict file system permissions on the `configs/` directory
 
-🤝 Contributing & Feedback
+## 🤝 Contributing & Feedback
 
 Issues and Pull Requests are welcome.
 
@@ -481,13 +481,13 @@ Code style requirements:
 - All UI text must use the `Lang()` internationalization function (no hardcoded strings)
 - Translations are added to  `lang.csv`  (columns:  `key` ,  `en` ,  `fr` ,  `zh` ,  `ja` ,  `ko` ,  `zh_TW` ,  `ru` ,  `pl` ,  `es` ,  `pt` ,  `de` ,  `tr` ,  `it` )
 
-📄 License
+## 📄 License
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
 
 See the [LICENSE](LICENSE) file for details.
 
-💰 Support the Author
+## 💰 Support the Author
 
 If this project has boosted your productivity, consider buying me a coffee! ☕
 
