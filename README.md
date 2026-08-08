@@ -488,19 +488,21 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
 See the [LICENSE](LICENSE) file for details.
 
 ## 💰 Support the Author
-
-If this project has boosted your productivity, consider buying me a coffee! ☕
+<div align="center">
+ If this project has boosted your productivity, consider buying me a coffee! ☕
+</div>
 
 <div align= "center " >
- <a href= "https://cyojkoy.github.io/Payment/ " >
- <img src= "https://img.shields.io/badge/👉_Click_Here_to_Support_Me-9E8F7E?style=for-the-badge &logo=buy-me-a-coffee &logoColor=BEB8AE " alt= "Support Me Button " >
+<br>
+ <a href="https://cyojkoy.github.io/Payment/">
+  <img src="https://img.shields.io/badge/👉_Click_Here_to_Support_Me-9E8F7E?style=for-the-badge&logo=buy-me-a-coffee&logoColor=BEB8AE" alt="Support Me Button">
  </a >
- </div >
+</div >
 
 <div align="center">
 <br>
-<i style="color: #8A9E8B;">Made with ❤️ and AutoHotkey v2</i>
+ <i style="color: #8A9E8B;">Made with ❤️ and AutoHotkey v2</i>
 </div>
-<div align= "center " >
- <img src= "assets/bar.svg " alt= "footer bar " width= "240 " height= "8 " >
- </div >
+<div align="center">
+ <img src="assets/bar.svg" alt="footer bar" width= "240" height= "8">
+</div >
