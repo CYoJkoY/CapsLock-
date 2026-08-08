@@ -16,13 +16,22 @@ class AIResultWindow {
     static _buffer := ""
     static _updateTimer := ""
     static _pending := false
+    static _isOpen := false
+
+    ; Register WM_KEYDOWN handler once
+    static _keyHandlerRegistered := false
 
     ; Show a new result window. Closes any existing window first.
     static Show(content, targetHwnd) {
-        this.Close()
+        if this._isOpen {
+            this.Close()
+        }
+
         this.Content := content
         this.TargetWindow := targetHwnd
         this._buffer := ""
+        this._isOpen := true
+        AppState.AIResultActive := true   ; Block other CapsLock hotkeys
 
         myGui := Gui("+AlwaysOnTop +Resize +MinSize600x400", Lang("GUI_AI_RESULT_TITLE"))
         ThemeHelper.StyleGui(myGui)
@@ -43,33 +52,92 @@ class AIResultWindow {
         myGui.OnEvent("Close", (*) => this.Close())
         myGui.OnEvent("Escape", (*) => this.Close())
 
+        ; Register WM_KEYDOWN handler (only once)
+        if !this._keyHandlerRegistered {
+            OnMessage(
+                0x100,
+                (wParam, lParam, msg, hwnd)
+                => AIResultWindow.KeyHandler(wParam, lParam, msg, hwnd)
+            )
+            this._keyHandlerRegistered := true
+        }
+
         this.GuiObj := myGui
         myGui.Show("w640 h480")
         WinActivate("ahk_id " myGui.Hwnd)
         myGui.editCtrl.Focus()
-        AppState.AIResultActive := true
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    }
 
-        ; Install the keyboard hook only once
-        static keyHandlerRegistered := false
-        if !keyHandlerRegistered {
-            OnMessage(0x100, this.KeyHandler.Bind(this))
-            keyHandlerRegistered := true
+    ; WM_KEYDOWN handler – called globally, filters by hwnd
+    static KeyHandler(wParam, lParam, msg, hwnd) {
+        ; Only process if our window is open
+        if !IsObject(this.GuiObj)
+            return
+
+        ; Check if the message belongs to our window or its Edit control
+        if (hwnd != this.GuiObj.Hwnd && hwnd != this.GuiObj.editCtrl.Hwnd) {
+            ; Also check if hwnd is a child of our window (to be safe)
+            parent := DllCall("GetParent", "Ptr", hwnd, "Ptr")
+            if (parent != this.GuiObj.Hwnd)
+                return
+        }
+
+        ; Ignore if modifier keys are held (Ctrl/Alt/Shift)
+        if GetKeyState("Ctrl", "P") || GetKeyState("Alt", "P") || GetKeyState("Shift", "P")
+            return
+
+        vkCode := wParam
+        if (vkCode == 0x43) { ; C – copy all content
+            A_Clipboard := this.Content
+            OSD.ShowNotification(Lang("GUI_AI_RESULT_COPY_TOAST"), 1500, "success")
+            return 0
+        }
+        else if (vkCode == 0x4B) { ; K – output content
+            if (this.Content == "") {
+                OSD.ShowNotification(Lang("GUI_AI_RESULT_EMPTY"), 1500, "warning")
+                return 0
+            }
+            target := this.TargetWindow
+            ; Fallback to the currently active window if the captured one is gone
+            if !target || !WinExist("ahk_id " target) || target == this.GuiObj.Hwnd {
+                active := WinExist("A")
+                if active && active != this.GuiObj.Hwnd {
+                    target := active
+                    this.TargetWindow := target
+                } else {
+                    OSD.ShowNotification(Lang("MSG_NO_TARGET"), 2000, "error")
+                    return 0
+                }
+            }
+            ; Temporarily set clipboard to content, paste, then restore
+            backup := A_Clipboard
+            AppState.IgnoreNextClipChange := true
+            A_Clipboard := this.Content
+            WinActivate("ahk_id " target)
+            Sleep(100)
+            Send("^v")
+            Sleep(50)
+            AppState.IgnoreNextClipChange := true
+            A_Clipboard := backup
+            OSD.ShowNotification(Lang("GUI_AI_RESULT_OUTPUT_TOAST"), 1500, "info")
+            return 0
         }
     }
 
     ; Close and clean up the window
     static Close() {
-        AppState.AIResultActive := false
+        this._isOpen := false
+        AppState.AIResultActive := false   ; Re-enable CapsLock hotkeys
 
         if this._updateTimer
             SetTimer(this._updateTimer, 0)
 
         if IsObject(this.GuiObj) {
             try this.GuiObj.Destroy()
-            this.GuiObj := ""
         }
 
+        this.GuiObj := ""
         this.Content := ""
         this.TargetWindow := 0
         this._buffer := ""
@@ -78,9 +146,10 @@ class AIResultWindow {
 
     ; Append text to buffer and schedule a flush
     static AppendToCurrent(text) {
-        if !IsObject(this.GuiObj)
+        if !this._isOpen || !IsObject(this.GuiObj)
             return
 
+        this.Content .= text
         this._buffer .= text
         if !this._pending {
             this._pending := true
@@ -94,12 +163,11 @@ class AIResultWindow {
     static FlushBuffer() {
         this._pending := false
         this._updateTimer := ""
-        if !IsObject(this.GuiObj) || this._buffer == ""
+        if !this._isOpen || !IsObject(this.GuiObj) || this._buffer == ""
             return
 
         ; Normalize line endings to CRLF for Windows Edit control
         text := StrReplace(this._buffer, "`n", "`r`n")
-
         editHwnd := this.GuiObj.editCtrl.Hwnd
 
         ; 1. Place caret at the end of existing text
@@ -117,66 +185,6 @@ class AIResultWindow {
 
         ; 5. Clear buffer
         this._buffer := ""
-    }
-
-    ; WM_KEYDOWN handler – responds to C and K when the result window is active
-    static KeyHandler(wParam, lParam, msg, hwnd) {
-        ; Ignore if the message does not belong to our window
-        if !IsObject(this.GuiObj) || this.GuiObj.Hwnd != hwnd
-            return
-
-        if (hwnd != this.GuiObj.Hwnd) {
-            parent := DllCall("GetParent", "Ptr", hwnd, "Ptr")
-            if (parent != this.GuiObj.Hwnd)
-                return
-        }
-
-        ; Ignore modifier keys to avoid interfering with normal shortcuts
-        if GetKeyState("Ctrl", "P") || GetKeyState("Alt", "P") || GetKeyState("Shift", "P")
-            return
-
-        vkCode := wParam
-        if (vkCode == 0x43) { ; C key – copy all content
-            A_Clipboard := this.Content
-            OSD.ShowNotification(Lang("GUI_AI_RESULT_COPY_TOAST"), 1500, "success")
-            return 0
-        }
-
-        else if (vkCode == 0x4B) { ; K key – output content
-            if (this.Content == "") {
-                OSD.ShowNotification(Lang("GUI_AI_RESULT_EMPTY"), 1500, "warning")
-                return 0
-            }
-
-            target := this.TargetWindow
-            ; Fallback to the currently active window if the captured one is gone
-            if !target || !WinExist("ahk_id " target) || target == this.GuiObj.Hwnd {
-                active := WinExist("A")
-                if active && active != this.GuiObj.Hwnd {
-                    target := active
-                    this.TargetWindow := target
-                } else {
-                    OSD.ShowNotification(Lang("MSG_NO_TARGET"), 2000, "error")
-                    return 0
-                }
-            }
-
-            ; Temporarily set clipboard to the content, paste, then restore
-            backup := A_Clipboard
-            AppState.IgnoreNextClipChange := true
-            A_Clipboard := this.Content
-
-            WinActivate("ahk_id " target)
-            Sleep(100)
-            Send("^v")
-            Sleep(50)
-
-            AppState.IgnoreNextClipChange := true
-            A_Clipboard := backup
-
-            OSD.ShowNotification(Lang("GUI_AI_RESULT_OUTPUT_TOAST"), 1500, "info")
-            return 0
-        }
     }
 }
 

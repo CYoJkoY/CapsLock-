@@ -408,7 +408,7 @@ class PromptSettingsGui {
 
         ; Get the display text and strip the star marker
         displayName := this.PromptLV.GetText(row, 1)
-        actualName := StrReplace(displayName, "⭐ ", "")
+        actualName := RegExReplace(displayName, "^⭐ ")
 
         return PromptManager.FindByName(actualName)
     }
