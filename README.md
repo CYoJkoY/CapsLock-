@@ -96,7 +96,7 @@ By holding `CapsLock` and combining it with other keys, you can perform Vim‑st
 </div>
 
 <div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">📂 Full History Browser</h3>
+  <h3 style="margin-top: 0; color: #D6D2CC;">📮 Full History Browser</h3>
   <ul style="color: #BEB8AE;">
     <li>Open full clipboard history window via bottom entry of the history menu</li>
     <li>Supports search, multi‑select, batch paste as file or text</li>
@@ -263,7 +263,7 @@ StreamMode=0          ; 0=classic (full response), 1=streaming
 | Variable                    | Default               | Description                                      |
 | :-------------------------- | :-------------------- | :----------------------------------------------- |
 | `ENCRYPT_KEY`               | `0x5A`                | XOR encryption key (0 = plaintext history)       |
-| `MAX_VISIBLE_MENU`          | `15`                  | Maximum entries shown in the history quick menu  |
+| `MAX_VISIBLE_MENU`          | `12`                  | Maximum entries shown in the history quick menu  |
 | `MAX_FULL_HISTORY_DISPLAY`  | `50`                  | Initial rows shown in the full history window    |
 | `TextFormats`               | 50+ common extensions | List of extensions treated as "text files"       |
 | `ImageFormats`              | png, jpg, bmp, heic…  | Image formats supported for PDF conversion       |
@@ -380,6 +380,10 @@ CapsLock-
 │   └── 📄 PromptManager.ahk     ; Prompt JSON storage (add/edit/delete/active)
 ├── 📁 Core
 │   ├── 📄 ApiClient.ahk         ; OpenAI‑compatible API client (streaming & classic)
+│   ├── 📄 ApiJsonHelper.ahk     ; JSON escaping/unescaping utilities
+│   ├── 📄 ApiRequestBuilder.ahk ; Build JSON request bodies
+│   ├── 📄 ApiResponseParser.ahk ; Parse classic (non‑streaming) responses
+│   ├── 📄 ApiStreamHandler.ahk  ; Handle streaming responses via curl
 │   ├── 📄 Cleanup.ahk           ; Temp file cleanup (delayed/batch/off)
 │   ├── 📄 Clipboard.ahk         ; Clipboard helper (DROPFILES, plain text copy)
 │   ├── 📄 ClipboardPaste.ahk    ; Paste handlers (file, text, PDF)
