@@ -18,6 +18,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 #Include "Config\PromptManager.ahk"
+#Include "Config\SecureIni.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"

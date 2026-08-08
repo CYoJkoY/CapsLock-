@@ -19,7 +19,7 @@ class PromptManager {
         ; --- Load active prompt from Config.ini ---
         this.ActivePrompt := ""
         try {
-            this.ActivePrompt := IniRead(AppState.ConfigFile, "AI", "ActivePrompt", "")
+            this.ActivePrompt := SecureIni.Get("AI", "ActivePrompt", "")
         } catch {
             this.ActivePrompt := ""
         }
@@ -244,12 +244,8 @@ class PromptManager {
 
     ; Save the active prompt name to Config.ini (section "AI", key "ActivePrompt").
     static _SaveActive() {
-        if this.ActivePrompt != "" {
-            try IniWrite(this.ActivePrompt, AppState.ConfigFile, "AI", "ActivePrompt")
-        } else {
-            ; Write empty to clear the key if needed
-            try IniWrite("", AppState.ConfigFile, "AI", "ActivePrompt")
-        }
+        SecureIni.Set("AI", "ActivePrompt", this.ActivePrompt)
+        SecureIni.Save()
     }
 
     ; Sanitize a string for use as a Windows filename.
