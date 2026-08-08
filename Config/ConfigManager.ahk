@@ -4,16 +4,6 @@ class ConfigManager {
     static Load() {
         cfg := AppState.ConfigFile
 
-        oldPath := A_ScriptDir "\ImageMagickPath.txt"
-        if FileExist(oldPath) {
-            try {
-                legacy := FileRead(oldPath, "UTF-8")
-                if legacy != ""
-                    IniWrite(legacy, cfg, "ImageMagick", "Path")
-                FileDelete(oldPath)
-            }
-        }
-
         if !FileExist(cfg)
             return
 
@@ -30,8 +20,6 @@ class ConfigManager {
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
 
             ; ---- Validate Pandoc output format ----
-            ; If the loaded format is not a valid string or not in the supported list,
-            ; reset to "docx" and update the config file immediately.
             if !_IsPandocFormatSupported(AppState.PandocOutputFormat) {
                 AppState.PandocOutputFormat := "docx"
                 IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")

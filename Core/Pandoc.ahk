@@ -1,143 +1,199 @@
 #Requires AutoHotkey v2.0
 
-; ---------------------------------------------------------------------------
-; Convert files using Pandoc and paste the result
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------------------------------
+; Public entry point – called by hotkey.
+; -----------------------------------------------------------------------------
 ConvertWithPandoc() {
-    ; --- FIX: Capture current active window as paste target ---
-    ; Previously missing - caused pasting to wrong (cached) window.
     CapturePasteTarget()
 
-    ; 1. Get raw text from clipboard
     text := A_Clipboard
     if (text == "") {
         ShowToolTip(Lang("MSG_CLIPBOARD_EMPTY", "Clipboard is empty"), 2000)
         return
     }
 
-    ; 2. Parse all valid paths (files and folders)
-    allPaths := []
-    lines := StrSplit(text, "`n", "`r")
-    for line in lines {
-        line := Trim(line)
-        if (line == "")
-            continue
-        if FileExist(line)
-            allPaths.Push(line)
-    }
-    if (allPaths.Length == 0) {
+    settings := _ValidatePandocSettings()
+    if (settings[1] == "" || settings[2] == "")
+        return
+    pandoc := settings[1], outFormat := settings[2]
+
+    files := _CollectInputFiles(text)
+    if (files.Length == 0) {
         ShowToolTip(Lang("MSG_NO_FILES_FOUND", "No valid files or folders found in clipboard"), 2000)
         return
     }
 
-    ; 3. Expand folders into individual files (recursive)
-    finalFiles := []
-    for path in allPaths {
-        if InStr(FileExist(path), "D") {          ; folder
-            collected := FileHelper.CollectFilesFromFolder(path, true)
-            for f in collected
-                finalFiles.Push(f)
-        } else {                                  ; file
-            finalFiles.Push(path)
-        }
-    }
-
-    ; 4. Apply ignore patterns
-    filteredFiles := []
-    for f in finalFiles {
-        if !FileHelper.ShouldIgnore(f)
-            filteredFiles.Push(f)
-    }
-    if (filteredFiles.Length == 0) {
+    filtered := _FilterIgnoredFiles(files)
+    if (filtered.Length == 0) {
         ShowToolTip(Lang("MSG_ALL_FILES_IGNORED", "All files are ignored"), 2000)
         return
     }
 
-    ; 5. Validate Pandoc executable
+    result := _RunPandocConversions(filtered, pandoc, outFormat)
+    _HandleConversionResult(result[1], result[2], result[3])
+}
+
+; -----------------------------------------------------------------------------
+; Validate Pandoc path and output format.
+; Returns [exePath, format] or ["", ""] on failure.
+; -----------------------------------------------------------------------------
+_ValidatePandocSettings() {
     pandoc := AppState.PandocExe
     if (pandoc == "" || !FileExist(pandoc)) {
         ShowToolTip(Lang("MSG_PANDOC_NOT_FOUND", "Pandoc executable not found. Please set path in settings."), 3000)
-        return
+        return ["", ""]
     }
 
-    ; 6. Validate output format
     outFormat := AppState.PandocOutputFormat
     if (!_IsOutputFormatSupported(outFormat)) {
         ShowToolTip(Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", outFormat), 2500)
-        return
+        return ["", ""]
     }
 
-    ; 7. Prepare progress GUI (if more than 1 file)
-    total := filteredFiles.Length
+    return [pandoc, outFormat]
+}
+
+; -----------------------------------------------------------------------------
+; Parse clipboard content and collect all valid file/folder paths.
+; -----------------------------------------------------------------------------
+_CollectInputText(text) {
+    allPaths := []
+    lines := StrSplit(text, "`n", "`r")
+    Loop lines.Length {
+        line := Trim(lines[A_Index])
+        if (line != "" && FileExist(line))
+            allPaths.Push(line)
+    }
+    return allPaths
+}
+
+; -----------------------------------------------------------------------------
+; Expand folders recursively into individual file paths.
+; -----------------------------------------------------------------------------
+_ExpandFolders(allPaths) {
+    final := []
+    Loop allPaths.Length {
+        path := allPaths[A_Index]
+        if (InStr(FileExist(path), "D")) {
+            collected := FileHelper.CollectFilesFromFolder(path, true)
+            Loop collected.Length
+                final.Push(collected[A_Index])
+        } else {
+            final.Push(path)
+        }
+    }
+    return final
+}
+
+; -----------------------------------------------------------------------------
+; Combine parsing + expansion into one step.
+; -----------------------------------------------------------------------------
+_CollectInputFiles(text) {
+    all := _CollectInputText(text)
+    if (all.Length == 0)
+        return []
+    return _ExpandFolders(all)
+}
+
+; -----------------------------------------------------------------------------
+; Filter out paths that match ignore patterns.
+; -----------------------------------------------------------------------------
+_FilterIgnoredFiles(files) {
+    filtered := []
+    Loop files.Length {
+        f := files[A_Index]
+        if (!FileHelper.ShouldIgnore(f))
+            filtered.Push(f)
+    }
+    return filtered
+}
+
+; -----------------------------------------------------------------------------
+; Run Pandoc on each file, return [outputFiles, skippedFiles, failedCount].
+; -----------------------------------------------------------------------------
+_RunPandocConversions(files, pandoc, outFormat) {
+    total := files.Length
     showProgress := (total > 1)
     progressGui := ""
     progressText := ""
     progressBar := ""
-    if showProgress {
-        progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
-        ThemeHelper.StyleGui(progressGui)
-        ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
-        ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
-        progressGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
-        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG, 0)
-        progressGui.Show("AutoSize Center")
-        ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+
+    if (showProgress) {
+        pg := _CreateProgressGui()
+        progressGui := pg.Gui
+        progressText := pg.TextCtrl
+        progressBar := pg.BarCtrl
     }
 
-    ; 8. Convert each file
     outputFiles := []
     skippedFiles := []
     failedCount := 0
 
-    for idx, inFile in filteredFiles {
-        ; Update progress
-        if showProgress {
+    Loop files.Length {
+        idx := A_Index
+        inFile := files[idx]
+
+        if (showProgress) {
             SplitPath(inFile, &fileName)
             progressText.Text := Lang("MSG_PANDOC_PROGRESS", "Converting {1}/{2}: {3}", idx, total, fileName)
             progressBar.Value := (idx / total) * 100
         }
 
-        ; Detect input format (safely - returns "" on any error to skip file gracefully)
         inFormat := _DetectInputFormat(inFile)
         if (inFormat == "") {
             skippedFiles.Push(inFile)
             continue
         }
 
-        ; Build output file path
         outFile := _BuildOutputPath(inFile, outFormat)
         if (outFile == "") {
             failedCount++
             continue
         }
 
-        ; Run pandoc
         cmd := '"' pandoc '" -f ' inFormat ' -t ' outFormat ' -o "' outFile '" "' inFile '"'
         try {
             RunWait(cmd, , "Hide")
-            if (FileExist(outFile)) {
+            if (FileExist(outFile))
                 outputFiles.Push(outFile)
-            } else {
+            else
                 failedCount++
-            }
-        } catch as err {
+        } catch {
             failedCount++
         }
     }
 
-    ; 9. Destroy progress GUI
-    if showProgress {
+    if (showProgress)
         try progressGui.Destroy()
-    }
 
-    ; 10. Report skipped files
+    return [outputFiles, skippedFiles, failedCount]
+}
+
+; -----------------------------------------------------------------------------
+; Build the progress GUI, return an object with Gui, TextCtrl, BarCtrl.
+; -----------------------------------------------------------------------------
+_CreateProgressGui() {
+    progress_gui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
+    ThemeHelper.StyleGui(progress_gui)
+    ThemeHelper.AddTitle(progress_gui, "⏳ " Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
+    ThemeHelper.AddSubtitle(progress_gui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
+    progress_gui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    textCtrl := progress_gui.Add("Text", "x16 y+8 w380 center", "")
+    barCtrl := progress_gui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG, 0)
+    progress_gui.Show("AutoSize Center")
+    ThemeHelper.ApplyImmersiveDarkMode(progress_gui.Hwnd)
+    return { Gui: progress_gui, TextCtrl: textCtrl, BarCtrl: barCtrl }
+}
+
+; -----------------------------------------------------------------------------
+; Handle final results: show skip info, paste outputs, schedule cleanup.
+; -----------------------------------------------------------------------------
+_HandleConversionResult(outputFiles, skippedFiles, failedCount) {
     if (skippedFiles.Length > 0) {
         skippedMsg := Lang("MSG_PANDOC_SKIPPED_FILES", "Skipped unsupported files:`n{1}", Join(skippedFiles, "`n"))
         ShowToolTip(skippedMsg, 3000)
     }
 
-    ; 11. Paste results if any
     if (outputFiles.Length == 0) {
         ShowToolTip(Lang("MSG_PANDOC_NO_OUTPUT", "No files were converted successfully"), 2000)
         return
@@ -146,167 +202,9 @@ ConvertWithPandoc() {
     ClipboardHelper.SetClipboardFiles(outputFiles)
     ActivateAndPaste()
 
-    for f in outputFiles {
-        CleanupManager.ScheduleDeletion(f)
+    Loop outputFiles.Length {
+        CleanupManager.ScheduleDeletion(outputFiles[A_Index])
     }
 
     ShowToolTip(Lang("MSG_PANDOC_SUCCESS", "Converted {1} file(s)", outputFiles.Length), 2000)
-}
-
-; ---------------------------------------------------------------------------
-; Detect input format from file extension (returns format name or "")
-; FIXED: Lazy-init pattern with try-catch prevents crash when static map
-;        initialization fails (AHK v2 bug: static vars can enter unassigned
-;        state after a failed init, causing script-terminating error).
-; ---------------------------------------------------------------------------
-_DetectInputFormat(filePath) {
-    ; Safely extract extension - return "" on any failure
-    try {
-        SplitPath(filePath, , , &ext)
-    } catch {
-        return ""
-    }
-    ext := StrLower(ext)
-    if (ext == "") 
-        return ""
-
-    ; 1. Check if extension matches a known input format directly
-    for fmt in AppState.PandocInputFormats {
-        if (fmt == ext) {
-            return fmt
-        }
-    }
-
-    ; 2. Common extension → format name mapping
-    ;    Uses lazy-init with defensive check: if the static map failed to
-    ;    initialize on a previous call (leaving it unassigned), we detect
-    ;    that and retry initialization. This prevents the fatal error:
-    ;    "This static variable has not been assigned a value."
-    static extMap := ""
-
-    ; Check if extMap needs (re)initialization
-    if (extMap == "" || !IsObject(extMap)) {
-        try {
-            extMap := Map(
-                "adoc", "asciidoc",
-                "bib",  "bibtex",
-                "md",   "markdown",
-                "markdown", "markdown",
-                "mkd",  "markdown",
-                "mdown", "markdown",
-                "html", "html",
-                "htm",  "html",
-                "tex",  "latex",
-                "latex", "latex",
-                "rst",  "rst",
-                "rtf",  "rtf",
-                "odt",  "odt",
-                "epub", "epub",
-                "ipynb", "ipynb",
-                "mediawiki", "mediawiki",
-                "org",  "org",
-                "textile", "textile",
-                "t2t",  "t2t",
-                "csv",  "csv",
-                "tsv",  "tsv",
-                "json", "json",
-                "xml",  "xml",
-                "docx", "docx",
-                "pptx", "pptx",
-                "xlsx", "xlsx",
-                "jats", "jats",
-                "jira", "jira",
-                "ris",  "ris",
-                "pod",  "pod",
-                "man",  "man",
-                "mdoc", "mdoc",
-                "muse", "muse",
-                "native", "native",
-                "opml", "opml",
-                "typst", "typst",
-                "vimwiki", "vimwiki",
-                "djot", "djot",
-                "creole", "creole",
-                "dokuwiki", "dokuwiki",
-                "gfm", "gfm",
-                "haddock", "haddock",
-                "commonmark", "commonmark"
-            )
-        } catch {
-            ; If Map construction fails for any reason, return empty
-            ; to skip this file gracefully instead of crashing.
-            return ""
-        }
-    }
-
-    ; Safe access: only call .Has() if extMap is a valid object
-    try {
-        if (extMap.Has(ext)) {
-            return extMap[ext]
-        }
-    } catch {
-        ; Fall through to unsupported
-    }
-
-    return ""  ; unsupported
-}
-
-; ---------------------------------------------------------------------------
-; Build output file path: temp dir + basename + appropriate extension
-; ---------------------------------------------------------------------------
-_BuildOutputPath(inFile, outFormat) {
-    SplitPath(inFile, &name, &dir, &ext, &nameNoExt)
-    ; Determine extension for output format
-    static extMap := Map(
-        "docx", "docx",
-        "html", "html",
-        "markdown", "md",
-        "latex", "tex",
-        "pdf", "pdf",
-        "rst", "rst",
-        "rtf", "rtf",
-        "odt", "odt",
-        "epub", "epub",
-        "ipynb", "ipynb",
-        "mediawiki", "mediawiki",
-        "org", "org",
-        "textile", "textile",
-        "t2t", "t2t",
-        "csv", "csv",
-        "tsv", "tsv",
-        "json", "json",
-        "xml", "xml",
-        "pptx", "pptx",
-        "xlsx", "xlsx",
-        "jats", "jats",
-        "jira", "jira",
-        "ris", "ris",
-        "pod", "pod",
-        "man", "man",
-        "mdoc", "mdoc",
-        "muse", "muse",
-        "native", "native",
-        "opml", "opml",
-        "typst", "typst",
-        "vimwiki", "vimwiki",
-        "djot", "djot",
-        "creole", "creole",
-        "dokuwiki", "dokuwiki",
-        "gfm", "gfm",
-        "haddock", "haddock",
-        "commonmark", "commonmark"
-    )
-    outExt := extMap.Has(outFormat) ? extMap[outFormat] : outFormat
-    return A_Temp "\Pandoc_" A_TickCount "_" nameNoExt "." outExt
-}
-
-; ---------------------------------------------------------------------------
-; Validate output format against supported list
-; ---------------------------------------------------------------------------
-_IsOutputFormatSupported(format) {
-    for f in AppState.PandocOutputFormats {
-        if (f == format) 
-            return true
-    }
-    return false
 }

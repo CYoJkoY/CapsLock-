@@ -28,6 +28,11 @@ OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
     myMenu.Show(x, y)
 }
 
+DeleteFromFullHistory(realIndex) {
+    HistoryManager.Delete(realIndex)
+    RefreshFullHistoryList()
+}
+
 PasteSelectedFromFullHistory() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView

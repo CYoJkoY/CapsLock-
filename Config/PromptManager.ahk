@@ -1,87 +1,103 @@
 #Requires AutoHotkey v2.0
 
-; Manages AI prompts: load, save, add, update, delete, and track the active prompt.
-; Prompts are stored as a JSON file in the configs directory.
+; Manages AI prompts using .prompt files. Each prompt's name is the filename
+; (without extension), and its content is the file content.
+; The active prompt name is stored in Config.ini under [AI] section as "ActivePrompt".
 class PromptManager {
+    static PromptsDir := A_ScriptDir "\configs\prompts"
     static Prompts := []          ; Array of {name, content}
     static ActivePrompt := ""     ; Name of the currently active prompt
-    static PromptsFile := A_ScriptDir "\configs\Prompts.json"
+    static EXT := ".prompt"       ; Unique extension for prompt files
 
-    ; Load prompts from JSON file. Creates file with defaults if it doesn't exist.
+    ; ------------------------------------------------------------------------
+    ; Load prompts from the filesystem. Creates defaults if the directory
+    ; is empty. Active prompt is read from Config.ini.
+    ; ------------------------------------------------------------------------
     static Load() {
-        if !FileExist(this.PromptsFile) {
-            this._CreateDefault()
-            return
-        }
+        this._EnsureDir()
 
+        ; --- Load active prompt from Config.ini ---
+        this.ActivePrompt := ""
         try {
-            raw := FileRead(this.PromptsFile, "UTF-8")
-            data := this._ParseJson(raw)
-
-            if data.Has("active")
-                this.ActivePrompt := data["active"]
-
-            if data.Has("prompts") && IsObject(data["prompts"]) {
-                this.Prompts := []
-                for entry in data["prompts"] {
-                    if entry.Has("name") && entry.Has("content") {
-                        this.Prompts.Push({
-                            name: entry["name"],
-                            content: entry["content"]
-                        })
-                    }
-                }
-            }
-
-            ; Validate active prompt still exists
-            if this.ActivePrompt != "" && !this.FindByName(this.ActivePrompt) {
-                this.ActivePrompt := (this.Prompts.Length > 0) ? this.Prompts[1].name : ""
-            }
+            this.ActivePrompt := IniRead(AppState.ConfigFile, "AI", "ActivePrompt", "")
         } catch {
+            this.ActivePrompt := ""
+        }
+
+        ; --- Scan .prompt files ---
+        this.Prompts := []
+        Loop Files, this.PromptsDir "\*" this.EXT, "F" {
+            filename := A_LoopFileName
+            if (filename == "_active" this.EXT)   ; skip if someone accidentally left it
+                continue
+            name := SubStr(filename, 1, -StrLen(this.EXT))   ; strip extension
+            try {
+                content := FileRead(A_LoopFileFullPath, "UTF-8")
+                this.Prompts.Push({ name: name, content: content })
+            } catch {
+                ; Skip unreadable files
+            }
+        }
+
+        ; --- Validate active prompt ---
+        if this.ActivePrompt != "" && !this.FindByName(this.ActivePrompt) {
+            this.ActivePrompt := (this.Prompts.Length > 0) ? this.Prompts[1].name : ""
+        }
+
+        ; --- Create defaults if empty ---
+        if this.Prompts.Length == 0 {
             this._CreateDefault()
         }
+
+        ; Ensure active is saved (e.g., after fallback or defaults)
+        this._SaveActive()
     }
 
-    ; Save prompts to JSON file.
+    ; ------------------------------------------------------------------------
+    ; Save the active prompt state to Config.ini.
+    ; ------------------------------------------------------------------------
     static Save() {
-        ; Build JSON string manually for zero-dependency operation
-        json := '{`n  "active": ' . this._JsonString(this.ActivePrompt) . ',`n  "prompts": [`n'
-
-        for i, p in this.Prompts {
-            json .= '    {`n      "name": ' . this._JsonString(p.name) . ',`n'
-            json .= '      "content": ' . this._JsonString(p.content) . '`n    }'
-            if i < this.Prompts.Length
-                json .= ','
-            json .= '`n'
-        }
-
-        json .= '  ]`n}'
-
-        ; Ensure configs directory exists
-        cfgDir := A_ScriptDir "\configs"
-        if !DirExist(cfgDir)
-            DirCreate(cfgDir)
-
-        try FileDelete(this.PromptsFile)
-        FileAppend(json, this.PromptsFile, "UTF-8")
+        this._SaveActive()
     }
 
+    ; ------------------------------------------------------------------------
     ; Add a new prompt. Returns true on success, false if name already exists.
+    ; Writes the prompt to a new .prompt file immediately.
+    ; ------------------------------------------------------------------------
     static Add(name, content) {
         if this.FindByName(name)
             return false
 
+        this._EnsureDir()
+
+        safeName := this._SanitizeFilename(name)
+        if safeName == ""
+            safeName := "prompt"
+
+        filePath := this.PromptsDir "\" safeName this.EXT
+
+        ; Ensure file does not already exist (defensive)
+        if FileExist(filePath) {
+            ; Append a timestamp to avoid collision
+            safeName .= "_" . A_TickCount
+            filePath := this.PromptsDir "\" safeName this.EXT
+        }
+
+        FileAppend(content, filePath, "UTF-8")
         this.Prompts.Push({ name: name, content: content })
 
         ; Auto-select if this is the first prompt
         if this.ActivePrompt == ""
             this.ActivePrompt := name
 
-        this.Save()
+        this._SaveActive()
         return true
     }
 
-    ; Update an existing prompt by index (1-based).
+    ; ------------------------------------------------------------------------
+    ; Update an existing prompt by index (1-based). Returns true on success.
+    ; If the name changes, the file is renamed accordingly.
+    ; ------------------------------------------------------------------------
     static Update(index, name, content) {
         if index < 1 || index > this.Prompts.Length
             return false
@@ -92,23 +108,56 @@ class PromptManager {
             return false
 
         oldName := this.Prompts[index].name
+        oldSafe := this._SanitizeFilename(oldName)
+        newSafe := this._SanitizeFilename(name)
+        if newSafe == ""
+            newSafe := "prompt"
+
+        oldPath := this.PromptsDir "\" oldSafe this.EXT
+        newPath := this.PromptsDir "\" newSafe this.EXT
+
+        ; If name changed, rename the file
+        if oldName != name {
+            try {
+                if FileExist(newPath)
+                    FileDelete(newPath)
+                FileMove(oldPath, newPath, 1)
+            } catch {
+                return false
+            }
+        }
+
+        ; Write new content (overwrite existing file)
+        try {
+            FileDelete(oldPath)   ; if name didn't change, overwrite
+            FileAppend(content, newPath, "UTF-8")
+        } catch {
+            return false
+        }
+
         this.Prompts[index].name := name
         this.Prompts[index].content := content
 
-        ; Update active prompt reference if name changed
+        ; Update active reference if name changed
         if this.ActivePrompt == oldName
             this.ActivePrompt := name
 
-        this.Save()
+        this._SaveActive()
         return true
     }
 
-    ; Delete a prompt by index (1-based).
+    ; ------------------------------------------------------------------------
+    ; Delete a prompt by index (1-based). Returns true on success.
+    ; ------------------------------------------------------------------------
     static Delete(index) {
         if index < 1 || index > this.Prompts.Length
             return false
 
         deletedName := this.Prompts[index].name
+        safeName := this._SanitizeFilename(deletedName)
+        filePath := this.PromptsDir "\" safeName this.EXT
+        try FileDelete(filePath)
+
         this.Prompts.RemoveAt(index)
 
         ; Clear active if it was deleted, or set to first available
@@ -116,33 +165,37 @@ class PromptManager {
             this.ActivePrompt := (this.Prompts.Length > 0) ? this.Prompts[1].name : ""
         }
 
-        this.Save()
+        this._SaveActive()
         return true
     }
 
-    ; Set the active prompt by name.
+    ; ------------------------------------------------------------------------
+    ; Set the active prompt by name. Returns true on success.
+    ; ------------------------------------------------------------------------
     static SetActive(name) {
         if this.FindByName(name) {
             this.ActivePrompt := name
-            this.Save()
+            this._SaveActive()
             return true
         }
         return false
     }
 
+    ; ------------------------------------------------------------------------
     ; Get the content of the currently active prompt, or empty string if none.
+    ; ------------------------------------------------------------------------
     static GetActiveContent() {
         if this.ActivePrompt == ""
             return ""
-
         idx := this.FindByName(this.ActivePrompt)
         if idx
             return this.Prompts[idx].content
-
         return ""
     }
 
+    ; ------------------------------------------------------------------------
     ; Find a prompt by name. Returns its index (1-based) or 0 if not found.
+    ; ------------------------------------------------------------------------
     static FindByName(name) {
         for i, p in this.Prompts {
             if p.name == name
@@ -151,16 +204,27 @@ class PromptManager {
         return 0
     }
 
+    ; ------------------------------------------------------------------------
     ; Check if any prompts are configured.
+    ; ------------------------------------------------------------------------
     static HasPrompts() {
         return this.Prompts.Length > 0
     }
 
+    ; ------------------------------------------------------------------------
     ; --- Private helpers ---
+    ; ------------------------------------------------------------------------
 
-    ; Create a default prompts file with example prompts.
+    ; Ensure the prompts directory exists.
+    static _EnsureDir() {
+        if !DirExist(this.PromptsDir)
+            DirCreate(this.PromptsDir)
+    }
+
+    ; Create default prompts when no prompts exist.
     static _CreateDefault() {
-        this.Prompts := [
+        this._EnsureDir()
+        defaults := [
             {
                 name: "Translate to Chinese",
                 content: "Please translate the following text to Simplified Chinese. Only output the translated text without any explanations or notes."
@@ -170,96 +234,46 @@ class PromptManager {
                 content: "Please summarize the following text concisely. Focus on the key points and main ideas."
             }
         ]
-        this.ActivePrompt := "Translate to Chinese"
-        this.Save()
-    }
-
-    ; Minimal JSON string escaper.
-    static _JsonString(str) {
-        str := StrReplace(str, "\", "\\")
-        str := StrReplace(str, '"', '\"')
-        str := StrReplace(str, "`n", "\n")
-        str := StrReplace(str, "`r", "\r")
-        str := StrReplace(str, "`t", "\t")
-        ; Strip control characters that would break JSON
-        str := RegExReplace(str, "[\x00-\x08\x0B\x0C\x0E-\x1F]", "")
-        return '"' . str . '"'
-    }
-
-    ; Minimal JSON parser for our simple format.
-    ; Returns a Map with "active" and "prompts" keys.
-    static _ParseJson(raw) {
-        result := Map("active", "", "prompts", [])
-
-        ; Extract "active" field
-        if RegExMatch(raw, '"active"\s*:\s*"([^"]*)"', &m)
-            result["active"] := m[1]
-
-        ; Extract each prompt object
-        ; Find all {...} blocks inside the "prompts" array
-        pos := InStr(raw, '"prompts"')
-        if !pos
-            return result
-
-        ; Find the opening bracket of the prompts array
-        bracketPos := InStr(raw, '[', , pos)
-        if !bracketPos
-            return result
-
-        ; Extract individual objects by tracking brace depth
-        depth := 0
-        objStart := 0
-        i := bracketPos + 1
-
-        while i <= StrLen(raw) {
-            ch := SubStr(raw, i, 1)
-
-            if ch == '{' {
-                if depth == 0
-                    objStart := i
-                depth++
-            } else if ch == '}' {
-                depth--
-                if depth == 0 && objStart > 0 {
-                    objStr := SubStr(raw, objStart, i - objStart + 1)
-                    parsed := this._ParseSinglePrompt(objStr)
-                    if parsed
-                        result["prompts"].Push(parsed)
-                    objStart := 0
-                }
-            }
-
-            i++
+        this.Prompts := []
+        for d in defaults {
+            this.Add(d.name, d.content)
         }
-
-        return result
+        this.ActivePrompt := defaults[1].name
+        this._SaveActive()
     }
 
-    ; Parse a single {"name":"...","content":"..."} object.
-    static _ParseSinglePrompt(objStr) {
-        name := ""
-        content := ""
+    ; Save the active prompt name to Config.ini (section "AI", key "ActivePrompt").
+    static _SaveActive() {
+        if this.ActivePrompt != "" {
+            try IniWrite(this.ActivePrompt, AppState.ConfigFile, "AI", "ActivePrompt")
+        } else {
+            ; Write empty to clear the key if needed
+            try IniWrite("", AppState.ConfigFile, "AI", "ActivePrompt")
+        }
+    }
 
-        if RegExMatch(objStr, '"name"\s*:\s*"((?:[^"\\]|\\.)*)"', &m)
-            name := this._UnescapeJson(m[1])
-
-        if RegExMatch(objStr, '"content"\s*:\s*"((?:[^"\\]|\\.)*)"', &m)
-            content := this._UnescapeJson(m[1])
-
+    ; Sanitize a string for use as a Windows filename.
+    ; Replaces invalid characters with underscores.
+    static _SanitizeFilename(name) {
+        ; Invalid Windows filename characters: \ / : * ? " < > |
+        invalid := ["\", "/", ":", "*", "?", "`"`"", "<", ">", "|"]
+        for ch in invalid
+            name := StrReplace(name, ch, "_")
+        ; Replace newlines and tabs with spaces
+        name := StrReplace(name, "`n", " ")
+        name := StrReplace(name, "`r", " ")
+        name := StrReplace(name, "`t", " ")
+        ; Collapse multiple spaces
+        name := RegExReplace(name, " +", " ")
+        name := Trim(name)
+        ; If result is empty, use a fallback
         if name == ""
-            return ""
-
-        return { name: name, content: content }
-    }
-
-    ; Unescape JSON string escapes.
-    static _UnescapeJson(str) {
-        str := StrReplace(str, "\n", "`n")
-        str := StrReplace(str, "\r", "`r")
-        str := StrReplace(str, "\t", "`t")
-        str := StrReplace(str, '\"', '"')
-        str := StrReplace(str, "\\", "\")
-        str := RegExReplace(str, "\\u([0-9A-Fa-f]{4})", (m) => Chr(Integer("0x" . m[1])))
-        return str
+            name := "prompt"
+        ; Remove leading/trailing dots and spaces (reserved)
+        name := RegExReplace(name, "^[. ]+", "")
+        name := RegExReplace(name, "[. ]+$", "")
+        if name == ""
+            name := "prompt"
+        return name
     }
 }
