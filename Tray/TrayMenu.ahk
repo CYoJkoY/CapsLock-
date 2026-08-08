@@ -99,6 +99,9 @@ BuildTrayMenuItems() {
     autoStartEnabled := IsAutoStartEnabled()
     items.Push({ label: (autoStartEnabled ? "✓ " : "") . "🚀 " . Lang("MENU_AUTOSTART"), callback: (*) => ToggleAutoStart() })
 
+    ; --- Gist Sync ---
+    items.Push({ label: "☁️ " Lang("MENU_GIST_SYNC"), callback: (*) => GistSyncGui.Show() })
+
     ; --- Rebuild language cache ---
     items.Push({ label: "🔧 " Lang("MENU_REBUILD_LANG"), callback: (*) => RebuildLangCache() })
 

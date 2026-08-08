@@ -31,6 +31,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\ApiResponseParser.ahk"
 #Include "Core\ApiStreamHandler.ahk"
 #Include "Core\ApiClient.ahk"
+#Include "Core\GistSync.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
@@ -52,6 +53,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\ThemeHelper.ahk"
 #Include "UI\PromptEditDialog.ahk"
 #Include "UI\PromptSettingsGui.ahk"
+#Include "UI\GistSyncGui.ahk"
 
 Language.Load()
 ConfigManager.Load()

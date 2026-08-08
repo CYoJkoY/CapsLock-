@@ -42,6 +42,10 @@ class ConfigManager {
             catch
                 AppState.ApiTemperature := 0.7
             AppState.ApiStreamMode := IniRead(cfg, "AI", "StreamMode", "0") == "1"
+
+            ; ---- Gist Sync ----
+            AppState.GistToken := IniRead(cfg, "Gist", "Token", "")
+            AppState.GistId   := IniRead(cfg, "Gist", "GistId", "")
         }
     }
 
@@ -71,6 +75,10 @@ class ConfigManager {
             IniWrite(AppState.ApiMaxTokens,   cfg, "AI", "ApiMaxTokens")
             IniWrite(AppState.ApiTemperature, cfg, "AI", "ApiTemperature")
             IniWrite(AppState.ApiStreamMode ? "1" : "0", cfg, "AI", "StreamMode")
+
+            ; ---- Gist Sync ----
+            IniWrite(AppState.GistToken, cfg, "Gist", "Token")
+            IniWrite(AppState.GistId,   cfg, "Gist", "GistId")
         }
     }
 }
