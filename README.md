@@ -6,10 +6,10 @@
  <p style= "color: #8A9E8B; font-size: 0.95em; margin-top: 12px; " >A high-performance, Vim‑style system enhancement tool based on AutoHotkey v2 </p >
  </div >
 <p >
- <a href= "https://www.autohotkey.com/ " > <img src= "https://img.shields.io/badge/AutoHotkey-v2.0-8A9E8B?logo=autohotkey &logoColor=BEB8AE &style=flat-square " alt= "AutoHotkey v2 " > </a >
+ <a href= "https://www.autohotkey.com/ " > <img src= "https://img.shields.io/badge/AutoHotkey-v2.0-8A9E8B?logo=autohotkey&logoColor=BEB8AE&style=flat-square " alt= "AutoHotkey v2 " > </a >
  <a href= "LICENSE " > <img src= "https://img.shields.io/badge/License-GPL--3.0-7A8E8E?style=flat-square " alt= "License " > </a >
  <img src= "https://img.shields.io/badge/Platform-Windows-9E8F7E?style=flat-square " alt= "Platform " >
- <a href= "https://cyojkoy.github.io/Payment/ " > <img src= "https://img.shields.io/badge/Support_Me-9E8F7E?logo=buy-me-a-coffee &logoColor=BEB8AE &style=flat-square " alt= "Support Me " > </a >
+ <a href= "https://cyojkoy.github.io/Payment/ " > <img src= "https://img.shields.io/badge/Support_Me-9E8F7E?logo=buy-me-a-coffee&logoColor=BEB8AE&style=flat-square " alt= "Support Me " > </a >
  </p >
 <p style= "word-spacing: 6px; margin-top: 20px; " >
  <a href= "#-shortcut-quick-reference " style= "color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B; " >Shortcut Quick Reference </a >  &nbsp;• &nbsp;
