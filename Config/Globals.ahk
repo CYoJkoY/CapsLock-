@@ -121,4 +121,8 @@ class AppState {
     static ApiMaxTokens := 2000
     static ApiTemperature := 0.7
     static ApiStreamMode := false   ; true = streaming, false = classic
+
+    ; --- Gist Sync ---
+    static GistToken := ""
+    static GistId := ""
 }

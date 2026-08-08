@@ -257,27 +257,12 @@ class Language {
     static GetLanguages() => LanguagePack.GetAvailable()
 
     static _ReadSavedLang() {
-        try {
-            cfg := AppState.ConfigFile
-            if FileExist(cfg) {
-                val := IniRead(cfg, "General", "language", "")
-                if val != ""
-                    return val
-            }
-        } catch {
-        }
-        return ""
+        return SecureIni.Get("General", "language", "")
     }
 
     static _WriteSavedLang(code) {
-        try {
-            cfg := AppState.ConfigFile
-            cfgDir := SubStr(cfg, 1, InStr(cfg, "\", , -1))
-            if !DirExist(cfgDir)
-                DirCreate(cfgDir)
-            IniWrite(code, cfg, "General", "language")
-        } catch {
-        }
+        SecureIni.Set("General", "language", code)
+        SecureIni.Save()
     }
 }
 

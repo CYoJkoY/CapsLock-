@@ -38,7 +38,7 @@ class HistoryManager {
                 if history.RawRead(buf, size) != size
                     break
 
-                CryptBuffer(buf)
+                Encryption.CryptBuffer(buf)
 
                 p := 0
 
@@ -112,7 +112,7 @@ class HistoryManager {
             NumPut("Int", txtSize, buf, p), p += 4
             StrPut(txtStr, buf.Ptr + p, txtSize, "UTF-8")
 
-            CryptBuffer(buf)
+            Encryption.CryptBuffer(buf)
 
             history.WriteInt(buf.Size)
             history.RawWrite(buf, buf.Size)
