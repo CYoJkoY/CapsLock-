@@ -32,11 +32,11 @@
     ~Backspace:: Send( "{Home}+{End}{Delete}" )
     ~Delete:: Send( "{Home}+{End}{Delete}" )
 
-    e:: Send( "^{PgDn}" )
     q:: Send( "^{PgUp}" )
+    e:: Send( "^{PgDn}" )
 
-    +e:: Send( "!+{Esc}" )
-    +q:: Send( "!{Esc}" )
+    +q:: TaskbarSwitch.Prev()
+    +e:: TaskbarSwitch.Next()
 
     LButton:: {
         AdjustOpacity( 20 )

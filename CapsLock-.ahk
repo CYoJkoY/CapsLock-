@@ -11,6 +11,8 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
 #Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\TaskbarOrder.ahk"
+#Include "Utils\TaskbarSwitch.ahk"
 
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
