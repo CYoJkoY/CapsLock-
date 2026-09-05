@@ -1,9 +1,6 @@
-<div align="center" style="background-color: #1E1E1E; padding: 40px 20px; border-radius: 28px;">
-  <div style="background: #2A2A2A; border-radius: 36px; padding: 42px 18px; margin-bottom: 28px;">
-    <img src="assets/CapsLock-.ico" alt="CapsLock Extended" width="80">
-    <h1 style="color: #E6DED6; font-weight: 350; letter-spacing: 2px; margin: 18px 0 8px;">CapsLock Extended</h1>
-    <p style="color: #BEB8AE; font-size: 1.2em; max-width: 700px; margin: 0 auto;">Turn CapsLock into a powerful productivity layer for navigation, clipboard workflows, windows, tabs, and document conversion.</p>
-    <p style="color: #8A9E8B; font-size: 0.95em; margin-top: 12px;">AutoHotkey v2 · Windows · Vim-style shortcuts · Clipboard automation · Pandoc integration</p>
+<div align="center" style="background-color: #1E1E1E; padding: 28px 18px; border-radius: 28px;">
+  <div style="background: #2A2A2A; border-radius: 30px; padding: 16px; margin-bottom: 24px; overflow: hidden;">
+    <img src="assets/hero.svg" alt="CapsLock Extended Hero" width="960" style="display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto;">
   </div>
 
   <p>
@@ -261,7 +258,8 @@ CapsLock-/
 │   └── 📄 ...
 ├── 📁 assets
 │   ├── 🖼️ CapsLock-.ico
-│   └── 🖼️ dots.svg
+│   ├── 🖼️ dots.svg
+│   └── 🖼️ hero.svg
 ├── 📄 CapsLock-.ahk
 ├── 📄 lang.csv
 ├── ⚖️ LICENSE
