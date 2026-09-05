@@ -9,7 +9,7 @@
   <p>
     <a href="https://www.autohotkey.com/"><img src="https://img.shields.io/badge/AutoHotkey-v2.0-8A9E8B?logo=autohotkey&logoColor=BEB8AE&style=flat-square" alt="AutoHotkey v2"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-7A8E8E?style=flat-square" alt="GPL-3.0"></a>
-    <img src="https://img.shields.io/badge/Platform-Windows-9E8F7E?style=flat-square" alt="Windows"></a>
+    <img src="https://img.shields.io/badge/Platform-Windows-9E8F7E?style=flat-square" alt="Windows">
     <a href="https://github.com/CYoJkoY/CapsLock-/actions"><img src="https://img.shields.io/badge/CI-GitHub_Actions-8A9E8B?style=flat-square&logo=github" alt="GitHub Actions"></a>
     <a href="https://cyojkoy.github.io/Payment/"><img src="https://img.shields.io/badge/Support_Me-9E8F7E?logo=buy-me-a-coffee&logoColor=BEB8AE&style=flat-square" alt="Support Me"></a>
   </p>
@@ -195,7 +195,7 @@ The main configuration is stored in `configs/Config.ini`.
 ```ini
 [Cleanup]
 deleteMode=1
- deleteDelay=10
+deleteDelay=10
 cleanupInterval=30
 
 [History]
