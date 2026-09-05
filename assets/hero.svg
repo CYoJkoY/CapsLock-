@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520">
+  <rect width="1440" height="520" rx="34" fill="#1E1E1E"/>
+  <rect x="38" y="38" width="1364" height="444" rx="28" fill="#2A2A2A" stroke="#5A6B6B" stroke-width="2"/>
+
+  <g transform="translate(66 88)">
+    <rect x="0" y="0" width="820" height="320" rx="28" fill="#1E1E1E" stroke="#5A6B6B" stroke-width="2"/>
+    <text x="34" y="48" fill="#8A9E8B" font-family="Consolas, monospace" font-size="17" letter-spacing="3">CAPSLOCK / PRODUCTIVITY LAYER</text>
+
+    <g transform="translate(34 78)">
+      <rect x="0" y="0" width="752" height="208" rx="20" fill="#252725"/>
+      <g fill="#343A37" stroke="#5A6B6B">
+        <rect x="22" y="22" width="68" height="48" rx="10"/><rect x="98" y="22" width="68" height="48" rx="10"/><rect x="174" y="22" width="68" height="48" rx="10"/><rect x="250" y="22" width="68" height="48" rx="10"/>
+        <rect x="326" y="22" width="68" height="48" rx="10"/><rect x="402" y="22" width="68" height="48" rx="10"/><rect x="478" y="22" width="68" height="48" rx="10"/><rect x="554" y="22" width="68" height="48" rx="10"/><rect x="630" y="22" width="98" height="48" rx="10"/>
+        <rect x="22" y="80" width="86" height="48" rx="10"/><rect x="116" y="80" width="68" height="48" rx="10"/><rect x="192" y="80" width="68" height="48" rx="10"/><rect x="268" y="80" width="68" height="48" rx="10"/>
+        <rect x="344" y="80" width="68" height="48" rx="10"/><rect x="420" y="80" width="68" height="48" rx="10"/><rect x="496" y="80" width="68" height="48" rx="10"/><rect x="572" y="80" width="68" height="48" rx="10"/><rect x="648" y="80" width="80" height="48" rx="10"/>
+        <rect x="22" y="138" width="118" height="48" rx="10"/><rect x="148" y="138" width="68" height="48" rx="10"/><rect x="224" y="138" width="68" height="48" rx="10"/><rect x="300" y="138" width="68" height="48" rx="10"/>
+        <rect x="376" y="138" width="68" height="48" rx="10"/><rect x="452" y="138" width="68" height="48" rx="10"/><rect x="528" y="138" width="68" height="48" rx="10"/><rect x="604" y="138" width="124" height="48" rx="10"/>
+      </g>
+
+      <rect x="22" y="22" width="68" height="48" rx="10" fill="#8A9E8B" stroke="#BEB8AE" stroke-width="2"/>
+      <text x="56" y="52" text-anchor="middle" fill="#1E1E1E" font-family="Consolas, monospace" font-size="16" font-weight="700">CAPS</text>
+      <text x="56" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">TAB</text>
+      <text x="150" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">Q</text>
+      <text x="226" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">W</text>
+      <text x="302" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">E</text>
+      <text x="340" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">SHIFT</text>
+      <text x="416" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">SPACE</text>
+      <text x="492" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">P</text>
+      <text x="568" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">C</text>
+    </g>
+  </g>
+
+  <g transform="translate(942 96)">
+    <text x="0" y="42" fill="#8A9E8B" font-family="Consolas, monospace" font-size="18" letter-spacing="4">AUTOHOTKEY / WINDOWS</text>
+    <text x="0" y="106" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="54" font-weight="300" letter-spacing="2">CapsLock Extended</text>
+    <text x="0" y="148" fill="#BEB8AE" font-family="Segoe UI, Arial, sans-serif" font-size="22">A dedicated modifier for keyboard-first workflows</text>
+
+    <g transform="translate(0 190)">
+      <rect x="0" y="0" width="150" height="78" rx="18" fill="#343A37"/>
+      <text x="20" y="31" fill="#8A9E8B" font-family="Consolas, monospace" font-size="14">NAV</text>
+      <text x="20" y="57" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="18">Vim Motion</text>
+    </g>
+    <g transform="translate(164 190)">
+      <rect x="0" y="0" width="150" height="78" rx="18" fill="#343A37"/>
+      <text x="20" y="31" fill="#8A9E8B" font-family="Consolas, monospace" font-size="14">CLIP</text>
+      <text x="20" y="57" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="18">Clipboard</text>
+    </g>
+    <g transform="translate(328 190)">
+      <rect x="0" y="0" width="150" height="78" rx="18" fill="#343A37"/>
+      <text x="20" y="31" fill="#8A9E8B" font-family="Consolas, monospace" font-size="14">WIN</text>
+      <text x="20" y="57" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="18">Window</text>
+    </g>
+
+    <rect x="0" y="298" width="478" height="74" rx="18" fill="#343A37" stroke="#5A6B6B"/>
+    <text x="22" y="328" fill="#BEB8AE" font-family="Consolas, monospace" font-size="14">CapsLock + C</text>
+    <text x="170" y="328" fill="#7A8E8E" font-family="Consolas, monospace" font-size="14">→</text>
+    <text x="198" y="328" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="16">copy as plain text</text>
+    <text x="22" y="353" fill="#7A8E8E" font-family="Consolas, monospace" font-size="13">one modifier · many workflows</text>
+  </g>
+
+  <circle cx="1322" cy="82" r="8" fill="#8A9E8B"/>
+  <circle cx="1350" cy="82" r="5" fill="#7A8E8E"/>
+  <circle cx="1374" cy="82" r="3" fill="#9E8F7E"/>
+</svg>
