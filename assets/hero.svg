@@ -1,67 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520">
-  <title>CapsLock Extended — keyboard-first Windows productivity layer</title>
-  <desc>A dark blue-gray keyboard scene showing CapsLock as a modifier layer for navigation, clipboard, window control, and document workflows.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="560" viewBox="0 0 1440 560" role="img" aria-labelledby="title desc">
+  <title id="title">CapsLock Extended — one modifier, many Windows workflows</title>
+  <desc id="desc">A dark keyboard-first composition showing CapsLock as a second control layer with shortcuts for navigation, clipboard, windows, and tabs.</desc>
 
-  <rect width="1440" height="520" rx="34" fill="#14141D"/>
-  <rect x="38" y="38" width="1364" height="444" rx="28" fill="#1B1B27" stroke="#3A3A52" stroke-width="2"/>
+  <rect width="1440" height="560" rx="34" fill="#121722"/>
+  <rect x="32" y="32" width="1376" height="496" rx="28" fill="#182131" stroke="#34445F" stroke-width="2"/>
 
-  <g transform="translate(66 88)">
-    <rect x="0" y="0" width="820" height="320" rx="28" fill="#14141D" stroke="#3A3A52" stroke-width="2"/>
-    <text x="34" y="46" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="16" letter-spacing="3">CAPSLOCK / MODIFIER LAYER</text>
+  <!-- Brand mark / modifier key -->
+  <g transform="translate(74 84)">
+    <rect x="0" y="0" width="360" height="360" rx="92" fill="#1A2230" stroke="#6B95D6" stroke-width="8"/>
+    <path d="M278 116 C250 80 208 62 162 62 C86 62 36 120 36 180 C36 240 86 298 162 298 C208 298 250 280 278 244"
+          fill="none" stroke="#DCE8FF" stroke-width="54" stroke-linecap="round"/>
+    <path d="M248 146 H304 M248 214 H304" fill="none" stroke="#6B95D6" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="286" cy="76" r="11" fill="#C4A95E"/>
+    <text x="180" y="344" text-anchor="middle" fill="#8EA6CA" font-family="Cascadia Code, Consolas, monospace" font-size="13" font-weight="700" letter-spacing="2">SECOND CONTROL LAYER</text>
+  </g>
 
-    <g transform="translate(34 72)">
-      <rect x="0" y="0" width="752" height="210" rx="20" fill="#1F202D"/>
-      <g fill="#282838" stroke="#3A3A52">
-        <rect x="22" y="22" width="68" height="48" rx="10"/><rect x="98" y="22" width="68" height="48" rx="10"/><rect x="174" y="22" width="68" height="48" rx="10"/><rect x="250" y="22" width="68" height="48" rx="10"/>
-        <rect x="326" y="22" width="68" height="48" rx="10"/><rect x="402" y="22" width="68" height="48" rx="10"/><rect x="478" y="22" width="68" height="48" rx="10"/><rect x="554" y="22" width="68" height="48" rx="10"/><rect x="630" y="22" width="98" height="48" rx="10"/>
-        <rect x="22" y="80" width="86" height="48" rx="10"/><rect x="116" y="80" width="68" height="48" rx="10"/><rect x="192" y="80" width="68" height="48" rx="10"/><rect x="268" y="80" width="68" height="48" rx="10"/>
-        <rect x="344" y="80" width="68" height="48" rx="10"/><rect x="420" y="80" width="68" height="48" rx="10"/><rect x="496" y="80" width="68" height="48" rx="10"/><rect x="572" y="80" width="68" height="48" rx="10"/><rect x="648" y="80" width="80" height="48" rx="10"/>
-        <rect x="22" y="138" width="118" height="48" rx="10"/><rect x="148" y="138" width="68" height="48" rx="10"/><rect x="224" y="138" width="68" height="48" rx="10"/><rect x="300" y="138" width="68" height="48" rx="10"/>
-        <rect x="376" y="138" width="68" height="48" rx="10"/><rect x="452" y="138" width="68" height="48" rx="10"/><rect x="528" y="138" width="68" height="48" rx="10"/><rect x="604" y="138" width="124" height="48" rx="10"/>
-      </g>
+  <!-- Product statement -->
+  <g transform="translate(486 78)">
+    <text x="0" y="26" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="15" font-weight="700" letter-spacing="3">AUTOHOTKEY V2 / WINDOWS</text>
+    <text x="0" y="90" fill="#F0F4FF" font-family="Segoe UI, Arial, sans-serif" font-size="48" font-weight="650">CapsLock Extended</text>
+    <text x="0" y="128" fill="#AEB9CF" font-family="Segoe UI, Arial, sans-serif" font-size="20">One modifier for keyboard-first desktop workflows.</text>
 
-      <rect x="22" y="22" width="68" height="48" rx="10" fill="#5B86C9" stroke="#82A8E0" stroke-width="2"/>
-      <text x="56" y="52" text-anchor="middle" fill="#14141D" font-family="Cascadia Code, Consolas, monospace" font-size="16" font-weight="700">CAPS</text>
-      <text x="56" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">TAB</text>
-      <text x="150" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">Q</text>
-      <text x="226" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">W</text>
-      <text x="302" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">E</text>
-      <text x="340" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">SHIFT</text>
-      <text x="416" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">SPACE</text>
-      <text x="492" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">P</text>
-      <text x="568" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">C</text>
+    <!-- Real shortcut proof -->
+    <g transform="translate(0 176)">
+      <rect x="0" y="0" width="208" height="92" rx="20" fill="#202A3B" stroke="#34445F"/>
+      <text x="22" y="31" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CAPS + C</text>
+      <text x="22" y="61" fill="#F0F4FF" font-family="Segoe UI, Arial, sans-serif" font-size="17">Copy as plain text</text>
+      <text x="22" y="80" fill="#73829B" font-family="Cascadia Code, Consolas, monospace" font-size="11">clipboard pipeline</text>
+    </g>
+
+    <g transform="translate(226 176)">
+      <rect x="0" y="0" width="208" height="92" rx="20" fill="#202A3B" stroke="#34445F"/>
+      <text x="22" y="31" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CAPS + ← / →</text>
+      <text x="22" y="61" fill="#F0F4FF" font-family="Segoe UI, Arial, sans-serif" font-size="17">Move by word</text>
+      <text x="22" y="80" fill="#73829B" font-family="Cascadia Code, Consolas, monospace" font-size="11">text navigation</text>
+    </g>
+
+    <g transform="translate(0 284)">
+      <rect x="0" y="0" width="208" height="92" rx="20" fill="#202A3B" stroke="#34445F"/>
+      <text x="22" y="31" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CAPS + T</text>
+      <text x="22" y="61" fill="#F0F4FF" font-family="Segoe UI, Arial, sans-serif" font-size="17">Toggle always-on-top</text>
+      <text x="22" y="80" fill="#73829B" font-family="Cascadia Code, Consolas, monospace" font-size="11">window control</text>
+    </g>
+
+    <g transform="translate(226 284)">
+      <rect x="0" y="0" width="208" height="92" rx="20" fill="#202A3B" stroke="#34445F"/>
+      <text x="22" y="31" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CAPS + Q / E</text>
+      <text x="22" y="61" fill="#F0F4FF" font-family="Segoe UI, Arial, sans-serif" font-size="17">Previous / next tab</text>
+      <text x="22" y="80" fill="#73829B" font-family="Cascadia Code, Consolas, monospace" font-size="11">browser navigation</text>
+    </g>
+
+    <g transform="translate(0 418)">
+      <rect x="0" y="0" width="434" height="44" rx="14" fill="#202A3B"/>
+      <text x="20" y="28" fill="#71819B" font-family="Cascadia Code, Consolas, monospace" font-size="12">CAPSLOCK ×2</text>
+      <text x="135" y="28" fill="#465873" font-family="Cascadia Code, Consolas, monospace" font-size="12">→</text>
+      <text x="156" y="28" fill="#BFCADF" font-family="Segoe UI, Arial, sans-serif" font-size="13">native CapsLock remains available</text>
     </g>
   </g>
 
-  <g transform="translate(912 96)">
-    <text x="0" y="40" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="16" letter-spacing="3">AUTOHOTKEY / WINDOWS</text>
-    <text x="0" y="98" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="600" letter-spacing="1">CapsLock Extended</text>
-    <text x="0" y="136" fill="#B0B4CC" font-family="Segoe UI, Arial, sans-serif" font-size="19">A dedicated modifier for keyboard-first workflows</text>
-
-    <g transform="translate(0 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
-      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">NAV</text>
-      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Vim Motion</text>
-    </g>
-    <g transform="translate(156 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
-      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CLIP</text>
-      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Clipboard</text>
-    </g>
-    <g transform="translate(312 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
-      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">WIN</text>
-      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Windows</text>
-    </g>
-
-    <rect x="0" y="258" width="456" height="72" rx="18" fill="#232332" stroke="#3A3A52"/>
-    <text x="20" y="287" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="13">CapsLock + C</text>
-    <text x="145" y="287" fill="#5E6478" font-family="Cascadia Code, Consolas, monospace" font-size="13">→</text>
-    <text x="168" y="287" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="15">copy as plain text</text>
-    <text x="20" y="311" fill="#8088A0" font-family="Cascadia Code, Consolas, monospace" font-size="12">one modifier · many workflows</text>
+  <!-- Small modular cue -->
+  <g transform="translate(1120 82)">
+    <circle cx="0" cy="0" r="8" fill="#6B95D6"/>
+    <circle cx="28" cy="0" r="6" fill="#82A8E0"/>
+    <circle cx="52" cy="0" r="4" fill="#C4A95E"/>
   </g>
-
-  <circle cx="1322" cy="82" r="8" fill="#5B86C9"/>
-  <circle cx="1350" cy="82" r="5" fill="#82A8E0"/>
-  <circle cx="1374" cy="82" r="3" fill="#C4A95E"/>
 </svg>
