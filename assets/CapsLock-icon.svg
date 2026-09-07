@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>CapsLock Extended application icon</title>
+  <desc>A deep blue-gray keyboard modifier key with a clean upward arrow, representing keyboard-first productivity.</desc>
+  <rect width="1024" height="1024" rx="220" fill="#14141D"/>
+  <rect x="92" y="92" width="840" height="840" rx="190" fill="#1B1B27" stroke="#3A3A52" stroke-width="24"/>
+  <rect x="176" y="220" width="672" height="584" rx="92" fill="#232332" stroke="#5B86C9" stroke-width="28"/>
+  <rect x="226" y="270" width="572" height="484" rx="64" fill="#282838" stroke="#82A8E0" stroke-width="10"/>
+  <rect x="278" y="322" width="468" height="380" rx="46" fill="#14141D" stroke="#3A5A8C" stroke-width="12"/>
+  <path d="M512 388 L360 520 H426 V628 H598 V520 H664 Z" fill="#82A8E0"/>
+  <rect x="408" y="626" width="208" height="22" rx="11" fill="#5B86C9"/>
+  <circle cx="176" cy="152" r="18" fill="#6FA572"/>
+  <circle cx="248" cy="152" r="12" fill="#C4A95E"/>
+  <circle cx="304" cy="152" r="9" fill="#5B86C9"/>
+  <path d="M706 154 H880" stroke="#3A3A52" stroke-width="12" stroke-linecap="round"/>
+  <rect x="208" y="842" width="120" height="24" rx="12" fill="#5B86C9"/>
+  <rect x="348" y="842" width="120" height="24" rx="12" fill="#6FA572"/>
+  <rect x="488" y="842" width="120" height="24" rx="12" fill="#C4A95E"/>
+  <rect x="628" y="842" width="120" height="24" rx="12" fill="#5B86C9"/>
+</svg>
