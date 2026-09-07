@@ -3,7 +3,7 @@
 
   <p>
     <a href="https://www.autohotkey.com/"><img src="https://img.shields.io/badge/AutoHotkey-v2-5B86C9?style=flat-square&logo=autohotkey&logoColor=white" alt="AutoHotkey v2"></a>
-    <img src="https://img.shields.io/badge/Platform-Windows-3A5A8C?style=flat-square&logo=windows&logoColor=white" alt="Windows"></a>
+    <img src="https://img.shields.io/badge/Platform-Windows-3A5A8C?style=flat-square&logo=windows&logoColor=white" alt="Windows">
     <a href="https://github.com/CYoJkoY/CapsLock-/releases/latest"><img src="https://img.shields.io/github/v/release/CYoJkoY/CapsLock-?style=flat-square&label=Release&color=6FA572" alt="Latest release"></a>
     <a href="https://github.com/CYoJkoY/CapsLock-/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/CYoJkoY/CapsLock-/release.yml?style=flat-square&label=Build" alt="Build status"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-C4A95E?style=flat-square" alt="GPL-3.0"></a>
