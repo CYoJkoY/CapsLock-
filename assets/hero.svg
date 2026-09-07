@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520">
-  <rect width="1440" height="520" rx="34" fill="#1E1E1E"/>
-  <rect x="38" y="38" width="1364" height="444" rx="28" fill="#2A2A2A" stroke="#5A6B6B" stroke-width="2"/>
+  <title>CapsLock Extended — keyboard-first Windows productivity layer</title>
+  <desc>A dark blue-gray keyboard scene showing CapsLock as a modifier layer for navigation, clipboard, window control, and document workflows.</desc>
+
+  <rect width="1440" height="520" rx="34" fill="#14141D"/>
+  <rect x="38" y="38" width="1364" height="444" rx="28" fill="#1B1B27" stroke="#3A3A52" stroke-width="2"/>
 
   <g transform="translate(66 88)">
-    <rect x="0" y="0" width="820" height="320" rx="28" fill="#1E1E1E" stroke="#5A6B6B" stroke-width="2"/>
-    <text x="34" y="46" fill="#8A9E8B" font-family="Consolas, monospace" font-size="16" letter-spacing="3">CAPSLOCK / PRODUCTIVITY LAYER</text>
+    <rect x="0" y="0" width="820" height="320" rx="28" fill="#14141D" stroke="#3A3A52" stroke-width="2"/>
+    <text x="34" y="46" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="16" letter-spacing="3">CAPSLOCK / MODIFIER LAYER</text>
 
     <g transform="translate(34 72)">
-      <rect x="0" y="0" width="752" height="210" rx="20" fill="#252725"/>
-      <g fill="#343A37" stroke="#5A6B6B">
+      <rect x="0" y="0" width="752" height="210" rx="20" fill="#1F202D"/>
+      <g fill="#282838" stroke="#3A3A52">
         <rect x="22" y="22" width="68" height="48" rx="10"/><rect x="98" y="22" width="68" height="48" rx="10"/><rect x="174" y="22" width="68" height="48" rx="10"/><rect x="250" y="22" width="68" height="48" rx="10"/>
         <rect x="326" y="22" width="68" height="48" rx="10"/><rect x="402" y="22" width="68" height="48" rx="10"/><rect x="478" y="22" width="68" height="48" rx="10"/><rect x="554" y="22" width="68" height="48" rx="10"/><rect x="630" y="22" width="98" height="48" rx="10"/>
         <rect x="22" y="80" width="86" height="48" rx="10"/><rect x="116" y="80" width="68" height="48" rx="10"/><rect x="192" y="80" width="68" height="48" rx="10"/><rect x="268" y="80" width="68" height="48" rx="10"/>
@@ -17,48 +20,48 @@
         <rect x="376" y="138" width="68" height="48" rx="10"/><rect x="452" y="138" width="68" height="48" rx="10"/><rect x="528" y="138" width="68" height="48" rx="10"/><rect x="604" y="138" width="124" height="48" rx="10"/>
       </g>
 
-      <rect x="22" y="22" width="68" height="48" rx="10" fill="#8A9E8B" stroke="#BEB8AE" stroke-width="2"/>
-      <text x="56" y="52" text-anchor="middle" fill="#1E1E1E" font-family="Consolas, monospace" font-size="16" font-weight="700">CAPS</text>
-      <text x="56" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">TAB</text>
-      <text x="150" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">Q</text>
-      <text x="226" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">W</text>
-      <text x="302" y="110" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">E</text>
-      <text x="340" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">SHIFT</text>
-      <text x="416" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">SPACE</text>
-      <text x="492" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">P</text>
-      <text x="568" y="168" text-anchor="middle" fill="#BEB8AE" font-family="Consolas, monospace" font-size="12">C</text>
+      <rect x="22" y="22" width="68" height="48" rx="10" fill="#5B86C9" stroke="#82A8E0" stroke-width="2"/>
+      <text x="56" y="52" text-anchor="middle" fill="#14141D" font-family="Cascadia Code, Consolas, monospace" font-size="16" font-weight="700">CAPS</text>
+      <text x="56" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">TAB</text>
+      <text x="150" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">Q</text>
+      <text x="226" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">W</text>
+      <text x="302" y="110" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">E</text>
+      <text x="340" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">SHIFT</text>
+      <text x="416" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">SPACE</text>
+      <text x="492" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">P</text>
+      <text x="568" y="168" text-anchor="middle" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="12">C</text>
     </g>
   </g>
 
   <g transform="translate(912 96)">
-    <text x="0" y="40" fill="#8A9E8B" font-family="Consolas, monospace" font-size="16" letter-spacing="3">AUTOHOTKEY / WINDOWS</text>
-    <text x="0" y="98" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="300" letter-spacing="1">CapsLock Extended</text>
-    <text x="0" y="136" fill="#BEB8AE" font-family="Segoe UI, Arial, sans-serif" font-size="19">A dedicated modifier for keyboard-first workflows</text>
+    <text x="0" y="40" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="16" letter-spacing="3">AUTOHOTKEY / WINDOWS</text>
+    <text x="0" y="98" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="600" letter-spacing="1">CapsLock Extended</text>
+    <text x="0" y="136" fill="#B0B4CC" font-family="Segoe UI, Arial, sans-serif" font-size="19">A dedicated modifier for keyboard-first workflows</text>
 
     <g transform="translate(0 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#343A37"/>
-      <text x="18" y="29" fill="#8A9E8B" font-family="Consolas, monospace" font-size="13">NAV</text>
-      <text x="18" y="53" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Vim Motion</text>
+      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
+      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">NAV</text>
+      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Vim Motion</text>
     </g>
     <g transform="translate(156 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#343A37"/>
-      <text x="18" y="29" fill="#8A9E8B" font-family="Consolas, monospace" font-size="13">CLIP</text>
-      <text x="18" y="53" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Clipboard</text>
+      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
+      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">CLIP</text>
+      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Clipboard</text>
     </g>
     <g transform="translate(312 166)">
-      <rect x="0" y="0" width="144" height="72" rx="16" fill="#343A37"/>
-      <text x="18" y="29" fill="#8A9E8B" font-family="Consolas, monospace" font-size="13">WIN</text>
-      <text x="18" y="53" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Window</text>
+      <rect x="0" y="0" width="144" height="72" rx="16" fill="#232332" stroke="#3A3A52"/>
+      <text x="18" y="29" fill="#82A8E0" font-family="Cascadia Code, Consolas, monospace" font-size="13">WIN</text>
+      <text x="18" y="53" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="17">Windows</text>
     </g>
 
-    <rect x="0" y="258" width="456" height="72" rx="18" fill="#343A37" stroke="#5A6B6B"/>
-    <text x="20" y="287" fill="#BEB8AE" font-family="Consolas, monospace" font-size="13">CapsLock + C</text>
-    <text x="145" y="287" fill="#7A8E8E" font-family="Consolas, monospace" font-size="13">→</text>
-    <text x="168" y="287" fill="#E6DED6" font-family="Segoe UI, Arial, sans-serif" font-size="15">copy as plain text</text>
-    <text x="20" y="311" fill="#7A8E8E" font-family="Consolas, monospace" font-size="12">one modifier · many workflows</text>
+    <rect x="0" y="258" width="456" height="72" rx="18" fill="#232332" stroke="#3A3A52"/>
+    <text x="20" y="287" fill="#B0B4CC" font-family="Cascadia Code, Consolas, monospace" font-size="13">CapsLock + C</text>
+    <text x="145" y="287" fill="#5E6478" font-family="Cascadia Code, Consolas, monospace" font-size="13">→</text>
+    <text x="168" y="287" fill="#DDE1F0" font-family="Segoe UI, Arial, sans-serif" font-size="15">copy as plain text</text>
+    <text x="20" y="311" fill="#8088A0" font-family="Cascadia Code, Consolas, monospace" font-size="12">one modifier · many workflows</text>
   </g>
 
-  <circle cx="1322" cy="82" r="8" fill="#8A9E8B"/>
-  <circle cx="1350" cy="82" r="5" fill="#7A8E8E"/>
-  <circle cx="1374" cy="82" r="3" fill="#9E8F7E"/>
+  <circle cx="1322" cy="82" r="8" fill="#5B86C9"/>
+  <circle cx="1350" cy="82" r="5" fill="#82A8E0"/>
+  <circle cx="1374" cy="82" r="3" fill="#C4A95E"/>
 </svg>
