@@ -1,288 +1,248 @@
-<div align="center" style="background-color: #1E1E1E; padding: 28px 18px; border-radius: 28px;">
-  <div style="background: #2A2A2A; border-radius: 30px; padding: 16px; margin-bottom: 24px; overflow: hidden;">
-    <img src="assets/hero.svg" alt="CapsLock Extended Hero" width="960" style="display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto;">
-  </div>
+<div align="center">
+  <img src="assets/hero.svg" alt="CapsLock Extended — keyboard-first Windows productivity layer" width="1200" style="max-width: 100%; height: auto;">
 
   <p>
-    <a href="https://www.autohotkey.com/"><img src="https://img.shields.io/badge/AutoHotkey-v2.0-8A9E8B?logo=autohotkey&logoColor=BEB8AE&style=flat-square" alt="AutoHotkey v2"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-7A8E8E?style=flat-square" alt="GPL-3.0"></a>
-    <img src="https://img.shields.io/badge/Platform-Windows-9E8F7E?style=flat-square" alt="Windows">
-    <a href="https://github.com/CYoJkoY/CapsLock-/actions"><img src="https://img.shields.io/badge/CI-GitHub_Actions-8A9E8B?style=flat-square&logo=github" alt="GitHub Actions"></a>
-    <a href="https://cyojkoy.github.io/Payment/"><img src="https://img.shields.io/badge/Support_Me-9E8F7E?logo=buy-me-a-coffee&logoColor=BEB8AE&style=flat-square" alt="Support Me"></a>
+    <a href="https://www.autohotkey.com/"><img src="https://img.shields.io/badge/AutoHotkey-v2-5B86C9?style=flat-square&logo=autohotkey&logoColor=white" alt="AutoHotkey v2"></a>
+    <img src="https://img.shields.io/badge/Platform-Windows-3A5A8C?style=flat-square&logo=windows&logoColor=white" alt="Windows"></a>
+    <a href="https://github.com/CYoJkoY/CapsLock-/releases/latest"><img src="https://img.shields.io/github/v/release/CYoJkoY/CapsLock-?style=flat-square&label=Release&color=6FA572" alt="Latest release"></a>
+    <a href="https://github.com/CYoJkoY/CapsLock-/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/CYoJkoY/CapsLock-/release.yml?style=flat-square&label=Build" alt="Build status"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-C4A95E?style=flat-square" alt="GPL-3.0"></a>
   </p>
 
-  <p style="word-spacing: 6px; margin-top: 20px;">
-    <a href="#-overview" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Overview</a> &nbsp;•&nbsp;
-    <a href="#-core-features" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Core Features</a> &nbsp;•&nbsp;
-    <a href="#-shortcut-quick-reference" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Shortcuts</a> &nbsp;•&nbsp;
-    <a href="#-installation--setup" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Installation</a> &nbsp;•&nbsp;
-    <a href="#%EF%B8%8F-configuration--parameters" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Configuration</a> &nbsp;•&nbsp;
-    <a href="#-project-structure" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Structure</a> &nbsp;•&nbsp;
-    <a href="#-security-notes" style="color: #8A9E8B; text-decoration: none; border-bottom: 1px dotted #5A6B6B;">Security</a>
+  <p>
+    <a href="https://github.com/CYoJkoY/CapsLock-/releases/latest/download/CapsLock-.exe"><strong>Download x64</strong></a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/CYoJkoY/CapsLock-/releases/latest/download/CapsLock-_x86.exe"><strong>Download x86</strong></a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/CYoJkoY/CapsLock-/releases">All releases</a>
   </p>
 </div>
 
 <div align="center">
-  <img src="assets/dots.svg" alt="separator" width="160" height="12">
+  <img src="assets/dots.svg" alt="section separator" width="160" height="12">
 </div>
 
-## 📖 Overview
+## What is CapsLock Extended?
 
-**CapsLock Extended** turns the CapsLock key into a dedicated productivity modifier. Hold `CapsLock` and combine it with familiar keys to control text navigation, selection, clipboard operations, windows, tabs, and document conversion without constantly reaching for the mouse or leaving the home row.
+**CapsLock Extended** turns `CapsLock` into a keyboard-first modifier layer for Windows. Hold `CapsLock` and use familiar keys for text navigation, selection, editing, clipboard workflows, window control, tab switching, and document conversion.
 
-The project is written for **AutoHotkey v2** and targets Windows desktop workflows. It combines Vim-inspired keyboard behavior with practical automation features such as clipboard history, smart file pasting, window transparency control, tab switching, Pandoc conversion, and a customizable tray menu.
+It is built with **AutoHotkey v2** and keeps the native CapsLock state available through a double-click. The project is modular: the keyboard layer, clipboard pipeline, history system, configuration, tray UI, and optional external-tool integrations are separated into focused modules.
 
-> **Note**  
-> This project targets **AutoHotkey v2 only**. AutoHotkey v1 is not supported.
+> [!IMPORTANT]
+> **AutoHotkey v2 only.** AutoHotkey v1 is not supported.
 
-## ✨ Core Features
+## Why it is useful
 
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">⌨️ Vim-style Text Navigation</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Move by word with <code>CapsLock + Left/Right</code>.</li>
-    <li>Jump to the beginning or end of a line with <code>CapsLock + Up/Down</code>.</li>
-    <li>Extend selections by word or line with the corresponding <code>Shift</code> combinations.</li>
-    <li>Select the complete word under the cursor with <code>CapsLock + Space</code>.</li>
-    <li>Delete characters, words, or entire lines without leaving the home row.</li>
-  </ul>
-</div>
+The project is designed around one idea: **put frequent desktop actions behind a single consistent modifier**.
 
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">📋 Advanced Clipboard Workflows</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Copy selected text as plain text with automatic formatting removal.</li>
-    <li>Smart paste supports mixed file paths, recursive folder collection, and image-to-PDF conversion.</li>
-    <li>Clipboard history provides preview, single-item paste, batch paste, and deletion.</li>
-    <li>Swap the case of clipboard text while preserving the original clipboard content.</li>
-    <li>Gitignore-style ignore rules can exclude temporary or sensitive files from file-based paste workflows.</li>
-  </ul>
-</div>
+| Workflow | What it provides |
+| :--- | :--- |
+| Text navigation | Word-wise movement, line jumps, selection expansion, word selection, and fast deletion |
+| Clipboard | Plain-text copy, smart paste, case conversion, history browsing, and batch paste |
+| Files | Recursive folder expansion, validation, temporary-file handling, and ignore rules |
+| Documents | Optional Pandoc conversion from clipboard file paths |
+| Windows | Opacity control, ghost mode, always-on-top, maximize/restore, minimize, and window cycling |
+| Tabs | Previous/next browser tab navigation and taskbar-based window switching |
+| Interface | Dark tray menu, OSD feedback, configurable cleanup, and language switching |
 
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">📄 Document Conversion with Pandoc</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Convert clipboard file paths with <code>CapsLock + P</code>.</li>
-    <li>Support a broad range of Pandoc input and output formats.</li>
-    <li>Expand folders recursively and process multiple documents as a batch.</li>
-    <li>Show progress feedback and place converted files into a workflow-ready multi-file drop.</li>
-    <li>Choose the output format from the tray menu, with <code>docx</code> available as the default configuration.</li>
-  </ul>
-</div>
+## Shortcut map
 
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">🪟 Window & Tab Control</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Adjust window opacity with CapsLock plus the left or right mouse button.</li>
-    <li>Toggle a lightweight ghost mode between 10% and 100% opacity.</li>
-    <li>Toggle always-on-top behavior with sound and OSD feedback.</li>
-    <li>Maximize, restore, and minimize the active window from the keyboard.</li>
-    <li>Switch browser tabs or cycle windows without leaving the keyboard.</li>
-  </ul>
-</div>
-
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">🕘 Full Clipboard History Browser</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Open a dedicated history window from the clipboard history menu.</li>
-    <li>Search and multi-select historical entries.</li>
-    <li>Paste multiple entries as files or text.</li>
-    <li>Delete entries with real-time list updates.</li>
-    <li>Browse large histories with paginated loading.</li>
-  </ul>
-</div>
-
-<div style="background: #2A2A2A; border-radius: 20px; padding: 16px; margin: 16px 0;">
-  <h3 style="margin-top: 0; color: #D6D2CC;">🖱️ Custom Tray Interface</h3>
-  <ul style="color: #BEB8AE;">
-    <li>Use a custom dark-themed tray menu with nested settings.</li>
-    <li>Group cleanup, history, paste, and language controls into dedicated submenus.</li>
-    <li>Automatically reposition the menu to avoid taskbar overflow.</li>
-    <li>Use DPI-aware tray positioning for accurate alignment.</li>
-    <li>Switch the interface language directly from the tray menu; the project supports 13 languages.</li>
-  </ul>
-</div>
-
-## 🎹 Shortcut Quick Reference
-
-All shortcuts below require **holding `CapsLock`** while pressing the corresponding key unless explicitly stated otherwise.
+Every shortcut in this table uses `CapsLock` as the modifier unless noted otherwise.
 
 | Category | Shortcut | Action |
-|---|---|---|
-| **System** | `CapsLock` double-click | Toggle the native CapsLock state |
-| **Clipboard** | `C` | Copy as plain text |
-| | `V` | Smart paste |
-| | `Shift+V` | Open clipboard history |
-| | `F` | Swap clipboard text case and paste |
-| | `P` | Convert clipboard file paths with Pandoc |
-| **Navigation** | `Left / Right` | Move one word |
-| | `Up / Down` | Jump to line start / end |
-| | `Space` | Select the current word |
-| **Selection** | `Shift+Left / Shift+Right` | Extend selection by word |
-| | `Shift+Up / Shift+Down` | Extend selection to line start / end |
-| **Editing** | `A / D` | Delete one character |
-| | `Shift+A / Shift+D` | Delete one word |
-| | `Backspace / Delete` | Delete the current line |
-| **Window** | `T` | Toggle always on top |
-| | `W / 8 / Num8` | Maximize / restore |
-| | `S / 2 / Num2` | Minimize |
-| **Mouse** | `Left Button` | Increase opacity |
-| | `Right Button` | Decrease opacity |
-| | `Middle Button` | Toggle ghost mode |
-| **Tabs** | `Q / E` | Previous / next tab |
-| | `Shift+Q / Shift+E` | Cycle windows |
+| :--- | :--- | :--- |
+| System | `CapsLock` ×2 | Toggle the native CapsLock state |
+| Navigation | `Left / Right` | Move one word left / right |
+|  | `Up / Down` | Jump to line start / end |
+|  | `Space` | Select the current word |
+| Selection | `Shift + Left / Right` | Extend selection by word |
+|  | `Shift + Up / Down` | Extend selection to line start / end |
+| Editing | `A / D` | Delete one character backward / forward |
+|  | `Shift + A / D` | Delete one word backward / forward |
+|  | `Backspace / Delete` | Delete the current line |
+| Clipboard | `C` | Copy as plain text and add to history |
+|  | `V` | Paste using the current paste mode |
+|  | `Shift + V` | Open clipboard history |
+|  | `F` | Toggle case of the last copied English text and paste it |
+|  | `P` | Convert clipboard file paths with Pandoc |
+| Window | `T` | Toggle always-on-top with OSD feedback |
+|  | `W / 8 / Num8` | Maximize or restore the active window |
+|  | `S / 2 / Num2` | Minimize the active window |
+| Mouse | `Left Button` | Increase active-window opacity |
+|  | `Right Button` | Decrease active-window opacity |
+|  | `Middle Button` | Toggle 10% / 100% ghost-mode opacity |
+| Tabs / Windows | `Q / E` | Previous / next tab |
+|  | `Shift + Q / Shift + E` | Previous / next taskbar window |
 
-## 🚀 Installation & Setup
+## Clipboard-first workflows
 
-### Prerequisites
+### Smart paste
 
-1. **AutoHotkey v2** — install it from [autohotkey.com](https://www.autohotkey.com/).
-2. **ImageMagick** — optional, required for image-to-PDF workflows. Download from [imagemagick.org](https://imagemagick.org/).
-3. **Pandoc** — optional, required for document conversion. Download from [pandoc.org](https://pandoc.org/).
+`CapsLock + V` uses the configured paste mode and can work with file paths rather than text alone. File-oriented workflows can validate paths, expand directories recursively, process images, and place the resulting files into the target application.
 
-### Quick Start
+### Clipboard history
 
-1. Download or clone this repository.
-2. Keep `CapsLock-.ahk` together with its supporting directories such as `Config/`, `Core/`, and `History/`.
-3. Run `CapsLock-.ahk` with AutoHotkey v2.
-4. Confirm that the CapsLock Extended icon appears in the Windows system tray.
+`CapsLock + Shift + V` opens the history interface. The history subsystem supports previewing entries, searching, selecting multiple records, pasting batches, and deleting stored entries.
 
-### Optional: Start with Windows
+The project keeps clipboard history locally. The stored history is transformed with a fixed XOR-based routine; this should be treated as local data protection rather than strong cryptography. fileciteturn16file0L1-L2
 
-Open the tray menu and enable **Load on start up**. The option uses the current user's Windows startup registry entry under `HKCU\Run`.
+### Ignore rules and cleanup
 
-### Configure ImageMagick
+File-based paste workflows can use gitignore-style patterns to exclude unwanted paths. Temporary files can be managed through configurable delayed cleanup, batch cleanup, or disabled automatic deletion.
 
-1. Open the tray menu and choose **ImageMagick: Not Set**.
-2. Select `magick.exe` from your ImageMagick installation.
-3. The selected path is stored in the project's configuration file and the tray status changes to a valid state.
+## Optional document conversion
 
-### Configure Pandoc
+CapsLock Extended can integrate with **Pandoc** for document conversion and **ImageMagick** for image-to-PDF workflows.
 
-1. Open the tray menu and choose the Pandoc settings.
-2. Select `pandoc.exe`.
-3. Select the desired output format.
-4. Use `CapsLock + P` to convert clipboard file paths.
+The external tools are optional. The core modifier, navigation, clipboard, window, and tray functionality remains available without either dependency.
 
-## ⚙️ Configuration & Parameters
+### Pandoc
 
-### Tray Settings
+1. Install Pandoc.
+2. Set the `pandoc.exe` path from the tray menu.
+3. Choose an output format.
+4. Copy file paths and press `CapsLock + P`.
+
+The script exposes a broad Pandoc format set; `docx` is the default output format in the current configuration. fileciteturn8file0L2-L2
+
+### ImageMagick
+
+1. Install ImageMagick.
+2. Set the `magick.exe` path from the tray menu.
+3. Use the image-to-PDF workflow through the smart-paste pipeline.
+
+## Window and desktop controls
+
+The modifier layer is not limited to text editing. Mouse combinations can change the opacity of the active window, while `CapsLock + Middle Button` switches between near-transparent and fully opaque states. `CapsLock + T` toggles always-on-top and provides sound and OSD feedback. fileciteturn13file0L2-L2
+
+Taskbar-oriented window switching is handled by the utility layer, allowing `Shift + Q / Shift + E` to move through windows without leaving the keyboard. fileciteturn5file0L2-L2
+
+## Installation
+
+### Recommended: prebuilt executable
+
+Download the latest build from [Releases](https://github.com/CYoJkoY/CapsLock-/releases).
+
+| Build | File |
+| :--- | :--- |
+| 64-bit Windows | `CapsLock-.exe` |
+| 32-bit Windows | `CapsLock-_x86.exe` |
+
+The release workflow builds both targets from `CapsLock-.ahk` with AutoHotkey v2 and embeds the project icon. fileciteturn11file0L2-L2
+
+### From source
+
+1. Install **AutoHotkey v2**.
+2. Clone or download this repository.
+3. Keep `CapsLock-.ahk` alongside its included directories.
+4. Run `CapsLock-.ahk` with AutoHotkey v2.
+5. Confirm that CapsLock Extended is running in the Windows system tray.
+
+## Configuration
+
+Configuration is loaded from the runtime `configs` directory and is created automatically when needed. The current configuration state includes clipboard limits, paste mode, cleanup behavior, external executable paths, Pandoc output format, language selection, and ignore rules. fileciteturn8file0L2-L2
+
+Most user-facing options are exposed through the tray menu:
 
 | Setting | Purpose |
-|---|---|
-| `ImageMagick: Not Set / Valid` | Set or change the ImageMagick executable path. |
-| `Pandoc: Not Set / Valid` | Configure the Pandoc executable and output format. |
-| `Open Temp Folder` | Open the working directory used for temporary paste files. |
-| `Delete Mode` | Choose delayed, batch, or disabled temporary-file cleanup. |
-| `Set Delay...` | Set the delay for delayed cleanup. |
-| `Set Cleanup Interval...` | Set the interval for batch cleanup. |
-| `Set Max History...` | Set the maximum clipboard history size. |
-| `Paste Mode` | Choose file-based paste or plain-text paste with source markers. |
-| `Ignore Rules` | Edit gitignore-style file and path exclusions. |
-| `Language` | Switch the interface language. |
-| `Rebuild Language Cache` | Rebuild localized cache files from `lang.csv`. |
-| `Load on start up` | Enable or disable Windows startup integration. |
-| `Reload` | Reload the script. |
-| `Exit` | Exit the application. |
+| :--- | :--- |
+| ImageMagick | Select or change the ImageMagick executable |
+| Pandoc | Select the executable and output format |
+| Cleanup | Delayed, batch, or disabled temporary-file cleanup |
+| History | Configure clipboard-history retention |
+| Paste Mode | Paste as files or text with source information |
+| Ignore Rules | Manage gitignore-style exclusions |
+| Language | Change the interface language |
+| Auto Start | Enable Windows startup integration |
+| Reload / Exit | Restart or close the application |
 
-### Configuration File
+The bundled `lang.csv` currently defines 13 interface languages: English, French, Simplified Chinese, Japanese, Korean, Traditional Chinese, Russian, Polish, Spanish, Portuguese, German, Turkish, and Italian. fileciteturn10file0L1-L2
 
-The main configuration is stored in `configs/Config.ini`.
+## How the code is organized
 
-```ini
-[Cleanup]
-deleteMode=1
-deleteDelay=10
-cleanupInterval=30
-
-[History]
-maxHistory=10000
-
-[General]
-pasteMode=1
-autoClean=0
-```
-
-Values may vary by release and local configuration. The tray menu is the preferred interface for changing supported settings.
-
-## 🧠 Implementation Highlights
-
-### CapsLock as a Modifier Layer
-
-The script intercepts CapsLock combinations and maps them to focused productivity actions. This creates a compact keyboard layer without replacing the native CapsLock function permanently.
-
-### Clipboard-Centric Workflows
-
-Clipboard operations are designed around real file-system workflows rather than text alone. Paths can be normalized, folders can be expanded recursively, files can be merged or converted, and history entries can be revisited without leaving the application context.
-
-### Temporary File Management
-
-File-based paste operations use a dedicated temporary workflow and provide configurable cleanup behavior. Users can choose delayed cleanup, periodic batch cleanup, or no automatic deletion.
-
-### External Tool Integration
-
-Optional ImageMagick and Pandoc integrations keep external dependencies isolated to the workflows that require them. The main keyboard layer remains usable without either dependency.
-
-## 🔐 Security Notes
-
-### Clipboard History
-
-Clipboard history may contain sensitive text, files, paths, or other user data. Review the configured history retention and cleanup behavior before using the tool with confidential information.
-
-### Ignore Rules
-
-Use ignore rules to prevent sensitive or temporary paths from being included in file-oriented clipboard operations.
-
-### External Tools
-
-ImageMagick and Pandoc are optional external executables. Only point CapsLock Extended to installations you trust.
-
-### Credentials
-
-This project does not require a cloud account or external authentication service for its core functionality.
-
-## 📁 Project Structure
-
-```tree
+```text
 CapsLock-/
-├── 📁 .github
-│   └── 📁 workflows
-│       └── ⚙️ ...
-├── 📁 Config
-│   └── 📄 ...
-├── 📁 Core
-│   └── 📄 ...
-├── 📁 History
-│   └── 📄 ...
-├── 📁 langs
-│   └── 📄 ...
-├── 📁 assets
-│   ├── 🖼️ CapsLock-.ico
-│   ├── 🖼️ dots.svg
-│   └── 🖼️ hero.svg
-├── 📄 CapsLock-.ahk
-├── 📄 lang.csv
-├── ⚖️ LICENSE
-└── 📖 README.md
+├── .github/
+│   └── workflows/
+│       └── release.yml
+├── Config/
+│   ├── ConfigManager.ahk
+│   ├── Encryption.ahk
+│   └── Globals.ahk
+├── Core/
+│   ├── Clipboard.ahk
+│   ├── ClipboardPaste.ahk
+│   ├── Cleanup.ahk
+│   ├── FileOperations.ahk
+│   ├── FileValidation.ahk
+│   ├── ImageToPdf.ahk
+│   ├── Pandoc.ahk
+│   └── WindowUtils.ahk
+├── History/
+│   ├── CustomMenu.ahk
+│   ├── FullHistoryGui.ahk
+│   ├── FullHistoryHandlers.ahk
+│   ├── HistoryDelete.ahk
+│   ├── HistoryMenu.ahk
+│   ├── HistoryPaste.ahk
+│   └── HistoryStorage.ahk
+├── Hotkeys/
+│   ├── HotkeyActions.ahk
+│   ├── HotkeyBindings.ahk
+│   └── PasteHandler.ahk
+├── Tray/
+│   ├── TrayMenu.ahk
+│   └── TraySettings.ahk
+├── UI/
+├── Utils/
+├── assets/
+│   ├── CapsLock-.ico
+│   ├── dots.svg
+│   └── hero.svg
+├── CapsLock-.ahk
+├── lang.csv
+├── LICENSE
+└── README.md
 ```
 
-## 🤝 Contributing & Feedback
+The entry script loads the utility, configuration, core, history, hotkey, tray, and UI modules before initializing language, configuration, history, cleanup, and clipboard handling. fileciteturn6file0L2-L2
 
-Issues and pull requests are welcome.
+## Release workflow
 
-For bug reports, include the Windows version, AutoHotkey version, the affected shortcut or feature, and the exact error message when available. Do not include private clipboard contents, sensitive file paths, or other confidential information.
+Releases are generated automatically when a `v*.*.*` tag is pushed. The workflow builds:
 
-For feature requests, describe the workflow you want to improve and the keyboard or mouse interaction you would prefer.
+- `CapsLock-.exe` — x64
+- `CapsLock-_x86.exe` — x86
 
-## 📄 License
+Both builds use the project's `assets/CapsLock-.ico` icon and are uploaded directly to the GitHub Release. fileciteturn11file0L2-L2
 
-CapsLock Extended is licensed under the **GNU General Public License v3.0 only (GPL-3.0-only)**.
+## Security and privacy
+
+CapsLock Extended is a local Windows utility. Its core features do not require a cloud account or external authentication service.
+
+Clipboard history can contain sensitive text, paths, and files. Review the retention and cleanup configuration before using the program with confidential data.
+
+The history transform in `Config/Encryption.ahk` is XOR-based and uses a fixed key. It should **not** be presented as strong encryption or as protection against a determined local attacker. fileciteturn16file0L1-L2
+
+When using Pandoc or ImageMagick, point the application only at executables you trust.
+
+## Development
+
+The project is plain AutoHotkey v2 rather than a compiled framework application, so the easiest development loop is to edit the `.ahk` modules and run `CapsLock-.ahk` directly.
+
+For changes affecting shortcuts, keep the user-facing shortcut table synchronized with `Hotkeys/HotkeyBindings.ahk`. For changes affecting settings or runtime state, update the relevant configuration modules and tray controls together.
+
+Issues and pull requests are welcome. Bug reports are most useful when they include the Windows version, AutoHotkey version, affected shortcut or feature, and the exact error message. Do not include private clipboard contents or sensitive local paths.
+
+## License
+
+CapsLock Extended is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
 
 See [`LICENSE`](LICENSE) for the complete license text.
 
-## 💰 Support the Author
+## Support the Author
 
-If CapsLock Extended improves your workflow, consider supporting the project.
+If this project saves you time or improves your workflow, consider supporting its development.
 
 <div align="center">
   <a href="https://cyojkoy.github.io/Payment/">
@@ -291,5 +251,5 @@ If CapsLock Extended improves your workflow, consider supporting the project.
 </div>
 
 <div align="center">
-  <sub>Built for Windows users who want a fast, keyboard-centered productivity layer.</sub>
+  <sub>Keyboard-first automation for Windows, built with AutoHotkey v2.</sub>
 </div>
