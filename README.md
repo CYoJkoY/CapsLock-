@@ -231,9 +231,9 @@ See [`LICENSE`](LICENSE) for the complete license text.
 
 ## Support
 
-If CapsLock Extended saves you time or improves your workflow, you can support development through the author's payment page:
+If CapsLock Extended saves you time or improves your workflow, you can support development through the deployed payment page:
 
-https://github.com/CYoJkoY/Payment
+https://cyojkoy.github.io/Payment/
 
 <div align="center">
   <sub>CapsLock as a second control layer for Windows.</sub>
