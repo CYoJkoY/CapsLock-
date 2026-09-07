@@ -6,14 +6,13 @@
 ConvertWithPandoc() {
     CapturePasteTarget()
 
-    ; 1. Get raw text from clipboard
     text := A_Clipboard
     if (text == "") {
         ShowToolTip(Lang("MSG_CLIPBOARD_EMPTY", "Clipboard is empty"), 2000)
         return
     }
 
-    ; 2. Parse all valid paths (files and folders)
+    ; Parse all valid paths (files and folders).
     allPaths := []
     lines := StrSplit(text, "`n", "`r")
     for line in lines {
@@ -23,12 +22,16 @@ ConvertWithPandoc() {
         if FileExist(line)
             allPaths.Push(line)
     }
+
     if (allPaths.Length == 0) {
-        ShowToolTip(Lang("MSG_NO_FILES_FOUND", "No valid files or folders found in clipboard"), 2000)
+        ShowToolTip(
+            Lang("MSG_NO_FILES_FOUND", "No valid files or folders found in clipboard. Copy file paths, then press CapsLock+P."),
+            2500
+        )
         return
     }
 
-    ; 3. Expand folders into individual files (recursive)
+    ; Expand folders recursively.
     finalFiles := []
     for path in allPaths {
         if InStr(FileExist(path), "D") {
@@ -40,32 +43,33 @@ ConvertWithPandoc() {
         }
     }
 
-    ; 4. Apply ignore patterns
+    ; Apply ignore patterns.
     filteredFiles := []
     for f in finalFiles {
         if !FileHelper.ShouldIgnore(f)
             filteredFiles.Push(f)
     }
+
     if (filteredFiles.Length == 0) {
-        ShowToolTip(Lang("MSG_ALL_FILES_IGNORED", "All files are ignored"), 2000)
+        ShowToolTip(Lang("MSG_ALL_FILES_IGNORED", "All files are ignored by the current ignore rules."), 2500)
         return
     }
 
-    ; 5. Validate Pandoc executable
     pandoc := Trim(AppState.PandocExe)
     if (pandoc == "" || !FileExist(pandoc)) {
-        ShowToolTip(Lang("MSG_PANDOC_NOT_FOUND", "Pandoc executable not found. Please set path in settings."), 3000)
+        ShowToolTip(
+            Lang("MSG_PANDOC_NOT_FOUND", "Pandoc executable not found. Set the Pandoc path in the tray menu first."),
+            3000
+        )
         return
     }
 
-    ; 6. Validate output format
     outFormat := StrLower(Trim(AppState.PandocOutputFormat))
     if (!_IsOutputFormatSupported(outFormat)) {
         ShowToolTip(Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", outFormat), 2500)
         return
     }
 
-    ; 7. Prepare progress GUI (if more than 1 file)
     total := filteredFiles.Length
     showProgress := (total > 1)
     progressGui := ""
@@ -83,7 +87,6 @@ ConvertWithPandoc() {
         ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
     }
 
-    ; 8. Convert each file
     outputFiles := []
     skippedFiles := []
     failedFiles := []
@@ -95,7 +98,8 @@ ConvertWithPandoc() {
             progressBar.Value := (idx / total) * 100
         }
 
-        ; Detect input format from the source extension.
+        ; Pandoc has no `txt` reader name. Plain .txt is treated as Markdown,
+        ; which is the behavior Pandoc itself uses when input format is inferred.
         inFormat := _DetectInputFormat(inFile)
         if (inFormat == "") {
             skippedFiles.Push(inFile)
@@ -108,17 +112,19 @@ ConvertWithPandoc() {
             continue
         }
 
-        ; Let Pandoc infer the writer from the output filename. This avoids
-        ; format-name mismatches and follows Pandoc's normal CLI behavior.
-        ; -s is required for complete document formats such as HTML/RTF/ICML.
+        ; Explicitly set the input reader. Let the output filename select the
+        ; writer, matching Pandoc's normal CLI behavior.
         cmd := '"' pandoc '" --from=' inFormat ' --standalone --output="' outFile '" "' inFile '"'
 
         try {
             exitCode := RunWait(cmd, , "Hide")
-            if (exitCode == 0 && FileExist(outFile) && FileGetSize(outFile) > 0)
+            if (exitCode == 0 && FileExist(outFile) && FileGetSize(outFile) > 0) {
                 outputFiles.Push(outFile)
-            else
+            } else {
                 failedFiles.Push(inFile " [exit code " exitCode "]")
+                try if FileExist(outFile)
+                    FileDelete(outFile)
+            }
         } catch as err {
             failedFiles.Push(inFile " [" err.Message "]")
         }
@@ -129,17 +135,31 @@ ConvertWithPandoc() {
     }
 
     if (skippedFiles.Length > 0) {
-        skippedMsg := Lang("MSG_PANDOC_SKIPPED_FILES", "Skipped unsupported files:`n{1}", Join(skippedFiles, "`n"))
-        ShowToolTip(skippedMsg, 3500)
+        skippedMsg := Lang(
+            "MSG_PANDOC_SKIPPED_FILES",
+            "Skipped unsupported files:`n{1}",
+            Join(skippedFiles, "`n")
+        )
+        ShowToolTip(skippedMsg, 4000)
     }
 
     if (failedFiles.Length > 0) {
-        failedMsg := Lang("MSG_PANDOC_FAILED_FILES", "Pandoc failed for:`n{1}", Join(failedFiles, "`n"))
-        MsgBox(failedMsg, Lang("MSG_ERROR"), "Iconx")
+        failedMsg := Lang(
+            "MSG_PANDOC_FAILED_FILES",
+            "Pandoc could not convert:`n{1}`n`nCheck that the selected output format supports this input type.",
+            Join(failedFiles, "`n")
+        )
+        MsgBox(failedMsg, Lang("MSG_ERROR", "Error"), "Iconx")
     }
 
     if (outputFiles.Length == 0) {
-        ShowToolTip(Lang("MSG_PANDOC_NO_OUTPUT", "No files were converted successfully"), 2500)
+        ShowToolTip(
+            Lang(
+                "MSG_PANDOC_NO_OUTPUT",
+                "No files were converted. Plain .txt files are supported as Markdown input; if conversion still fails, check the Pandoc path and selected output format."
+            ),
+            3500
+        )
         return
     }
 
@@ -165,6 +185,11 @@ _DetectInputFormat(filePath) {
     ext := StrLower(Trim(ext))
     if (ext == "")
         return ""
+
+    ; Plain text files are valid Markdown/Pandoc input. Pandoc does not have a
+    ; reader named "txt"; when no format is specified it assumes Markdown.
+    if (ext == "txt" || ext == "text")
+        return "markdown"
 
     for fmt in AppState.PandocInputFormats {
         if (fmt == ext)
@@ -221,7 +246,9 @@ _DetectInputFormat(filePath) {
     try {
         if extMap.Has(ext)
             return extMap[ext]
+    } catch {
     }
+
     return ""
 }
 
@@ -290,8 +317,9 @@ _IsOutputFormatSupported(format) {
         return false
 
     for f in AppState.PandocOutputFormats {
-        if (StrLower(f) == format)
+        if (f == format)
             return true
     }
+
     return false
 }
