@@ -4,8 +4,6 @@
 ; Convert files using Pandoc and paste the result
 ; ---------------------------------------------------------------------------
 ConvertWithPandoc() {
-    ; --- FIX: Capture current active window as paste target ---
-    ; Previously missing - caused pasting to wrong (cached) window.
     CapturePasteTarget()
 
     ; 1. Get raw text from clipboard
@@ -33,11 +31,11 @@ ConvertWithPandoc() {
     ; 3. Expand folders into individual files (recursive)
     finalFiles := []
     for path in allPaths {
-        if InStr(FileExist(path), "D") {          ; folder
+        if InStr(FileExist(path), "D") {
             collected := FileHelper.CollectFilesFromFolder(path, true)
             for f in collected
                 finalFiles.Push(f)
-        } else {                                  ; file
+        } else {
             finalFiles.Push(path)
         }
     }
@@ -54,14 +52,14 @@ ConvertWithPandoc() {
     }
 
     ; 5. Validate Pandoc executable
-    pandoc := AppState.PandocExe
+    pandoc := Trim(AppState.PandocExe)
     if (pandoc == "" || !FileExist(pandoc)) {
         ShowToolTip(Lang("MSG_PANDOC_NOT_FOUND", "Pandoc executable not found. Please set path in settings."), 3000)
         return
     }
 
     ; 6. Validate output format
-    outFormat := AppState.PandocOutputFormat
+    outFormat := StrLower(Trim(AppState.PandocOutputFormat))
     if (!_IsOutputFormatSupported(outFormat)) {
         ShowToolTip(Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", outFormat), 2500)
         return
@@ -88,175 +86,155 @@ ConvertWithPandoc() {
     ; 8. Convert each file
     outputFiles := []
     skippedFiles := []
-    failedCount := 0
+    failedFiles := []
 
     for idx, inFile in filteredFiles {
-        ; Update progress
         if showProgress {
             SplitPath(inFile, &fileName)
             progressText.Text := Lang("MSG_PANDOC_PROGRESS", "Converting {1}/{2}: {3}", idx, total, fileName)
             progressBar.Value := (idx / total) * 100
         }
 
-        ; Detect input format (safely - returns "" on any error to skip file gracefully)
+        ; Detect input format from the source extension.
         inFormat := _DetectInputFormat(inFile)
         if (inFormat == "") {
             skippedFiles.Push(inFile)
             continue
         }
 
-        ; Build output file path
-        outFile := _BuildOutputPath(inFile, outFormat)
+        outFile := _BuildOutputPath(inFile, outFormat, idx)
         if (outFile == "") {
-            failedCount++
+            failedFiles.Push(inFile)
             continue
         }
 
-        ; Run pandoc
-        cmd := '"' pandoc '" -f ' inFormat ' -t ' outFormat ' -o "' outFile '" "' inFile '"'
+        ; Let Pandoc infer the writer from the output filename. This avoids
+        ; format-name mismatches and follows Pandoc's normal CLI behavior.
+        ; -s is required for complete document formats such as HTML/RTF/ICML.
+        cmd := '"' pandoc '" --from=' inFormat ' --standalone --output="' outFile '" "' inFile '"'
+
         try {
-            RunWait(cmd, , "Hide")
-            if (FileExist(outFile)) {
+            exitCode := RunWait(cmd, , "Hide")
+            if (exitCode == 0 && FileExist(outFile) && FileGetSize(outFile) > 0)
                 outputFiles.Push(outFile)
-            } else {
-                failedCount++
-            }
+            else
+                failedFiles.Push(inFile " [exit code " exitCode "]")
         } catch as err {
-            failedCount++
+            failedFiles.Push(inFile " [" err.Message "]")
         }
     }
 
-    ; 9. Destroy progress GUI
     if showProgress {
         try progressGui.Destroy()
     }
 
-    ; 10. Report skipped files
     if (skippedFiles.Length > 0) {
         skippedMsg := Lang("MSG_PANDOC_SKIPPED_FILES", "Skipped unsupported files:`n{1}", Join(skippedFiles, "`n"))
-        ShowToolTip(skippedMsg, 3000)
+        ShowToolTip(skippedMsg, 3500)
     }
 
-    ; 11. Paste results if any
+    if (failedFiles.Length > 0) {
+        failedMsg := Lang("MSG_PANDOC_FAILED_FILES", "Pandoc failed for:`n{1}", Join(failedFiles, "`n"))
+        MsgBox(failedMsg, Lang("MSG_ERROR"), "Iconx")
+    }
+
     if (outputFiles.Length == 0) {
-        ShowToolTip(Lang("MSG_PANDOC_NO_OUTPUT", "No files were converted successfully"), 2000)
+        ShowToolTip(Lang("MSG_PANDOC_NO_OUTPUT", "No files were converted successfully"), 2500)
         return
     }
 
     ClipboardHelper.SetClipboardFiles(outputFiles)
     ActivateAndPaste()
 
-    for f in outputFiles {
+    for f in outputFiles
         CleanupManager.ScheduleDeletion(f)
-    }
 
     ShowToolTip(Lang("MSG_PANDOC_SUCCESS", "Converted {1} file(s)", outputFiles.Length), 2000)
 }
 
 ; ---------------------------------------------------------------------------
-; Detect input format from file extension (returns format name or "")
-; FIXED: Lazy-init pattern with try-catch prevents crash when static map
-;        initialization fails (AHK v2 bug: static vars can enter unassigned
-;        state after a failed init, causing script-terminating error).
+; Detect input format from file extension.
 ; ---------------------------------------------------------------------------
 _DetectInputFormat(filePath) {
-    ; Safely extract extension - return "" on any failure
     try {
         SplitPath(filePath, , , &ext)
     } catch {
         return ""
     }
-    ext := StrLower(ext)
-    if (ext == "") 
+
+    ext := StrLower(Trim(ext))
+    if (ext == "")
         return ""
 
-    ; 1. Check if extension matches a known input format directly
     for fmt in AppState.PandocInputFormats {
-        if (fmt == ext) {
+        if (fmt == ext)
             return fmt
-        }
     }
 
-    ; 2. Common extension → format name mapping
-    ;    Uses lazy-init with defensive check: if the static map failed to
-    ;    initialize on a previous call (leaving it unassigned), we detect
-    ;    that and retry initialization. This prevents the fatal error:
-    ;    "This static variable has not been assigned a value."
-    static extMap := ""
+    static extMap := Map(
+        "adoc", "asciidoc",
+        "asciidoc", "asciidoc",
+        "bib", "bibtex",
+        "md", "markdown",
+        "mkd", "markdown",
+        "mdown", "markdown",
+        "markdown", "markdown",
+        "html", "html",
+        "htm", "html",
+        "tex", "latex",
+        "latex", "latex",
+        "rst", "rst",
+        "rtf", "rtf",
+        "odt", "odt",
+        "epub", "epub",
+        "ipynb", "ipynb",
+        "mediawiki", "mediawiki",
+        "org", "org",
+        "textile", "textile",
+        "t2t", "t2t",
+        "csv", "csv",
+        "tsv", "tsv",
+        "json", "json",
+        "xml", "xml",
+        "docx", "docx",
+        "pptx", "pptx",
+        "xlsx", "xlsx",
+        "jats", "jats",
+        "jira", "jira",
+        "ris", "ris",
+        "pod", "pod",
+        "man", "man",
+        "mdoc", "mdoc",
+        "muse", "muse",
+        "native", "native",
+        "opml", "opml",
+        "typst", "typst",
+        "vimwiki", "vimwiki",
+        "djot", "djot",
+        "creole", "creole",
+        "dokuwiki", "dokuwiki",
+        "gfm", "gfm",
+        "haddock", "haddock",
+        "commonmark", "commonmark"
+    )
 
-    ; Check if extMap needs (re)initialization
-    if (extMap == "" || !IsObject(extMap)) {
-        try {
-            extMap := Map(
-                "adoc", "asciidoc",
-                "bib",  "bibtex",
-                "md",   "markdown",
-                "markdown", "markdown",
-                "mkd",  "markdown",
-                "mdown", "markdown",
-                "html", "html",
-                "htm",  "html",
-                "tex",  "latex",
-                "latex", "latex",
-                "rst",  "rst",
-                "rtf",  "rtf",
-                "odt",  "odt",
-                "epub", "epub",
-                "ipynb", "ipynb",
-                "mediawiki", "mediawiki",
-                "org",  "org",
-                "textile", "textile",
-                "t2t",  "t2t",
-                "csv",  "csv",
-                "tsv",  "tsv",
-                "json", "json",
-                "xml",  "xml",
-                "docx", "docx",
-                "pptx", "pptx",
-                "xlsx", "xlsx",
-                "jats", "jats",
-                "jira", "jira",
-                "ris",  "ris",
-                "pod",  "pod",
-                "man",  "man",
-                "mdoc", "mdoc",
-                "muse", "muse",
-                "native", "native",
-                "opml", "opml",
-                "typst", "typst",
-                "vimwiki", "vimwiki",
-                "djot", "djot",
-                "creole", "creole",
-                "dokuwiki", "dokuwiki",
-                "gfm", "gfm",
-                "haddock", "haddock",
-                "commonmark", "commonmark"
-            )
-        } catch {
-            ; If Map construction fails for any reason, return empty
-            ; to skip this file gracefully instead of crashing.
-            return ""
-        }
-    }
-
-    ; Safe access: only call .Has() if extMap is a valid object
     try {
-        if (extMap.Has(ext)) {
+        if extMap.Has(ext)
             return extMap[ext]
-        }
-    } catch {
-        ; Fall through to unsupported
     }
-
-    return ""  ; unsupported
+    return ""
 }
 
 ; ---------------------------------------------------------------------------
-; Build output file path: temp dir + basename + appropriate extension
+; Build a unique temporary output path.
 ; ---------------------------------------------------------------------------
-_BuildOutputPath(inFile, outFormat) {
-    SplitPath(inFile, &name, &dir, &ext, &nameNoExt)
-    ; Determine extension for output format
+_BuildOutputPath(inFile, outFormat, index := 1) {
+    try {
+        SplitPath(inFile, &name, &dir, &ext, &nameNoExt)
+    } catch {
+        return ""
+    }
+
     static extMap := Map(
         "docx", "docx",
         "html", "html",
@@ -296,16 +274,23 @@ _BuildOutputPath(inFile, outFormat) {
         "haddock", "haddock",
         "commonmark", "commonmark"
     )
-    outExt := extMap.Has(outFormat) ? extMap[outFormat] : outFormat
-    return A_Temp "\Pandoc_" A_TickCount "_" nameNoExt "." outExt
+
+    try {
+        outExt := extMap.Has(outFormat) ? extMap[outFormat] : outFormat
+    } catch {
+        return ""
+    }
+
+    return A_Temp "\Pandoc_" A_TickCount "_" index "_" nameNoExt "." outExt
 }
 
-; ---------------------------------------------------------------------------
-; Validate output format against supported list
-; ---------------------------------------------------------------------------
 _IsOutputFormatSupported(format) {
+    format := StrLower(Trim(format))
+    if (format == "")
+        return false
+
     for f in AppState.PandocOutputFormats {
-        if (f == format) 
+        if (StrLower(f) == format)
             return true
     }
     return false
