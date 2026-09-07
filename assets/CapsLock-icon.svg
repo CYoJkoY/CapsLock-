@@ -1,46 +1,75 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <title>CapsLock Extended application icon</title>
-  <desc>A clean keyboard keycap with an upward modifier arrow, representing the CapsLock Extended productivity layer.</desc>
+  <desc>A compact keyboard key symbol with a layered modifier accent, representing CapsLock Extended as a dedicated keyboard modifier layer.</desc>
 
-  <!-- Background -->
+  <!-- App background -->
   <rect x="24" y="24" width="976" height="976" rx="224" fill="#14141D"/>
 
-  <!-- Keycap body -->
-  <path d="M184 268
-           C184 222 222 184 268 184
-           H756
-           C802 184 840 222 840 268
-           V704
-           C840 750 802 788 756 788
-           H268
-           C222 788 184 750 184 704
+  <!-- Rear layer: the additional keyboard layer unlocked by holding CapsLock -->
+  <path d="M246 188
+           H778
+           C814 188 844 218 844 254
+           V312
+           H786
+           V276
+           C786 264 776 254 764 254
+           H260
+           C248 254 238 264 238 276
+           V312
+           H180
+           V254
+           C180 218 210 188 246 188
            Z"
         fill="#232332"
         stroke="#3A3A52"
-        stroke-width="24"/>
+        stroke-width="26"
+        stroke-linejoin="round"/>
 
-  <!-- Keycap face -->
-  <rect x="232" y="232" width="560" height="488" rx="64"
+  <!-- Main CapsLock key -->
+  <path d="M176 314
+           C176 270 212 234 256 234
+           H768
+           C812 234 848 270 848 314
+           V706
+           C848 750 812 786 768 786
+           H256
+           C212 786 176 750 176 706
+           Z"
         fill="#282838"
         stroke="#5B86C9"
-        stroke-width="14"/>
+        stroke-width="28"
+        stroke-linejoin="round"/>
 
-  <!-- Modifier symbol -->
-  <path d="M512 330
-           L356 478
-           H430
-           V612
-           H594
-           V478
-           H668
+  <!-- Key face -->
+  <rect x="224" y="288" width="576" height="404" rx="58"
+        fill="#1F202D"
+        stroke="#3A3A52"
+        stroke-width="12"/>
+
+  <!-- Layer / modifier symbol -->
+  <path d="M512 346
+           L370 482
+           H428
+           V564
+           H596
+           V482
+           H654
            Z"
         fill="#82A8E0"/>
 
-  <!-- Keycap baseline -->
-  <rect x="374" y="638" width="276" height="20" rx="10" fill="#5B86C9"/>
+  <!-- Secondary layer bar -->
+  <rect x="382" y="610" width="260" height="18" rx="9" fill="#5B86C9"/>
 
-  <!-- Minimal status accent -->
-  <circle cx="292" cy="138" r="14" fill="#6FA572"/>
-  <circle cx="342" cy="138" r="10" fill="#C4A95E"/>
-  <circle cx="382" cy="138" r="8" fill="#5B86C9"/>
+  <!-- Small active-layer indicator -->
+  <circle cx="744" cy="264" r="13" fill="#82A8E0"/>
+
+  <!-- Subtle keycap depth -->
+  <path d="M218 704
+           H806
+           V716
+           C806 728 796 738 784 738
+           H240
+           C228 738 218 728 218 716
+           Z"
+        fill="#191923"/>
 </svg>
