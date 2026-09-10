@@ -34,8 +34,8 @@ ProcessImagePathsToPDF() {
     progressGui.Show("AutoSize Center")
     ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
 
-    outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
-    logFile := A_Temp "\CapsLock_ImageMagick_" A_TickCount ".log"
+    outputPdf := A_Temp "\\ClipTemp_" A_TickCount ".pdf"
+    logFile := A_Temp "\\CapsLock_ImageMagick_" A_TickCount ".log"
     errorText := ""
 
     success := _RunImageMagickPdf(exe, paths, outputPdf, logFile)
@@ -107,21 +107,21 @@ _RunImageMagickPdf(exe, paths, outputPdf, logFile) {
 
     pathArgs := ""
     for path in paths
-        pathArgs .= '"' path '" '
+        pathArgs .= '\"' path '\" '
 
     ; Keep read-affecting options before input files and quote every path.
-    commandLine := '"' exe '" -density 150 -auto-orient -quality 95 ' . pathArgs . '"' outputPdf '"'
+    commandLine := '\"' exe '\" -density 150 -auto-orient -quality 95 ' . pathArgs . '\"' outputPdf '\"'
 
     ; Use a temporary batch file solely to capture stdout/stderr. This makes
     ; ImageMagick's real diagnostic visible instead of reducing every failure
     ; to the unhelpful generic "exit code 1" message.
-    batchPath := A_Temp "\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
+    batchPath := A_Temp "\\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
     batch := "@echo off`r`n"
-    batch .= commandLine " > " '"' logFile '"' " 2>&1`r`n"
+    batch .= commandLine " > " '\"' logFile '\"' " 2>&1`r`n"
     batch .= "exit /b %errorlevel%`r`n"
 
     FileAppend(batch, batchPath, "UTF-8")
-    exitCode := RunWait('"' A_ComSpec '" /d /c call "' batchPath '"', , "Hide")
+    exitCode := RunWait('\"' A_ComSpec '\" /d /c call \"' batchPath '\"', , "Hide")
 
     try FileDelete(batchPath)
 
@@ -141,8 +141,8 @@ _EnableUserPdfWritePolicy() {
         if (userProfile == "")
             return false
 
-        configDir := userProfile "\.config\ImageMagick"
-        policyPath := configDir "\policy.xml"
+        configDir := userProfile "\\.config\\ImageMagick"
+        policyPath := configDir "\\policy.xml"
         backupPath := policyPath ".capslock-backup"
         DirCreate(configDir)
 
@@ -151,15 +151,17 @@ _EnableUserPdfWritePolicy() {
             if !FileExist(backupPath)
                 FileCopy(policyPath, backupPath, false)
         } else {
-            content := "<?xml version=""1.0"" encoding=""UTF-8""?>`r`n<policymap>`r`n</policymap>`r`n"
+            quote := Chr(34)
+            content := "<?xml version=" quote "1.0" quote " encoding=" quote "UTF-8" quote "?>`r`n<policymap>`r`n</policymap>`r`n"
         }
 
         if InStr(content, "CapsLock- PDF write access")
             return true
 
+        quote := Chr(34)
         insertion := "  <!-- CapsLock- PDF write access: required for image-to-PDF conversion. -->`r`n"
-            . "  <policy domain=""module"" rights=""write"" pattern=""PDF"" />`r`n"
-            . "  <policy domain=""coder"" rights=""write"" pattern=""PDF"" />`r`n"
+            . "  <policy domain=" quote "module" quote " rights=" quote "write" quote " pattern=" quote "PDF" quote " />`r`n"
+            . "  <policy domain=" quote "coder" quote " rights=" quote "write" quote " pattern=" quote "PDF" quote " />`r`n"
 
         closeTag := "</policymap>"
         closePos := InStr(content, closeTag)
