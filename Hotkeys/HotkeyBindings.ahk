@@ -35,9 +35,6 @@
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
-    $+q:: TaskbarSwitch.Prev()
-    $+e:: TaskbarSwitch.Next()
-
     LButton:: {
         AdjustOpacity( 20 )
         if KeyWait( "LButton", "T0.3" )
