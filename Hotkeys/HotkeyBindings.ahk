@@ -35,8 +35,8 @@
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
-    +q:: TaskbarSwitch.Prev()
-    +e:: TaskbarSwitch.Next()
+    $+q:: TaskbarSwitch.Prev()
+    $+e:: TaskbarSwitch.Next()
 
     LButton:: {
         AdjustOpacity( 20 )
