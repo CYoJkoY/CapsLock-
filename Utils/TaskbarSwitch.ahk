@@ -9,8 +9,6 @@ class TaskbarSwitch {
     }
 
     static Prev() {
-        ; The +Q hotkey already holds Shift, so Alt+Tab naturally becomes
-        ; Alt+Shift+Tab here and selects the previous MRU window.
         this._SendAltTab(true)
     }
 
@@ -18,24 +16,23 @@ class TaskbarSwitch {
         leftShift := GetKeyState("LShift", "P")
         rightShift := GetKeyState("RShift", "P")
 
-        ; +E should invoke plain Alt+Tab. Temporarily release the physical
-        ; Shift key(s) so Windows does not interpret it as Alt+Shift+Tab.
-        if !reverse {
-            if leftShift
-                SendEvent("{LShift up}")
-            if rightShift
-                SendEvent("{RShift up}")
-        }
+        ; The +Q/+E hotkeys physically hold Shift. Release it temporarily so
+        ; the generated shortcut is explicit rather than inheriting hotkey state.
+        if leftShift
+            SendEvent("{LShift up}")
+        if rightShift
+            SendEvent("{RShift up}")
 
         try {
-            SendEvent("{Alt down}{Tab}{Alt up}")
+            if reverse
+                SendEvent("{Alt down}{Shift down}{Tab}{Shift up}{Alt up}")
+            else
+                SendEvent("{Alt down}{Tab}{Alt up}")
         } finally {
-            if !reverse {
-                if leftShift
-                    SendEvent("{LShift down}")
-                if rightShift
-                    SendEvent("{RShift down}")
-            }
+            if leftShift
+                SendEvent("{LShift down}")
+            if rightShift
+                SendEvent("{RShift down}")
         }
     }
 }
