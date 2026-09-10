@@ -36,7 +36,7 @@ jobs:
           icon: .\assets\CapsLock-.ico
           target: x86
           compression: none
-          ahk-tag: v2.0.26
+          ahk-tag: v2.0.27
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (x64)
@@ -47,7 +47,7 @@ jobs:
           icon: .\assets\CapsLock-.ico
           target: x64
           compression: none
-          ahk-tag: v2.0.26
+          ahk-tag: v2.0.27
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to Release
