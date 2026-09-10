@@ -1,24 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
   <title id="title">CapsLock Extended application icon</title>
-  <desc id="desc">A compact control key with a raised second plane, representing CapsLock Extended as a dedicated modifier layer for keyboard-first Windows workflows.</desc>
+  <desc id="desc">A minimal CapsLock key symbol with a distinct secondary-layer cue.</desc>
 
-  <rect x="24" y="24" width="976" height="976" rx="224" fill="#121722"/>
+  <defs>
+    <linearGradient id="surface" x1="180" y1="120" x2="820" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#243754"/>
+      <stop offset="1" stop-color="#142136"/>
+    </linearGradient>
+  </defs>
 
-  <!-- The rear plane is the extra command layer unlocked by holding CapsLock. -->
-  <path d="M262 166 H762 C810 166 850 206 850 254 V338 H700 V278 H324 V338 H174 V254 C174 206 214 166 262 166 Z"
-        fill="#202A3B" stroke="#4D6387" stroke-width="28" stroke-linejoin="round"/>
+  <!-- Soft outer tile -->
+  <rect x="28" y="28" width="968" height="968" rx="220" fill="#0F1623"/>
+  <rect x="52" y="52" width="920" height="920" rx="202" fill="url(#surface)" stroke="#4C6C9E" stroke-width="10"/>
 
-  <!-- Main keycap: the physical key is only the carrier for the modifier layer. -->
-  <rect x="154" y="250" width="716" height="560" rx="142"
-        fill="#1A2230" stroke="#6B95D6" stroke-width="30"/>
+  <!-- Keycap body -->
+  <rect x="154" y="190" width="716" height="644" rx="152" fill="#101A2A" stroke="#79A4E5" stroke-width="24"/>
+  <rect x="190" y="226" width="644" height="572" rx="120" fill="#18263B"/>
 
-  <!-- C-shaped control mark: simple enough to survive 16–32 px rendering. -->
-  <path d="M650 372 C608 318 540 286 463 286 C335 286 250 383 250 512 C250 641 335 738 463 738 C540 738 608 706 650 652"
-        fill="none" stroke="#DCE8FF" stroke-width="92" stroke-linecap="round"/>
+  <!-- CapsLock-inspired C glyph -->
+  <path d="M650 350c-42-53-103-82-177-82-126 0-213 101-213 244s87 244 213 244c74 0 135-29 177-82l-55-48c-30 34-67 50-112 50-77 0-130-63-130-164s53-164 130-164c45 0 82 16 112 50l55-48Z" fill="#F2F6FF"/>
 
-  <!-- Open side of the C becomes the active second-layer cue. -->
-  <path d="M616 420 H748 M616 604 H748"
-        fill="none" stroke="#6B95D6" stroke-width="30" stroke-linecap="round"/>
+  <!-- Secondary control-layer cue -->
+  <path d="M606 374h130M606 650h130" fill="none" stroke="#79A4E5" stroke-width="34" stroke-linecap="round"/>
 
-  <circle cx="786" cy="314" r="18" fill="#C4A95E"/>
+  <!-- Small status point -->
+  <circle cx="758" cy="286" r="22" fill="#D0B565"/>
 </svg>
