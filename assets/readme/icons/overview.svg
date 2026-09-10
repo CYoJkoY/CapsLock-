@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>Keyboard layer</title><rect x="1" y="1" width="22" height="22" rx="6" fill="#EAF2FF" stroke="#5B86C9" stroke-width="1.5"/><rect x="5" y="6" width="14" height="12" rx="2" fill="#5B86C9"/><path d="M8 10h2m2 0h2m2 0h0M8 13h2m2 0h2m2 0h0" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M10 16h4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="title desc">
+  <title id="title">Overview</title>
+  <desc id="desc">A single modifier key representing the CapsLock control layer.</desc>
+  <rect x="2" y="2" width="20" height="20" rx="5" fill="#EAF2FF" stroke="#5B86C9" stroke-width="1.5"/>
+  <rect x="6.25" y="7" width="11.5" height="9.5" rx="2" fill="#5B86C9"/>
+  <path d="M9.5 10.5h5M9.5 13h3.25" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
