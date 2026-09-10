@@ -1,58 +1,41 @@
 #Requires AutoHotkey v2.0
 
 class TaskbarSwitch {
+    ; Use Windows' native Alt+Tab switcher instead of maintaining our own
+    ; window list. This keeps switching consistent with the OS MRU order,
+    ; virtual desktops, minimized windows, and multi-window applications.
     static Next() {
-        this.Switch(-1)
+        this._SendAltTab(false)
     }
-    
+
     static Prev() {
-        this.Switch(1)
+        ; The +Q hotkey already holds Shift, so Alt+Tab naturally becomes
+        ; Alt+Shift+Tab here and selects the previous MRU window.
+        this._SendAltTab(true)
     }
-    
-    static Switch(direction) {
-        windows := TaskbarOrder.GetWindows()
-        if windows.Length <= 1
-            return
-        
-        current := WinExist("A")
-        if !current {
-            target := windows[1]
-            if WinExist("ahk_id " target) {
-                WinActivate("ahk_id " target)
-            }
-            return
+
+    static _SendAltTab(reverse) {
+        leftShift := GetKeyState("LShift", "P")
+        rightShift := GetKeyState("RShift", "P")
+
+        ; +E should invoke plain Alt+Tab. Temporarily release the physical
+        ; Shift key(s) so Windows does not interpret it as Alt+Shift+Tab.
+        if !reverse {
+            if leftShift
+                SendEvent("{LShift up}")
+            if rightShift
+                SendEvent("{RShift up}")
         }
 
-        idx := 0
-        for i, hwnd in windows {
-            if hwnd == current {
-                idx := i
-                break
+        try {
+            SendEvent("{Alt down}{Tab}{Alt up}")
+        } finally {
+            if !reverse {
+                if leftShift
+                    SendEvent("{LShift down}")
+                if rightShift
+                    SendEvent("{RShift down}")
             }
-        }
-
-        if idx == 0 {
-            if direction > 0 {
-                target := windows[1]
-            } else {
-                target := windows[windows.Length]
-            }
-            if WinExist("ahk_id " target) {
-                WinActivate("ahk_id " target)
-            }
-            return
-        }
-
-        idx += direction
-
-        if idx < 1
-            idx := windows.Length
-        if idx > windows.Length
-            idx := 1
-        
-        target := windows[idx]
-        if WinExist("ahk_id " target) {
-            WinActivate("ahk_id " target)
         }
     }
 }
