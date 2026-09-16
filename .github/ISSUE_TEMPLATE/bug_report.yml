@@ -1,0 +1,138 @@
+name: "Bug Report"
+description: Report incorrect or unexpected behaviour in CapsLock Extended
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report.
+
+        **Privacy first:** do **not** paste clipboard contents, credentials, tokens, or sensitive local paths into this issue. Clipboard history can hold private data — describe the data instead, or redact it.
+
+        **AutoHotkey v1 is not supported.** If you are running v1, upgrade to v2 and retest before reporting.
+  - type: dropdown
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Which Windows build are you running?
+      options:
+        - Windows 11 24H2
+        - Windows 11 23H2
+        - Windows 11 22H2
+        - Windows 11 21H2
+        - Windows 10 22H2
+        - Windows 10 21H2
+        - Older / other (describe it in the report)
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: CapsLock Extended version
+      description: The release tag or build you are running, as shown in Releases.
+      placeholder: v0.9.6
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install it?
+      options:
+        - Release executable — CapsLock-.exe (x64)
+        - Release executable — CapsLock-_x86.exe (x86)
+        - From source with AutoHotkey v2
+        - Other (describe it in the report)
+    validations:
+      required: true
+  - type: input
+    id: ahk-version
+    attributes:
+      label: AutoHotkey version
+      description: Required when running from source, recommended for release builds.
+      placeholder: v2.0.19
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Navigation / selection (CapsLock + arrows, Space)
+        - Editing (CapsLock + A / D, Backspace / Delete)
+        - Clipboard & history (CapsLock + C / V / Shift+V / F)
+        - Smart paste & file workflows
+        - Window management & transparency (CapsLock + T / W / S, mouse buttons)
+        - Tabs & taskbar switching (CapsLock + Q / E, Shift+Q / Shift+E)
+        - Documents / Pandoc conversion (CapsLock + P)
+        - Tray menu & settings
+        - Auto-start
+        - Script fails to start / crashes
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: shortcut
+    attributes:
+      label: Affected shortcut or feature
+      description: The exact key combination or menu item that misbehaves.
+      placeholder: CapsLock + Shift + V
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from a freshly started script if that matters.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour and exact error message
+      description: Paste the full, unedited error dialog text if one appeared — window title, message, and error line.
+    validations:
+      required: true
+  - type: dropdown
+    id: clean-config
+    attributes:
+      label: Does it still happen with a clean configuration?
+      description: Rename the `configs/` directory (or reset the settings), restart the script, then retest.
+      options:
+        - "Yes — reproduces with default settings"
+        - "No — only with my configuration"
+        - "Not tested"
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant settings
+      description: >
+        Paste mode, Delete mode, Delete delay, Cleanup interval, Clipboard history size,
+        Pandoc / ImageMagick paths, Language — only the ones related to this bug.
+        Do **not** include clipboard history contents or file paths you consider private.
+      render: ini
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am running AutoHotkey v2 (not v1)
+          required: true
+        - label: I removed or redacted clipboard contents, credentials, and sensitive local paths
+          required: true
