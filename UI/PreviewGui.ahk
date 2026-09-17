@@ -8,7 +8,7 @@ ShowPreviewGui(text) {
     lineCount := StrSplit(text, "`n").Length
     charCount := StrLen(text)
     ThemeHelper.AddSubtitle(myGui,
-        lineCount " lines  •  " charCount " characters", 600)
+        Lang("GUI_PREVIEW_STATS", "", lineCount, charCount), 600)
     ThemeHelper.AddSeparator(myGui, 600)
 
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
@@ -19,10 +19,11 @@ ShowPreviewGui(text) {
     )
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
-    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 Copy", "primary")
+    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
     btnCopy.OnEvent("Click", (*) => (
+        AppState.IgnoreNextClipChange := true,
         A_Clipboard := text,
-        ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1000)
+        ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1200)
     ))
 
     btn := ThemeHelper.AddButton(myGui, "x+8 yp w80", Lang("GUI_PREVIEW_CLOSE"))

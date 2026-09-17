@@ -89,4 +89,11 @@
 
     p:: ConvertWithPandoc()
 
+    ; --- Files: open the temp folder used by file-oriented paste ---
+    !q:: OpenTempFolder()
+
+    ; --- Help: built-in hotkey reference ---
+    h::
+    F1:: HotkeyReferenceGui.Toggle()
+
 #HotIf

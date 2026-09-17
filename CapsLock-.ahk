@@ -33,9 +33,12 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "History\FullHistoryHandlers.ahk"
 #Include "History\CustomMenu.ahk"
 
+#Include "UI\Cheatsheet.ahk"
+
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
 #Include "Hotkeys\PasteHandler.ahk"
+#Include "Hotkeys\HotkeyReference.ahk"
 
 #Include "Tray\TrayMenu.ahk"
 #Include "Tray\TraySettings.ahk"
