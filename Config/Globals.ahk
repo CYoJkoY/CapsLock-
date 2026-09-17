@@ -78,6 +78,15 @@ class AppState {
         "ico", "heic"
     ]
 
+    ; --- Paste heuristics ---
+    ; Controls that can only receive text. A CF_HDROP (file) paste is
+    ; silently dropped by these, so file mode falls back to text for them.
+    static TextInputControls := [
+        "Edit", "RichEdit", "RichEdit20A", "RichEdit20W", "RICHEDIT50W",
+        "Scintilla", "TMemo", "TSyntaxMemo", "AkelEditA", "AkelEditW",
+        "TJvRichEdit", "TEdit", "EditControl"
+    ]
+
     ; --- Ignore / Auto Clean ---
     static IgnorePatterns := []
     static AutoCleanEnabled := false

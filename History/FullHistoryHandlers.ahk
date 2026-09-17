@@ -23,9 +23,23 @@ OnFullHistoryContextMenu(lv, row, isRightClick, x, y) {
 
     myMenu := Menu()
     myMenu.Add("📄 " Lang("CONTEXT_PASTE_FILE"), (*) => PasteAsMultipleFiles([item]))
+    myMenu.Add("📋 " Lang("CONTEXT_COPY"), (*) => CopyHistoryEntryToClipboard(item))
     myMenu.Add("🔍 " Lang("CONTEXT_PREVIEW"), (*) => ShowPreviewGui(item["text"]))
     myMenu.Add("❌ " Lang("CONTEXT_DELETE"), (*) => DeleteFromFullHistory(Integer(realIdx)))
     myMenu.Show(x, y)
+}
+
+; Copy an entry back to the clipboard without opening the preview.
+; The next clipboard change is ignored so the copy is not duplicated in history.
+CopyHistoryEntryToClipboard(historyItem) {
+    if !IsObject(historyItem) || historyItem["text"] == "" {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    AppState.IgnoreNextClipChange := true
+    A_Clipboard := historyItem["text"]
+    ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1200)
 }
 
 PasteSelectedFromFullHistory() {

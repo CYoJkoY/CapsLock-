@@ -56,6 +56,17 @@ class LanguagePack {
             if langCodes.Length == 0
                 return false
 
+            ; Index of the fallback column (English). Values missing in a
+            ; translation fall back to it, so a partially translated key
+            ; never ends up showing the raw key name to the user.
+            defaultIndex := 0
+            Loop langCodes.Length {
+                if langCodes[A_Index] == this._defaultLang {
+                    defaultIndex := A_Index
+                    break
+                }
+            }
+
             buffers := Map()
             for code in langCodes
                 buffers[code] := ""
@@ -76,12 +87,21 @@ class LanguagePack {
 
                 keyUpper := StrUpper(key)
 
+                fallback := ""
+                if defaultIndex && (defaultIndex + 1) <= fields.Length {
+                    fallback := Trim(fields[defaultIndex + 1])
+                    fallback := StrReplace(fallback, "`r", "")
+                    fallback := StrReplace(fallback, "`n", "\n")
+                }
+
                 Loop langCodes.Length {
                     ci := A_Index
                     valIndex := ci + 1
                     val := (valIndex <= fields.Length) ? Trim(fields[valIndex]) : ""
                     val := StrReplace(val, "`r", "")
-                    val := StrReplace(val, "`n", "\\n")
+                    val := StrReplace(val, "`n", "\n")
+                    if val == "" && fallback != ""
+                        val := fallback
                     buffers[langCodes[ci]] .= keyUpper "=" val "`n"
                 }
             }

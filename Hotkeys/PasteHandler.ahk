@@ -78,10 +78,36 @@ PasteWithCurrentMode() {
         return
     }
 
+    ; Plain text (no file or folder path in the clipboard).
+    ;
+    ; File mode used to always write a temp file and drop it on the target,
+    ; which does nothing at all when the target only accepts text (and gave
+    ; no feedback either). Handle the plain-text case explicitly:
+    ;   - text mode  -> paste as text (with the source header)
+    ;   - file mode  -> temp file, unless the focused control can only
+    ;                   receive text, then fall back to a text paste
+    ; Both branches report what happened through the OSD.
+    if !hasPaths {
+        item := Map(
+            "text", target,
+            "source", _ResolveClipboardSource(target),
+            "time", FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        )
+
+        if AppState.PasteMode == 2
+            HandlePlainText(item)
+        else if _PasteTargetIsTextInput()
+            PasteAsPlainText(target, Lang("MSG_PASTE_FALLBACK_TEXT"))
+        else
+            PasteTempText("; " _GetHistorySourceInfo(item) "`n`n" target, Lang("MSG_PASTE_AS_FILE"))
+
+        return
+    }
+
     ; Rebuild the text only when it is a file/folder path list.
     ; Plain text is forwarded verbatim (original clipboard),
     ; which preserves indentation and empty lines exactly.
-    newTarget := hasPaths ? Join(validLines, "`n") : target
+    newTarget := Join(validLines, "`n")
     item := Map(
         "text", newTarget,
         "source", _ResolveClipboardSource(target),
@@ -89,4 +115,26 @@ PasteWithCurrentMode() {
     )
 
     PasteAsFile(item)
+}
+
+; Heuristic for "this target cannot receive a file drop".
+; A CF_HDROP paste is silently ignored by plain text controls (Notepad,
+; classic edit fields, ...), so those targets get a text paste instead.
+_PasteTargetIsTextInput() {
+    try
+        classNN := ControlGetFocus("A")
+    catch
+        return false
+
+    if classNN == ""
+        return false
+
+    className := RegExReplace(classNN, "\d+$")
+
+    for name in AppState.TextInputControls {
+        if className == name
+            return true
+    }
+
+    return false
 }
