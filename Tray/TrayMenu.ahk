@@ -85,6 +85,9 @@ BuildTrayMenuItems() {
     }
     items.Push({ label: "🌐 " Lang("MENU_LANGUAGE"), children: langChildren })
 
+    ; --- Hotkey reference (same overlay as CapsLock + H / F1) ---
+    items.Push({ label: "⌨️ " Lang("MENU_CHEATSHEET"), callback: (*) => OpenCheatsheetFromTray() })
+
     items.Push({ isSep: true })
 
     ; --- Auto-start ---
@@ -170,4 +173,22 @@ SwitchLanguage(code, *) {
         ToolTip(Lang("MSG_LANG_CHANGED", , code))
         SetTimer(() => ToolTip(), -1500)
     }
+}
+
+; Tray entry point for the built-in hotkey reference.
+; A menu click reads as "open": reuse an already-open overlay instead of
+; toggling it closed (Toggle() would close it and look like nothing happened).
+OpenCheatsheetFromTray(*) {
+    if IsObject(HotkeyReferenceGui.gui) {
+        try {
+            if WinExist("ahk_id " HotkeyReferenceGui.gui.Hwnd) {
+                WinActivate("ahk_id " HotkeyReferenceGui.gui.Hwnd)
+                return
+            }
+        } catch {
+        }
+
+        HotkeyReferenceGui.Close()
+    }
+    HotkeyReferenceGui.Show()
 }
