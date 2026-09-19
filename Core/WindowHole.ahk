@@ -23,8 +23,8 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 60
-    static CHROMIUM_MIN_MOVE_DISTANCE := 8
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 80
+    static CHROMIUM_MIN_MOVE_DISTANCE := 12
 
     static Active := false
     static SecondLevelActive := false
@@ -366,23 +366,23 @@ class WindowHole {
         this.LastMouseY := my
 
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
-        primaryRegionApplied := false
-
         if IsObject(primaryState) && !primaryState.fallback {
             ; The hole follows the cursor only while the cursor is still
             ; geometrically inside the primary window. Once the cursor passes
             ; through the hole into a lower window, freeze the hole in place.
             ; This is essential for real drag/drop: the cursor must be able
             ; to leave the hole and hit the primary window again.
-            if mouseMoved && this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
-                if this._ShouldApplyPosition(primaryState, mx, my)
-                    || (primaryState.isChromium && !this._WindowHasActiveRegion(this.PrimaryHwnd)) {
+            if mouseMoved && this._IsPointInsideWindow(
+                this.PrimaryHwnd,
+                mx,
+                my,
+                primaryState
+            ) {
+                if this._ShouldApplyPosition(primaryState, mx, my) {
                     if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
                         this.Stop()
                         return
                     }
-
-                    primaryRegionApplied := true
                 }
             }
         }
@@ -409,9 +409,6 @@ class WindowHole {
 
         ; Apply the second-layer hole only while the cursor is inside that
         ; target. Once the cursor penetrates beyond it, freeze the layer too.
-        if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)
-            return
-
         secondaryState := this.Targets.Has(this.SecondaryHwnd)
             ? this.Targets[this.SecondaryHwnd]
             : ""
@@ -419,9 +416,15 @@ class WindowHole {
         if !IsObject(secondaryState) || secondaryState.fallback
             return
 
-        if mouseMoved
-            && (this._ShouldApplyPosition(secondaryState, mx, my)
-                || (secondaryState.isChromium && !this._WindowHasActiveRegion(this.SecondaryHwnd))) {
+        if !this._IsPointInsideWindow(
+            this.SecondaryHwnd,
+            mx,
+            my,
+            secondaryState
+        )
+            return
+
+        if mouseMoved && this._ShouldApplyPosition(secondaryState, mx, my) {
             result := this._ApplyHole(
                 this.SecondaryHwnd,
                 false,
@@ -585,9 +588,15 @@ class WindowHole {
         }
     }
 
-    static _IsPointInsideWindow(hwnd, x, y) {
+    static _IsPointInsideWindow(hwnd, x, y, state := "") {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
+
+        if IsObject(state) && state.hasGeometry
+            return x >= state.windowX
+                && x < state.windowX + state.windowWidth
+                && y >= state.windowY
+                && y < state.windowY + state.windowHeight
 
         try {
             if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
@@ -616,10 +625,10 @@ class WindowHole {
     }
 
     static _ApplyHole(hwnd, isPrimary, mouseX := "", mouseY := "") {
-        if !this.IsEligible(hwnd)
-            return false
-
         if !this.Targets.Has(hwnd) {
+            if !this.IsEligible(hwnd)
+                return false
+
             state := this._CaptureState(hwnd)
             if !IsObject(state)
                 return false
@@ -640,6 +649,12 @@ class WindowHole {
             if (ww <= 0 || wh <= 0)
                 throw Error("Invalid window dimensions.")
 
+            state.windowX := wx
+            state.windowY := wy
+            state.windowWidth := ww
+            state.windowHeight := wh
+            state.hasGeometry := true
+
             if mouseX == "" {
                 if !this._GetPhysicalCursorPosition(&mx, &my)
                     throw Error("Could not get physical cursor position.")
@@ -648,12 +663,15 @@ class WindowHole {
                 my := mouseY
             }
 
+            previousAppliedX := state.lastAppliedX
+            previousAppliedY := state.lastAppliedY
+            firstRegionApply := !state.hasAppliedPosition
+
             relativeX := mx - wx
             relativeY := my - wy
             baseRegion := state.hadOriginalRegion
                 ? state.originalRegion
                 : 0
-            firstRegionApply := !state.hasAppliedPosition
 
             region := this._CreateDifferenceRegion(
                 ww,
@@ -691,15 +709,25 @@ class WindowHole {
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
             state.regionActive := true
+
+            refreshRect := 0
+            if state.isChromium && !firstRegionApply {
+                refreshRect := this._CreateChromiumUpdateRect(
+                    state,
+                    mx,
+                    my
+                )
+            }
+
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            ; Chromium's compositor is sensitive to repeated synchronous
-            ; redraws. The native region change is sufficient for subsequent
-            ; pointer moves; only refresh the first region application.
-            if !state.isChromium || firstRegionApply
-                this._RefreshWindow(hwnd, false, state.isChromium)
+            if !state.isChromium {
+                this._RefreshWindow(hwnd, false, false)
+            } else {
+                this._RefreshWindow(hwnd, false, true, refreshRect)
+            }
 
             return true
         } catch {
@@ -716,6 +744,75 @@ class WindowHole {
             this.Targets.Delete(hwnd)
             return false
         }
+    }
+
+    static _CreateChromiumUpdateRect(
+        state,
+        mx,
+        my
+    ) {
+        if !IsObject(state) || !state.hasGeometry
+            return 0
+
+        diameter := Clamp(Integer(AppState.WindowHoleDiameter), 80, 1200)
+        radius := Floor(diameter / 2)
+
+        left := Floor(Min(
+            state.lastAppliedX,
+            mx
+        ) - radius)
+        top := Floor(Min(
+            state.lastAppliedY,
+            my
+        ) - radius)
+        right := Floor(Max(
+            state.lastAppliedX,
+            mx
+        ) + radius)
+        bottom := Floor(Max(
+            state.lastAppliedY,
+            my
+        ) + radius)
+
+        left := Max(0, left)
+        top := Max(0, top)
+        right := Min(state.windowWidth, right)
+        bottom := Min(state.windowHeight, bottom)
+
+        if right <= left || bottom <= top
+            return 0
+
+        clientOrigin := Buffer(8, 0)
+        if !DllCall(
+            "ClientToScreen",
+            "Ptr", state.hwnd,
+            "Ptr", clientOrigin,
+            "Int"
+        )
+            return 0
+
+        clientX := NumGet(clientOrigin, 0, "Int") - state.windowX
+        clientY := NumGet(clientOrigin, 4, "Int") - state.windowY
+
+        left -= clientX
+        top -= clientY
+        right -= clientX
+        bottom -= clientY
+
+        left := Max(0, left)
+        top := Max(0, top)
+        right := Min(state.windowWidth, right)
+        bottom := Min(state.windowHeight, bottom)
+
+        if right <= left || bottom <= top
+            return 0
+
+        rect := Buffer(16, 0)
+        NumPut("Int", left, rect, 0)
+        NumPut("Int", top, rect, 4)
+        NumPut("Int", right, rect, 8)
+        NumPut("Int", bottom, rect, 12)
+        return rect
     }
 
     static _CreateDifferenceRegion(
@@ -834,6 +931,12 @@ class WindowHole {
             lastAppliedX: 0,
             lastAppliedY: 0,
             hasAppliedPosition: false,
+            windowX: 0,
+            windowY: 0,
+            windowWidth: 0,
+            windowHeight: 0,
+            hwnd: hwnd,
+            hasGeometry: false,
             originalNCRenderingPolicy: 0,
             hadOriginalNCRenderingPolicy: false,
             visualPrepared: false,
@@ -871,12 +974,11 @@ class WindowHole {
                 tempRegion := 0
             }
 
-            if !state.isChromium
-                && this._DwmGetIntAttribute(
-                    hwnd,
-                    this.DWM_NCRENDERING_POLICY,
-                    &ncrp
-                ) {
+            if this._DwmGetIntAttribute(
+                hwnd,
+                this.DWM_NCRENDERING_POLICY,
+                &ncrp
+            ) {
                 state.hadOriginalNCRenderingPolicy := true
                 state.originalNCRenderingPolicy := ncrp
             }
@@ -952,33 +1054,36 @@ class WindowHole {
         } catch {
         }
 
-        ; Chromium owns its custom-frame lifecycle. Do not rewrite its DWM
-        ; non-client policy or force SWP_FRAMECHANGED, because both paths
-        ; can make Chromium rebuild its compositor frame around our region.
-        if !state.isChromium {
-            if state.hadOriginalNCRenderingPolicy {
-                this._DwmSetIntAttribute(
-                    hwnd,
-                    this.DWM_NCRENDERING_POLICY,
-                    this.DWMNCRP_DISABLED
-                )
-            }
+        ; A custom external region must not coexist with DWM-rendered
+        ; non-client/backdrop pixels. Apply these policies once at session
+        ; start, but never force SWP_FRAMECHANGED on Chromium while the hole
+        ; is moving.
+        if state.hadOriginalNCRenderingPolicy {
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_NCRENDERING_POLICY,
+                this.DWMNCRP_DISABLED
+            )
+        }
 
-            ; Windows 11 can draw system backdrop material (Mica/Acrylic) across
-            ; the window bounds independently of client pixels.
-            if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
-                state.hadOriginalSystemBackdropType := true
-                state.originalSystemBackdropType := backdropType
-                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
-            }
+        if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
+            state.hadOriginalSystemBackdropType := true
+            state.originalSystemBackdropType := backdropType
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_SYSTEMBACKDROP_TYPE,
+                this.DWMSBT_NONE
+            )
+        }
 
-            ; Do not let Windows 11 add rounded-corner pixels around a custom
-            ; window region. The region itself owns the hole geometry.
-            if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
-                state.hadOriginalCornerPreference := true
-                state.originalCornerPreference := cornerPreference
-                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
-            }
+        if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
+            state.hadOriginalCornerPreference := true
+            state.originalCornerPreference := cornerPreference
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_WINDOW_CORNER_PREFERENCE,
+                this.DWMWCP_DONOTROUND
+            )
         }
 
         state.visualPrepared := true
@@ -991,23 +1096,27 @@ class WindowHole {
             return
 
         if WinExist("ahk_id " hwnd) {
-            ; Restore DWM attributes only for windows whose policy was
-            ; modified during preparation. Chromium keeps its native frame
-            ; policy untouched for the whole Window Hole session.
-            if !state.isChromium {
-                if state.hadOriginalNCRenderingPolicy
-                    this._DwmSetIntAttribute(
-                        hwnd,
-                        this.DWM_NCRENDERING_POLICY,
-                        state.originalNCRenderingPolicy
-                    )
+            ; Restore the exact DWM state captured at session start.
+            if state.hadOriginalNCRenderingPolicy
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_NCRENDERING_POLICY,
+                    state.originalNCRenderingPolicy
+                )
 
-                if state.hadOriginalSystemBackdropType
-                    this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
+            if state.hadOriginalSystemBackdropType
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_SYSTEMBACKDROP_TYPE,
+                    state.originalSystemBackdropType
+                )
 
-                if state.hadOriginalCornerPreference
-                    this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
-            }
+            if state.hadOriginalCornerPreference
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_WINDOW_CORNER_PREFERENCE,
+                    state.originalCornerPreference
+                )
 
             if state.hadOriginalOpacity
                 try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
@@ -1019,7 +1128,7 @@ class WindowHole {
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd, frameChanged := false, chromium := false) {
+    static _RefreshWindow(hwnd, frameChanged := false, chromium := false, updateRect := 0) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
 
@@ -1048,10 +1157,14 @@ class WindowHole {
             ? 0x0001 | 0x0020
             : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
 
+        redrawRect := updateRect
+        if chromium && !updateRect
+            redrawRect := 0
+
         try DllCall(
             "RedrawWindow",
             "Ptr", hwnd,
-            "Ptr", 0,
+            "Ptr", redrawRect,
             "Ptr", 0,
             "UInt", redrawFlags
         )
