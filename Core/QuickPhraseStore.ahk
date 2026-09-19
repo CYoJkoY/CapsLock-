@@ -123,6 +123,7 @@ class QuickPhraseStore {
             phrase.name := oldName
             phrase.category := oldCategory
             phrase.content := oldContent
+            this._WriteContent(contentPath, oldContent)
             return false
         }
 
@@ -170,8 +171,8 @@ class QuickPhraseStore {
     }
 
     static _EnsureDirectories() {
-        if !DirExist(A_ScriptDir "configs")
-            DirCreate(A_ScriptDir "configs")
+        if !DirExist(A_ScriptDir "\configs")
+            DirCreate(A_ScriptDir "\configs")
         if !DirExist(AppState.QuickPhraseContentDir)
             DirCreate(AppState.QuickPhraseContentDir)
     }
