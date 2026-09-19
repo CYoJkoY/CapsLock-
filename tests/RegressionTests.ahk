@@ -94,6 +94,12 @@ RunTests() {
     Assert(InStr(customMenu, "static ShowNestedSubMenu(parentEntry)") > 0, "CustomMenu has no nested submenu renderer.")
     Assert(InStr(customMenu, "if hasChildren") > 0, "CustomMenu does not preserve children while normalizing submenu entries.")
 
+    ; SetWindowRgn takes an explicit BOOL bRedraw argument before its return type.
+    Assert(InStr(windowHole, '"PtInRegion"') > 0, "Window Hole does not validate hole-region exclusion.")
+    Assert(InStr(windowHole, '"Ptr", region,`n                "Int", 1,`n                "Int"') > 0, "Window Hole does not explicitly request redraw after SetWindowRgn.")
+    Assert(InStr(windowHole, '"Ptr", state.originalRegion,`n                        "Int", 1,`n                        "Int"') > 0, "Window Hole restoration does not explicitly request redraw.")
+    Assert(InStr(windowHole, '"Ptr", hwnd, "Ptr", 0, "Int", 1, "Int"') > 0, "Window Hole clear-region path does not explicitly request redraw.")
+
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
 
     ; The generated locale cache must be tied to the current CSV source.
