@@ -99,6 +99,18 @@ class AppState {
     static AutoCleanEnabled := false
     static MaxHistoryItems := 500
 
+    ; --- Window Hole ---
+    static WindowHoleDiameter := 360
+    static WindowHoleShape := "circle"
+    static WindowHoleSecondLevelEnabled := true
+    static WindowHoleActivation := "hold"
+    static WindowHoleUpdateInterval := 30
+    static WindowHoleFallbackToMinimize := true
+    static WindowHoleAllowedExecutables := []
+    static WindowHoleExcludedExecutables := []
+    static WindowHoleAllowedClasses := []
+    static WindowHoleExcludedClasses := []
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"
