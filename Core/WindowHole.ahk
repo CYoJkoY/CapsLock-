@@ -586,14 +586,14 @@ class WindowHole {
 
     static _DwmGetIntAttribute(hwnd, attribute, &value) {
         value := 0
-        buffer := Buffer(4, 0)
+        attributeBuffer := Buffer(4, 0)
 
         try {
             hr := DllCall(
                 "dwmapi\DwmGetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
-                "Ptr", buffer,
+                "Ptr", attributeBuffer,
                 "UInt", 4,
                 "Int"
             )
@@ -601,7 +601,7 @@ class WindowHole {
             if hr != 0
                 return false
 
-            value := NumGet(buffer, 0, "Int")
+            value := NumGet(attributeBuffer, 0, "Int")
             return true
         } catch {
             return false
@@ -609,15 +609,15 @@ class WindowHole {
     }
 
     static _DwmSetIntAttribute(hwnd, attribute, value) {
-        buffer := Buffer(4, 0)
-        NumPut("Int", value, buffer)
+        attributeBuffer := Buffer(4, 0)
+        NumPut("Int", value, attributeBuffer)
 
         try {
             hr := DllCall(
                 "dwmapi\DwmSetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
-                "Ptr", buffer,
+                "Ptr", attributeBuffer,
                 "UInt", 4,
                 "Int"
             )
