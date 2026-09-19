@@ -122,7 +122,7 @@ QuickPhraseUseSelected(myGui) {
 
     myGui.Hide()
     variables := QuickPhraseExtractVariables(phrase.content)
-    if !variables.Length {
+    if variables.Length == 0 {
         ok := QuickPhrasePasteText(phrase.content, target)
     } else {
         result := ShowQuickPhraseVariableDialog(phrase, variables)
@@ -177,7 +177,7 @@ QuickPhraseApplyVariables(template, values) {
         pos := match.Pos + match.Len
     }
 
-    return result SubStr(template, pos)
+    return result . SubStr(template, pos)
 }
 
 ShowQuickPhraseVariableDialog(phrase, variables) {
@@ -294,6 +294,7 @@ ToggleQuickPhraseEnabled(*) {
 ShowQuickPhraseManager(returnToSelector := false) {
     if IsObject(AppState.QuickPhraseManagerGui) {
         try {
+            AppState.QuickPhraseManagerGui.ReturnToSelector := returnToSelector
             WinActivate("ahk_id " AppState.QuickPhraseManagerGui.Hwnd)
             QuickPhraseRefreshManager(AppState.QuickPhraseManagerGui)
             return
@@ -374,7 +375,7 @@ QuickPhraseRefreshManager(myGui) {
     }
 
     if list.GetCount()
-        list.Modify(1, "Select Focus")
+        list.Modify(1, "Select")
 }
 
 QuickPhraseSelectedPhrase(myGui) {
