@@ -91,6 +91,72 @@ BuildTrayMenuItems() {
         children: quickPhraseChildren
     })
 
+    ; --- Window Hole settings (sub-menu) ---
+    windowHoleChildren := []
+    windowHoleChildren.Push({
+        label: "📏 " Lang("MENU_WINDOW_HOLE_SIZE", "Hole size"),
+        callback: (*) => SetWindowHoleDiameter()
+    })
+
+    shapeLabel := AppState.WindowHoleShape == "circle"
+        ? Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle")
+        : (AppState.WindowHoleShape == "rounded"
+            ? Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle")
+            : Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square"))
+    shapeChildren := []
+    shapeChildren.Push({
+        label: (AppState.WindowHoleShape == "circle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle"),
+        callback: (*) => SetWindowHoleShape("circle")
+    })
+    shapeChildren.Push({
+        label: (AppState.WindowHoleShape == "rounded" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle"),
+        callback: (*) => SetWindowHoleShape("rounded")
+    })
+    shapeChildren.Push({
+        label: (AppState.WindowHoleShape == "square" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square"),
+        callback: (*) => SetWindowHoleShape("square")
+    })
+    windowHoleChildren.Push({
+        label: "◯ " . Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape"),
+        children: shapeChildren
+    })
+
+    secondLabel := AppState.WindowHoleSecondLevelEnabled ? "● " : "○ "
+    windowHoleChildren.Push({
+        label: secondLabel . Lang("MENU_WINDOW_HOLE_SECOND", "Second penetration layer"),
+        callback: (*) => ToggleWindowHoleSecondLevelEnabled()
+    })
+
+    activationChildren := []
+    activationChildren.Push({
+        label: (AppState.WindowHoleActivation == "hold" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_HOLD", "Hold X"),
+        callback: (*) => SetWindowHoleActivation("hold")
+    })
+    activationChildren.Push({
+        label: (AppState.WindowHoleActivation == "toggle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_TOGGLE", "Toggle with X"),
+        callback: (*) => SetWindowHoleActivation("toggle")
+    })
+    windowHoleChildren.Push({
+        label: "⌨️ " Lang("MENU_WINDOW_HOLE_ACTIVATION", "Activation"),
+        children: activationChildren
+    })
+
+    fallbackPrefix := AppState.WindowHoleFallbackToMinimize ? "● " : "○ "
+    windowHoleChildren.Push({
+        label: fallbackPrefix . Lang("MENU_WINDOW_HOLE_FALLBACK", "Minimize incompatible windows"),
+        callback: (*) => ToggleWindowHoleFallback()
+    })
+
+    windowHoleChildren.Push({
+        label: "⚙️ " Lang("MENU_WINDOW_HOLE_RULES", "Window rules"),
+        callback: (*) => SetWindowHoleRules()
+    })
+
+    items.Push({
+        label: "◉ " Lang("MENU_WINDOW_HOLE", "Window Hole"),
+        children: windowHoleChildren
+    })
+
     ; --- Language (sub-menu) ---
     langChildren := []
     currentLang := Language.GetCurrent()
