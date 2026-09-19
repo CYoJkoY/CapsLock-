@@ -931,10 +931,7 @@ class WindowHole {
 
         try DllCall("UpdateWindow", "Ptr", hwnd)
 
-        ; Wait until the compositor has processed the region change so the
-        ; removed area is presented as actual desktop/window transparency,
-        ; not a stale composed frame.
-        try DllCall("DwmFlush")
+
     }
 
     static _RestoreOriginalRegion(hwnd, state) {

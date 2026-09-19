@@ -91,6 +91,7 @@ RunTests() {
     Assert(InStr(windowHole, "static _RefreshWindow(hwnd, frameChanged := false)") > 0, "Window Hole refresh helper does not accept the frameChanged option.")
     Assert(InStr(windowHole, "0x0020 ; SWP_FRAMECHANGED") > 0, "Window Hole refresh helper does not request SWP_FRAMECHANGED.")
     Assert(InStr(windowHole, "this._RefreshWindow(hwnd, true)") > 0, "Window Hole does not force frame recalculation when DWM state changes.")
+    Assert(!InStr(windowHole, "DwmFlush"), "Window Hole still performs a blocking DwmFlush in its refresh path.")
     Assert(InStr(windowHole, "_WindowHasActiveRegion") > 0, "Window Hole has no Chromium region watchdog.")
 
     Assert(InStr(hotkeyReference, "CapsLock + Shift + P") > 0, "Quick Phrase shortcut is missing from the hotkey reference.")
@@ -118,6 +119,14 @@ RunTests() {
     Assert(InStr(customMenu, "static ToggleNestedSubMenu(entry, *)") > 0, "CustomMenu has no nested submenu toggle handler.")
     Assert(InStr(customMenu, "static ShowNestedSubMenu(parentEntry)") > 0, "CustomMenu has no nested submenu renderer.")
     Assert(InStr(customMenu, "if hasChildren") > 0, "CustomMenu does not preserve children while normalizing submenu entries.")
+    Assert(InStr(customMenu, "static WM_MOUSEMOVE := 0x0200") > 0, "CustomMenu does not define WM_MOUSEMOVE.")
+    Assert(InStr(customMenu, "static HandleMouseMove(wParam, lParam, msg, hWnd)") > 0, "CustomMenu has no event-driven hover handler.")
+    Assert(InStr(customMenu, "static controlEntries := Map()") > 0, "CustomMenu has no constant-time control hit map.")
+    Assert(InStr(customMenu, "OnMessage(this.WM_MOUSEMOVE, this.mouseMoveHandler)") > 0, "CustomMenu does not register WM_MOUSEMOVE while visible.")
+    Assert(InStr(customMenu, "OnMessage(this.WM_MOUSEMOVE, this.mouseMoveHandler, 0)") > 0, "CustomMenu does not unregister WM_MOUSEMOVE when hidden.")
+    Assert(InStr(customMenu, "SetTimer(this.outsideTimer, 75)") > 0, "CustomMenu does not use the lightweight outside-surface timer.")
+    Assert(!InStr(customMenu, "SetTimer(this.hoverTimer"), "CustomMenu still uses the old polling hover timer.")
+    Assert(!InStr(customMenu, "static CheckHover()"), "CustomMenu still contains the old polling hover state machine.")
 
     ; SetWindowRgn takes an explicit BOOL bRedraw argument before its return type.
     Assert(InStr(windowHole, '"PtInRegion"') > 0, "Window Hole does not validate hole-region exclusion.")
