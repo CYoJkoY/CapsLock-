@@ -100,6 +100,17 @@ RunTests() {
     Assert(InStr(windowHole, '"Ptr", state.originalRegion,`n                        "Int", 1,`n                        "Int"') > 0, "Window Hole restoration does not explicitly request redraw.")
     Assert(InStr(windowHole, '"Ptr", hwnd, "Ptr", 0, "Int", 1, "Int"') > 0, "Window Hole clear-region path does not explicitly request redraw.")
 
+    ; DWM presentation must not leave system backdrop/corner pixels in the carved area.
+    Assert(InStr(windowHole, "static _DwmGetIntAttribute(hwnd, attribute, &value)") > 0, "Window Hole has no DWM attribute reader.")
+    Assert(InStr(windowHole, "static _DwmSetIntAttribute(hwnd, attribute, value)") > 0, "Window Hole has no DWM attribute writer.")
+    Assert(InStr(windowHole, "this._DwmSetIntAttribute(hwnd, 38, 1)") > 0, "Window Hole does not disable the Windows 11 system backdrop while active.")
+    Assert(InStr(windowHole, "this._DwmSetIntAttribute(hwnd, 33, 1)") > 0, "Window Hole does not disable Windows 11 rounded-corner rendering while active.")
+    Assert(InStr(windowHole, "WinGetTransparent(\"ahk_id \" hwnd)") > 0, "Window Hole does not capture the target opacity before forcing an opaque source surface.")
+    Assert(InStr(windowHole, "WinSetTransparent(255, \"ahk_id \" hwnd)") > 0, "Window Hole does not normalize target opacity while active.")
+    Assert(InStr(windowHole, "state.originalSystemBackdropType") > 0, "Window Hole does not preserve the original DWM system backdrop type.")
+    Assert(InStr(windowHole, "state.originalCornerPreference") > 0, "Window Hole does not preserve the original DWM corner preference.")
+    Assert(InStr(windowHole, "this._RestoreWindowVisualState(hwnd, state)") > 0, "Window Hole does not restore temporary visual state.")
+
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
 
     ; The generated locale cache must be tied to the current CSV source.
