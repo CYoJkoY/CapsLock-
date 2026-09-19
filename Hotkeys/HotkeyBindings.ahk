@@ -35,6 +35,8 @@
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
+#HotIf GetKeyState( "CapsLock", "P" ) && !WindowHole.IsActive()
+
     LButton:: {
         AdjustOpacity( 20 )
         if KeyWait( "LButton", "T0.3" )
@@ -63,6 +65,8 @@
         else
             WinSetTransparent( 255, hwnd )
     }
+
+#HotIf GetKeyState( "CapsLock", "P" )
 
     w::
     8::
