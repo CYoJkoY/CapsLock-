@@ -75,6 +75,22 @@ BuildTrayMenuItems() {
     historyChildren.Push({ label: "🚫 " Lang("MENU_IGNORE_RULES"), callback: (*) => SetIgnorePatterns() })
     items.Push({ label: "📋 " Lang("MENU_HISTORY_PASTE"), children: historyChildren })
 
+    ; --- Quick Phrases (sub-menu) ---
+    quickPhraseChildren := []
+    quickPhrasePrefix := AppState.QuickPhraseEnabled ? "● " : "○ "
+    quickPhraseChildren.Push({
+        label: quickPhrasePrefix . Lang("MENU_QUICK_PHRASE_ENABLE", "Enable shortcut"),
+        callback: (*) => ToggleQuickPhraseEnabled()
+    })
+    quickPhraseChildren.Push({
+        label: "📝 " Lang("MENU_QUICK_PHRASE_MANAGE", "Manage phrases..."),
+        callback: (*) => ShowQuickPhraseManager()
+    })
+    items.Push({
+        label: "💬 " Lang("MENU_QUICK_PHRASE", "Quick Phrases"),
+        children: quickPhraseChildren
+    })
+
     ; --- Language (sub-menu) ---
     langChildren := []
     currentLang := Language.GetCurrent()
