@@ -59,8 +59,13 @@ RunTests() {
         InStr(windowHole, 'Hotkey("1", enabled ? "On" : "Off")') > 0,
         "Second-level global hotkey state toggle is missing."
     )
+    toggleStart := InStr(windowHole, "static ToggleSecondLevel(*) {")
+    toggleEnd := InStr(windowHole, "static ", false, toggleStart + 1)
+    toggleBody := toggleEnd > toggleStart
+        ? SubStr(windowHole, toggleStart, toggleEnd - toggleStart)
+        : SubStr(windowHole, toggleStart)
     Assert(
-        InStr(windowHole, 'KeyWait("1")') > 0,
+        toggleStart > 0 && InStr(toggleBody, 'KeyWait("1")') > 0,
         "Second-level hotkey must wait for the key release so keyboard auto-repeat cannot toggle it twice."
     )
     Assert(
