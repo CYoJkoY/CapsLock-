@@ -36,6 +36,11 @@ RunTests() {
     Assert(InStr(customMenu, "IsPointInInteractionSurface") > 0, "Tray interaction-surface hit test is missing.")
     Assert(InStr(customMenu, "IsPointInWindowBridge") > 0, "Tray submenu transition bridge is missing.")
     Assert(InStr(customMenu, "now - this.outsideSurfaceSince < this.outsideDismissDelay") > 0, "Tray outside-surface debounce is not enforced.")
+    Assert(InStr(customMenu, 'CoordMode("Mouse", "Screen")') > 0, "Tray outside watchdog must use screen mouse coordinates.")
+    Assert(
+        InStr(customMenu, 'CoordMode("Mouse", "Screen")') < InStr(customMenu, 'MouseGetPos(&mx, &my)'),
+        "Tray outside watchdog must set screen coordinate mode before reading the mouse position."
+    )
 
     Assert(
         InStr(hotkeys, "WindowHole.InitializeSecondLevelHotkey()") > 0,
