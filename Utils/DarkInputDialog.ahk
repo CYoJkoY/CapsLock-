@@ -37,8 +37,8 @@ class DarkInputDialog {
         myGui.OnEvent("Escape", OnCancel)
         myGui.OnEvent("Close", OnCancel)
 
-        myGui.Show("AutoSize Center")
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+        myGui.Show("AutoSize Center")
         WinWaitClose("ahk_id " myGui.Hwnd)
         return { Result: resultAction, Value: resultValue }
     }

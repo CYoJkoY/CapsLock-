@@ -31,8 +31,8 @@ ProcessImagePathsToPDF() {
     ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PROCESSING_TITLE", "Creating PDF"), 360)
     ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PROCESSING_SUBTITLE", "Please wait..."), 360)
     progressGui.Add("Text", "x16 y+8 w340 center c" AppState.THEME_FG_DIM, Lang("MSG_PROCESSING_WAIT", "Processing images..."))
-    progressGui.Show("AutoSize Center")
     ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+    progressGui.Show("AutoSize Center")
 
     outputPdf := A_Temp "\\ClipTemp_" A_TickCount ".pdf"
     logFile := A_Temp "\\CapsLock_ImageMagick_" A_TickCount ".log"

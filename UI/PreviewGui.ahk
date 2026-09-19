@@ -17,6 +17,7 @@ ShowPreviewGui(text) {
         "ReadOnly VScroll Wrap w600 h350 " ThemeHelper.GetEditOptions(),
         text
     )
+    ThemeHelper.StyleEdit(myEdit)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
@@ -36,6 +37,6 @@ ShowPreviewGui(text) {
     ))
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
-    myGui.Show("w640 h480")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("w640 h480")
 }

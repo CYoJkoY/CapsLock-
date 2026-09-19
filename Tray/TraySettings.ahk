@@ -122,6 +122,7 @@ SetIgnorePatterns(*) {
         "Multi VScroll w500 h200 y+12 " ThemeHelper.GetEditOptions(),
         ""
     )
+    ThemeHelper.StyleEdit(myEdit)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     current := ""
@@ -135,8 +136,8 @@ SetIgnorePatterns(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    myGui.Show()
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show()
 }
 
 SaveIgnoreRules(text, myGui) {
@@ -206,7 +207,12 @@ SetPandocOutput(*) {
     formats := AppState.PandocOutputFormats.Clone()
     _SortStrings(formats)
 
-    cbo := myGui.Add("ComboBox", "w320 vOutputFormat Choose1", formats)
+    cbo := myGui.Add(
+        "ComboBox",
+        "w320 vOutputFormat Choose1 c" AppState.THEME_FG " Background" AppState.THEME_CONTROL_BG,
+        formats
+    )
+    ThemeHelper.StyleComboBox(cbo)
 
     current := AppState.PandocOutputFormat
     Loop formats.Length {
@@ -222,8 +228,8 @@ SetPandocOutput(*) {
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    myGui.Show("AutoSize Center")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("AutoSize Center")
 }
 
 SavePandocOutput(newFormat, myGui) {

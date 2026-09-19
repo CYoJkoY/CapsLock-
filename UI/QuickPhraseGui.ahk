@@ -31,6 +31,7 @@ ShowQuickPhraseSelector(captureTarget := true) {
     ThemeHelper.AddSeparator(myGui, 640)
 
     search := myGui.Add("Edit", "w640 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    ThemeHelper.StyleEdit(search)
     list := myGui.Add(
         "ListView",
         "w640 r12 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -40,6 +41,7 @@ ShowQuickPhraseSelector(captureTarget := true) {
     list.ModifyCol(2, 190)
     list.ModifyCol(3, 120)
     list.ModifyCol(4, 330)
+    ThemeHelper.StyleListView(list)
 
     status := myGui.Add("Text", "w640 y+8", "")
     useBtn := ThemeHelper.AddButton(myGui, "Default w110 y+12", "✓ " Lang("GUI_QUICK_PHRASE_USE", "Use"), "primary")
@@ -58,8 +60,8 @@ ShowQuickPhraseSelector(captureTarget := true) {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseSelector(myGui))
 
     AppState.QuickPhraseGui := myGui
-    myGui.Show("w680 h470")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("w680 h470")
     search.Focus()
     QuickPhraseRefreshSelector(myGui)
 }
@@ -206,6 +208,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         myGui.Add("Text", "x" x " y" y " w300", name)
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         edit := myGui.Add("Edit", "x" x " y" (y + 18) " w300 r1 " ThemeHelper.GetEditOptions(), "")
+        ThemeHelper.StyleEdit(edit)
         controls.Push({name: name, edit: edit})
     }
 
@@ -216,6 +219,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         "x16 y" (previewY + 20) " w640 h120 ReadOnly VScroll Wrap " ThemeHelper.GetEditOptions(),
         phrase.content
     )
+    ThemeHelper.StyleEdit(preview)
 
     okBtn := ThemeHelper.AddButton(myGui, "Default w90 x456 y+12", "✓ " Lang("GUI_OK", "OK"), "primary")
     cancelBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", "✕ " Lang("GUI_CANCEL", "Cancel"))
@@ -247,8 +251,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     myGui.OnEvent("Escape", Cancel)
     myGui.OnEvent("Close", Cancel)
 
-    myGui.Show("w680 h" (previewY + 185))
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("w680 h" (previewY + 185))
     controls[1].edit.Focus()
     RefreshPreview()
     WinWaitClose("ahk_id " myGui.Hwnd)
@@ -314,6 +318,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     ThemeHelper.AddSeparator(myGui, 700)
 
     search := myGui.Add("Edit", "w700 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    ThemeHelper.StyleEdit(search)
     list := myGui.Add(
         "ListView",
         "w700 r14 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -323,6 +328,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     list.ModifyCol(2, 190)
     list.ModifyCol(3, 130)
     list.ModifyCol(4, 340)
+    ThemeHelper.StyleListView(list)
 
     newBtn := ThemeHelper.AddButton(myGui, "Default w100 y+12", "＋ " Lang("GUI_QUICK_PHRASE_NEW", "New"), "primary")
     editBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✎ " Lang("GUI_QUICK_PHRASE_EDIT", "Edit"))
@@ -346,8 +352,8 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
 
     AppState.QuickPhraseManagerGui := myGui
-    myGui.Show("w740 h590")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("w740 h590")
     search.Focus()
     QuickPhraseRefreshManager(myGui)
 }
@@ -450,16 +456,19 @@ ShowQuickPhraseEditor(id := 0) {
     myGui.Add("Text", "w640 y+10", Lang("GUI_QUICK_PHRASE_NAME", "Name"))
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     nameEdit := myGui.Add("Edit", "w640 r1 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.name : "")
+    ThemeHelper.StyleEdit(nameEdit)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
     myGui.Add("Text", "w640 y+12", Lang("GUI_QUICK_PHRASE_CATEGORY", "Category"))
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     categoryEdit := myGui.Add("Edit", "w640 r1 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.category : "")
+    ThemeHelper.StyleEdit(categoryEdit)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
     myGui.Add("Text", "w640 y+12", Lang("GUI_QUICK_PHRASE_TEMPLATE", "Template"))
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     contentEdit := myGui.Add("Edit", "w640 r12 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.content : "")
+    ThemeHelper.StyleEdit(contentEdit)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
     myGui.Add(
@@ -507,8 +516,8 @@ ShowQuickPhraseEditor(id := 0) {
     myGui.OnEvent("Escape", Cancel)
     myGui.OnEvent("Close", Cancel)
 
-    myGui.Show("w680 h560")
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("w680 h560")
     nameEdit.Focus()
     WinWaitClose("ahk_id " myGui.Hwnd)
     return result

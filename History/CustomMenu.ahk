@@ -11,6 +11,7 @@ class CustomMenu {
     static sepH := 9
     static menuW := 420
     static topPad := 16
+    static subMenuGap := 1
 
     ; Sub-menu support
     static subMenuGui := ""
@@ -228,8 +229,8 @@ class CustomMenu {
         SetTimer(this.hoverTimer, 50)
         SetTimer(this.outsideTimer, 150)
 
-        myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
         ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
+        myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
     }
 
     static ToggleSubMenu(entry, *) {
@@ -314,23 +315,27 @@ class CustomMenu {
             subCurY += subItemH
         }
 
-        ; Position sub-menu to the right of parent, expanding upward.
-        ; Bottom of sub-menu aligns with bottom of parent entry.
-        subX := px + pw + 2
-        subY := py + ph - subTotalH
+        ; Position the submenu directly beside the hovered parent row.
+        ; Align the top edge with the parent row so the pointer can move
+        ; horizontally into the submenu instead of crossing a large vertical gap.
+        subX := px + pw + this.subMenuGap
+        subY := py
 
-        ; Use working area for multi-monitor boundary detection
-        monIdx := this.FindMonitorIndex(subX, subY)
+        ; Resolve the working area from the parent entry's monitor so the
+        ; position remains stable when the submenu is flipped horizontally.
+        monIdx := this.FindMonitorIndex(px + pw // 2, py + ph // 2)
         MonitorGetWorkArea(monIdx, &waLeft, &waTop, &waRight, &waBottom)
 
-        ; Flip horizontally if near right edge
+        ; Flip horizontally when there is not enough room on the right.
         if subX + subMenuW > waRight - 5
-            subX := px - subMenuW - 2
+            subX := px - subMenuW - this.subMenuGap
 
-        ; Fall back to downward expansion if upward would go off-screen
-        if subY < waTop + 5
-            subY := py
+        ; Always keep the submenu fully visible horizontally. This also
+        ; handles very narrow monitors where neither side has ideal space.
+        subX := Clamp(subX, waLeft + 5, waRight - subMenuW - 5)
 
+        ; Keep top alignment whenever possible; only shift vertically when
+        ; the submenu would leave the monitor working area.
         subY := Clamp(subY, waTop + 5, waBottom - subTotalH - 5)
 
         this.subMenuGui := subMyGui
@@ -343,8 +348,8 @@ class CustomMenu {
         ; Keep parent entry highlighted while sub-menu is open
         this.SetHover(parentEntry, true)
 
-        subMyGui.Show("x" subX " y" subY " w" subMenuW " h" subTotalH " NoActivate")
         ThemeHelper.ApplyImmersiveDarkMode(this.subMenuHwnd)
+        subMyGui.Show("x" subX " y" subY " w" subMenuW " h" subTotalH " NoActivate")
     }
 
     static NormalizeSubItems(itemsArray) {
@@ -395,8 +400,8 @@ class CustomMenu {
         MouseGetPos(&mx, &my, , &hCtrl, 2)
 
         ; Treat the complete menu windows as safe hover regions. This avoids
-        ; accidental dismissal when crossing the small gap to an upward submenu
-        ; or moving through blank padding inside either menu.
+        ; accidental dismissal while crossing the small gap to an adjacent
+        ; submenu or moving through blank padding inside either menu.
         mainInside := false
         subInside := false
 
