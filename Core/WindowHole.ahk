@@ -186,13 +186,13 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        if this.PrimaryHwnd {
-            primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
-            if IsObject(primaryState) && !primaryState.fallback {
-                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my)
-                    this.Stop()
-                    return
-            }
+        ; Update every active region so the transparent hole stays exactly
+        ; under the current mouse position.
+        primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
+        if IsObject(primaryState) && !primaryState.fallback {
+            if !this._ApplyHole(this.PrimaryHwnd, true, mx, my)
+                this.Stop()
+                return
         }
 
         if !this.SecondLevelActive
@@ -202,17 +202,26 @@ class WindowHole {
         if !secondaryHwnd || secondaryHwnd == this.PrimaryHwnd
             return
 
-        if this.Targets.Has(secondaryHwnd)
-            return
+        ; Keep exactly one secondary penetration target. When the pointer
+        ; crosses into another lower window, restore the old target first.
+        secondaryTarget := 0
+        for targetHwnd, targetState in this.Targets {
+            if targetHwnd != this.PrimaryHwnd {
+                secondaryTarget := targetHwnd
+                break
+            }
+        }
 
-        if !this.IsEligible(secondaryHwnd)
-            return
+        if secondaryHwnd != secondaryTarget {
+            if secondaryTarget && this.Targets.Has(secondaryTarget) {
+                this._RestoreTarget(secondaryTarget, this.Targets[secondaryTarget])
+                this.Targets.Delete(secondaryTarget)
+                this.FallbackMinimized.Delete(secondaryTarget)
+            }
 
-        ; Only one additional penetration layer is exposed.
-        if this.Targets.Count >= 2
-            return
-
-        this._ApplyHole(secondaryHwnd, false, mx, my)
+            if this.IsEligible(secondaryHwnd)
+                this._ApplyHole(secondaryHwnd, false, mx, my)
+        }
     }
 
     static _GetRootWindowAtPoint(hwnd) {
@@ -286,6 +295,7 @@ class WindowHole {
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
             state.regionActive := true
+            this._RefreshWindow(hwnd)
             return true
         } catch {
             if AppState.WindowHoleFallbackToMinimize {
@@ -436,6 +446,24 @@ class WindowHole {
             if tempRegion
                 DllCall("DeleteObject", "Ptr", tempRegion)
         }
+    }
+
+    static _RefreshWindow(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return
+
+        try DllCall(
+            "RedrawWindow",
+            "Ptr", hwnd,
+            "Ptr", 0,
+            "Ptr", 0,
+            "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0400
+        )
+
+        ; Wait until the compositor has processed the region change so the
+        ; removed area is presented as actual desktop/window transparency,
+        ; not a stale composed frame.
+        try DllCall("DwmFlush")
     }
 
     static _RestoreOriginalRegion(hwnd, state) {

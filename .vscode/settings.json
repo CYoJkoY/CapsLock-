@@ -1,0 +1,6 @@
+{
+  "[ahk2]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnType": false
+  }
+}
