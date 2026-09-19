@@ -45,6 +45,8 @@ Every shortcut below uses `CapsLock` as the modifier unless noted otherwise.
 | Clipboard | `F` | Change case of the last copied English text and paste |
 | Documents | `P` | Convert clipboard file paths with Pandoc |
 | Window | `T` | Toggle always-on-top with OSD feedback |
+| Window | `X` | Hold to open a mouse-following temporary hole |
+| Window | `X`, then `1` | Toggle the second penetration layer while Window Hole is active |
 | Window | `W / 8 / Num8` | Maximize / restore |
 | Window | `S / 2 / Num2` | Minimize |
 | Window | `Left Button` | Increase active-window opacity |
@@ -75,6 +77,16 @@ History retention is configurable, and automatic cleanup can be enabled for temp
 
 The tray manager supports creating, editing, deleting, categorizing, and reordering phrases. Metadata is kept in `configs/QuickPhrases.ini`; template bodies are stored as UTF-8 files under `configs/QuickPhrases/`. The feature is entirely local and the shortcut can be enabled or disabled without deleting the phrase library.
 
+### Window Hole
+
+`CapsLock + X` activates Window Hole in the default hold mode. A native Win32 window region is cut around the current mouse position, allowing the next eligible top-level window to receive mouse hit-testing through the removed region. The hole follows the pointer while the mode is active.
+
+Press `CapsLock + 1` while Window Hole is active to add one more penetration layer. The primary window is temporarily kept topmost so the revealed lower content can remain underneath it during interaction.
+
+Some modern or special windows do not cooperate with `SetWindowRgn`. When fallback is enabled, CapsLock- temporarily minimizes such an eligible window instead of applying a hole, then restores its previous minimized/maximized state when Window Hole ends. Windows excluded by the configured executable/class rules are left untouched.
+
+The tray menu exposes hole size, shape, second-layer support, activation mode, fallback behaviour, and executable/window-class allow and exclude rules.
+
 ## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Optional integrations
 
 The core modifier layer does not require third-party document tools. Two optional integrations extend file and document workflows:
@@ -104,6 +116,7 @@ Runtime configuration is stored in `configs/Config.ini`, while clipboard history
 | Pandoc output | Choose the target conversion format |
 | Language | Select the interface language |
 | Quick Phrase | Enable or disable `CapsLock + Shift + P`; manage local phrase templates, categories, and ordering |
+| Window Hole | Configure hole size, shape, second penetration, activation mode, fallback behaviour, and window rules |
 
 The core application stores runtime state locally and does not require a cloud account or authentication service.
 
@@ -134,7 +147,7 @@ The codebase is split by responsibility:
 CapsLock-.ahk
     │
     ├── Config/       persistent settings and runtime state
-    ├── Core/         clipboard, paste, files, cleanup, windows, conversion, quick-phrase storage
+    ├── Core/         clipboard, paste, files, cleanup, windows, window hole, conversion, quick-phrase storage
     ├── History/      clipboard-history storage and UI
     ├── Hotkeys/      shortcut definitions and actions
     ├── Tray/         tray menu and settings controls
