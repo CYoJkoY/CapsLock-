@@ -476,9 +476,11 @@ class WindowHole {
             if previousState == -1
                 return false
 
-            if !WinMinimize("ahk_id " hwnd) {
+            WinMinimize("ahk_id " hwnd)
+            Sleep(10)
+
+            if WinGetMinMax("ahk_id " hwnd) != -1
                 throw Error("WinMinimize failed.")
-            }
 
             state.fallback := true
             state.fallbackPreviousState := previousState
