@@ -59,6 +59,10 @@ RunTests() {
         "Window Hole activation does not enable the second-level hotkey."
     )
     Assert(
+        InStr(windowHole, "if !this._ApplyHole(hwnd, true)") < InStr(windowHole, "if !this._SetSecondLevelHotkeyEnabled(true)"),
+        "Second-level hotkey must not be enabled before the primary hole is established."
+    )
+    Assert(
         InStr(windowHole, "this._SetSecondLevelHotkeyEnabled(false)") > 0,
         "Window Hole stop path does not disable the second-level hotkey."
     )
