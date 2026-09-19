@@ -178,8 +178,11 @@ class WindowHole {
         try {
             this.ToggleSecondLevel()
         } finally {
-            KeyWait("1")
-            this.SecondLevelHotkeyKeyDown := false
+            try {
+                KeyWait("1")
+            } finally {
+                this.SecondLevelHotkeyKeyDown := false
+            }
         }
     }
 
