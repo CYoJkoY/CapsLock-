@@ -30,6 +30,12 @@ RunTests() {
     Assert(rightButtonCheck > 0, "Tray menu outside-button dismissal guard is missing.")
     Assert(graceCheck < rightButtonCheck, "Tray opening grace must be checked before button-state dismissal.")
     Assert(InStr(customMenu, "A_TickCount + 1200") > 0, "Tray opening grace period was not extended.")
+    Assert(InStr(customMenu, "outsideSurfaceSince := 0") > 0, "Tray outside-surface debounce state is missing.")
+    Assert(InStr(customMenu, "outsideDismissDelay := 240") > 0, "Tray outside-surface debounce interval is missing.")
+    Assert(InStr(customMenu, "interactionPadding := 10") > 0, "Tray interaction padding is missing.")
+    Assert(InStr(customMenu, "IsPointInInteractionSurface") > 0, "Tray interaction-surface hit test is missing.")
+    Assert(InStr(customMenu, "IsPointInWindowBridge") > 0, "Tray submenu transition bridge is missing.")
+    Assert(InStr(customMenu, "now - this.outsideSurfaceSince < this.outsideDismissDelay") > 0, "Tray outside-surface debounce is not enforced.")
 
     Assert(
         InStr(hotkeys, '#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.Active') > 0,
