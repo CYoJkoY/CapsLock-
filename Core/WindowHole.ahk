@@ -590,7 +590,7 @@ class WindowHole {
 
         try {
             hr := DllCall(
-                "dwmapiDwmGetWindowAttribute",
+                "dwmapi\DwmGetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
                 "Ptr", buffer,
@@ -614,7 +614,7 @@ class WindowHole {
 
         try {
             hr := DllCall(
-                "dwmapiDwmSetWindowAttribute",
+                "dwmapi\DwmSetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
                 "Ptr", buffer,
