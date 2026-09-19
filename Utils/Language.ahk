@@ -193,6 +193,12 @@ class LanguagePack {
                 try FileAppend(stamp, this.CacheStampFile, "UTF-8")
             }
 
+            ; Any already-loaded locale now points at regenerated files.
+            ; Force the next Load() to read the fresh cache instead of
+            ; returning early on the previous locale code.
+            this._translations := Map()
+            this._loadedCode := ""
+
             return true
         } catch {
             return false
