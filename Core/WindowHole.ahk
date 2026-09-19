@@ -12,6 +12,11 @@
 ; handled by a temporary minimize fallback and restored when the mode ends.
 ; ---------------------------------------------------------------------------
 class WindowHole {
+    static DWM_WINDOW_CORNER_PREFERENCE := 33
+    static DWM_SYSTEMBACKDROP_TYPE := 38
+    static DWMWCP_DONOTROUND := 1
+    static DWMSBT_NONE := 1
+
     static Active := false
     static SecondLevelActive := false
     static PrimaryHwnd := 0
@@ -341,7 +346,9 @@ class WindowHole {
             state := this._CaptureState(hwnd)
             if !IsObject(state)
                 return false
+
             this.Targets[hwnd] := state
+            this._PrepareWindowForHole(hwnd, state)
         }
 
         state := this.Targets[hwnd]
@@ -414,6 +421,7 @@ class WindowHole {
                     return "minimized"
             }
 
+            this._RestoreWindowVisualState(hwnd, state)
             this._DiscardCapturedRegion(state)
             this.Targets.Delete(hwnd)
             return false
@@ -531,7 +539,14 @@ class WindowHole {
             hadOriginalRegion: false,
             regionActive: false,
             fallback: false,
-            fallbackPreviousState: 0
+            fallbackPreviousState: 0,
+            visualPrepared: false,
+            originalOpacity: 255,
+            hadOriginalOpacity: false,
+            originalCornerPreference: 0,
+            hadOriginalCornerPreference: false,
+            originalSystemBackdropType: 0,
+            hadOriginalSystemBackdropType: false
         }
 
         tempRegion := DllCall(
@@ -567,6 +582,112 @@ class WindowHole {
             if tempRegion
                 DllCall("DeleteObject", "Ptr", tempRegion)
         }
+    }
+
+    static _DwmGetIntAttribute(hwnd, attribute, &value) {
+        value := 0
+        buffer := Buffer(4, 0)
+
+        try {
+            hr := DllCall(
+                "dwmapi\DwmGetWindowAttribute",
+                "Ptr", hwnd,
+                "UInt", attribute,
+                "Ptr", buffer,
+                "UInt", 4,
+                "Int"
+            )
+
+            if hr != 0
+                return false
+
+            value := NumGet(buffer, 0, "Int")
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    static _DwmSetIntAttribute(hwnd, attribute, value) {
+        buffer := Buffer(4, 0)
+        NumPut("Int", value, buffer)
+
+        try {
+            hr := DllCall(
+                "dwmapi\DwmSetWindowAttribute",
+                "Ptr", hwnd,
+                "UInt", attribute,
+                "Ptr", buffer,
+                "UInt", 4,
+                "Int"
+            )
+            return hr == 0
+        } catch {
+            return false
+        }
+    }
+
+    static _PrepareWindowForHole(hwnd, state) {
+        if !IsObject(state) || !WinExist("ahk_id " hwnd)
+            return
+
+        ; A window may already be partially transparent because of the
+        ; CapsLock opacity controls. Window Hole needs an opaque source
+        ; surface so the excluded region is the only visual gap.
+        try {
+            opacity := WinGetTransparent("ahk_id " hwnd)
+            if IsNumber(opacity) {
+                state.hadOriginalOpacity := true
+                state.originalOpacity := Integer(opacity)
+
+                if state.originalOpacity < 255
+                    WinSetTransparent(255, "ahk_id " hwnd)
+            }
+        } catch {
+        }
+
+        ; Windows 11 can draw system backdrop material (Mica/Acrylic) across
+        ; the window bounds independently of client pixels. Remove it while
+        ; the region-hole mode is active so a carved region cannot retain a
+        ; solid backdrop instead of revealing the window underneath.
+        if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
+            state.hadOriginalSystemBackdropType := true
+            state.originalSystemBackdropType := backdropType
+            this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
+        }
+
+        ; Do not let Windows 11 add rounded-corner pixels around a custom
+        ; window region. The region itself owns the hole geometry.
+        if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
+            state.hadOriginalCornerPreference := true
+            state.originalCornerPreference := cornerPreference
+            this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
+        }
+
+        state.visualPrepared := true
+        this._RefreshWindow(hwnd)
+    }
+
+    static _RestoreWindowVisualState(hwnd, state) {
+        if !IsObject(state) || !state.visualPrepared
+            return
+
+        if WinExist("ahk_id " hwnd) {
+            ; Restore DWM attributes before restoring the final opacity so
+            ; the compositor rebuilds the window from its original policy.
+            if state.hadOriginalSystemBackdropType
+                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
+
+            if state.hadOriginalCornerPreference
+                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
+
+            if state.hadOriginalOpacity
+                try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
+
+            this._RefreshWindow(hwnd)
+        }
+
+        state.visualPrepared := false
     }
 
     static _RefreshWindow(hwnd) {
@@ -704,6 +825,8 @@ class WindowHole {
 
         if state.fallback
             this._RestoreFallback(hwnd, state.fallbackPreviousState)
+
+        this._RestoreWindowVisualState(hwnd, state)
 
         if state.originalRegion
             this._DiscardCapturedRegion(state)
