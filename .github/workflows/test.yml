@@ -1,0 +1,32 @@
+name: Regression Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build regression tests
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\tests\RegressionTests.ahk
+          out: .\build\RegressionTests.exe
+          target: x64
+          compression: none
+          ahk-tag: v2.0.27
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run regression tests
+        shell: pwsh
+        run: .\build\RegressionTests.exe
