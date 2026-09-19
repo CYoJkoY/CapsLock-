@@ -17,20 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare build directory
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force .\build | Out-Null
-
-      - name: Build regression tests
-        uses: benmusson/ahk2exe-action@v1
+      - name: Install AutoHotkey
+        uses: holy-tao/install-autohotkey@v2
         with:
-          in: .\tests\RegressionTests.ahk
-          out: .\build\RegressionTests.exe
-          target: x64
-          compression: none
-          ahk-tag: v2.0.27
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: '2.0.27'
 
       - name: Run regression tests
         shell: pwsh
-        run: .\build\RegressionTests.exe
+        run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
