@@ -4,6 +4,8 @@ class LanguagePack {
     static CSVPath   := A_ScriptDir "\lang.csv"
     static CacheDir  := A_ScriptDir "\langs"
     static CacheExt  := ".lang"
+    static CacheStampVersion := "1"
+    static CacheStampFile := A_ScriptDir "\langs\.langstamp"
 
     static _translations := Map()
     static _loadedCode  := ""
@@ -16,10 +18,72 @@ class LanguagePack {
 
         this._ScanCache()
 
-        if this._available.Length == 0 && FileExist(this.CSVPath) {
+        if !FileExist(this.CSVPath)
+            return
+
+        ; The CSV is the source of truth. Rebuild generated language caches when
+        ; the source has changed or a language cache is missing.
+        if !this._IsCacheCurrent()
             this.BuildAllFromCSV()
-            this._ScanCache()
+
+        this._ScanCache()
+    }
+
+    static _IsCacheCurrent() {
+        if this._available.Length == 0 || !FileExist(this.CacheStampFile)
+            return false
+
+        try {
+            stamp := FileRead(this.CacheStampFile, "UTF-8")
+            if SubStr(stamp, 1, 1) == Chr(0xFEFF)
+                stamp := SubStr(stamp, 2)
+
+            lines := StrSplit(stamp, "`n", "`r")
+            if lines.Length < 3
+                return false
+
+            if Trim(lines[1]) != this.CacheStampVersion
+                return false
+
+            fingerprint := this._GetCSVFingerprint()
+            if fingerprint == "" || Trim(lines[2]) != fingerprint
+                return false
+
+            expectedCodes := StrSplit(Trim(lines[3]), "|")
+            if expectedCodes.Length == 0
+                return false
+
+            for code in expectedCodes {
+                code := Trim(code)
+                if code == "" || !FileExist(this.CacheDir "\" code this.CacheExt)
+                    return false
+            }
+
+            return true
+        } catch {
+            return false
         }
+    }
+
+    static _GetCSVFingerprint() {
+        try {
+            raw := FileRead(this.CSVPath, "UTF-8")
+            if SubStr(raw, 1, 1) == Chr(0xFEFF)
+                raw := SubStr(raw, 2)
+            return this._Fingerprint(raw)
+        } catch {
+            return ""
+        }
+    }
+
+    static _Fingerprint(text) {
+        ; Stable lightweight source fingerprint for cache invalidation.
+        ; This is not intended as a cryptographic hash.
+        hash := 2166136261
+        Loop Parse, text {
+            hash := Mod((hash ^ Ord(A_LoopField)) * 16777619, 4294967296)
+        }
+        return Format("{:08X}", hash)
     }
 
     static _ScanCache() {
@@ -113,6 +177,17 @@ class LanguagePack {
                 fpath := this.CacheDir "\" code this.CacheExt
                 try FileDelete(fpath)
                 FileAppend(buffers[code], fpath, "UTF-8")
+            }
+
+            ; Record exactly which CSV source produced these cache files.
+            ; The stamp is deliberately separate from *.lang so language
+            ; discovery cannot mistake it for a locale code.
+            if (csvPath == this.CSVPath) {
+                stamp := this.CacheStampVersion "`n"
+                    . this._Fingerprint(raw) "`n"
+                    . Join(langCodes, "|")
+                try FileDelete(this.CacheStampFile)
+                try FileAppend(stamp, this.CacheStampFile, "UTF-8")
             }
 
             return true
