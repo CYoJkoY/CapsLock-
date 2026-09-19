@@ -118,9 +118,13 @@ class ThemeHelper {
         if !IsObject(ctrl)
             return
 
-        ; DarkMode_CFD is the Windows theme class used by dark-mode Edit
-        ; controls and also themes the native vertical scrollbar.
-        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_CFD", "ptr", 0)
+        ; Edit controls without scrollbars use the dark Edit theme. When a
+        ; native scrollbar is present, use the Explorer dark theme so the
+        ; scrollbar does not fall back to the light system appearance.
+        style := DllCall("GetWindowLongPtr", "ptr", ctrl.Hwnd, "int", -16, "ptr")
+        themeClass := (style & 0x00300000) ? "DarkMode_Explorer" : "DarkMode_CFD"
+
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", themeClass, "ptr", 0)
         try ctrl.Redraw()
     }
 
