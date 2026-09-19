@@ -243,13 +243,19 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        ; Update every active region so the transparent hole stays exactly
-        ; under the current mouse position.
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
         if IsObject(primaryState) && !primaryState.fallback {
-            if !this._ApplyHole(this.PrimaryHwnd, true, mx, my)
-                this.Stop()
-                return
+            ; The hole follows the cursor only while the cursor is still
+            ; geometrically inside the primary window. Once the cursor passes
+            ; through the hole into a lower window, freeze the hole in place.
+            ; This is essential for real drag/drop: the cursor must be able
+            ; to leave the hole and hit the primary window again.
+            if this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
+                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
+                    this.Stop()
+                    return
+                }
+            }
         }
 
         if !this.SecondLevelActive || !this.SecondaryHwnd
@@ -271,6 +277,11 @@ class WindowHole {
             )
             return
         }
+
+        ; Apply the second-layer hole only while the cursor is inside that
+        ; target. Once the cursor penetrates beyond it, freeze the layer too.
+        if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)
+            return
 
         result := this._ApplyHole(
             this.SecondaryHwnd,
@@ -294,6 +305,17 @@ class WindowHole {
         }
     }
 
+    static _IsPointInsideWindow(hwnd, x, y) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " hwnd)
+            return x >= wx && x < wx + ww && y >= wy && y < wy + wh
+        } catch {
+            return false
+        }
+    }
     static _GetRootWindowAtPoint(hwnd) {
         if !hwnd
             return 0
@@ -545,7 +567,7 @@ class WindowHole {
             "Ptr", hwnd,
             "Ptr", 0,
             "Ptr", 0,
-            "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0400
+            "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
         )
 
         try DllCall("UpdateWindow", "Ptr", hwnd)

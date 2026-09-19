@@ -98,27 +98,19 @@ BuildTrayMenuItems() {
         callback: (*) => SetWindowHoleDiameter()
     })
 
-    shapeLabel := AppState.WindowHoleShape == "circle"
-        ? Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle")
-        : (AppState.WindowHoleShape == "rounded"
-            ? Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle")
-            : Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square"))
-    shapeChildren := []
-    shapeChildren.Push({
+    ; Keep shape options directly actionable. CustomMenu supports one child
+    ; submenu level, so nesting these choices would strip their callbacks.
+    windowHoleChildren.Push({
         label: (AppState.WindowHoleShape == "circle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle"),
         callback: (*) => SetWindowHoleShape("circle")
     })
-    shapeChildren.Push({
+    windowHoleChildren.Push({
         label: (AppState.WindowHoleShape == "rounded" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle"),
         callback: (*) => SetWindowHoleShape("rounded")
     })
-    shapeChildren.Push({
+    windowHoleChildren.Push({
         label: (AppState.WindowHoleShape == "square" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square"),
         callback: (*) => SetWindowHoleShape("square")
-    })
-    windowHoleChildren.Push({
-        label: "◯ " . Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape"),
-        children: shapeChildren
     })
 
     secondLabel := AppState.WindowHoleSecondLevelEnabled ? "● " : "○ "
@@ -127,18 +119,15 @@ BuildTrayMenuItems() {
         callback: (*) => ToggleWindowHoleSecondLevelEnabled()
     })
 
-    activationChildren := []
-    activationChildren.Push({
+    ; Activation choices are also kept at the first submenu level so the
+    ; callbacks remain attached to the rendered menu entries.
+    windowHoleChildren.Push({
         label: (AppState.WindowHoleActivation == "hold" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_HOLD", "Hold X"),
         callback: (*) => SetWindowHoleActivation("hold")
     })
-    activationChildren.Push({
+    windowHoleChildren.Push({
         label: (AppState.WindowHoleActivation == "toggle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_TOGGLE", "Toggle with X"),
         callback: (*) => SetWindowHoleActivation("toggle")
-    })
-    windowHoleChildren.Push({
-        label: "⌨️ " Lang("MENU_WINDOW_HOLE_ACTIVATION", "Activation"),
-        children: activationChildren
     })
 
     fallbackPrefix := AppState.WindowHoleFallbackToMinimize ? "● " : "○ "

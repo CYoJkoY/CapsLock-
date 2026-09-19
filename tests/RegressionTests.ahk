@@ -31,6 +31,15 @@ RunTests() {
             "CSV record " index " has " fields.Length
             " columns; expected " expectedColumns "."
         )
+
+        for columnIndex, value in fields {
+            if columnIndex == 1
+                continue
+            Assert(
+                Trim(value) != "",
+                "CSV record " index " has a blank translation in column " columnIndex "."
+            )
+        }
     }
 
     quote := Chr(34)
@@ -64,8 +73,39 @@ RunTests() {
     Assert(InStr(windowHole, "this.SecondaryHwnd := secondaryHwnd") > 0, "Layer 2 does not lock the selected secondary target.")
     Assert(InStr(windowHole, "if !this.SecondLevelActive || !this.SecondaryHwnd") > 0, "Window Hole update path does not use the locked secondary target.")
     Assert(InStr(windowHole, "this.SecondaryHwnd := 0") > 0, "Window Hole never clears the secondary target.")
+    Assert(InStr(windowHole, "if this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {") > 0, "Primary hole still follows the cursor outside the primary window.")
+    Assert(InStr(windowHole, "if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {") > 0, "Primary Window Hole failure path is not explicitly scoped.")
+    Assert(InStr(windowHole, "if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)") > 0, "Secondary hole does not freeze after penetrating its target.")
+
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("circle")') > 0, "Circle shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("rounded")') > 0, "Rounded shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("square")') > 0, "Square shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("hold")') > 0, "Hold activation option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("toggle")') > 0, "Toggle activation option is not directly actionable.")
+    Assert(InStr(windowHole, "children: shapeChildren") == 0, "Window Hole shape options are still nested one level too deep.")
+    Assert(InStr(windowHole, "children: activationChildren") == 0, "Window Hole activation options are still nested one level too deep.")
 
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
+
+    ; The generated locale cache must be tied to the current CSV source.
+    Assert(LanguagePack.BuildAllFromCSV(root "\lang.csv"), "Language cache rebuild failed.")
+    Assert(LanguagePack._IsCacheCurrent(), "Fresh language cache is not recognized as current.")
+    Assert(LanguagePack.Load("en"), "English locale failed to load after cache rebuild.")
+    Assert(LanguagePack.GetLoaded() == "en", "Loaded locale code was not updated after cache rebuild.")
+    Assert(LanguagePack.BuildAllFromCSV(root "\lang.csv"), "Second language cache rebuild failed.")
+    Assert(LanguagePack.GetLoaded() == "", "Loaded locale cache was not invalidated after regeneration.")
+
+    stampPath := LanguagePack.CacheStampFile
+    FileDelete(stampPath)
+    Assert(!LanguagePack._IsCacheCurrent(), "Missing language cache stamp was not detected.")
+    LanguagePack.Init()
+    Assert(FileExist(stampPath), "Language cache stamp was not recreated.")
+    Assert(LanguagePack._IsCacheCurrent(), "Language cache was not rebuilt after a stale stamp.")
+
+    sourceFingerprint := LanguagePack._Fingerprint(raw)
+    changedRaw := StrReplace(raw, "MENU_WINDOW_HOLE,Window Hole", "MENU_WINDOW_HOLE,Window Hole Test", , 1)
+    changedFingerprint := LanguagePack._Fingerprint(changedRaw)
+    Assert(sourceFingerprint != changedFingerprint, "Language source fingerprint did not change after a translation update.")
 
     return true
 }
