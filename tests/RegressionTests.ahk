@@ -67,6 +67,22 @@ RunTests() {
 
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
 
+    ; The generated locale cache must be tied to the current CSV source.
+    Assert(LanguagePack.BuildAllFromCSV(root "\lang.csv"), "Language cache rebuild failed.")
+    Assert(LanguagePack._IsCacheCurrent(), "Fresh language cache is not recognized as current.")
+
+    stampPath := LanguagePack.CacheStampFile
+    FileDelete(stampPath)
+    Assert(!LanguagePack._IsCacheCurrent(), "Missing language cache stamp was not detected.")
+    LanguagePack.Init()
+    Assert(FileExist(stampPath), "Language cache stamp was not recreated.")
+    Assert(LanguagePack._IsCacheCurrent(), "Language cache was not rebuilt after a stale stamp.")
+
+    sourceFingerprint := LanguagePack._Fingerprint(raw)
+    changedRaw := StrReplace(raw, "MENU_WINDOW_HOLE,Window Hole", "MENU_WINDOW_HOLE,Window Hole Test", , 1)
+    changedFingerprint := LanguagePack._Fingerprint(changedRaw)
+    Assert(sourceFingerprint != changedFingerprint, "Language source fingerprint did not change after a translation update.")
+
     return true
 }
 
