@@ -6,6 +6,9 @@ class CustomMenu {
     static items := []
     static lastHoveredEntry := ""
     static outsideTimer := ""
+    static outsideSurfaceSince := 0
+    static outsideDismissDelay := 240
+    static interactionPadding := 10
     static mouseMoveHandler := ""
     static mouseMoveRegistered := false
     static controlEntries := Map()
@@ -59,6 +62,7 @@ class CustomMenu {
         this.Hide()
         this.items := this.NormalizeItems(itemsArray)
         this.lastHoveredEntry := ""
+        this.outsideSurfaceSince := 0
 
         if anchorBottom {
             ; Preserve the original tray click point. BuildAndShow may shift
@@ -745,6 +749,66 @@ class CustomMenu {
         }
     }
 
+    static IsPointInWindow(hwnd, x, y, padding := 0) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " hwnd)
+            return x >= wx - padding && x <= wx + ww + padding
+                && y >= wy - padding && y <= wy + wh + padding
+        } catch {
+            return false
+        }
+    }
+
+    static IsPointInWindowBridge(hwndA, hwndB, x, y, padding := 10) {
+        if !hwndA || !hwndB
+            return false
+        if !WinExist("ahk_id " hwndA) || !WinExist("ahk_id " hwndB)
+            return false
+
+        try {
+            WinGetPos(&ax, &ay, &aw, &ah, "ahk_id " hwndA)
+            WinGetPos(&bx, &by, &bw, &bh, "ahk_id " hwndB)
+
+            left := Min(ax, bx) - padding
+            top := Min(ay, by) - padding
+            right := Max(ax + aw, bx + bw) + padding
+            bottom := Max(ay + ah, by + bh) + padding
+
+            return x >= left && x <= right && y >= top && y <= bottom
+        } catch {
+            return false
+        }
+    }
+
+    static IsPointInInteractionSurface(x, y) {
+        if this.menuAnchorX != "" && this.menuAnchorY != ""
+            && Abs(x - this.menuAnchorX) <= this.menuAnchorRadius
+            && Abs(y - this.menuAnchorY) <= this.menuAnchorRadius
+            return true
+
+        padding := this.interactionPadding
+
+        if this.IsPointInWindow(this.menuHwnd, x, y, padding)
+            return true
+        if this.IsPointInWindow(this.subMenuHwnd, x, y, padding)
+            return true
+        if this.IsPointInWindow(this.nestedSubMenuHwnd, x, y, padding)
+            return true
+
+        if this.subMenuHwnd
+            && this.IsPointInWindowBridge(this.menuHwnd, this.subMenuHwnd, x, y, padding)
+            return true
+
+        if this.nestedSubMenuHwnd
+            && this.IsPointInWindowBridge(this.subMenuHwnd, this.nestedSubMenuHwnd, x, y, padding)
+            return true
+
+        return false
+    }
+
     static CheckOutsideSurface() {
         if !IsObject(this.menuGui)
             return
@@ -756,51 +820,17 @@ class CustomMenu {
         if !hasMain && !hasSub && !hasNested {
             if this.outsideTimer != ""
                 SetTimer(this.outsideTimer, 0)
+            this.outsideSurfaceSince := 0
             return
         }
 
         MouseGetPos(&mx, &my)
-        insideMain := false
-        insideSub := false
-        insideNested := false
-
-        if hasMain {
-            try {
-                WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " this.menuHwnd)
-                insideMain := mx >= wx && mx <= wx + ww
-                    && my >= wy && my <= wy + wh
-            }
-        }
-
-        if hasSub {
-            try {
-                WinGetPos(&sx, &sy, &sw, &sh, "ahk_id " this.subMenuHwnd)
-                insideSub := mx >= sx && mx <= sx + sw
-                    && my >= sy && my <= sy + sh
-            }
-        }
-
-        if hasNested {
-            try {
-                WinGetPos(&nx, &ny, &nw, &nh, "ahk_id " this.nestedSubMenuHwnd)
-                insideNested := mx >= nx && mx <= nx + nw
-                    && my >= ny && my <= ny + nh
-            }
-        }
-
-        if insideMain || insideSub || insideNested
-            return
-
         now := A_TickCount
 
-        ; Keep the tray icon itself as part of the interaction surface.
-        ; The custom menu is opened by a native tray right-click, so the
-        ; physical mouse button may still be down when the first watchdog
-        ; tick runs. Do not interpret that transient state as dismissal.
-        if this.menuAnchorX != "" && this.menuAnchorY != ""
-            && Abs(mx - this.menuAnchorX) <= this.menuAnchorRadius
-            && Abs(my - this.menuAnchorY) <= this.menuAnchorRadius
+        if this.IsPointInInteractionSurface(mx, my) {
+            this.outsideSurfaceSince := 0
             return
+        }
 
         graceUntil := Max(
             this.menuOpenGraceUntil,
@@ -808,20 +838,26 @@ class CustomMenu {
             this.nestedSubMenuGraceUntil
         )
 
-        ; Opening grace always wins over button-state dismissal. This prevents
-        ; the watchdog from closing the tray menu during the mouse-button
-        ; release/open transition.
-        if now < graceUntil
+        if now < graceUntil {
+            this.outsideSurfaceSince := 0
             return
+        }
 
-        ; A button press outside the menu is always an intentional dismissal.
         if GetKeyState("LButton", "P")
             || GetKeyState("RButton", "P")
             || GetKeyState("MButton", "P") {
+            this.outsideSurfaceSince := 0
             this.Hide()
             return
         }
 
+        if !this.outsideSurfaceSince
+            this.outsideSurfaceSince := now
+
+        if now - this.outsideSurfaceSince < this.outsideDismissDelay
+            return
+
+        this.outsideSurfaceSince := 0
         this.Hide()
     }
 
@@ -877,6 +913,7 @@ class CustomMenu {
         this.menuOpenGraceUntil := 0
         this.menuAnchorX := ""
         this.menuAnchorY := ""
+        this.outsideSurfaceSince := 0
     }
 
     ; ClipLabel truncates text to fit within maxUnits display width units.
