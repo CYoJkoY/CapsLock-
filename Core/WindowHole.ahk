@@ -615,7 +615,7 @@ class WindowHole {
                     try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
                 }
             } else {
-                try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int")
+                try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
             }
 
             state.regionActive := false
