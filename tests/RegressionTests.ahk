@@ -59,7 +59,7 @@ RunTests() {
         InStr(windowHole, 'Hotkey("1", enabled ? "On" : "Off")') > 0,
         "Second-level global hotkey state toggle is missing."
     )
-    Assert(false, "TEST RUNNER SENTINEL: this commit must fail CI.")
+    ExitApp(1) ; TEST RUNNER SENTINEL
     Assert(
         InStr(windowHole, "static SecondLevelHotkeyKeyDown := false") > 0,
         "Second-level hotkey is missing a per-keypress state latch."
