@@ -127,9 +127,14 @@ class WindowHole {
             if WinGetMinMax("ahk_id " hwnd) == -1
                 return false
 
-            exStyle := WinGetExStyle("ahk_id " hwnd)
             className := WinGetClass("ahk_id " hwnd)
-            processName := WinGetProcessName("ahk_id " hwnd)
+            processName := ""
+            try processName := WinGetProcessName("ahk_id " hwnd)
+            catch {
+                ; Protected/special windows can reject process-name queries.
+                ; They are still eligible unless an executable allow-list is
+                ; explicitly configured.
+            }
 
             ; Do not manipulate the shell/taskbar surface as a lower
             ; penetration target.
@@ -291,6 +296,7 @@ class WindowHole {
                     return "minimized"
             }
 
+            this._DiscardCapturedRegion(state)
             this.Targets.Delete(hwnd)
             return false
         }
@@ -464,6 +470,14 @@ class WindowHole {
         }
     }
 
+
+    static _DiscardCapturedRegion(state) {
+        if IsObject(state) && state.originalRegion {
+            try DllCall("DeleteObject", "Ptr", state.originalRegion)
+            state.originalRegion := 0
+        }
+    }
+
     static _MinimizeFallback(hwnd, state) {
         if !AppState.WindowHoleFallbackToMinimize
             return false
@@ -534,6 +548,9 @@ class WindowHole {
 
         if state.fallback
             this._RestoreFallback(hwnd, state.fallbackPreviousState)
+
+        if state.originalRegion
+            this._DiscardCapturedRegion(state)
 
         state.fallback := false
     }
