@@ -98,6 +98,14 @@
 
 #HotIf
 
+; X-up is intentionally global so releasing X still stops hold mode even
+; when CapsLock is released first. The tilde keeps the key-up event visible.
+~x up:: WindowHole.HandleXUp()
+
+#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.IsActive()
+    1:: WindowHole.ToggleSecondLevel()
+#HotIf
+
 #HotIf GetKeyState( "CapsLock", "P" ) && AppState.QuickPhraseEnabled
     +p:: ShowQuickPhraseSelector()
 #HotIf
