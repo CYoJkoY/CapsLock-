@@ -263,3 +263,213 @@ SavePandocOutput(newFormat, myGui) {
     WinSetAlwaysOnTop(1, "ahk_id " hwnd)
     myGui.Destroy()
 }
+
+
+SetWindowHoleDiameter(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_WINDOW_HOLE_SIZE_PROMPT", "Enter hole diameter (80-1200 px)."),
+        Lang("INPUT_WINDOW_HOLE_SIZE_TITLE", "Window Hole Size"),
+        AppState.WindowHoleDiameter
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    diameter := Integer(input.Value)
+    if diameter < 80
+        diameter := 80
+    else if diameter > 1200
+        diameter := 1200
+
+    AppState.WindowHoleDiameter := diameter
+    ConfigManager.Save()
+    ShowToolTip(Lang("MSG_WINDOW_HOLE_SIZE_SET", "Window hole size set to {1}px.", diameter), 1800)
+}
+
+SetWindowHoleShape(shape, *) {
+    shape := StrLower(shape)
+    if shape != "circle" && shape != "rounded" && shape != "square"
+        return
+
+    AppState.WindowHoleShape := shape
+    ConfigManager.Save()
+
+    labels := Map(
+        "circle", Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle"),
+        "rounded", Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle"),
+        "square", Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square")
+    )
+    ShowToolTip(
+        Lang("MSG_WINDOW_HOLE_SHAPE_SET", "Window hole shape: {1}.", labels[shape]),
+        1800
+    )
+}
+
+ToggleWindowHoleSecondLevelEnabled(*) {
+    AppState.WindowHoleSecondLevelEnabled := !AppState.WindowHoleSecondLevelEnabled
+    ConfigManager.Save()
+
+    key := AppState.WindowHoleSecondLevelEnabled
+        ? "MSG_WINDOW_HOLE_SECOND_ENABLED"
+        : "MSG_WINDOW_HOLE_SECOND_DISABLED"
+    fallback := AppState.WindowHoleSecondLevelEnabled
+        ? "Second penetration enabled."
+        : "Second penetration disabled."
+    ShowToolTip(Lang(key, fallback), 1800)
+}
+
+SetWindowHoleActivation(mode, *) {
+    mode := StrLower(mode)
+    if mode != "hold" && mode != "toggle"
+        return
+
+    AppState.WindowHoleActivation := mode
+    ConfigManager.Save()
+
+    key := mode == "hold"
+        ? "MSG_WINDOW_HOLE_ACTIVATION_HOLD"
+        : "MSG_WINDOW_HOLE_ACTIVATION_TOGGLE"
+    fallback := mode == "hold"
+        ? "Window Hole uses hold mode."
+        : "Window Hole uses toggle mode."
+    ShowToolTip(Lang(key, fallback), 1800)
+}
+
+ToggleWindowHoleFallback(*) {
+    AppState.WindowHoleFallbackToMinimize := !AppState.WindowHoleFallbackToMinimize
+    ConfigManager.Save()
+
+    key := AppState.WindowHoleFallbackToMinimize
+        ? "MSG_WINDOW_HOLE_FALLBACK_ENABLED"
+        : "MSG_WINDOW_HOLE_FALLBACK_DISABLED"
+    fallback := AppState.WindowHoleFallbackToMinimize
+        ? "Incompatible windows will be temporarily minimized."
+        : "Incompatible windows will be left unchanged."
+    ShowToolTip(Lang(key, fallback), 2200)
+}
+
+SetWindowHoleRules(*) {
+    myGui := Gui("+AlwaysOnTop +MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
+    ThemeHelper.StyleGui(myGui)
+    ThemeHelper.AddTitle(myGui, "⚙️ " Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
+    ThemeHelper.AddSubtitle(
+        myGui,
+        Lang(
+            "GUI_WINDOW_HOLE_RULES_PROMPT",
+            "One executable name or window class per line. Empty allow-lists mean all windows are eligible. Excluded entries always win."
+        ),
+        560
+    )
+    ThemeHelper.AddSeparator(myGui, 560)
+
+    myGui.SetFont("s9 c" AppState.THEME_FG, AppState.THEME_FONT)
+
+    myGui.AddText(
+        "x30 y+10 w560",
+        Lang("GUI_WINDOW_HOLE_ALLOW_EXE", "Allowed executables (optional)")
+    )
+    allowExe := myGui.Add(
+        "Edit",
+        "Multi VScroll x30 y+6 w560 h70 " ThemeHelper.GetEditOptions(),
+        Join(AppState.WindowHoleAllowedExecutables, Chr(10))
+    )
+    ThemeHelper.StyleEdit(allowExe)
+
+    myGui.AddText(
+        "x30 y+10 w560",
+        Lang("GUI_WINDOW_HOLE_EXCLUDE_EXE", "Excluded executables")
+    )
+    excludeExe := myGui.Add(
+        "Edit",
+        "Multi VScroll x30 y+6 w560 h70 " ThemeHelper.GetEditOptions(),
+        Join(AppState.WindowHoleExcludedExecutables, Chr(10))
+    )
+    ThemeHelper.StyleEdit(excludeExe)
+
+    myGui.AddText(
+        "x30 y+10 w560",
+        Lang("GUI_WINDOW_HOLE_ALLOW_CLASS", "Allowed window classes (optional)")
+    )
+    allowClass := myGui.Add(
+        "Edit",
+        "Multi VScroll x30 y+6 w560 h70 " ThemeHelper.GetEditOptions(),
+        Join(AppState.WindowHoleAllowedClasses, Chr(10))
+    )
+    ThemeHelper.StyleEdit(allowClass)
+
+    myGui.AddText(
+        "x30 y+10 w560",
+        Lang("GUI_WINDOW_HOLE_EXCLUDE_CLASS", "Excluded window classes")
+    )
+    excludeClass := myGui.Add(
+        "Edit",
+        "Multi VScroll x30 y+6 w560 h70 " ThemeHelper.GetEditOptions(),
+        Join(AppState.WindowHoleExcludedClasses, Chr(10))
+    )
+    ThemeHelper.StyleEdit(excludeClass)
+
+    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+
+    btnOK := ThemeHelper.AddButton(
+        myGui,
+        "Default w100 x30 y+18",
+        "✓ " Lang("GUI_OK"),
+        "primary"
+    )
+    btnCancel := ThemeHelper.AddButton(
+        myGui,
+        "x+8 w100",
+        "✕ " Lang("GUI_CANCEL")
+    )
+
+    btnOK.OnEvent(
+        "Click",
+        (*) => SaveWindowHoleRules(
+            allowExe.Text,
+            excludeExe.Text,
+            allowClass.Text,
+            excludeClass.Text,
+            myGui
+        )
+    )
+    btnCancel.OnEvent("Click", (*) => myGui.Destroy())
+    myGui.OnEvent("Escape", (*) => myGui.Destroy())
+
+    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    myGui.Show("AutoSize Center")
+}
+
+SaveWindowHoleRules(allowExeText, excludeExeText, allowClassText, excludeClassText, myGui) {
+    AppState.WindowHoleAllowedExecutables := _ParseWindowHoleRuleList(allowExeText)
+    AppState.WindowHoleExcludedExecutables := _ParseWindowHoleRuleList(excludeExeText)
+    AppState.WindowHoleAllowedClasses := _ParseWindowHoleRuleList(allowClassText)
+    AppState.WindowHoleExcludedClasses := _ParseWindowHoleRuleList(excludeClassText)
+
+    ConfigManager.Save()
+    myGui.Destroy()
+
+    ShowToolTip(
+        Lang("MSG_WINDOW_HOLE_RULES_SAVED", "Window Hole rules saved."),
+        1800
+    )
+}
+
+_ParseWindowHoleRuleList(text) {
+    result := []
+    seen := Map()
+
+    for line in StrSplit(text, Chr(10), Chr(13)) {
+        value := Trim(line)
+        if value == "" || InStr(value, "|")
+            continue
+
+        key := StrLower(value)
+        if seen.Has(key)
+            continue
+
+        seen[key] := true
+        result.Push(value)
+    }
+
+    return result
+}
