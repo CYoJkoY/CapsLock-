@@ -896,9 +896,30 @@ class WindowHole {
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd) {
+    static _RefreshWindow(hwnd, frameChanged := false) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
+
+        ; DWM-backed/custom-framed windows may cache their non-client metrics.
+        ; SWP_FRAMECHANGED forces Windows to recalculate the frame after a
+        ; temporary DWM non-client rendering policy change.
+        if frameChanged {
+            try DllCall(
+                "SetWindowPos",
+                "Ptr", hwnd,
+                "Ptr", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "UInt",
+                0x0001 ; SWP_NOSIZE
+                | 0x0002 ; SWP_NOMOVE
+                | 0x0004 ; SWP_NOZORDER
+                | 0x0010 ; SWP_NOACTIVATE
+                | 0x0020 ; SWP_FRAMECHANGED
+            )
+        }
 
         try DllCall(
             "RedrawWindow",

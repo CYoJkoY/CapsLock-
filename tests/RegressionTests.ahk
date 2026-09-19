@@ -88,6 +88,8 @@ RunTests() {
     Assert(InStr(windowHole, "DWMNCRP_DISABLED := 1") > 0, "Window Hole is missing the disabled DWM rendering policy.")
     Assert(InStr(windowHole, "state.originalNCRenderingPolicy") > 0, "Window Hole does not preserve the original DWM non-client policy.")
     Assert(InStr(windowHole, "this._DwmSetIntAttribute(") > 0, "Window Hole has no DWM state writer usage.")
+    Assert(InStr(windowHole, "static _RefreshWindow(hwnd, frameChanged := false)") > 0, "Window Hole refresh helper does not accept the frameChanged option.")
+    Assert(InStr(windowHole, "0x0020 ; SWP_FRAMECHANGED") > 0, "Window Hole refresh helper does not request SWP_FRAMECHANGED.")
     Assert(InStr(windowHole, "this._RefreshWindow(hwnd, true)") > 0, "Window Hole does not force frame recalculation when DWM state changes.")
     Assert(InStr(windowHole, "_WindowHasActiveRegion") > 0, "Window Hole has no Chromium region watchdog.")
 
