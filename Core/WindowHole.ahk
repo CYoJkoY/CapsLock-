@@ -25,7 +25,6 @@ class WindowHole {
     ; frequency without changing the normal-window configuration default.
     static CHROMIUM_MIN_UPDATE_INTERVAL := 60
     static CHROMIUM_MIN_MOVE_DISTANCE := 8
-    static CHROMIUM_REGION_REPAIR_INTERVAL := 250
 
     static Active := false
     static SecondLevelActive := false
@@ -39,6 +38,7 @@ class WindowHole {
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
     static SecondLevelHotkeyEnabled := false
+    static SecondLevelHotkeyKeyDown := false
 
     static IsActive() {
         return this.Active
@@ -48,7 +48,7 @@ class WindowHole {
         if IsObject(this.SecondLevelHotkeyCallback)
             return true
 
-        this.SecondLevelHotkeyCallback := ObjBindMethod(this, "ToggleSecondLevel")
+        this.SecondLevelHotkeyCallback := ObjBindMethod(this, "HandleSecondLevelHotkey")
 
         try {
             ; Always register the second-level key as a context-insensitive
@@ -167,6 +167,19 @@ class WindowHole {
 
         if original && WinExist("ahk_id " original) {
             try WinActivate("ahk_id " original)
+        }
+    }
+
+    static HandleSecondLevelHotkey(*) {
+        if this.SecondLevelHotkeyKeyDown
+            return
+
+        this.SecondLevelHotkeyKeyDown := true
+        try {
+            this.ToggleSecondLevel()
+        } finally {
+            KeyWait("1")
+            this.SecondLevelHotkeyKeyDown := false
         }
     }
 
@@ -359,29 +372,14 @@ class WindowHole {
             ; This is essential for real drag/drop: the cursor must be able
             ; to leave the hole and hit the primary window again.
             if mouseMoved && this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
-                if this._ShouldApplyPosition(primaryState, mx, my) {
+                if this._ShouldApplyPosition(primaryState, mx, my)
+                    || (primaryState.isChromium && !this._WindowHasActiveRegion(this.PrimaryHwnd)) {
                     if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
                         this.Stop()
                         return
                     }
 
                     primaryRegionApplied := true
-                }
-            }
-
-            ; Chromium-family windows can rebuild their native region during
-            ; internal frame updates. Repair a lost region only when the
-            ; movement path did not already apply one in this update cycle.
-            if primaryState.isChromium
-                && !primaryRegionApplied
-                && !this._WindowHasActiveRegion(this.PrimaryHwnd)
-                && A_TickCount >= primaryState.nextRegionRepairTick {
-                primaryState.nextRegionRepairTick := A_TickCount
-                    + this.CHROMIUM_REGION_REPAIR_INTERVAL
-
-                if !this._ApplyHole(this.PrimaryHwnd, true, this.LastMouseX, this.LastMouseY) {
-                    this.Stop()
-                    return
                 }
             }
         }
@@ -411,9 +409,16 @@ class WindowHole {
         if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)
             return
 
-        secondaryRegionApplied := false
+        secondaryState := this.Targets.Has(this.SecondaryHwnd)
+            ? this.Targets[this.SecondaryHwnd]
+            : ""
 
-        if mouseMoved && this._ShouldApplyPosition(this.Targets[this.SecondaryHwnd], mx, my) {
+        if !IsObject(secondaryState) || secondaryState.fallback
+            return
+
+        if mouseMoved
+            && (this._ShouldApplyPosition(secondaryState, mx, my)
+                || (secondaryState.isChromium && !this._WindowHasActiveRegion(this.SecondaryHwnd))) {
             result := this._ApplyHole(
                 this.SecondaryHwnd,
                 false,
@@ -422,43 +427,6 @@ class WindowHole {
             )
 
             if !result {
-                this.SecondLevelActive := false
-                this.SecondaryHwnd := 0
-                this._RemoveSecondaryTargets()
-
-                ShowToolTip(
-                    Lang(
-                        "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                        "Second penetration disabled."
-                    ),
-                    1500
-                )
-            } else {
-                secondaryRegionApplied := true
-            }
-        }
-
-        if !this.SecondLevelActive || !this.SecondaryHwnd
-            return
-
-        secondaryState := this.Targets.Has(this.SecondaryHwnd)
-            ? this.Targets[this.SecondaryHwnd]
-            : ""
-
-        if IsObject(secondaryState) && !secondaryState.fallback
-            && secondaryState.isChromium
-            && !secondaryRegionApplied
-            && !this._WindowHasActiveRegion(this.SecondaryHwnd)
-            && A_TickCount >= secondaryState.nextRegionRepairTick {
-            secondaryState.nextRegionRepairTick := A_TickCount
-                + this.CHROMIUM_REGION_REPAIR_INTERVAL
-
-            if !this._ApplyHole(
-                this.SecondaryHwnd,
-                false,
-                this.LastMouseX,
-                this.LastMouseY
-            ) {
                 this.SecondLevelActive := false
                 this.SecondaryHwnd := 0
                 this._RemoveSecondaryTargets()
@@ -863,7 +831,6 @@ class WindowHole {
             lastAppliedX: 0,
             lastAppliedY: 0,
             hasAppliedPosition: false,
-            nextRegionRepairTick: 0,
             originalNCRenderingPolicy: 0,
             hadOriginalNCRenderingPolicy: false,
             visualPrepared: false,
@@ -901,11 +868,12 @@ class WindowHole {
                 tempRegion := 0
             }
 
-            if this._DwmGetIntAttribute(
-                hwnd,
-                this.DWM_NCRENDERING_POLICY,
-                &ncrp
-            ) {
+            if !state.isChromium
+                && this._DwmGetIntAttribute(
+                    hwnd,
+                    this.DWM_NCRENDERING_POLICY,
+                    &ncrp
+                ) {
                 state.hadOriginalNCRenderingPolicy := true
                 state.originalNCRenderingPolicy := ncrp
             }
@@ -981,37 +949,38 @@ class WindowHole {
         } catch {
         }
 
-        ; Disable DWM non-client rendering while a custom region is active.
-        ; Chromium-family windows use custom frame logic which can otherwise
-        ; rebuild the frame and discard the externally assigned region.
-        if state.hadOriginalNCRenderingPolicy {
-            this._DwmSetIntAttribute(
-                hwnd,
-                this.DWM_NCRENDERING_POLICY,
-                this.DWMNCRP_DISABLED
-            )
-        }
+        ; Chromium owns its custom-frame lifecycle. Do not rewrite its DWM
+        ; non-client policy or force SWP_FRAMECHANGED, because both paths
+        ; can make Chromium rebuild its compositor frame around our region.
+        if !state.isChromium {
+            if state.hadOriginalNCRenderingPolicy {
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_NCRENDERING_POLICY,
+                    this.DWMNCRP_DISABLED
+                )
+            }
 
-        ; Windows 11 can draw system backdrop material (Mica/Acrylic) across
-        ; the window bounds independently of client pixels. Remove it while
-        ; the region-hole mode is active so a carved region cannot retain a
-        ; solid backdrop instead of revealing the window underneath.
-        if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
-            state.hadOriginalSystemBackdropType := true
-            state.originalSystemBackdropType := backdropType
-            this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
-        }
+            ; Windows 11 can draw system backdrop material (Mica/Acrylic) across
+            ; the window bounds independently of client pixels.
+            if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
+                state.hadOriginalSystemBackdropType := true
+                state.originalSystemBackdropType := backdropType
+                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
+            }
 
-        ; Do not let Windows 11 add rounded-corner pixels around a custom
-        ; window region. The region itself owns the hole geometry.
-        if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
-            state.hadOriginalCornerPreference := true
-            state.originalCornerPreference := cornerPreference
-            this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
+            ; Do not let Windows 11 add rounded-corner pixels around a custom
+            ; window region. The region itself owns the hole geometry.
+            if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
+                state.hadOriginalCornerPreference := true
+                state.originalCornerPreference := cornerPreference
+                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
+            }
         }
 
         state.visualPrepared := true
-        this._RefreshWindow(hwnd, true, state.isChromium)
+        frameChanged := !state.isChromium
+        this._RefreshWindow(hwnd, frameChanged, state.isChromium)
     }
 
     static _RestoreWindowVisualState(hwnd, state) {
@@ -1019,25 +988,29 @@ class WindowHole {
             return
 
         if WinExist("ahk_id " hwnd) {
-            ; Restore DWM attributes before restoring the final opacity so
-            ; the compositor rebuilds the window from its original policy.
-            if state.hadOriginalNCRenderingPolicy
-                this._DwmSetIntAttribute(
-                    hwnd,
-                    this.DWM_NCRENDERING_POLICY,
-                    state.originalNCRenderingPolicy
-                )
+            ; Restore DWM attributes only for windows whose policy was
+            ; modified during preparation. Chromium keeps its native frame
+            ; policy untouched for the whole Window Hole session.
+            if !state.isChromium {
+                if state.hadOriginalNCRenderingPolicy
+                    this._DwmSetIntAttribute(
+                        hwnd,
+                        this.DWM_NCRENDERING_POLICY,
+                        state.originalNCRenderingPolicy
+                    )
 
-            if state.hadOriginalSystemBackdropType
-                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
+                if state.hadOriginalSystemBackdropType
+                    this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
 
-            if state.hadOriginalCornerPreference
-                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
+                if state.hadOriginalCornerPreference
+                    this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
+            }
 
             if state.hadOriginalOpacity
                 try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
 
-            this._RefreshWindow(hwnd, true, state.isChromium)
+            frameChanged := !state.isChromium
+            this._RefreshWindow(hwnd, frameChanged, state.isChromium)
         }
 
         state.visualPrepared := false
