@@ -5,7 +5,7 @@ class LanguagePack {
     static CacheDir  := A_ScriptDir "\langs"
     static CacheExt  := ".lang"
     static CacheStampVersion := "1"
-    static CacheStampFile := A_ScriptDir "\langs\.langstamp"
+    static CacheStampFile := A_ScriptDir "\langs\_source.lang"
 
     static _translations := Map()
     static _loadedCode  := ""
@@ -89,6 +89,9 @@ class LanguagePack {
     static _ScanCache() {
         this._available := []
         Loop Files, this.CacheDir "\*" this.CacheExt, "F" {
+            if A_LoopFileName == "_source.lang"
+                continue
+
             code := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName) - StrLen(this.CacheExt))
             this._available.Push(code)
         }
