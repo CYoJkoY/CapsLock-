@@ -1,8 +1,8 @@
 <div align="center">
   <img src="assets/hero.svg" alt="CapsLock Extended — a second keyboard control layer for Windows" width="1200" style="max-width:100%;height:auto;">
   <h1>CapsLock Extended</h1>
-  <p><strong>Turn one rarely-used key into a predictable second control layer for Windows.</strong></p>
-  <p>Text navigation · Clipboard · Windows · Tabs · Files · Documents</p>
+  <p><strong>Turn CapsLock into a predictable second control layer for Windows.</strong></p>
+  <p>Text navigation · Clipboard · Windows · Window Hole · Quick Phrases · Documents</p>
   <p>
     <a href="https://github.com/CYoJkoY/CapsLock-/releases"><img src="https://img.shields.io/github/v/release/CYoJkoY/CapsLock-?style=flat-square&label=latest" alt="Latest release"></a>
     <a href="https://github.com/CYoJkoY/CapsLock-/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/CYoJkoY/CapsLock-/release.yml?style=flat-square&label=build" alt="Build status"></a>
@@ -10,182 +10,394 @@
     <img src="https://img.shields.io/badge/platform-Windows-3A5A8C?style=flat-square" alt="Windows">
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-C4A95E?style=flat-square" alt="GPL-3.0"></a>
   </p>
-  <p><a href="#overview">Overview</a> · <a href="#shortcut-layer">Shortcuts</a> · <a href="#clipboard-workflows">Workflows</a> · <a href="#configuration">Configuration</a> · <a href="#installation">Install</a> · <a href="#architecture">Architecture</a></p>
+  <p>
+    <a href="#readme-overview">Overview</a> ·
+    <a href="#readme-features">Features</a> ·
+    <a href="#readme-quick-start">Quick Start</a> ·
+    <a href="#readme-development">Development &amp; Status</a> ·
+    <a href="#readme-support">Support &amp; License</a>
+  </p>
 </div>
 
-> **Design thesis:** CapsLock is not replaced; it becomes a stable modifier layer. A double press keeps native CapsLock available.
+> **Design thesis:** CapsLock is not replaced. It becomes a modifier layer for related actions, while a double press keeps native CapsLock available.
 
+<a name="readme-overview"></a>
 ## <img src="assets/readme/icons/overview.svg" width="20" height="20" alt=""> Overview
 
-CapsLock Extended is a local Windows utility written in **AutoHotkey v2**. Hold `CapsLock` and use a compact set of combinations for text navigation, selection, editing, clipboard management, windows, browser tabs, and file-oriented workflows.
+CapsLock Extended is a local Windows productivity utility written in **AutoHotkey v2**. Hold `CapsLock` and use a compact set of combinations for text navigation, selection, editing, clipboard workflows, window management, browser-tab navigation, Quick Phrases, Window Hole, and document conversion.
 
-The modifier stays constant so related actions share one mental model instead of becoming a large collection of unrelated global hotkeys.
+The project is intentionally centered on one interaction model:
 
-**Requirements:** AutoHotkey v2. AutoHotkey v1 is not supported.
+```text
+CapsLock
+   ├─ text navigation / selection
+   ├─ clipboard / paste
+   ├─ windows / tabs
+   ├─ Quick Phrase templates
+   ├─ Window Hole
+   └─ document conversion
+```
 
-## <img src="assets/readme/icons/features.svg" width="20" height="20" alt=""> Shortcut layer
+**Requirements**
 
-Every shortcut below uses `CapsLock` as the modifier unless noted otherwise.
+- Windows
+- AutoHotkey v2 for running from source
+- Optional ImageMagick and Pandoc for the features that use them
 
-| Area | Shortcut | Action |
+AutoHotkey v1 is not supported.
+
+<a name="readme-features"></a>
+## <img src="assets/readme/icons/features.svg" width="20" height="20" alt=""> Features
+
+### Shortcut layer
+
+All bindings below use `CapsLock` as the modifier unless noted otherwise.
+
+| Category | Shortcut | Action |
 | :--- | :--- | :--- |
-| Native key | `CapsLock ×2` | Toggle native CapsLock on / off |
+| Native | `CapsLock ×2` | Toggle the native CapsLock state |
 | Navigation | `Left / Right` | Move by word |
 | Navigation | `Up / Down` | Jump to line start / end |
 | Selection | `Shift + Left / Right` | Extend selection by word |
 | Selection | `Shift + Up / Down` | Extend selection to line start / end |
 | Selection | `Space` | Select the current word |
 | Editing | `A / D` | Delete one character backward / forward |
-| Editing | `Shift + A / D` | Delete one word backward / forward |
+| Editing | `Shift + A / Shift + D` | Delete one word backward / forward |
 | Editing | `Backspace / Delete` | Delete the current line |
-| Clipboard | `C` | Copy as plain text and add to history |
+| Clipboard | `C` | Copy as plain text and add it to history |
 | Clipboard | `V` | Paste using the current paste mode |
-| Clipboard | `Shift + V` | Open clipboard history |
-| Clipboard | `Shift + P` | Open the Quick Phrase selector |
-| Clipboard | `F` | Change case of the last copied English text and paste |
+| Clipboard | `Shift + V` | Open the clipboard history menu |
+| Clipboard | `F` | Change the case of the last copied text and paste it |
+| Quick Phrase | `Shift + P` | Open the Quick Phrase selector |
 | Documents | `P` | Convert clipboard file paths with Pandoc |
+| Files | `Alt + Q` | Open the temporary folder used by file workflows |
 | Window | `T` | Toggle always-on-top with OSD feedback |
-| Window | `X` | Hold to open a mouse-following temporary hole |
-| Window | `X`, then `1` | Toggle the second penetration layer while Window Hole is active |
 | Window | `W / 8 / Num8` | Maximize / restore |
 | Window | `S / 2 / Num2` | Minimize |
 | Window | `Left Button` | Increase active-window opacity |
 | Window | `Right Button` | Decrease active-window opacity |
 | Window | `Middle Button` | Toggle 10% / 100% ghost mode |
-| Tabs | `Q / E` | Previous / next browser tab |
-| Windows | `Shift + Q / Shift + E` | Previous / next taskbar window |
+| Window Hole | `X` | Activate Window Hole according to the configured activation mode |
+| Window Hole | `X`, then `1` | Toggle second-level penetration while Window Hole is active |
+| Browser tabs | `Q / E` | Previous / next browser tab |
+| Help | `H / F1` | Open the built-in hotkey reference |
 
-## <img src="assets/readme/icons/features.svg" width="20" height="20" alt=""> Clipboard workflows
+The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
 
-### Smart paste
+### Clipboard and smart paste
 
-`CapsLock + V` follows the configured paste mode. File-oriented paste can validate paths, expand directories recursively, process supported image inputs, and manage temporary files before inserting the result into the target application.
+**Plain-text copy**
 
-### Clipboard history
+`CapsLock + C` copies the current selection as text and adds it to local clipboard history.
 
-`CapsLock + Shift + V` opens the local clipboard-history interface. Entries can be previewed, searched, selected in batches, pasted, or deleted.
+**Smart paste**
 
-History retention is configurable, and automatic cleanup can be enabled for temporary files created during file workflows.
+`CapsLock + V` routes the clipboard according to the configured paste mode. File-oriented workflows can handle single files, multiple files, directories, mixed paths, text-oriented controls, and supported image inputs.
 
-### Case conversion
+**Clipboard history**
 
-`CapsLock + F` takes the last copied English text, changes its case, and pastes the result. This is useful for quickly switching identifiers or headings between common casing styles.
+`CapsLock + Shift + V` opens the history menu. The full history interface supports search, multi-selection, batch operations, deletion, and paginated loading.
 
-### Quick phrases
+History retention is configurable. Automatic trimming can also be enabled for long-running installations.
 
-`CapsLock + Shift + P` opens a local searchable phrase selector. Phrase templates can contain `{{name}}` placeholders; each unique placeholder is collected in first-appearance order, requested once, previewed, and then inserted into the application that was focused before the selector opened. Templates without placeholders are inserted directly.
+### Quick Phrases
 
-The tray manager supports creating, editing, deleting, categorizing, and reordering phrases. Metadata is kept in `configs/QuickPhrases.ini`; template bodies are stored as UTF-8 files under `configs/QuickPhrases/`. The feature is entirely local and the shortcut can be enabled or disabled without deleting the phrase library.
+`CapsLock + Shift + P` opens a local searchable phrase selector.
+
+Templates may contain variables such as:
+
+```text
+Please summarize {{topic}} for {{audience}} in {{language}}.
+```
+
+When a phrase is used:
+
+1. Unique placeholders are detected in first-appearance order.
+2. Each placeholder is requested once.
+3. The completed text can be reviewed before insertion.
+4. Confirming inserts the result into the application that was focused before the selector opened.
+
+Templates without placeholders are inserted directly.
+
+Phrase data is stored locally under:
+
+```text
+configs/
+├── QuickPhrases.ini
+└── QuickPhrases/
+    └── phrase template files
+```
+
+The tray manager provides phrase creation, editing, deletion, categories, and ordering. The shortcut can be disabled without deleting the phrase library.
 
 ### Window Hole
 
-`CapsLock + X` activates Window Hole in the default hold mode. A native Win32 window region is cut around the current mouse position, allowing the next eligible top-level window to receive mouse hit-testing through the removed region. The hole follows the pointer while the mode is active.
+`CapsLock + X` provides a temporary window-penetration mode.
 
-Press `CapsLock + 1` while Window Hole is active to add one more penetration layer. The primary window is temporarily kept topmost so the revealed lower content can remain underneath it during interaction.
+The current implementation uses a native Win32 window region rather than a visual blur effect:
 
-Some modern or special windows do not cooperate with `SetWindowRgn`. When fallback is enabled, CapsLock- temporarily minimizes such an eligible window instead of applying a hole, then restores its previous minimized/maximized state when Window Hole ends. Windows excluded by the configured executable/class rules are left untouched.
+- the configured hole is cut from an eligible top-level window;
+- the revealed lower window remains directly visible through the removed region;
+- the hole follows the pointer while the mode is active;
+- supported shapes are **circle**, **rounded rectangle**, and **square**;
+- activation can be **hold** or **toggle**;
+- second-level penetration can be enabled and toggled with `CapsLock + 1`;
+- incompatible windows can optionally use a temporary minimize fallback;
+- executable and window-class allow/exclude rules can restrict eligible windows.
 
-The tray menu exposes hole size, shape, second-layer support, activation mode, fallback behaviour, and executable/window-class allow and exclude rules.
+The default Window Hole settings are:
 
-## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Optional integrations
-
-The core modifier layer does not require third-party document tools. Two optional integrations extend file and document workflows:
-
-| Tool | Purpose | Shortcut |
-| :--- | :--- | :--- |
-| **Pandoc** | Convert clipboard file paths into another document format | `CapsLock + P` |
-| **ImageMagick** | Extend image-to-PDF processing in smart-paste workflows | Used by image processing workflows |
-
-Configure each executable from the tray settings when needed. Do not point the application to untrusted executables.
-
-## Configuration
-
-Runtime configuration is stored in `configs/Config.ini`, while clipboard history is stored in `configs/ClipHistory.bin`. The directory is created automatically when the application starts.
-
-| Setting | Purpose |
+| Setting | Default |
 | :--- | :--- |
-| Paste mode | Choose text or file-oriented paste behavior |
-| Delete mode | Choose delayed, batch, or disabled temporary-file cleanup |
-| Delete delay | Set the delay used by delayed cleanup |
-| Cleanup interval | Set the automatic cleanup interval |
-| Clipboard history | Configure maximum retained history and history-menu size |
-| Auto cleanup | Enable or disable periodic cleanup |
-| Ignore rules | Add gitignore-style patterns for file workflows |
-| ImageMagick | Select `magick.exe` |
-| Pandoc | Select `pandoc.exe` |
-| Pandoc output | Choose the target conversion format |
-| Language | Select the interface language |
-| Quick Phrase | Enable or disable `CapsLock + Shift + P`; manage local phrase templates, categories, and ordering |
-| Window Hole | Configure hole size, shape, second penetration, activation mode, fallback behaviour, and window rules |
+| Diameter | `360 px` |
+| Shape | `circle` |
+| Activation | `hold` |
+| Second level | enabled |
+| Fallback minimize | enabled |
+| Update interval | `30 ms` |
 
-The core application stores runtime state locally and does not require a cloud account or authentication service.
+Releasing the mode restores the affected windows to their captured visual and window state.
 
-## <img src="assets/readme/icons/installation.svg" width="20" height="20" alt=""> Installation
+### Window and tab controls
 
-### Release build
+CapsLock also acts as a compact window-control layer:
 
-Download the latest executable from [Releases](https://github.com/CYoJkoY/CapsLock-/releases).
+- `T` toggles always-on-top and reports the state through OSD and sound feedback.
+- `W`, `8`, and `Num8` maximize or restore the active window.
+- `S`, `2`, and `Num2` minimize the active window.
+- The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
+- `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 
-| Build | Artifact |
+### Document conversion
+
+`CapsLock + P` converts clipboard file paths through **Pandoc**.
+
+The integration supports a broad list of Pandoc input/output formats, expands folders recursively, applies the configured ignore rules, and provides progress feedback for batch processing.
+
+### Optional ImageMagick integration
+
+ImageMagick is used for image-to-PDF workflows when required by smart paste.
+
+It is optional; the core application remains usable without it.
+
+### Localization
+
+The project ships a CSV-based translation resource with **13 interface languages**:
+
+```text
+en · fr · zh · ja · ko · zh_TW · ru
+pl · es · pt · de · tr · it
+```
+
+Language selection is available from the tray. Translation caches are generated locally from `lang.csv`.
+
+<a name="readme-quick-start"></a>
+## <img src="assets/readme/icons/installation.svg" width="20" height="20" alt=""> Quick Start &amp; Configuration
+
+### Download a release
+
+Download the latest executable from [GitHub Releases](https://github.com/CYoJkoY/CapsLock-/releases).
+
+| Artifact | Target |
 | :--- | :--- |
-| 64-bit Windows | `CapsLock-.exe` |
-| 32-bit Windows | `CapsLock-_x86.exe` |
+| `CapsLock-.exe` | Windows x64 |
+| `CapsLock-_x86.exe` | Windows x86 |
 
-### From source
+Release builds are produced by GitHub Actions from version tags matching `v*.*.*`.
 
-1. Install **AutoHotkey v2**.
+### Run from source
+
+1. Install AutoHotkey v2.
 2. Clone or download this repository.
-3. Keep `CapsLock-.ahk` beside the included `Config`, `Core`, `History`, `Hotkeys`, `Tray`, `UI`, and `Utils` directories.
-4. Run `CapsLock-.ahk` with AutoHotkey v2.
-5. Confirm CapsLock Extended is running in the Windows system tray.
+3. Keep `CapsLock-.ahk` together with the repository's source directories.
+4. Run `CapsLock-.ahk`.
+5. Confirm the CapsLock- tray icon is visible.
 
-## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Architecture
+The application creates its runtime `configs/` directory automatically.
 
-The codebase is split by responsibility:
+### Optional integrations
+
+#### ImageMagick
+
+Install ImageMagick and configure `magick.exe` from the tray menu when image-to-PDF conversion is needed.
+
+#### Pandoc
+
+Install Pandoc and configure `pandoc.exe` from the tray menu when document conversion is needed. The same tray submenu controls the output format.
+
+### Configuration files
+
+Runtime configuration is kept outside the source modules:
+
+```text
+configs/
+├── Config.ini
+├── ClipHistory.bin
+├── QuickPhrases.ini
+└── QuickPhrases/
+```
+
+The application creates this directory automatically and does not require an account or network connection for normal local use.
+
+Important configuration areas include:
+
+| Area | Purpose |
+| :--- | :--- |
+| `[Cleanup]` | Delete mode, delete delay, cleanup interval |
+| `[History]` | Clipboard history limit |
+| `[General]` | Paste mode, auto-clean, language |
+| `[QuickPhrase]` | Quick Phrase enable/disable state |
+| `[Pandoc]` | Pandoc path and output format |
+| `[WindowHole]` | Diameter, shape, activation, update interval, second level, fallback, executable/class rules |
+| `[Ignore]` | Gitignore-style path/file patterns |
+
+Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
+
+### Configuration defaults
+
+The current code defines these notable defaults:
+
+```text
+History limit             10,000 entries
+Delete mode               1 (delayed)
+Delete delay              10 seconds
+Cleanup interval          30 seconds
+Paste mode                1
+Auto history trim         disabled
+Quick Phrase              enabled
+Window Hole diameter      360 px
+Window Hole shape         circle
+Window Hole activation    hold
+Window Hole second level  enabled
+Window Hole fallback      enabled
+```
+
+The interface language is initialized by the language system and may be persisted in `[General]`.
+
+### Security and privacy
+
+Clipboard history is local data and may contain sensitive text, file paths, or application-specific content.
+
+The history persistence layer applies a fixed XOR-based transform. This is **obfuscation, not strong cryptography**, and it should not be treated as protection against a local attacker.
+
+For stronger protection, rely on Windows storage protections such as BitLocker or EFS around the relevant data rather than treating the built-in transform as a cryptographic boundary.
+
+<a name="readme-development"></a>
+## <img src="assets/readme/icons/development.svg" width="20" height="20" alt=""> Development &amp; Status
+
+### Project structure
+
+```text
+CapsLock-/
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/
+│       ├── release.yml
+│       └── test.yml
+├── Config/
+├── Core/
+├── History/
+├── Hotkeys/
+├── Tray/
+├── UI/
+├── Utils/
+├── assets/
+├── scripts/
+├── CapsLock-.ahk
+├── lang.csv
+├── LICENSE
+└── README.md
+```
+
+The entry script wires the project modules together and initializes language, configuration, clipboard history, Quick Phrases, cleanup, tray handling, and clipboard listeners.
+
+The main functional boundaries are:
+
+| Directory | Responsibility |
+| :--- | :--- |
+| `Config/` | Persistent application state and configuration |
+| `Core/` | Clipboard, file, cleanup, Pandoc, Quick Phrase, Window Hole, and window utilities |
+| `History/` | Clipboard history storage and interfaces |
+| `Hotkeys/` | User-facing keyboard bindings and action routing |
+| `Tray/` | Tray menus and settings |
+| `UI/` | OSD, Quick Phrase UI, preview, and shared theme helpers |
+| `Utils/` | Language and shared utility functions |
+| `scripts/` | Build-time helper scripts |
+
+### Architecture
+
+CapsLock Extended keeps the keyboard layer, feature logic, state, and UI separated:
 
 ```text
 CapsLock-.ahk
-    │
-    ├── Config/       persistent settings and runtime state
-    ├── Core/         clipboard, paste, files, cleanup, windows, window hole, conversion, quick-phrase storage
-    ├── History/      clipboard-history storage and UI
-    ├── Hotkeys/      shortcut definitions and actions
-    ├── Tray/         tray menu and settings controls
-    ├── UI/           OSD, preview, theme, and Quick Phrase interfaces
-    └── Utils/        shared language, taskbar, dialog, and utility code
+   │
+   ├── Hotkeys ───────► actions
+   ├── Core ──────────► feature logic
+   ├── Config ────────► persistent state
+   ├── History ───────► clipboard persistence / UI
+   ├── Tray ──────────► configuration controls
+   └── UI / Utils ────► presentation + shared services
 ```
 
-The main entry point loads language, configuration, and history state, starts optional automatic cleanup, and registers the tray and clipboard handlers.
+This modular layout is intended to make individual features easier to change without turning the entry script into a monolith.
 
-## <img src="assets/readme/icons/development.svg" width="20" height="20" alt=""> Development
+### Testing and release automation
 
-The normal development loop is intentionally simple:
+The repository includes GitHub Actions for:
+
+- source/build validation through `.github/workflows/test.yml`;
+- tagged x86/x64 release builds through `.github/workflows/release.yml`.
+
+Release compilation currently uses **AutoHotkey v2.0.27** through the configured AHK build action.
+
+### Project status
+
+The current implementation is centered on local Windows productivity workflows. Two larger features are explicitly planned but **not part of the shipped feature set yet**:
+
+| Roadmap item | Status |
+| :--- | :--- |
+| [Custom low-glare light theme](https://github.com/CYoJkoY/CapsLock-/issues/41) | Planned |
+| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42) | Planned |
+
+Cloud Sync is intended to remain optional; normal local use should not depend on a hosted CapsLock service.
+
+### Known development considerations
+
+Window Hole is a comparatively low-level feature because it interacts with native Win32 window regions, DWM attributes, hit testing, focus, and temporary window state. Changes in that area should be tested against overlapping windows, drag-and-drop, multiple DPI/scaling configurations, and special Windows applications.
+
+Translation changes should be made in `lang.csv` and then checked through the generated language-cache path used by the application.
+
+Shortcut changes should keep these sources synchronized:
 
 ```text
-edit .ahk modules → run CapsLock-.ahk → test → package through CI
+Hotkeys/HotkeyBindings.ahk
+        ↓
+Hotkeys/HotkeyReference.ahk
+        ↓
+built-in reference UI + README shortcut table
 ```
 
-When changing a shortcut, keep the user-facing table synchronized with `Hotkeys/HotkeyBindings.ahk`. When changing a setting, update the configuration module and the corresponding tray controls together.
+<a name="readme-support"></a>
+## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Support &amp; License
 
-### Release model
+### Support
 
-Release builds are triggered by `v*.*.*` tags. GitHub Actions regenerates the application icon and builds x86 and x64 executables with AutoHotkey v2 before publishing both artifacts to the GitHub release.
+CapsLock Extended is maintained as a local, modular utility. Support helps sustain ongoing maintenance, debugging, documentation, localization, and feature work.
 
-### Bug reports
+<div align="center">
+  <a href="https://cyojkoy.github.io/Payment/">
+    <img src="assets/readme/support-cta.svg" alt="Support CapsLock Extended" width="900" style="max-width:100%;">
+  </a>
+  <p><strong>Support:</strong> https://cyojkoy.github.io/Payment/</p>
+</div>
 
-Include the Windows version, AutoHotkey version, affected shortcut or feature, and the exact error message. Do not attach clipboard contents, credentials, or sensitive local paths.
+### Bug reports and feature requests
 
-<a href="https://cyojkoy.github.io/Payment/"><img src="assets/readme/support-cta.svg" alt="Support CapsLock Extended" width="900" style="max-width:100%;height:auto;"></a>
+Use GitHub Issues for reproducible bugs and focused feature requests.
 
-Development support: **https://cyojkoy.github.io/Payment/**
+For a useful bug report, include the Windows version, AutoHotkey version, affected shortcut or feature, reproduction steps, and the exact error text when available. Do not include clipboard contents, credentials, or other sensitive local data.
 
-## Security and privacy
-
-CapsLock Extended is a local desktop utility. Clipboard history can contain sensitive text, file paths, and other private data, so review retention and cleanup settings before using it with confidential information.
-
-The history persistence layer uses a fixed XOR-based transform. This is **obfuscation, not strong cryptography**, and should not be treated as a security boundary against a local attacker.
-
-## License
+### License
 
 CapsLock Extended is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
 
