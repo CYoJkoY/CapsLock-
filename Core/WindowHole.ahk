@@ -37,9 +37,47 @@ class WindowHole {
     static LastMouseX := ""
     static LastMouseY := ""
     static TimerCallback := ""
+    static SecondLevelHotkeyCallback := ""
+    static SecondLevelHotkeyEnabled := false
 
     static IsActive() {
         return this.Active
+    }
+
+    static InitializeSecondLevelHotkey() {
+        if IsObject(this.SecondLevelHotkeyCallback)
+            return true
+
+        this.SecondLevelHotkeyCallback := ObjBindMethod(this, "ToggleSecondLevel")
+
+        try {
+            ; Always register the second-level key as a context-insensitive
+            ; hotkey. Context-sensitive #HotIf evaluation can be delayed while
+            ; the script is busy, which makes the X + 1 sequence intermittent.
+            HotIf
+            Hotkey("1", this.SecondLevelHotkeyCallback, "Off")
+            this.SecondLevelHotkeyEnabled := false
+            return true
+        } catch {
+            this.SecondLevelHotkeyCallback := ""
+            this.SecondLevelHotkeyEnabled := false
+            return false
+        }
+    }
+
+    static _SetSecondLevelHotkeyEnabled(enabled) {
+        if !IsObject(this.SecondLevelHotkeyCallback)
+            return false
+
+        try {
+            HotIf
+            Hotkey("1", enabled ? "On" : "Off")
+            this.SecondLevelHotkeyEnabled := enabled
+            return true
+        } catch {
+            this.SecondLevelHotkeyEnabled := false
+            return false
+        }
     }
 
     static HandleXDown(*) {
@@ -80,6 +118,11 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
 
+        if !this._SetSecondLevelHotkeyEnabled(true) {
+            this._ResetState()
+            return
+        }
+
         ; Keep the original foreground window above the revealed content.
         ; The previous topmost state is restored when the mode ends.
         if !this.OriginalTopmost {
@@ -110,6 +153,7 @@ class WindowHole {
                 SetTimer(this.TimerCallback, 0)
         }
 
+        this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -122,8 +166,30 @@ class WindowHole {
     }
 
     static ToggleSecondLevel(*) {
-        if !this.Active || !AppState.WindowHoleSecondLevelEnabled
+        if !this.Active
             return
+
+        if !AppState.WindowHoleSecondLevelEnabled {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                    "Second penetration disabled."
+                ),
+                1200
+            )
+            return
+        }
+
+        if !this.SecondLevelHotkeyEnabled {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
+            return
+        }
 
         if this.SecondLevelActive {
             this.SecondLevelActive := false
@@ -142,11 +208,26 @@ class WindowHole {
 
         try {
             MouseGetPos(&mouseX, &mouseY, &mouseHwnd)
-            if !this._GetPhysicalCursorPosition(&mx, &my)
+            if !this._GetPhysicalCursorPosition(&mx, &my) {
+                ShowToolTip(
+                    Lang(
+                        "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                        "No eligible window is available for second penetration."
+                    ),
+                    1500
+                )
                 return
+            }
 
             secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
         } catch {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
             return
         }
 
@@ -155,7 +236,6 @@ class WindowHole {
             || secondaryHwnd == this.PrimaryHwnd
             || !this.IsEligible(secondaryHwnd)
         ) {
-
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -175,6 +255,13 @@ class WindowHole {
 
         if !result {
             this.SecondaryHwnd := 0
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
             return
         }
 
@@ -1149,6 +1236,7 @@ class WindowHole {
     }
 
     static _ResetState() {
+        this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
         this.SecondLevelActive := false
         this.PrimaryHwnd := 0
