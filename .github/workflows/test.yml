@@ -1,0 +1,27 @@
+name: Regression Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install AutoHotkey
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.27'
+
+      - name: Run regression tests
+        shell: pwsh
+        run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk

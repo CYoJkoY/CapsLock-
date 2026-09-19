@@ -42,11 +42,11 @@ class LanguagePack {
             if SubStr(raw, 1, 1) == Chr(0xFEFF)
                 raw := SubStr(raw, 2)
 
-            lines := StrSplit(raw, "`n", "`r")
-            if lines.Length == 0
+            records := this._ParseCSVRecords(raw)
+            if !IsObject(records) || records.Length == 0
                 return false
 
-            headerFields := this._ParseCSVLine(lines[1])
+            headerFields := this._ParseCSVLine(records[1])
             langCodes := []
             for h in headerFields {
                 h := Trim(h)
@@ -71,15 +71,15 @@ class LanguagePack {
             for code in langCodes
                 buffers[code] := ""
 
-            Loop lines.Length - 1 {
+            Loop records.Length - 1 {
                 idx := A_Index + 1
-                line := lines[idx]
+                line := records[idx]
                 if Trim(line) == ""
                     continue
 
                 fields := this._ParseCSVLine(line)
-                if fields.Length < 2
-                    continue
+                if fields.Length != headerFields.Length
+                    return false
 
                 key := Trim(fields[1])
                 if key == ""
@@ -192,6 +192,66 @@ class LanguagePack {
 
     ; Parse a single CSV line handling quoted fields and escaped quotes.
     ; Optimized to minimize string concatenation within the loop.
+    static _ParseCSVRecords(raw) {
+        records := []
+        record := ""
+        inQuotes := false
+        i := 1
+        len := StrLen(raw)
+
+        while i <= len {
+            ch := SubStr(raw, i, 1)
+
+            if ch == '"' {
+                record .= ch
+
+                if inQuotes && i + 1 <= len && SubStr(raw, i + 1, 1) == '"' {
+                    record .= '"'
+                    i += 2
+                    continue
+                }
+
+                inQuotes := !inQuotes
+                i++
+                continue
+            }
+
+            if (ch == "`r" || ch == "`n") {
+                if inQuotes {
+                    record .= "`n"
+
+                    if ch == "`r" && i + 1 <= len && SubStr(raw, i + 1, 1) == "`n"
+                        i += 2
+                    else
+                        i++
+
+                    continue
+                }
+
+                records.Push(record)
+                record := ""
+
+                if ch == "`r" && i + 1 <= len && SubStr(raw, i + 1, 1) == "`n"
+                    i += 2
+                else
+                    i++
+
+                continue
+            }
+
+            record .= ch
+            i++
+        }
+
+        if inQuotes
+            return false
+
+        if record != ""
+            records.Push(record)
+
+        return records
+    }
+
     static _ParseCSVLine(line) {
         fields := []
         field := ""
