@@ -418,9 +418,6 @@ class CustomMenu {
         } catch {
         }
 
-        if subInside
-            return
-
         ; Check if mouse is over sub-menu
         subHwnd := this.subMenuHwnd
         if subHwnd && WinExist("ahk_id " subHwnd) {
@@ -450,6 +447,11 @@ class CustomMenu {
                 }
                 return
             }
+
+            ; Pointer is inside the submenu window but not over an item,
+            ; such as the top/bottom padding or separator area.
+            if subInside
+                return
         }
 
         ; Check if mouse is over main menu
