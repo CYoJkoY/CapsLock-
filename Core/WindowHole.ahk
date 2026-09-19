@@ -499,6 +499,10 @@ class WindowHole {
             state.fallback := true
             state.fallbackPreviousState := previousState
             this.FallbackMinimized[hwnd] := previousState
+            ShowToolTip(
+                Lang("MSG_WINDOW_HOLE_FALLBACK_USED", "Incompatible window temporarily minimized."),
+                1500
+            )
             return true
         } catch {
             return false
