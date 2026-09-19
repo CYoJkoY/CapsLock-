@@ -109,8 +109,8 @@ class CustomMenu {
     }
 
     ; Clamp a proposed window position to a monitor's working area.
-    ; The result is safe even when a window is larger than the available area;
-    ; in that case the nearest valid origin is used.
+    ; If a window is larger than the available area, use the nearest origin
+    ; rather than producing an invalid reversed clamp range.
     static ClampWindowPosition(x, y, width, height, waLeft, waTop, waRight, waBottom, margin := 5) {
         minX := waLeft + margin
         minY := waTop + margin
@@ -125,7 +125,7 @@ class CustomMenu {
 
     ; Re-check the actual native window rectangle after Show().
     ; This compensates for non-client borders and per-monitor DPI rounding.
-    static RepositionShownWindow(hwnd, monIdx, fallbackX := 0, fallbackY := 0) {
+    static RepositionShownWindow(hwnd, monIdx) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
 
