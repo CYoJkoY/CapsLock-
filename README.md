@@ -41,6 +41,7 @@ Every shortcut below uses `CapsLock` as the modifier unless noted otherwise.
 | Clipboard | `C` | Copy as plain text and add to history |
 | Clipboard | `V` | Paste using the current paste mode |
 | Clipboard | `Shift + V` | Open clipboard history |
+| Clipboard | `Shift + P` | Open the Quick Phrase selector |
 | Clipboard | `F` | Change case of the last copied English text and paste |
 | Documents | `P` | Convert clipboard file paths with Pandoc |
 | Window | `T` | Toggle always-on-top with OSD feedback |
@@ -67,6 +68,12 @@ History retention is configurable, and automatic cleanup can be enabled for temp
 ### Case conversion
 
 `CapsLock + F` takes the last copied English text, changes its case, and pastes the result. This is useful for quickly switching identifiers or headings between common casing styles.
+
+### Quick phrases
+
+`CapsLock + Shift + P` opens a local searchable phrase selector. Phrase templates can contain `{{name}}` placeholders; each unique placeholder is collected in first-appearance order, requested once, previewed, and then inserted into the application that was focused before the selector opened. Templates without placeholders are inserted directly.
+
+The tray manager supports creating, editing, deleting, categorizing, and reordering phrases. Metadata is kept in `configs/QuickPhrases.ini`; template bodies are stored as UTF-8 files under `configs/QuickPhrases/`. The feature is entirely local and the shortcut can be enabled or disabled without deleting the phrase library.
 
 ## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Optional integrations
 
@@ -96,6 +103,7 @@ Runtime configuration is stored in `configs/Config.ini`, while clipboard history
 | Pandoc | Select `pandoc.exe` |
 | Pandoc output | Choose the target conversion format |
 | Language | Select the interface language |
+| Quick Phrase | Enable or disable `CapsLock + Shift + P`; manage local phrase templates, categories, and ordering |
 
 The core application stores runtime state locally and does not require a cloud account or authentication service.
 
@@ -126,11 +134,11 @@ The codebase is split by responsibility:
 CapsLock-.ahk
     │
     ├── Config/       persistent settings and runtime state
-    ├── Core/         clipboard, paste, files, cleanup, windows, conversion
+    ├── Core/         clipboard, paste, files, cleanup, windows, conversion, quick-phrase storage
     ├── History/      clipboard-history storage and UI
     ├── Hotkeys/      shortcut definitions and actions
     ├── Tray/         tray menu and settings controls
-    ├── UI/           OSD, preview, and theme helpers
+    ├── UI/           OSD, preview, theme, and Quick Phrase interfaces
     └── Utils/        shared language, taskbar, dialog, and utility code
 ```
 

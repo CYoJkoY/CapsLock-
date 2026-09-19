@@ -15,6 +15,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
+#Include "Core\QuickPhraseStore.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
@@ -46,10 +47,12 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
+#Include "UI\QuickPhraseGui.ahk"
 
 Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()
+QuickPhraseStore.Load()
 FileHelper.BuildIgnoreRegexes()
 
 if AppState.AutoCleanEnabled

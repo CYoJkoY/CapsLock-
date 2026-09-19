@@ -97,3 +97,7 @@
     F1:: HotkeyReferenceGui.Toggle()
 
 #HotIf
+
+#HotIf GetKeyState( "CapsLock", "P" ) && AppState.QuickPhraseEnabled
+    +p:: ShowQuickPhraseSelector()
+#HotIf

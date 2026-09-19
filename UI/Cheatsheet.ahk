@@ -101,7 +101,7 @@ class HotkeyReferenceGui {
                 this.rows.Push({
                     cat: Lang(entry.cat),
                     keys: entry.keys,
-                    desc: Lang(entry.desc),
+                    desc: Lang(entry.desc, entry.HasProp("descDefault") ? entry.descDefault : entry.desc),
                     action: entry.action
                 })
             }
