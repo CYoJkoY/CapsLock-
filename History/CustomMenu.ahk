@@ -330,6 +330,10 @@ class CustomMenu {
         if subX + subMenuW > waRight - 5
             subX := px - subMenuW - this.subMenuGap
 
+        ; Always keep the submenu fully visible horizontally. This also
+        ; handles very narrow monitors where neither side has ideal space.
+        subX := Clamp(subX, waLeft + 5, waRight - subMenuW - 5)
+
         ; Keep top alignment whenever possible; only shift vertically when
         ; the submenu would leave the monitor working area.
         subY := Clamp(subY, waTop + 5, waBottom - subTotalH - 5)
@@ -396,8 +400,8 @@ class CustomMenu {
         MouseGetPos(&mx, &my, , &hCtrl, 2)
 
         ; Treat the complete menu windows as safe hover regions. This avoids
-        ; accidental dismissal when crossing the small gap to an upward submenu
-        ; or moving through blank padding inside either menu.
+        ; accidental dismissal while crossing the small gap to an adjacent
+        ; submenu or moving through blank padding inside either menu.
         mainInside := false
         subInside := false
 
