@@ -90,6 +90,10 @@ RunTests() {
     ; The generated locale cache must be tied to the current CSV source.
     Assert(LanguagePack.BuildAllFromCSV(root "\lang.csv"), "Language cache rebuild failed.")
     Assert(LanguagePack._IsCacheCurrent(), "Fresh language cache is not recognized as current.")
+    Assert(LanguagePack.Load("en"), "English locale failed to load after cache rebuild.")
+    Assert(LanguagePack.GetLoaded() == "en", "Loaded locale code was not updated after cache rebuild.")
+    Assert(LanguagePack.BuildAllFromCSV(root "\lang.csv"), "Second language cache rebuild failed.")
+    Assert(LanguagePack.GetLoaded() == "", "Loaded locale cache was not invalidated after regeneration.")
 
     stampPath := LanguagePack.CacheStampFile
     FileDelete(stampPath)
