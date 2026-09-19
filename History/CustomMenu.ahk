@@ -266,7 +266,7 @@ class CustomMenu {
 
         ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
         myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
-        this.RepositionShownWindow(this.menuHwnd, monIdx, posX, posY)
+        this.RepositionShownWindow(this.menuHwnd, monIdx)
     }
 
     static ToggleSubMenu(entry, *) {
@@ -383,7 +383,7 @@ class CustomMenu {
 
         ThemeHelper.ApplyImmersiveDarkMode(this.subMenuHwnd)
         subMyGui.Show("x" subX " y" subY " w" subMenuW " h" subTotalH " NoActivate")
-        this.RepositionShownWindow(this.subMenuHwnd, monIdx, subX, subY)
+        this.RepositionShownWindow(this.subMenuHwnd, monIdx)
     }
 
     static NormalizeSubItems(itemsArray) {
