@@ -51,13 +51,13 @@ RunTests() {
     malformed := LanguagePack._ParseCSVRecords(
         "key,en`r`nBROKEN," quote "unterminated`r`n"
     )
-    Assert(malformed === false, "Unterminated quoted CSV input must be rejected.")
+    Assert(malformed == false, "Unterminated quoted CSV input must be rejected.")
 
     hotkeys := FileRead(root "\Hotkeys\HotkeyBindings.ahk", "UTF-8")
     windowHole := FileRead(root "\Core\WindowHole.ahk", "UTF-8")
     lang := FileRead(root "\lang.csv", "UTF-8")
 
-    expectedHotIf := "#HotIf GetKeyState( " Chr(34) "CapsLock" Chr(34) " , " Chr(34) "P" Chr(34) " ) && !WindowHole.IsActive()"
+    expectedHotIf := "#HotIf GetKeyState( " Chr(34) "CapsLock" Chr(34) ", " Chr(34) "P" Chr(34) " ) && !WindowHole.IsActive()"
     Assert(InStr(hotkeys, expectedHotIf) > 0, "Mouse opacity handlers are not disabled during Window Hole.")
 
     Assert(InStr(windowHole, "static SecondaryHwnd := 0") > 0, "Window Hole has no explicit secondary target state.")
