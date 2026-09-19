@@ -31,6 +31,15 @@ RunTests() {
             "CSV record " index " has " fields.Length
             " columns; expected " expectedColumns "."
         )
+
+        for columnIndex, value in fields {
+            if columnIndex == 1
+                continue
+            Assert(
+                Trim(value) != "",
+                "CSV record " index " has a blank translation in column " columnIndex "."
+            )
+        }
     }
 
     quote := Chr(34)
@@ -64,6 +73,9 @@ RunTests() {
     Assert(InStr(windowHole, "this.SecondaryHwnd := secondaryHwnd") > 0, "Layer 2 does not lock the selected secondary target.")
     Assert(InStr(windowHole, "if !this.SecondLevelActive || !this.SecondaryHwnd") > 0, "Window Hole update path does not use the locked secondary target.")
     Assert(InStr(windowHole, "this.SecondaryHwnd := 0") > 0, "Window Hole never clears the secondary target.")
+    Assert(InStr(windowHole, "if this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {") > 0, "Primary hole still follows the cursor outside the primary window.")
+    Assert(InStr(windowHole, "if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {") > 0, "Primary Window Hole failure path is not explicitly scoped.")
+    Assert(InStr(windowHole, "if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)") > 0, "Secondary hole does not freeze after penetrating its target.")
 
     Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("circle")') > 0, "Circle shape option is not directly actionable.")
     Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("rounded")') > 0, "Rounded shape option is not directly actionable.")
