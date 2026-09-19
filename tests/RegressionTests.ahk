@@ -35,8 +35,8 @@ RunTests() {
 
     quote := Chr(34)
     fixture := "key,en,fr`r`n"
-        . "MULTI," quote "first line`nsecond line" quote "," quote
-        . "première ligne`ndeuxième ligne" quote "`r`n"
+        . "MULTI," . quote . "first line`nsecond line" . quote . "," . quote
+        . "première ligne`ndeuxième ligne" . quote . "`r`n"
         . "NEXT,value,suite`r`n"
 
     fixtureRecords := LanguagePack._ParseCSVRecords(fixture)
