@@ -15,6 +15,7 @@ class WindowHole {
     static Active := false
     static SecondLevelActive := false
     static PrimaryHwnd := 0
+    static SecondaryHwnd := 0
     static OriginalForeground := 0
     static OriginalTopmost := false
     static Targets := Map()
@@ -58,6 +59,7 @@ class WindowHole {
         this.Active := true
         this.SecondLevelActive := false
         this.PrimaryHwnd := hwnd
+        this.SecondaryHwnd := 0
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
@@ -108,15 +110,68 @@ class WindowHole {
         if !this.Active || !AppState.WindowHoleSecondLevelEnabled
             return
 
-        this.SecondLevelActive := !this.SecondLevelActive
-
-        if !this.SecondLevelActive {
+        if this.SecondLevelActive {
+            this.SecondLevelActive := false
+            this.SecondaryHwnd := 0
             this._RemoveSecondaryTargets()
-            ShowToolTip(Lang("MSG_WINDOW_HOLE_SECOND_DISABLED", "Second penetration disabled."), 1200)
-        } else {
-            ShowToolTip(Lang("MSG_WINDOW_HOLE_SECOND_ENABLED", "Second penetration enabled."), 1200)
-            this._Update(true)
+
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                    "Second penetration disabled."
+                ),
+                1200
+            )
+            return
         }
+
+        try {
+            MouseGetPos(&mx, &my, &mouseHwnd)
+            secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
+        } catch {
+            return
+        }
+
+        if !secondaryHwnd
+            || secondaryHwnd == this.PrimaryHwnd
+            || !this.IsEligible(secondaryHwnd) {
+
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
+            return
+        }
+
+        result := this._ApplyHole(
+            secondaryHwnd,
+            false,
+            mx,
+            my
+        )
+
+        if !result {
+            this.SecondaryHwnd := 0
+            return
+        }
+
+        this.SecondaryHwnd := secondaryHwnd
+        this.SecondLevelActive := true
+
+        targetName := this._GetWindowLabel(secondaryHwnd)
+
+        message := Lang(
+            "MSG_WINDOW_HOLE_SECOND_ENABLED",
+            "Second penetration enabled."
+        )
+
+        if targetName != ""
+            message .= " — " targetName
+
+        ShowToolTip(message, 1500)
     }
 
     static IsEligible(hwnd) {
@@ -195,32 +250,45 @@ class WindowHole {
                 return
         }
 
-        if !this.SecondLevelActive
+        if !this.SecondLevelActive || !this.SecondaryHwnd
             return
 
-        secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
-        if !secondaryHwnd || secondaryHwnd == this.PrimaryHwnd
-            return
+        ; Layer 2 is locked to the window selected when CapsLock + 1
+        ; was pressed. Do not discover deeper windows while moving.
+        if !WinExist("ahk_id " this.SecondaryHwnd) {
+            this.SecondLevelActive := false
+            this.SecondaryHwnd := 0
+            this._RemoveSecondaryTargets()
 
-        ; Keep exactly one secondary penetration target. When the pointer
-        ; crosses into another lower window, restore the old target first.
-        secondaryTarget := 0
-        for targetHwnd, targetState in this.Targets {
-            if targetHwnd != this.PrimaryHwnd {
-                secondaryTarget := targetHwnd
-                break
-            }
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                    "Second penetration disabled."
+                ),
+                1500
+            )
+            return
         }
 
-        if secondaryHwnd != secondaryTarget {
-            if secondaryTarget && this.Targets.Has(secondaryTarget) {
-                this._RestoreTarget(secondaryTarget, this.Targets[secondaryTarget])
-                this.Targets.Delete(secondaryTarget)
-                this.FallbackMinimized.Delete(secondaryTarget)
-            }
+        result := this._ApplyHole(
+            this.SecondaryHwnd,
+            false,
+            mx,
+            my
+        )
 
-            if this.IsEligible(secondaryHwnd)
-                this._ApplyHole(secondaryHwnd, false, mx, my)
+        if !result {
+            this.SecondLevelActive := false
+            this.SecondaryHwnd := 0
+            this._RemoveSecondaryTargets()
+
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                    "Second penetration disabled."
+                ),
+                1500
+            )
         }
     }
 
@@ -271,11 +339,16 @@ class WindowHole {
 
             relativeX := mx - wx
             relativeY := my - wy
+            baseRegion := state.hadOriginalRegion
+                ? state.originalRegion
+                : 0
+
             region := this._CreateDifferenceRegion(
                 ww,
                 wh,
                 relativeX,
-                relativeY
+                relativeY,
+                baseRegion
             )
 
             if !region
@@ -312,21 +385,34 @@ class WindowHole {
         }
     }
 
-    static _CreateDifferenceRegion(width, height, centerX, centerY) {
+    static _CreateDifferenceRegion(
+        width,
+        height,
+        centerX,
+        centerY,
+        baseRegion := 0
+    ) {
         diameter := Clamp(Integer(AppState.WindowHoleDiameter), 80, 1200)
         radius := Floor(diameter / 2)
 
-        outer := DllCall(
-            "CreateRectRgn",
-            "Int", 0,
-            "Int", 0,
-            "Int", width,
-            "Int", height,
-            "Ptr"
-        )
+        source := baseRegion
+        ownsSource := false
 
-        if !outer
-            return 0
+        if !source {
+            source := DllCall(
+                "CreateRectRgn",
+                "Int", 0,
+                "Int", 0,
+                "Int", width,
+                "Int", height,
+                "Ptr"
+            )
+
+            if !source
+                return 0
+
+            ownsSource := true
+        }
 
         shape := StrLower(AppState.WindowHoleShape)
         hole := 0
@@ -382,7 +468,7 @@ class WindowHole {
             combined := DllCall(
                 "CombineRgn",
                 "Ptr", result,
-                "Ptr", outer,
+                "Ptr", source,
                 "Ptr", hole,
                 "Int", 4,
                 "Int"
@@ -399,8 +485,8 @@ class WindowHole {
         } finally {
             if hole
                 DllCall("DeleteObject", "Ptr", hole)
-            if outer
-                DllCall("DeleteObject", "Ptr", outer)
+            if ownsSource && source
+                DllCall("DeleteObject", "Ptr", source)
         }
     }
 
@@ -459,6 +545,8 @@ class WindowHole {
             "Ptr", 0,
             "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0400
         )
+
+        try DllCall("UpdateWindow", "Ptr", hwnd)
 
         ; Wait until the compositor has processed the region change so the
         ; removed area is presented as actual desktop/window transparency,
@@ -600,6 +688,8 @@ class WindowHole {
             this.Targets.Delete(hwnd)
             this.FallbackMinimized.Delete(hwnd)
         }
+
+        this.SecondaryHwnd := 0
     }
 
     static _RestorePrimaryTopmost() {
@@ -614,6 +704,7 @@ class WindowHole {
         this.Active := false
         this.SecondLevelActive := false
         this.PrimaryHwnd := 0
+        this.SecondaryHwnd := 0
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
@@ -628,6 +719,21 @@ class WindowHole {
             return (WinGetExStyle("ahk_id " hwnd) & 0x8) != 0
         } catch {
             return false
+        }
+    }
+
+    static _GetWindowLabel(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return ""
+
+        try {
+            title := Trim(WinGetTitle("ahk_id " hwnd))
+            if title != ""
+                return title
+
+            return Trim(WinGetProcessName("ahk_id " hwnd))
+        } catch {
+            return ""
         }
     }
 
