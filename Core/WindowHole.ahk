@@ -186,15 +186,6 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        if this.PrimaryHwnd {
-            primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
-            if IsObject(primaryState) && !primaryState.fallback {
-                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my)
-                    this.Stop()
-                    return
-            }
-        }
-
         ; Update every active region so the transparent hole stays exactly
         ; under the current mouse position.
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
