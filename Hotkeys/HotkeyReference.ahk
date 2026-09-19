@@ -47,6 +47,8 @@ class HotkeyReference {
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + S / 2", desc: "CHEAT_ACT_MINIMIZE", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Left / Right Button", desc: "CHEAT_ACT_OPACITY", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Middle Button", desc: "CHEAT_ACT_GHOST", action: "" },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + X", desc: "CHEAT_ACT_WINDOW_HOLE", action: ((*) => WindowHole.Toggle()) },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + X, then 1", desc: "CHEAT_ACT_WINDOW_HOLE_SECOND", action: "" },
 
             { cat: "CHEAT_CAT_TABS", keys: "CapsLock + Q / E", desc: "CHEAT_ACT_TAB_PREV_NEXT", action: "" },
 
