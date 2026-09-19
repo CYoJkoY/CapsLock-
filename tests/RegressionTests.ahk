@@ -38,12 +38,34 @@ RunTests() {
     Assert(InStr(customMenu, "now - this.outsideSurfaceSince < this.outsideDismissDelay") > 0, "Tray outside-surface debounce is not enforced.")
 
     Assert(
-        InStr(hotkeys, '#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.Active') > 0,
-        "Second-level hotkey still uses a dynamic IsActive() call in #HotIf."
+        InStr(hotkeys, "WindowHole.InitializeSecondLevelHotkey()") > 0,
+        "Second-level Window Hole global hotkey initialization is missing."
     )
     Assert(
-        InStr(hotkeys, '1:: WindowHole.ToggleSecondLevel()') > 0,
-        "Second-level Window Hole hotkey binding is missing."
+        InStr(hotkeys, 'WindowHole.Active') == 0
+            || InStr(hotkeys, '#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.Active') == 0,
+        "Second-level hotkey must not depend on a WindowHole.Active #HotIf expression."
+    )
+    Assert(
+        InStr(windowHole, 'Hotkey("1", this.SecondLevelHotkeyCallback, "Off")') > 0,
+        "Second-level global hotkey registration is missing."
+    )
+    Assert(
+        InStr(windowHole, 'Hotkey("1", enabled ? "On" : "Off")') > 0,
+        "Second-level global hotkey state toggle is missing."
+    )
+    Assert(
+        InStr(windowHole, "this._SetSecondLevelHotkeyEnabled(true)") > 0,
+        "Window Hole activation does not enable the second-level hotkey."
+    )
+    Assert(
+        InStr(windowHole, "this._SetSecondLevelHotkeyEnabled(false)") > 0,
+        "Window Hole stop path does not disable the second-level hotkey."
+    )
+    Assert(
+        InStr(windowHole, "if !result {") > 0
+            && InStr(windowHole, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0,
+        "Second-level activation failure does not provide feedback."
     )
 
     Assert(
