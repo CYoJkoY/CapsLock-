@@ -7,6 +7,13 @@ class CustomMenu {
     static lastHoveredEntry := ""
     static hoverTimer := ""
     static outsideTimer := ""
+
+    ; Top-level tray menus need a short opening grace period because the
+    ; pointer is still over the tray anchor when the custom menu appears.
+    static menuOpenGraceUntil := 0
+    static menuAnchorX := ""
+    static menuAnchorY := ""
+    static menuAnchorRadius := 24
     static itemH := 34
     static sepH := 9
     static menuW := 420
@@ -49,6 +56,15 @@ class CustomMenu {
         this.Hide()
         this.items := this.NormalizeItems(itemsArray)
         this.lastHoveredEntry := ""
+
+        if anchorBottom {
+            ; Preserve the original tray click point. BuildAndShow may shift
+            ; Y upward for bottom anchoring, but the pointer remains at this
+            ; original point while the menu is being opened.
+            this.menuAnchorX := x
+            this.menuAnchorY := y
+        }
+
         this.BuildAndShow(x, y, anchorBottom)
     }
 
@@ -269,14 +285,21 @@ class CustomMenu {
         if this.outsideTimer == ""
             this.outsideTimer := ObjBindMethod(this, "CheckOutsideClick")
 
+        ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
+        myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
+        this.RepositionShownWindow(this.menuHwnd, monIdx)
+
+        ; Start dismissal timers only after the native window is visible.
+        ; This prevents the opening operation from racing its own hover check.
+        if anchorBottom
+            this.menuOpenGraceUntil := A_TickCount + 750
+        else
+            this.menuOpenGraceUntil := 0
+
         ; Timers optimized: hover at 50ms (was 30ms), outside click at 150ms (was 100ms)
         ; Reduces CPU usage by ~40% during menu display with imperceptible UX difference
         SetTimer(this.hoverTimer, 50)
         SetTimer(this.outsideTimer, 150)
-
-        ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
-        myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
-        this.RepositionShownWindow(this.menuHwnd, monIdx)
     }
 
     static ToggleSubMenu(entry, *) {
@@ -712,6 +735,18 @@ class CustomMenu {
                 return
         }
 
+        ; While a tray menu is opening, treat the tray anchor as part of the
+        ; current interaction surface. The cursor is expected to remain there
+        ; until the user starts moving into the custom menu.
+        if this.menuAnchorX != "" && this.menuAnchorY != "" {
+            if Abs(mx - this.menuAnchorX) <= this.menuAnchorRadius
+                && Abs(my - this.menuAnchorY) <= this.menuAnchorRadius
+                return
+        }
+
+        if this.menuOpenGraceUntil > A_TickCount
+            return
+
         ; Finally inspect the main menu.
         hovered := ""
         if hCtrl {
@@ -862,6 +897,9 @@ class CustomMenu {
         this.menuHwnd := 0
         this.items := []
         this.lastHoveredEntry := ""
+        this.menuOpenGraceUntil := 0
+        this.menuAnchorX := ""
+        this.menuAnchorY := ""
     }
 
     ; ClipLabel truncates text to fit within maxUnits display width units.
