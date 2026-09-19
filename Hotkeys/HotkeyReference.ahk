@@ -52,7 +52,7 @@ class HotkeyReference {
 
             { cat: "CHEAT_CAT_TABS", keys: "CapsLock + Q / E", desc: "CHEAT_ACT_TAB_PREV_NEXT", action: "" },
 
-            { cat: "CHEAT_CAT_HELP", keys: "CapsLock + H", desc: "CHEAT_ACT_CHEATSHEET", action: "" }
+            { cat: "CHEAT_CAT_HELP", keys: "CapsLock + H / F1", desc: "CHEAT_ACT_CHEATSHEET", action: "" }
         ]
     }
 }
