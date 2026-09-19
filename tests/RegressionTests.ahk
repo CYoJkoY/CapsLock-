@@ -65,6 +65,14 @@ RunTests() {
     Assert(InStr(windowHole, "if !this.SecondLevelActive || !this.SecondaryHwnd") > 0, "Window Hole update path does not use the locked secondary target.")
     Assert(InStr(windowHole, "this.SecondaryHwnd := 0") > 0, "Window Hole never clears the secondary target.")
 
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("circle")') > 0, "Circle shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("rounded")') > 0, "Rounded shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("square")') > 0, "Square shape option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("hold")') > 0, "Hold activation option is not directly actionable.")
+    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("toggle")') > 0, "Toggle activation option is not directly actionable.")
+    Assert(InStr(windowHole, "children: shapeChildren") == 0, "Window Hole shape options are still nested one level too deep.")
+    Assert(InStr(windowHole, "children: activationChildren") == 0, "Window Hole activation options are still nested one level too deep.")
+
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
 
     ; The generated locale cache must be tied to the current CSV source.
