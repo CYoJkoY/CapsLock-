@@ -6,6 +6,13 @@ class AppState {
     static MaxHistory := 10000
     static TargetWindow := 0
 
+    ; --- Quick Phrase ---
+    static QuickPhraseEnabled := true
+    static QuickPhraseFile := A_ScriptDir "\configs\QuickPhrases.ini"
+    static QuickPhraseContentDir := A_ScriptDir "\configs\QuickPhrases"
+    static QuickPhraseGui := ""
+    static QuickPhraseManagerGui := ""
+
     ; --- Settings ---
     static PasteMode := 1
     static DeleteMode := 1
