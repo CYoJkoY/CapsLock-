@@ -63,6 +63,7 @@ TraySetup()
 OnClipboardChange(ClipboardChanged)
 
 OnExit((*) => (
+    WindowHole.Stop(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()
 ))
