@@ -108,6 +108,39 @@ class CustomMenu {
         return Max(A_ScreenDPI, 96) / 96.0
     }
 
+    ; Clamp a proposed window position to a monitor's working area.
+    ; If a window is larger than the available area, use the nearest origin
+    ; rather than producing an invalid reversed clamp range.
+    static ClampWindowPosition(x, y, width, height, waLeft, waTop, waRight, waBottom, margin := 5) {
+        minX := waLeft + margin
+        minY := waTop + margin
+        maxX := waRight - width - margin
+        maxY := waBottom - height - margin
+
+        safeX := maxX < minX ? minX : Clamp(x, minX, maxX)
+        safeY := maxY < minY ? minY : Clamp(y, minY, maxY)
+
+        return { x: safeX, y: safeY }
+    }
+
+    ; Re-check the actual native window rectangle after Show().
+    ; This compensates for non-client borders and per-monitor DPI rounding.
+    static RepositionShownWindow(hwnd, monIdx) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return
+
+        try {
+            WinGetPos(&actualX, &actualY, &actualW, &actualH, "ahk_id " hwnd)
+            MonitorGetWorkArea(monIdx, &waLeft, &waTop, &waRight, &waBottom)
+            pos := this.ClampWindowPosition(actualX, actualY, actualW, actualH, waLeft, waTop, waRight, waBottom)
+
+            if pos.x != actualX || pos.y != actualY
+                WinMove(pos.x, pos.y, , , "ahk_id " hwnd)
+        } catch {
+            ; Positioning is best-effort; the menu itself remains functional.
+        }
+    }
+
     ; Calculate the vertical offset needed to align the menu's bottom-left
     ; corner with a tray icon click position.
     ;
@@ -199,6 +232,12 @@ class CustomMenu {
             curY += itemH
         }
 
+        ; Resolve the monitor from the original tray click before changing
+        ; the Y coordinate for bottom anchoring. This prevents a vertically
+        ; stacked multi-monitor layout from selecting the wrong monitor.
+        monIdx := this.FindMonitorIndex(x, y)
+        MonitorGetWorkArea(monIdx, &waLeft, &waTop, &waRight, &waBottom)
+
         if anchorBottom {
             ; Shift Y up so the menu's bottom-left corner aligns with the
             ; tray icon click position. The offset is dynamically computed
@@ -208,13 +247,9 @@ class CustomMenu {
             y := y - menuH - offset
         }
 
-        ; Use MonitorGetWorkArea for accurate boundary clamping.
-        ; Working area excludes the taskbar, ensuring the menu is always visible.
-        monIdx := this.FindMonitorIndex(x, y)
-        MonitorGetWorkArea(monIdx, &waLeft, &waTop, &waRight, &waBottom)
-
-        posX := Clamp(x, waLeft + 5, waRight - menuW - 5)
-        posY := Clamp(y, waTop + 5, waBottom - menuH - 5)
+        pos := this.ClampWindowPosition(x, y, menuW, menuH, waLeft, waTop, waRight, waBottom)
+        posX := pos.x
+        posY := pos.y
 
         this.menuGui := myGui
         this.menuHwnd := myGui.Hwnd
@@ -231,6 +266,7 @@ class CustomMenu {
 
         ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
         myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
+        this.RepositionShownWindow(this.menuHwnd, monIdx, posX, posY)
     }
 
     static ToggleSubMenu(entry, *) {
@@ -330,13 +366,10 @@ class CustomMenu {
         if subX + subMenuW > waRight - 5
             subX := px - subMenuW - this.subMenuGap
 
-        ; Always keep the submenu fully visible horizontally. This also
-        ; handles very narrow monitors where neither side has ideal space.
-        subX := Clamp(subX, waLeft + 5, waRight - subMenuW - 5)
-
-        ; Keep top alignment whenever possible; only shift vertically when
-        ; the submenu would leave the monitor working area.
-        subY := Clamp(subY, waTop + 5, waBottom - subTotalH - 5)
+        ; Keep the predicted submenu rectangle inside the monitor work area.
+        subPos := this.ClampWindowPosition(subX, subY, subMenuW, subTotalH, waLeft, waTop, waRight, waBottom)
+        subX := subPos.x
+        subY := subPos.y
 
         this.subMenuGui := subMyGui
         this.subMenuHwnd := subMyGui.Hwnd
@@ -350,6 +383,7 @@ class CustomMenu {
 
         ThemeHelper.ApplyImmersiveDarkMode(this.subMenuHwnd)
         subMyGui.Show("x" subX " y" subY " w" subMenuW " h" subTotalH " NoActivate")
+        this.RepositionShownWindow(this.subMenuHwnd, monIdx, subX, subY)
     }
 
     static NormalizeSubItems(itemsArray) {
