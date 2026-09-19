@@ -108,7 +108,7 @@
 ; when CapsLock is released first. The tilde keeps the key-up event visible.
 ~x up:: WindowHole.HandleXUp()
 
-#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.IsActive()
+#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.Active
     1:: WindowHole.ToggleSecondLevel()
 #HotIf
 

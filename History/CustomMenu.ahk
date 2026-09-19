@@ -303,7 +303,7 @@ class CustomMenu {
         ; Protect the short tray-to-menu transition. Hover handling itself is
         ; now message-driven and no longer waits for a timer tick.
         if anchorBottom
-            this.menuOpenGraceUntil := A_TickCount + 750
+            this.menuOpenGraceUntil := A_TickCount + 1200
         else
             this.menuOpenGraceUntil := 0
 
@@ -792,11 +792,27 @@ class CustomMenu {
             return
 
         now := A_TickCount
+
+        ; Keep the tray icon itself as part of the interaction surface.
+        ; The custom menu is opened by a native tray right-click, so the
+        ; physical mouse button may still be down when the first watchdog
+        ; tick runs. Do not interpret that transient state as dismissal.
+        if this.menuAnchorX != "" && this.menuAnchorY != ""
+            && Abs(mx - this.menuAnchorX) <= this.menuAnchorRadius
+            && Abs(my - this.menuAnchorY) <= this.menuAnchorRadius
+            return
+
         graceUntil := Max(
             this.menuOpenGraceUntil,
             this.subMenuGraceUntil,
             this.nestedSubMenuGraceUntil
         )
+
+        ; Opening grace always wins over button-state dismissal. This prevents
+        ; the watchdog from closing the tray menu during the mouse-button
+        ; release/open transition.
+        if now < graceUntil
+            return
 
         ; A button press outside the menu is always an intentional dismissal.
         if GetKeyState("LButton", "P")
@@ -805,9 +821,6 @@ class CustomMenu {
             this.Hide()
             return
         }
-
-        if now < graceUntil
-            return
 
         this.Hide()
     }
