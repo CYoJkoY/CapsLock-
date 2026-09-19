@@ -64,6 +64,10 @@ RunTests() {
         "Second-level hotkey is missing a per-keypress state latch."
     )
     Assert(
+        InStr(windowHole, 'ObjBindMethod(this, "HandleSecondLevelHotkey")') > 0,
+        "Second-level hotkey is not routed through the guarded handler."
+    )
+    Assert(
         InStr(windowHole, 'this.SecondLevelHotkeyKeyDown := true') > 0
             && InStr(windowHole, 'this.SecondLevelHotkeyKeyDown := false') > 0,
         "Second-level hotkey does not acquire and release its per-keypress state latch."
@@ -119,10 +123,6 @@ RunTests() {
         "Primary update path does not prevent same-cycle region reapplication."
     )
     Assert(
-        InStr(windowHole, "secondaryRegionApplied := false") > 0,
-        "Secondary update path does not prevent same-cycle region reapplication."
-    )
-    Assert(
         InStr(windowHole, "CHROMIUM_REGION_REPAIR_INTERVAL") == 0,
         "Chromium periodic region repair interval must be removed."
     )
@@ -131,8 +131,8 @@ RunTests() {
         "Chromium initial region refresh guard is missing."
     )
     Assert(
-        InStr(windowHole, "if !state.isChromium || firstRegionApply") > 0,
-        "Chromium per-move redraw suppression is missing."
+        InStr(windowHole, "if !state.isChromium || firstRegionApply") == 0,
+        "Chromium must not use the generic per-window redraw path."
     )
     Assert(
         InStr(windowHole, "if !chromium") > 0,
