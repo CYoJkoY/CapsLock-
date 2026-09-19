@@ -47,11 +47,11 @@ RunTests() {
     )
 
     Assert(
-        InStr(windowHole, "CHROMIUM_MIN_UPDATE_INTERVAL := 50") > 0,
+        InStr(windowHole, "CHROMIUM_MIN_UPDATE_INTERVAL := 60") > 0,
         "Chromium update interval safeguard is missing."
     )
     Assert(
-        InStr(windowHole, "CHROMIUM_MIN_MOVE_DISTANCE := 4") > 0,
+        InStr(windowHole, "CHROMIUM_MIN_MOVE_DISTANCE := 8") > 0,
         "Chromium movement threshold is missing."
     )
     Assert(
@@ -77,6 +77,22 @@ RunTests() {
     Assert(
         InStr(windowHole, "secondaryRegionApplied := false") > 0,
         "Secondary update path does not prevent same-cycle region reapplication."
+    )
+    Assert(
+        InStr(windowHole, "CHROMIUM_REGION_REPAIR_INTERVAL := 250") > 0,
+        "Chromium region repair cooldown is too aggressive or missing."
+    )
+    Assert(
+        InStr(windowHole, "firstRegionApply := !state.hasAppliedPosition") > 0,
+        "Chromium initial region refresh guard is missing."
+    )
+    Assert(
+        InStr(windowHole, "if !state.isChromium || firstRegionApply") > 0,
+        "Chromium per-move redraw suppression is missing."
+    )
+    Assert(
+        InStr(windowHole, "if !chromium") > 0,
+        "Chromium synchronous UpdateWindow suppression is missing."
     )
 
     return true
