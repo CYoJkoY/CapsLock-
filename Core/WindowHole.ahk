@@ -12,6 +12,11 @@
 ; handled by a temporary minimize fallback and restored when the mode ends.
 ; ---------------------------------------------------------------------------
 class WindowHole {
+    static DWM_WINDOW_CORNER_PREFERENCE := 33
+    static DWM_SYSTEMBACKDROP_TYPE := 38
+    static DWMWCP_DONOTROUND := 1
+    static DWMSBT_NONE := 1
+
     static Active := false
     static SecondLevelActive := false
     static PrimaryHwnd := 0
@@ -585,7 +590,7 @@ class WindowHole {
 
         try {
             hr := DllCall(
-                "dwmapi\\DwmGetWindowAttribute",
+                "dwmapiDwmGetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
                 "Ptr", buffer,
@@ -609,7 +614,7 @@ class WindowHole {
 
         try {
             hr := DllCall(
-                "dwmapi\\DwmSetWindowAttribute",
+                "dwmapiDwmSetWindowAttribute",
                 "Ptr", hwnd,
                 "UInt", attribute,
                 "Ptr", buffer,
@@ -645,18 +650,18 @@ class WindowHole {
         ; the window bounds independently of client pixels. Remove it while
         ; the region-hole mode is active so a carved region cannot retain a
         ; solid backdrop instead of revealing the window underneath.
-        if this._DwmGetIntAttribute(hwnd, 38, &backdropType) {
+        if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
             state.hadOriginalSystemBackdropType := true
             state.originalSystemBackdropType := backdropType
-            this._DwmSetIntAttribute(hwnd, 38, 1) ; DWMSBT_NONE
+            this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
         }
 
         ; Do not let Windows 11 add rounded-corner pixels around a custom
         ; window region. The region itself owns the hole geometry.
-        if this._DwmGetIntAttribute(hwnd, 33, &cornerPreference) {
+        if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
             state.hadOriginalCornerPreference := true
             state.originalCornerPreference := cornerPreference
-            this._DwmSetIntAttribute(hwnd, 33, 1) ; DWMWCP_DONOTROUND
+            this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
         }
 
         state.visualPrepared := true
@@ -671,10 +676,10 @@ class WindowHole {
             ; Restore DWM attributes before restoring the final opacity so
             ; the compositor rebuilds the window from its original policy.
             if state.hadOriginalSystemBackdropType
-                this._DwmSetIntAttribute(hwnd, 38, state.originalSystemBackdropType)
+                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
 
             if state.hadOriginalCornerPreference
-                this._DwmSetIntAttribute(hwnd, 33, state.originalCornerPreference)
+                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
 
             if state.hadOriginalOpacity
                 try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
