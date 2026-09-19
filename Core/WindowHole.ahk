@@ -118,11 +118,6 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
 
-        if !this._SetSecondLevelHotkeyEnabled(true) {
-            this._ResetState()
-            return
-        }
-
         ; Keep the original foreground window above the revealed content.
         ; The previous topmost state is restored when the mode ends.
         if !this.OriginalTopmost {
@@ -130,6 +125,16 @@ class WindowHole {
         }
 
         if !this._ApplyHole(hwnd, true) {
+            this._RestoreAll()
+            this._RestorePrimaryTopmost()
+            this._ResetState()
+            return
+        }
+
+        ; Enable the second-level key only after the primary hole is fully
+        ; established. This prevents a very fast X + 1 sequence from
+        ; interrupting Start() while its target state is still incomplete.
+        if !this._SetSecondLevelHotkeyEnabled(true) {
             this._RestoreAll()
             this._RestorePrimaryTopmost()
             this._ResetState()
