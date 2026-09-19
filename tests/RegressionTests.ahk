@@ -60,6 +60,10 @@ RunTests() {
         "Second-level global hotkey state toggle is missing."
     )
     Assert(
+        InStr(windowHole, 'KeyWait("1")') > 0,
+        "Second-level hotkey must wait for the key release so keyboard auto-repeat cannot toggle it twice."
+    )
+    Assert(
         InStr(windowHole, "this._SetSecondLevelHotkeyEnabled(true)") > 0,
         "Window Hole activation does not enable the second-level hotkey."
     )
