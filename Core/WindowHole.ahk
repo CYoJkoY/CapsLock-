@@ -378,10 +378,21 @@ class WindowHole {
             if !region
                 throw Error("Could not create window-hole region.")
 
+            if DllCall(
+                "PtInRegion",
+                "Ptr", region,
+                "Int", Floor(relativeX),
+                "Int", Floor(relativeY),
+                "Int"
+            ) != 0 {
+                throw Error("Window-hole center remained inside the assigned region.")
+            }
+
             applied := DllCall(
                 "SetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", region,
+                "Int", 1,
                 "Int"
             )
 
@@ -590,6 +601,7 @@ class WindowHole {
                         "SetWindowRgn",
                         "Ptr", hwnd,
                         "Ptr", state.originalRegion,
+                        "Int", 1,
                         "Int"
                     )
                 }
@@ -600,7 +612,7 @@ class WindowHole {
                 } else if state.originalRegion {
                     DllCall("DeleteObject", "Ptr", state.originalRegion)
                     state.originalRegion := 0
-                    try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int")
+                    try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
                 }
             } else {
                 try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int")
