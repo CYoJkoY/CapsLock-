@@ -89,6 +89,8 @@
 
     p:: ConvertWithPandoc()
 
+    x:: WindowHole.HandleXDown()
+
     ; --- Files: open the temp folder used by file-oriented paste ---
     !q:: OpenTempFolder()
 
