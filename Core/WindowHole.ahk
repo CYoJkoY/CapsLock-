@@ -132,9 +132,11 @@ class WindowHole {
             return
         }
 
-        if !secondaryHwnd
+        if (
+            !secondaryHwnd
             || secondaryHwnd == this.PrimaryHwnd
-            || !this.IsEligible(secondaryHwnd) {
+            || !this.IsEligible(secondaryHwnd)
+        ) {
 
             ShowToolTip(
                 Lang(
