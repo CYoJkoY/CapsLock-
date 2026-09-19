@@ -824,6 +824,13 @@ class CustomMenu {
             return
         }
 
+        ; SetTimer callbacks start in a fresh AHK thread, whose mouse
+        ; coordinate mode defaults to the active window's client area.
+        ; Menu HWND rectangles from WinGetPos() are screen coordinates, so
+        ; explicitly switch this watchdog to screen coordinates before reading
+        ; the cursor position. Without this, the watchdog falsely concludes
+        ; that the pointer left the menu and calls Hide().
+        CoordMode("Mouse", "Screen")
         MouseGetPos(&mx, &my)
         now := A_TickCount
 
