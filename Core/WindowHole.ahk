@@ -251,9 +251,10 @@ class WindowHole {
             ; This is essential for real drag/drop: the cursor must be able
             ; to leave the hole and hit the primary window again.
             if this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
-                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my)
+                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
                     this.Stop()
                     return
+                }
             }
         }
 
