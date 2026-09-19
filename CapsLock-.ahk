@@ -24,6 +24,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\ImageToPdf.ahk"
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
+#Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
 
 #Include "History\HistoryStorage.ahk"
