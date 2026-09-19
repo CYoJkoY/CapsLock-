@@ -111,8 +111,8 @@ RunTests() {
         "Chromium-specific redraw flags are missing."
     )
     Assert(
-        InStr(windowHole, "nextRegionRepairTick") > 0,
-        "Chromium region repair cooldown is missing."
+        InStr(windowHole, "nextRegionRepairTick") == 0,
+        "Chromium region repair must not run from a periodic timer loop."
     )
     Assert(
         InStr(windowHole, "primaryRegionApplied := false") > 0,
@@ -123,8 +123,8 @@ RunTests() {
         "Secondary update path does not prevent same-cycle region reapplication."
     )
     Assert(
-        InStr(windowHole, "CHROMIUM_REGION_REPAIR_INTERVAL := 250") > 0,
-        "Chromium region repair cooldown is too aggressive or missing."
+        InStr(windowHole, "CHROMIUM_REGION_REPAIR_INTERVAL") == 0,
+        "Chromium periodic region repair interval must be removed."
     )
     Assert(
         InStr(windowHole, "firstRegionApply := !state.hasAppliedPosition") > 0,
@@ -137,6 +137,19 @@ RunTests() {
     Assert(
         InStr(windowHole, "if !chromium") > 0,
         "Chromium synchronous UpdateWindow suppression is missing."
+    )
+
+    Assert(
+        InStr(windowHole, "if !state.isChromium {") > 0,
+        "Chromium windows must not enter the generic DWM frame-rewrite path."
+    )
+    Assert(
+        InStr(windowHole, "frameChanged := !state.isChromium") > 0,
+        "Chromium refresh must not force a frame change."
+    )
+    Assert(
+        InStr(windowHole, "ObjBindMethod(this, "HandleSecondLevelHotkey")") > 0,
+        "Second-level hotkey must use the per-press guard handler."
     )
 
     return true
