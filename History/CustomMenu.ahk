@@ -18,6 +18,7 @@ class CustomMenu {
     static subMenuItems := []
     static subMenuLastHoveredEntry := ""
     static subMenuParentEntry := ""
+    static subMenuGraceUntil := 0
 
     ; Given screen coordinates (x, y), returns the monitor index (1-based)
     ; whose bounding rectangle contains the point. Falls back to the primary
@@ -265,12 +266,13 @@ class CustomMenu {
         if subItems.Length == 0
             return
 
-        subItemH := this.itemH
+        subItemH := this.itemH + 4
         subSepH := this.sepH
-        subTopPad := 12
+        subTopPad := 16
+        subBottomPad := 10
         subMenuW := 380
 
-        subTotalH := subTopPad
+        subTotalH := subTopPad + subBottomPad
         for entry in subItems
             subTotalH += entry.isSep ? subSepH : subItemH
 
@@ -314,7 +316,7 @@ class CustomMenu {
 
         ; Position sub-menu to the right of parent, expanding upward.
         ; Bottom of sub-menu aligns with bottom of parent entry.
-        subX := px + pw + 4
+        subX := px + pw + 2
         subY := py + ph - subTotalH
 
         ; Use working area for multi-monitor boundary detection
@@ -323,7 +325,7 @@ class CustomMenu {
 
         ; Flip horizontally if near right edge
         if subX + subMenuW > waRight - 5
-            subX := px - subMenuW - 4
+            subX := px - subMenuW - 2
 
         ; Fall back to downward expansion if upward would go off-screen
         if subY < waTop + 5
@@ -336,6 +338,7 @@ class CustomMenu {
         this.subMenuItems := subItems
         this.subMenuLastHoveredEntry := ""
         this.subMenuParentEntry := parentEntry
+        this.subMenuGraceUntil := A_TickCount + 350
 
         ; Keep parent entry highlighted while sub-menu is open
         this.SetHover(parentEntry, true)
@@ -381,6 +384,7 @@ class CustomMenu {
             this.subMenuItems := []
             this.subMenuLastHoveredEntry := ""
             this.subMenuParentEntry := ""
+            this.subMenuGraceUntil := 0
         }
     }
 
@@ -388,7 +392,31 @@ class CustomMenu {
         if !IsObject(this.menuGui)
             return
 
-        MouseGetPos(, , , &hCtrl, 2)
+        MouseGetPos(&mx, &my, , &hCtrl, 2)
+
+        ; Treat the complete menu windows as safe hover regions. This avoids
+        ; accidental dismissal when crossing the small gap to an upward submenu
+        ; or moving through blank padding inside either menu.
+        mainInside := false
+        subInside := false
+
+        try {
+            if this.menuHwnd && WinExist("ahk_id " this.menuHwnd) {
+                WinGetPos(&mxMain, &myMain, &mwMain, &mhMain, "ahk_id " this.menuHwnd)
+                mainInside := mx >= mxMain && mx <= mxMain + mwMain
+                    && my >= myMain && my <= myMain + mhMain
+            }
+        } catch {
+        }
+
+        try {
+            if this.subMenuHwnd && WinExist("ahk_id " this.subMenuHwnd) {
+                WinGetPos(&mxSub, &mySub, &mwSub, &mhSub, "ahk_id " this.subMenuHwnd)
+                subInside := mx >= mxSub && mx <= mxSub + mwSub
+                    && my >= mySub && my <= mySub + mhSub
+            }
+        } catch {
+        }
 
         ; Check if mouse is over sub-menu
         subHwnd := this.subMenuHwnd
@@ -419,6 +447,11 @@ class CustomMenu {
                 }
                 return
             }
+
+            ; Pointer is inside the submenu window but not over an item,
+            ; such as the top/bottom padding or separator area.
+            if subInside
+                return
         }
 
         ; Check if mouse is over main menu
@@ -475,6 +508,15 @@ class CustomMenu {
             if parentHwnd && hCtrl == parentHwnd
                 return
         }
+
+        ; Keep the main menu open while the pointer is inside its blank
+        ; padding/separator area.
+        if mainInside
+            return
+
+        ; Allow a short crossing window between the parent item and submenu.
+        if this.subMenuGui != "" && A_TickCount < this.subMenuGraceUntil
+            return
 
         ; Mouse outside both menus — close sub-menu and clear highlights
         if this.subMenuGui != ""
