@@ -288,7 +288,7 @@ class WindowHole {
             state.regionActive := true
             return true
         } catch {
-            if isPrimary || AppState.WindowHoleFallbackToMinimize {
+            if AppState.WindowHoleFallbackToMinimize {
                 if state.regionActive
                     this._RestoreOriginalRegion(hwnd, state)
 
