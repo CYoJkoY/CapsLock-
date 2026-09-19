@@ -20,6 +20,13 @@ class WindowHole {
     static DWMSBT_NONE := 1
     static DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 := -4
 
+    ; Chromium uses a high-frequency compositor path. Avoid issuing native
+    ; region changes for sub-pixel-looking mouse motion and cap the update
+    ; frequency without changing the normal-window configuration default.
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 50
+    static CHROMIUM_MIN_MOVE_DISTANCE := 4
+    static CHROMIUM_REGION_REPAIR_INTERVAL := 100
+
     static Active := false
     static SecondLevelActive := false
     static PrimaryHwnd := 0
@@ -88,6 +95,8 @@ class WindowHole {
 
         this.TimerCallback := (*) => this._Update()
         interval := Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
+        if this._IsChromiumWindow(hwnd)
+            interval := Max(interval, this.CHROMIUM_MIN_UPDATE_INTERVAL)
         SetTimer(this.TimerCallback, interval)
         this._Update()
     }
@@ -249,6 +258,8 @@ class WindowHole {
         this.LastMouseY := my
 
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
+        primaryRegionApplied := false
+
         if IsObject(primaryState) && !primaryState.fallback {
             ; The hole follows the cursor only while the cursor is still
             ; geometrically inside the primary window. Once the cursor passes
@@ -256,16 +267,26 @@ class WindowHole {
             ; This is essential for real drag/drop: the cursor must be able
             ; to leave the hole and hit the primary window again.
             if mouseMoved && this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
-                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
-                    this.Stop()
-                    return
+                if this._ShouldApplyPosition(primaryState, mx, my) {
+                    if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
+                        this.Stop()
+                        return
+                    }
+
+                    primaryRegionApplied := true
                 }
             }
 
             ; Chromium-family windows can rebuild their native region during
-            ; internal frame updates. Re-apply the last hole position if the
-            ; browser cleared the custom region without moving the pointer.
-            if primaryState.isChromium && !this._WindowHasActiveRegion(this.PrimaryHwnd) {
+            ; internal frame updates. Repair a lost region only when the
+            ; movement path did not already apply one in this update cycle.
+            if primaryState.isChromium
+                && !primaryRegionApplied
+                && !this._WindowHasActiveRegion(this.PrimaryHwnd)
+                && A_TickCount >= primaryState.nextRegionRepairTick {
+                primaryState.nextRegionRepairTick := A_TickCount
+                    + this.CHROMIUM_REGION_REPAIR_INTERVAL
+
                 if !this._ApplyHole(this.PrimaryHwnd, true, this.LastMouseX, this.LastMouseY) {
                     this.Stop()
                     return
@@ -298,7 +319,9 @@ class WindowHole {
         if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)
             return
 
-        if mouseMoved {
+        secondaryRegionApplied := false
+
+        if mouseMoved && this._ShouldApplyPosition(this.Targets[this.SecondaryHwnd], mx, my) {
             result := this._ApplyHole(
                 this.SecondaryHwnd,
                 false,
@@ -318,8 +341,13 @@ class WindowHole {
                     ),
                     1500
                 )
+            } else {
+                secondaryRegionApplied := true
             }
         }
+
+        if !this.SecondLevelActive || !this.SecondaryHwnd
+            return
 
         secondaryState := this.Targets.Has(this.SecondaryHwnd)
             ? this.Targets[this.SecondaryHwnd]
@@ -327,15 +355,18 @@ class WindowHole {
 
         if IsObject(secondaryState) && !secondaryState.fallback
             && secondaryState.isChromium
-            && !this._WindowHasActiveRegion(this.SecondaryHwnd) {
-            result := this._ApplyHole(
+            && !secondaryRegionApplied
+            && !this._WindowHasActiveRegion(this.SecondaryHwnd)
+            && A_TickCount >= secondaryState.nextRegionRepairTick {
+            secondaryState.nextRegionRepairTick := A_TickCount
+                + this.CHROMIUM_REGION_REPAIR_INTERVAL
+
+            if !this._ApplyHole(
                 this.SecondaryHwnd,
                 false,
                 this.LastMouseX,
                 this.LastMouseY
-            )
-
-            if !result {
+            ) {
                 this.SecondLevelActive := false
                 this.SecondaryHwnd := 0
                 this._RemoveSecondaryTargets()
@@ -449,6 +480,16 @@ class WindowHole {
         } catch {
             return false
         }
+    }
+
+    static _ShouldApplyPosition(state, x, y) {
+        if !IsObject(state) || !state.isChromium || !state.hasAppliedPosition
+            return true
+
+        return Max(
+            Abs(x - state.lastAppliedX),
+            Abs(y - state.lastAppliedY)
+        ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
     }
 
     static _WindowHasActiveRegion(hwnd) {
@@ -575,7 +616,7 @@ class WindowHole {
                 "SetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", region,
-                "Int", 1,
+                "Int", state.isChromium ? 0 : 1,
                 "Int"
             )
 
@@ -586,7 +627,10 @@ class WindowHole {
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
             state.regionActive := true
-            this._RefreshWindow(hwnd)
+            state.lastAppliedX := mx
+            state.lastAppliedY := my
+            state.hasAppliedPosition := true
+            this._RefreshWindow(hwnd, false, state.isChromium)
             return true
         } catch {
             if AppState.WindowHoleFallbackToMinimize {
@@ -717,6 +761,10 @@ class WindowHole {
             fallback: false,
             fallbackPreviousState: 0,
             isChromium: this._IsChromiumWindow(hwnd),
+            lastAppliedX: 0,
+            lastAppliedY: 0,
+            hasAppliedPosition: false,
+            nextRegionRepairTick: 0,
             originalNCRenderingPolicy: 0,
             hadOriginalNCRenderingPolicy: false,
             visualPrepared: false,
@@ -864,7 +912,7 @@ class WindowHole {
         }
 
         state.visualPrepared := true
-        this._RefreshWindow(hwnd, true)
+        this._RefreshWindow(hwnd, true, state.isChromium)
     }
 
     static _RestoreWindowVisualState(hwnd, state) {
@@ -890,13 +938,13 @@ class WindowHole {
             if state.hadOriginalOpacity
                 try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
 
-            this._RefreshWindow(hwnd, true)
+            this._RefreshWindow(hwnd, true, state.isChromium)
         }
 
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd, frameChanged := false) {
+    static _RefreshWindow(hwnd, frameChanged := false, chromium := false) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
 
@@ -921,12 +969,16 @@ class WindowHole {
             )
         }
 
+        redrawFlags := chromium
+            ? 0x0001 | 0x0020 | 0x0100
+            : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
+
         try DllCall(
             "RedrawWindow",
             "Ptr", hwnd,
             "Ptr", 0,
             "Ptr", 0,
-            "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
+            "UInt", redrawFlags
         )
 
         try DllCall("UpdateWindow", "Ptr", hwnd)
@@ -946,7 +998,7 @@ class WindowHole {
                         "SetWindowRgn",
                         "Ptr", hwnd,
                         "Ptr", state.originalRegion,
-                        "Int", 1,
+                        "Int", state.isChromium ? 0 : 1,
                         "Int"
                     )
                 }
@@ -960,9 +1012,16 @@ class WindowHole {
                     try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
                 }
             } else {
-                try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
+                try DllCall(
+                    "SetWindowRgn",
+                    "Ptr", hwnd,
+                    "Ptr", 0,
+                    "Int", state.isChromium ? 0 : 1,
+                    "Int"
+                )
             }
 
+            this._RefreshWindow(hwnd, false, state.isChromium)
             state.regionActive := false
         }
     }

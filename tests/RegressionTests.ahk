@@ -10,6 +10,7 @@ RunTests() {
 
     customMenu := FileRead(root "\History\CustomMenu.ahk", "UTF-8")
     hotkeys := FileRead(root "\Hotkeys\HotkeyBindings.ahk", "UTF-8")
+    windowHole := FileRead(root "\Core\WindowHole.ahk", "UTF-8")
 
     anchorCheck := InStr(
         customMenu,
@@ -37,6 +38,39 @@ RunTests() {
     Assert(
         InStr(hotkeys, '1:: WindowHole.ToggleSecondLevel()') > 0,
         "Second-level Window Hole hotkey binding is missing."
+    )
+
+    Assert(
+        InStr(windowHole, "CHROMIUM_MIN_UPDATE_INTERVAL := 50") > 0,
+        "Chromium update interval safeguard is missing."
+    )
+    Assert(
+        InStr(windowHole, "CHROMIUM_MIN_MOVE_DISTANCE := 4") > 0,
+        "Chromium movement threshold is missing."
+    )
+    Assert(
+        InStr(windowHole, "static _ShouldApplyPosition(state, x, y)") > 0,
+        "Chromium movement filter helper is missing."
+    )
+    Assert(
+        InStr(windowHole, 'state.isChromium ? 0 : 1') > 0,
+        "Chromium SetWindowRgn path does not suppress automatic redraw."
+    )
+    Assert(
+        InStr(windowHole, "redrawFlags := chromium") > 0,
+        "Chromium-specific redraw flags are missing."
+    )
+    Assert(
+        InStr(windowHole, "nextRegionRepairTick") > 0,
+        "Chromium region repair cooldown is missing."
+    )
+    Assert(
+        InStr(windowHole, "primaryRegionApplied := false") > 0,
+        "Primary update path does not prevent same-cycle region reapplication."
+    )
+    Assert(
+        InStr(windowHole, "secondaryRegionApplied := false") > 0,
+        "Secondary update path does not prevent same-cycle region reapplication."
     )
 
     return true
