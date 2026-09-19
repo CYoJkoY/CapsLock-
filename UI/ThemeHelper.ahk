@@ -107,14 +107,67 @@ class ThemeHelper {
     }
 
     static StyleScrollbar(ctrl) {
+        if !IsObject(ctrl)
+            return
+
         try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_Explorer", "ptr", 0)
+        try ctrl.Redraw()
+    }
+
+    static StyleEdit(ctrl) {
+        if !IsObject(ctrl)
+            return
+
+        ; DarkMode_CFD is the Windows theme class used by dark-mode Edit
+        ; controls and also themes the native vertical scrollbar.
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_CFD", "ptr", 0)
+        try ctrl.Redraw()
+    }
+
+    static StyleComboBox(ctrl) {
+        if !IsObject(ctrl)
+            return
+
+        ; Apply the same dark visual family to the ComboBox and its native
+        ; drop-down instead of inheriting the light system theme.
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_CFD", "ptr", 0)
+        try ctrl.Redraw()
     }
 
     static ApplyImmersiveDarkMode(hwnd) {
-        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 20, "int*", 1, "int", 4)
-        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 34, "int*", this.RgbToColorRef(AppState.THEME_BORDER),  "int", 4)
-        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 35, "int*", this.RgbToColorRef(AppState.THEME_SURFACE), "int", 4)
-        try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "int", 36, "int*", this.RgbToColorRef(AppState.THEME_FG),      "int", 4)
+        static DWMWA_USE_IMMERSIVE_DARK_MODE := 20
+        static DWMWA_BORDER_COLOR := 34
+        static DWMWA_CAPTION_COLOR := 35
+        static DWMWA_TEXT_COLOR := 36
+
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_USE_IMMERSIVE_DARK_MODE,
+            "int*", 1,
+            "int", 4
+        )
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_BORDER_COLOR,
+            "int*", this.RgbToColorRef(AppState.THEME_BORDER),
+            "int", 4
+        )
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_CAPTION_COLOR,
+            "int*", this.RgbToColorRef(AppState.THEME_SURFACE),
+            "int", 4
+        )
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_TEXT_COLOR,
+            "int*", this.RgbToColorRef(AppState.THEME_FG),
+            "int", 4
+        )
     }
 
     static AddButton(myGui, options, label, style := "secondary") {
