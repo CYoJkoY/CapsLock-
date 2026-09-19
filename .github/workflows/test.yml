@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install AutoHotkey
-        uses: holy-tao/install-autohotkey@v2
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:
           version: '2.0.27'
 
