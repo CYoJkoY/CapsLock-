@@ -64,6 +64,8 @@ RunTests() {
 
     hotkeys := FileRead(root "\Hotkeys\HotkeyBindings.ahk", "UTF-8")
     windowHole := FileRead(root "\Core\WindowHole.ahk", "UTF-8")
+    trayMenu := FileRead(root "\Tray\TrayMenu.ahk", "UTF-8")
+    customMenu := FileRead(root "\History\CustomMenu.ahk", "UTF-8")
     lang := FileRead(root "\lang.csv", "UTF-8")
 
     expectedHotIf := "#HotIf GetKeyState( " Chr(34) "CapsLock" Chr(34) ", " Chr(34) "P" Chr(34) " ) && !WindowHole.IsActive()"
@@ -77,13 +79,20 @@ RunTests() {
     Assert(InStr(windowHole, "if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {") > 0, "Primary Window Hole failure path is not explicitly scoped.")
     Assert(InStr(windowHole, "if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)") > 0, "Secondary hole does not freeze after penetrating its target.")
 
-    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("circle")') > 0, "Circle shape option is not directly actionable.")
-    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("rounded")') > 0, "Rounded shape option is not directly actionable.")
-    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleShape("square")') > 0, "Square shape option is not directly actionable.")
-    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("hold")') > 0, "Hold activation option is not directly actionable.")
-    Assert(InStr(windowHole, 'callback: (*) => SetWindowHoleActivation("toggle")') > 0, "Toggle activation option is not directly actionable.")
-    Assert(InStr(windowHole, "children: shapeChildren") == 0, "Window Hole shape options are still nested one level too deep.")
-    Assert(InStr(windowHole, "children: activationChildren") == 0, "Window Hole activation options are still nested one level too deep.")
+    Assert(InStr(trayMenu, 'callback: (*) => SetWindowHoleShape("circle")') > 0, "Circle shape option is not directly actionable.")
+    Assert(InStr(trayMenu, 'callback: (*) => SetWindowHoleShape("rounded")') > 0, "Rounded shape option is not directly actionable.")
+    Assert(InStr(trayMenu, 'callback: (*) => SetWindowHoleShape("square")') > 0, "Square shape option is not directly actionable.")
+    Assert(InStr(trayMenu, 'callback: (*) => SetWindowHoleActivation("hold")') > 0, "Hold activation option is not directly actionable.")
+    Assert(InStr(trayMenu, 'callback: (*) => SetWindowHoleActivation("toggle")') > 0, "Toggle activation option is not directly actionable.")
+    Assert(InStr(trayMenu, "children: shapeChildren") > 0, "Window Hole shape choices are not grouped behind a Hole shape submenu.")
+    Assert(InStr(trayMenu, "children: activationChildren") > 0, "Window Hole activation choices are not grouped behind an Activation submenu.")
+    Assert(InStr(trayMenu, 'Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape")') > 0, "Hole shape parent entry is missing.")
+    Assert(InStr(trayMenu, 'Lang("MENU_WINDOW_HOLE_ACTIVATION", "Activation")') > 0, "Activation parent entry is missing.")
+
+    Assert(InStr(customMenu, "static nestedSubMenuGui := " Chr(34) Chr(34)) > 0, "CustomMenu has no nested submenu state.")
+    Assert(InStr(customMenu, "static ToggleNestedSubMenu(entry, *)") > 0, "CustomMenu has no nested submenu toggle handler.")
+    Assert(InStr(customMenu, "static ShowNestedSubMenu(parentEntry)") > 0, "CustomMenu has no nested submenu renderer.")
+    Assert(InStr(customMenu, "if hasChildren") > 0, "CustomMenu does not preserve children while normalizing submenu entries.")
 
     Assert(InStr(lang, "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE") > 0, "Missing localized second-level unavailable message.")
 

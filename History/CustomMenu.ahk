@@ -21,6 +21,16 @@ class CustomMenu {
     static subMenuParentEntry := ""
     static subMenuGraceUntil := 0
 
+    ; One additional submenu level is supported for grouped tray settings.
+    ; This keeps the renderer reusable while preventing unbounded recursive
+    ; popup windows and hover-state complexity.
+    static nestedSubMenuGui := ""
+    static nestedSubMenuHwnd := 0
+    static nestedSubMenuItems := []
+    static nestedSubMenuLastHoveredEntry := ""
+    static nestedSubMenuParentEntry := ""
+    static nestedSubMenuGraceUntil := 0
+
     ; Given screen coordinates (x, y), returns the monitor index (1-based)
     ; whose bounding rectangle contains the point. Falls back to the primary
     ; monitor if no match is found.
@@ -342,7 +352,11 @@ class CustomMenu {
             entry.bgCtrl := bgCtrl
             entry.txtCtrl := txtCtrl
 
-            if entry.HasProp("callback") && IsObject(entry.callback) {
+            if entry.HasProp("children") {
+                cb := ObjBindMethod(this, "ToggleNestedSubMenu", entry)
+                bgCtrl.OnEvent("Click", cb)
+                txtCtrl.OnEvent("Click", cb)
+            } else if entry.HasProp("callback") && IsObject(entry.callback) {
                 cb := ObjBindMethod(this, "InvokeSubAndClose", entry.callback)
                 bgCtrl.OnEvent("Click", cb)
                 txtCtrl.OnEvent("Click", cb)
@@ -399,21 +413,173 @@ class CustomMenu {
 
             label := entry.HasProp("label") ? String(entry.label) : ""
             callback := entry.HasProp("callback") ? entry.callback : ""
+            hasChildren := entry.HasProp("children")
+                && IsObject(entry.children)
+                && entry.children.Length > 0
 
-            out.Push({
+            displayLabel := hasChildren
+                ? this.ClipLabel(label, 42) . "  ▶"
+                : this.ClipLabel(label, 44)
+
+            outEntry := {
                 isSep: false,
-                label: this.ClipLabel(label, 44),
+                label: displayLabel,
                 callback: callback,
                 bgCtrl: "",
                 txtCtrl: ""
-            })
+            }
+
+            if hasChildren
+                outEntry.children := entry.children
+
+            out.Push(outEntry)
         }
         return out
     }
 
+    static ToggleNestedSubMenu(entry, *) {
+        if this.nestedSubMenuParentEntry == entry && this.nestedSubMenuGui != "" {
+            this.HideNestedSubMenu()
+        } else {
+            this.HideNestedSubMenu()
+            this.ShowNestedSubMenu(entry)
+        }
+    }
+
+    static ShowNestedSubMenu(parentEntry) {
+        if !parentEntry.HasProp("children")
+            return
+
+        children := parentEntry.children
+        if !IsObject(children) || children.Length == 0
+            return
+
+        ; The parent entry belongs to the first submenu, so resolve its
+        ; screen position against that submenu's window rather than the main
+        ; tray menu.
+        try {
+            parentEntry.bgCtrl.GetPos(&px, &py, &pw, &ph)
+            WinGetPos(&wx, &wy, , , "ahk_id " this.subMenuHwnd)
+            px += wx
+            py += wy
+        } catch {
+            return
+        }
+
+        nestedItems := this.NormalizeSubItems(children)
+        if nestedItems.Length == 0
+            return
+
+        nestedItemH := this.itemH + 4
+        nestedSepH := this.sepH
+        nestedTopPad := 16
+        nestedBottomPad := 10
+        nestedMenuW := 380
+
+        nestedTotalH := nestedTopPad + nestedBottomPad
+        for entry in nestedItems
+            nestedTotalH += entry.isSep ? nestedSepH : nestedItemH
+
+        nestedGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
+        nestedGui.BackColor := AppState.THEME_SURFACE
+        nestedGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+
+        curY := nestedTopPad // 2
+        for entry in nestedItems {
+            if entry.isSep {
+                nestedGui.Add(
+                    "Text",
+                    "x12 y" (curY + 3) " w" (nestedMenuW - 24) " h1 Background" AppState.THEME_BORDER
+                )
+                curY += nestedSepH
+                continue
+            }
+
+            bgCtrl := nestedGui.Add(
+                "Text",
+                "x4 y" curY " w" (nestedMenuW - 8) " h" nestedItemH " +0x0100 Background" AppState.THEME_SURFACE
+            )
+
+            txtCtrl := nestedGui.Add(
+                "Text",
+                "x16 y" (curY + (nestedItemH - 20) // 2)
+                    " w" (nestedMenuW - 40)
+                    " h20 +0x0100 Background" AppState.THEME_SURFACE,
+                entry.label
+            )
+
+            entry.bgCtrl := bgCtrl
+            entry.txtCtrl := txtCtrl
+
+            if entry.HasProp("callback") && IsObject(entry.callback) {
+                cb := ObjBindMethod(this, "InvokeSubAndClose", entry.callback)
+                bgCtrl.OnEvent("Click", cb)
+                txtCtrl.OnEvent("Click", cb)
+            }
+
+            curY += nestedItemH
+        }
+
+        nestedX := px + pw + this.subMenuGap
+        nestedY := py
+
+        monIdx := this.FindMonitorIndex(px + pw // 2, py + ph // 2)
+        MonitorGetWorkArea(monIdx, &waLeft, &waTop, &waRight, &waBottom)
+
+        if nestedX + nestedMenuW > waRight - 5
+            nestedX := px - nestedMenuW - this.subMenuGap
+
+        nestedPos := this.ClampWindowPosition(
+            nestedX,
+            nestedY,
+            nestedMenuW,
+            nestedTotalH,
+            waLeft,
+            waTop,
+            waRight,
+            waBottom
+        )
+        nestedX := nestedPos.x
+        nestedY := nestedPos.y
+
+        this.nestedSubMenuGui := nestedGui
+        this.nestedSubMenuHwnd := nestedGui.Hwnd
+        this.nestedSubMenuItems := nestedItems
+        this.nestedSubMenuLastHoveredEntry := ""
+        this.nestedSubMenuParentEntry := parentEntry
+        this.nestedSubMenuGraceUntil := A_TickCount + 350
+
+        this.SetHover(parentEntry, true)
+
+        ThemeHelper.ApplyImmersiveDarkMode(this.nestedSubMenuHwnd)
+        nestedGui.Show(
+            "x" nestedX " y" nestedY
+            " w" nestedMenuW " h" nestedTotalH " NoActivate"
+        )
+        this.RepositionShownWindow(this.nestedSubMenuHwnd, monIdx)
+    }
+
+    static HideNestedSubMenu() {
+        if this.nestedSubMenuGui == ""
+            return
+
+        if this.nestedSubMenuParentEntry != "" && IsObject(this.nestedSubMenuParentEntry)
+            this.SetHover(this.nestedSubMenuParentEntry, false)
+
+        try this.nestedSubMenuGui.Destroy()
+        this.nestedSubMenuGui := ""
+        this.nestedSubMenuHwnd := 0
+        this.nestedSubMenuItems := []
+        this.nestedSubMenuLastHoveredEntry := ""
+        this.nestedSubMenuParentEntry := ""
+        this.nestedSubMenuGraceUntil := 0
+    }
+
     static HideSubMenu() {
+        this.HideNestedSubMenu()
+
         if this.subMenuGui != "" {
-            ; Restore parent entry normal state
+            ; Restore parent entry normal state.
             if this.subMenuParentEntry != "" && IsObject(this.subMenuParentEntry)
                 this.SetHover(this.subMenuParentEntry, false)
 
@@ -433,11 +599,9 @@ class CustomMenu {
 
         MouseGetPos(&mx, &my, , &hCtrl, 2)
 
-        ; Treat the complete menu windows as safe hover regions. This avoids
-        ; accidental dismissal while crossing the small gap to an adjacent
-        ; submenu or moving through blank padding inside either menu.
         mainInside := false
         subInside := false
+        nestedInside := false
 
         try {
             if this.menuHwnd && WinExist("ahk_id " this.menuHwnd) {
@@ -457,9 +621,54 @@ class CustomMenu {
         } catch {
         }
 
-        ; Check if mouse is over sub-menu
-        subHwnd := this.subMenuHwnd
-        if subHwnd && WinExist("ahk_id " subHwnd) {
+        try {
+            if this.nestedSubMenuHwnd && WinExist("ahk_id " this.nestedSubMenuHwnd) {
+                WinGetPos(&mxNested, &myNested, &mwNested, &mhNested, "ahk_id " this.nestedSubMenuHwnd)
+                nestedInside := mx >= mxNested && mx <= mxNested + mwNested
+                    && my >= myNested && my <= myNested + mhNested
+            }
+        } catch {
+        }
+
+        ; Check the deepest submenu first.
+        if this.nestedSubMenuHwnd && WinExist("ahk_id " this.nestedSubMenuHwnd) {
+            nestedHovered := ""
+            if hCtrl {
+                for entry in this.nestedSubMenuItems {
+                    if entry.isSep
+                        continue
+                    try {
+                        if entry.bgCtrl.Hwnd == hCtrl || entry.txtCtrl.Hwnd == hCtrl {
+                            nestedHovered := entry
+                            break
+                        }
+                    }
+                }
+            }
+
+            if nestedHovered != "" {
+                if this.nestedSubMenuLastHoveredEntry != nestedHovered
+                    this.SetHover(this.nestedSubMenuLastHoveredEntry, false)
+
+                this.SetHover(nestedHovered, true)
+                this.nestedSubMenuLastHoveredEntry := nestedHovered
+
+                ; The nested level is the deepest supported level. Its entries
+                ; are expected to be actions rather than more submenus.
+                if nestedHovered.HasProp("children")
+                    return
+                return
+            }
+
+            if nestedInside
+                return
+
+            if this.nestedSubMenuGui != "" && A_TickCount < this.nestedSubMenuGraceUntil
+                return
+        }
+
+        ; Then inspect the first submenu.
+        if this.subMenuHwnd && WinExist("ahk_id " this.subMenuHwnd) {
             subHovered := ""
             if hCtrl {
                 for entry in this.subMenuItems {
@@ -475,25 +684,35 @@ class CustomMenu {
             }
 
             if subHovered != "" {
-                ; Mouse on sub-menu item
-                this.SetHover(this.subMenuLastHoveredEntry, false)
-                this.SetHover(subHovered, true)
-                this.subMenuLastHoveredEntry := subHovered
-                ; Clear main menu hover (parent stays highlighted)
+                if this.subMenuLastHoveredEntry != subHovered {
+                    this.SetHover(this.subMenuLastHoveredEntry, false)
+                    this.SetHover(subHovered, true)
+                    this.subMenuLastHoveredEntry := subHovered
+                }
+
+                ; Parent menu stays highlighted while its submenu is open.
                 if this.lastHoveredEntry != "" && this.lastHoveredEntry != this.subMenuParentEntry {
                     this.SetHover(this.lastHoveredEntry, false)
                     this.lastHoveredEntry := ""
                 }
+
+                if subHovered.HasProp("children") {
+                    if this.nestedSubMenuParentEntry != subHovered {
+                        this.HideNestedSubMenu()
+                        this.ShowNestedSubMenu(subHovered)
+                    }
+                } else if this.nestedSubMenuGui != "" {
+                    this.HideNestedSubMenu()
+                }
+
                 return
             }
 
-            ; Pointer is inside the submenu window but not over an item,
-            ; such as the top/bottom padding or separator area.
             if subInside
                 return
         }
 
-        ; Check if mouse is over main menu
+        ; Finally inspect the main menu.
         hovered := ""
         if hCtrl {
             for entry in this.items {
@@ -509,57 +728,43 @@ class CustomMenu {
         }
 
         if hovered != "" {
-            ; Clear sub-menu hover
+            if this.nestedSubMenuGui != ""
+                this.HideNestedSubMenu()
+
             if this.subMenuLastHoveredEntry != "" {
                 this.SetHover(this.subMenuLastHoveredEntry, false)
                 this.subMenuLastHoveredEntry := ""
             }
 
-            ; Update main menu hover
             if hovered != this.lastHoveredEntry {
                 this.SetHover(this.lastHoveredEntry, false)
                 this.SetHover(hovered, true)
                 this.lastHoveredEntry := hovered
             }
 
-            ; Show sub-menu if entry has children
             if hovered.HasProp("children") {
                 if this.subMenuParentEntry != hovered {
                     this.HideSubMenu()
                     this.ShowSubMenu(hovered)
                 }
-            } else {
-                ; Close sub-menu if hovering a non-parent entry
-                if this.subMenuGui != ""
-                    this.HideSubMenu()
+            } else if this.subMenuGui != "" {
+                this.HideSubMenu()
             }
+
             return
         }
 
-        ; Mouse not on main menu and not on sub-menu
-        ; Check if mouse is still on parent entry (keep sub-menu open)
-        if this.subMenuParentEntry != "" {
-            parentHwnd := ""
-            try parentHwnd := this.subMenuParentEntry.bgCtrl.Hwnd
-            if parentHwnd && hCtrl == parentHwnd
-                return
-            try parentHwnd := this.subMenuParentEntry.txtCtrl.Hwnd
-            if parentHwnd && hCtrl == parentHwnd
-                return
-        }
-
-        ; Keep the main menu open while the pointer is inside its blank
-        ; padding/separator area.
-        if mainInside
+        ; Keep open while inside menu padding or while crossing a narrow gap.
+        if nestedInside || subInside || mainInside
             return
 
-        ; Allow a short crossing window between the parent item and submenu.
         if this.subMenuGui != "" && A_TickCount < this.subMenuGraceUntil
             return
 
-        ; Mouse outside both menus — close sub-menu and clear highlights
-        if this.subMenuGui != ""
-            this.HideSubMenu()
+        if this.nestedSubMenuGui != "" && A_TickCount < this.nestedSubMenuGraceUntil
+            return
+
+        this.Hide()
 
         if this.lastHoveredEntry != "" {
             this.SetHover(this.lastHoveredEntry, false)
@@ -597,8 +802,9 @@ class CustomMenu {
     static CheckOutsideClick() {
         hasMain := IsObject(this.menuGui) && WinExist("ahk_id " this.menuHwnd)
         hasSub := this.subMenuGui != "" && WinExist("ahk_id " this.subMenuHwnd)
+        hasNested := this.nestedSubMenuGui != "" && WinExist("ahk_id " this.nestedSubMenuHwnd)
 
-        if !hasMain && !hasSub {
+        if !hasMain && !hasSub && !hasNested {
             if this.outsideTimer != ""
                 SetTimer(this.outsideTimer, 0)
             return
@@ -610,6 +816,7 @@ class CustomMenu {
         MouseGetPos(&mx, &my)
         insideMain := false
         insideSub := false
+        insideNested := false
 
         if hasMain {
             try {
@@ -627,7 +834,15 @@ class CustomMenu {
             }
         }
 
-        if !insideMain && !insideSub
+        if hasNested {
+            try {
+                WinGetPos(&nx, &ny, &nw, &nh, "ahk_id " this.nestedSubMenuHwnd)
+                if mx >= nx && mx <= nx + nw && my >= ny && my <= ny + nh
+                    insideNested := true
+            }
+        }
+
+        if !insideMain && !insideSub && !insideNested
             this.Hide()
     }
 
