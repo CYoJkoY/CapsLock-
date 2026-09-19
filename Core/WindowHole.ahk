@@ -23,9 +23,9 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 50
-    static CHROMIUM_MIN_MOVE_DISTANCE := 4
-    static CHROMIUM_REGION_REPAIR_INTERVAL := 100
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 60
+    static CHROMIUM_MIN_MOVE_DISTANCE := 8
+    static CHROMIUM_REGION_REPAIR_INTERVAL := 250
 
     static Active := false
     static SecondLevelActive := false
@@ -590,6 +590,7 @@ class WindowHole {
             baseRegion := state.hadOriginalRegion
                 ? state.originalRegion
                 : 0
+            firstRegionApply := !state.hasAppliedPosition
 
             region := this._CreateDifferenceRegion(
                 ww,
@@ -630,7 +631,13 @@ class WindowHole {
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
-            this._RefreshWindow(hwnd, false, state.isChromium)
+
+            ; Chromium's compositor is sensitive to repeated synchronous
+            ; redraws. The native region change is sufficient for subsequent
+            ; pointer moves; only refresh the first region application.
+            if !state.isChromium || firstRegionApply
+                this._RefreshWindow(hwnd, false, state.isChromium)
+
             return true
         } catch {
             if AppState.WindowHoleFallbackToMinimize {
@@ -970,7 +977,7 @@ class WindowHole {
         }
 
         redrawFlags := chromium
-            ? 0x0001 | 0x0020 | 0x0100
+            ? 0x0001 | 0x0020
             : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
 
         try DllCall(
@@ -981,7 +988,8 @@ class WindowHole {
             "UInt", redrawFlags
         )
 
-        try DllCall("UpdateWindow", "Ptr", hwnd)
+        if !chromium
+            try DllCall("UpdateWindow", "Ptr", hwnd)
 
 
     }
