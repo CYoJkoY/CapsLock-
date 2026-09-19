@@ -17,6 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare build directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force .\build | Out-Null
+
       - name: Build regression tests
         uses: benmusson/ahk2exe-action@v1
         with:
