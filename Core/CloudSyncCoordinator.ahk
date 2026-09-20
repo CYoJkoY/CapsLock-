@@ -14,8 +14,12 @@ class CloudSyncCoordinator {
         AppState.CloudSyncLocalDirty :=
             CloudSyncState.Get("Sync", "localDirty", "0") == "1"
 
-        if AppState.CloudSyncEnabled && AppState.CloudSyncAutoEnabled
+        if AppState.CloudSyncEnabled
+            && AppState.CloudSyncAutoEnabled
+            && AppState.CloudSyncState != "recovery-error"
+        {
             this.StartAutoSync()
+        }
     }
 
     static Shutdown() {
@@ -116,6 +120,10 @@ class CloudSyncCoordinator {
 
         if !AppState.CloudSyncEnabled {
             this._SetState("disabled")
+            return false
+        }
+
+        if AppState.CloudSyncState == "recovery-error" {
             return false
         }
 
