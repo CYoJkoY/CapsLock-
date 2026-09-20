@@ -388,6 +388,7 @@ class WindowHole {
 
         if isChromium
             this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
+    }
 
     static _GetPhysicalCursorPosition(&x, &y) {
         x := 0
