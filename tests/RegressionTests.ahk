@@ -25,7 +25,7 @@ RunTests() {
         "Chrome_RenderWidgetHostHWND is not recognized as a Chromium rendering surface."
     )
     Assert(
-        InStr(source, 'DllCall("EnumChildWindows"') > 0,
+        InStr(source, '"EnumChildWindows",') > 0,
         "Child-window enumeration is missing."
     )
     Assert(
@@ -57,7 +57,7 @@ RunTests() {
         "Task Manager child-surface state map is missing."
     )
     Assert(
-        InStr(source, "static _UpdateTaskManagerCompanions") > 0,
+        InStr(source, "static _UpdateTaskManagerSurfaces") > 0,
         "Task Manager surface update path is missing."
     )
     Assert(
