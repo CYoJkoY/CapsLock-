@@ -624,9 +624,68 @@ class WindowHole {
 
             className := WinGetClass("ahk_id " hwnd)
 
-            return className == "GlassWindow"
+            if className == "GlassWindow"
                 || className == "FilterControlGlassWindow"
                 || className == "NativeHWNDHost"
+                return true
+
+            ; Newer Task Manager builds can introduce additional helper windows
+            ; for the same composed surface. Only accept a large visible helper
+            ; that substantially overlaps the main Task Manager window and is
+            ; either ownerless or owned directly by that main window.
+            if className == "TaskManagerWindow"
+                || className == "#32770"
+                || className == "tooltips_class32"
+                return false
+
+            owner := DllCall(
+                "GetWindow",
+                "Ptr", hwnd,
+                "UInt", 4, ; GW_OWNER
+                "Ptr"
+            )
+
+            if owner && owner != this.PrimaryHwnd
+                return false
+
+            if !this._GetPhysicalWindowGeometry(
+                hwnd,
+                &helperX,
+                &helperY,
+                &helperW,
+                &helperH
+            )
+                return false
+
+            if helperW < this.TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH
+                || helperH < this.TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT
+                return false
+
+            if !this._GetPhysicalWindowGeometry(
+                this.PrimaryHwnd,
+                &primaryX,
+                &primaryY,
+                &primaryW,
+                &primaryH
+            )
+                return false
+
+            overlapLeft := Max(helperX, primaryX)
+            overlapTop := Max(helperY, primaryY)
+            overlapRight := Min(
+                helperX + helperW,
+                primaryX + primaryW
+            )
+            overlapBottom := Min(
+                helperY + helperH,
+                primaryY + primaryH
+            )
+
+            overlapW := overlapRight - overlapLeft
+            overlapH := overlapBottom - overlapTop
+
+            return overlapW >= Floor(helperW * 0.8)
+                && overlapH >= Floor(helperH * 0.8)
         } catch {
             return false
         }
