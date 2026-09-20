@@ -30,3 +30,14 @@ class HttpClient {
             && response.status < 300
     }
 }
+
+
+FormUrlEncode(values) {
+    result := ""
+    for key, value in values {
+        if result != ""
+            result .= "&"
+        result .= UriEncode(String(key)) "=" UriEncode(String(value))
+    }
+    return result
+}
