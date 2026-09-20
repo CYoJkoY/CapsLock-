@@ -163,9 +163,16 @@ ShowCloudSyncSettings(*) {
         CloudSyncCoordinator.GetStatusText()
     )
 
+    lastSuccess := myGui.Add(
+        "Text",
+        "w620 y+6",
+        Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
+            ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
+    )
+
     saveBtn := ThemeHelper.AddButton(
         myGui,
-        "Default w110 y+14",
+        "Default w100 y+14",
         "✓ " Lang("GUI_SAVE", "Save"),
         "primary"
     )
@@ -181,9 +188,14 @@ ShowCloudSyncSettings(*) {
     )
     resetBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w100",
+        "x+8 w90",
         Lang("GUI_CLOUD_SYNC_RESET", "Reset"),
         "danger"
+    )
+    disconnectBtn := ThemeHelper.AddButton(
+        myGui,
+        "x+8 w100",
+        Lang("GUI_CLOUD_SYNC_DISCONNECT", "Disconnect")
     )
     closeBtn := ThemeHelper.AddButton(
         myGui,
@@ -409,6 +421,8 @@ ShowCloudSyncSettings(*) {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_AUTH_FAILED", "Cloud Sync connection failed."), 2200)
 
         status.Text := CloudSyncCoordinator.GetStatusText()
+        lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
+            ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
 
     Sync(*) {
@@ -421,6 +435,8 @@ ShowCloudSyncSettings(*) {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention."), 2400)
 
         status.Text := CloudSyncCoordinator.GetStatusText()
+        lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
+            ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
 
     Reset(*) {
@@ -438,6 +454,8 @@ ShowCloudSyncSettings(*) {
         CloudSyncCoordinator.ResetProvider()
         LoadFields()
         status.Text := CloudSyncCoordinator.GetStatusText()
+        lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
+            ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
 
     AuthorizeGoogle(*) {
@@ -472,6 +490,12 @@ ShowCloudSyncSettings(*) {
     connectBtn.OnEvent("Click", Connect)
     syncBtn.OnEvent("Click", Sync)
     resetBtn.OnEvent("Click", Reset)
+    disconnectBtn.OnEvent("Click", (*) => (
+        CloudSyncCoordinator.Disconnect(),
+        status.Text := CloudSyncCoordinator.GetStatusText(),
+        lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
+            ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
+    ))
     closeBtn.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
     myGui.OnEvent("Close", (*) => myGui.Destroy())
