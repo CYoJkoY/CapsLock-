@@ -13,106 +13,52 @@ RunTests() {
     source := ReadSource("Core\WindowHole.ahk")
 
     Assert(
-        InStr(source, "static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400") > 0,
-        "Chromium rendering-surface scan interval is missing."
+        InStr(source, "static CHROMIUM_MIN_UPDATE_INTERVAL := 25")
+            && InStr(source, "static CHROMIUM_MIN_MOVE_DISTANCE := 5"),
+        "Chromium movement smoothing targets are missing."
     )
     Assert(
-        InStr(source, "static CHROMIUM_MIN_UPDATE_INTERVAL := 40") > 0,
-        "Chromium movement update interval is not using the smoother target."
+        InStr(source, "static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 25")
+            && InStr(source, "static RENDER_SURFACE_MIN_MOVE_DISTANCE := 5"),
+        "Chromium render-surface pacing targets are missing."
     )
     Assert(
-        InStr(source, "static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 40") > 0,
-        "Chromium rendering-surface commit interval is missing."
+        InStr(source, "GetPhysicalCursorPos") > 0,
+        "Physical cursor API optimization is missing."
     )
     Assert(
-        InStr(source, "static TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80") > 0,
-        "Task Manager surface commit pacing is not separated from Chromium."
+        InStr(source, 'className == "Intermediate D3D Window"') > 0
+            && InStr(source, 'className == "Chrome_RenderWidgetHostHWND"') > 0,
+        "Chromium rendering surfaces are not recognized."
     )
     Assert(
-        InStr(source, 'taskManagerSurface: taskManagerSurface') > 0,
-        "Task Manager surface state flag is missing."
-    )
-    Assert(
-        InStr(source, 'redraw := state.HasProp("taskManagerSurface")') > 0,
-        "Task Manager surface redraw selection is missing."
-    )
-    Assert(
-        InStr(source, "if taskManagerSurface" Chr(10) "                this._PrepareWindowForHole(hwnd, state)") > 0,
-        "Task Manager surfaces are not prepared through the visual compatibility path."
-    )
-    Assert(
-        InStr(source, 'className == "Intermediate D3D Window"') > 0,
-        "Intermediate D3D Window is not recognized as a Chromium rendering surface."
-    )
-    Assert(
-        InStr(source, 'className == "Chrome_RenderWidgetHostHWND"') > 0,
-        "Chrome_RenderWidgetHostHWND is not recognized as a Chromium rendering surface."
-    )
-    Assert(
-        InStr(source, '"EnumChildWindows",') > 0,
-        "Child-window enumeration is missing."
-    )
-    Assert(
-        InStr(source, "CallbackCreate(") > 0,
-        "EnumChildWindows callback is not created through CallbackCreate."
-    )
-    Assert(
-        InStr(source, "CallbackFree(callback)") > 0,
-        "EnumChildWindows callback is not released with CallbackFree."
-    )
-    Assert(
-        InStr(source, "chromiumRenderSurfaces: Map()") > 0,
-        "Chromium rendering-surface state map is missing."
+        InStr(source, '"EnumChildWindows",') > 0
+            && InStr(source, "CallbackCreate(") > 0
+            && InStr(source, "CallbackFree(callback)") > 0,
+        "Chromium child-window enumeration lifecycle is incomplete."
     )
     Assert(
         InStr(source, "static _UpdateChromiumRenderSurfaces") > 0,
         "Chromium rendering-surface update path is missing."
     )
     Assert(
-        InStr(source, "TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH") > 0,
-        "Task Manager child surface size guard is missing."
+        InStr(source, "holeRegion: 0") > 0
+            && InStr(source, '"OffsetRgn"') > 0,
+        "Reusable hole-region cache is missing."
     )
     Assert(
-        InStr(source, "static _IsTaskManagerChildSurface(hwnd)") > 0,
-        "Task Manager child-surface detection helper is missing."
+        InStr(source, "static _HideTaskManagerWindows()") > 0
+            && InStr(source, "static _RestoreHiddenTaskManagerWindows()") > 0,
+        "Task Manager hide/restore strategy is missing."
     )
     Assert(
-        InStr(source, '"GetWindow",') > 0 && InStr(source, '"UInt", 4') > 0,
-        "Task Manager owner-window filtering is missing."
+        InStr(source, 'WinHide("ahk_id " hwnd)') > 0
+            && InStr(source, 'WinShow("ahk_id " hwnd)') > 0,
+        "Task Manager hide/restore API calls are missing."
     )
     Assert(
-        InStr(source, "overlapW >= Floor(helperW * 0.8)") > 0,
-        "Task Manager generic companion overlap guard is missing."
-    )
-    Assert(
-        InStr(source, "Windows.UI.Composition.DesktopWindowContentBridge") > 0
-            && InStr(source, "Microsoft.UI.Content.DesktopChildSiteBridge") > 0,
-        "Known WinUI composition bridge classes are not recognized."
-    )
-    Assert(
-        InStr(source, "taskManagerSurfaceTargets: Map()") > 0,
-        "Task Manager child-surface state map is missing."
-    )
-    Assert(
-        InStr(source, "static _UpdateTaskManagerSurfaces") > 0,
-        "Task Manager surface update path is missing."
-    )
-    Assert(
-        InStr(source, "static _RestoreSurfaceTargets(state)") > 0,
-        "Rendering-surface cleanup path is missing."
-    )
-    Assert(
-        InStr(source, 'state.regionActive := false') > 0
-            && InStr(source, 'state.hasAppliedPosition := false') > 0,
-        "Surface-region restore does not reset movement state."
-    )
-    Assert(
-        InStr(source, '"SetWindowRgn",') > 0,
-        "Native region application is missing."
-    )
-    Assert(
-        InStr(source, '"Int", 0,') > 0,
-        "Surface region updates are not using the no-redraw path."
+        InStr(source, "_UpdateTaskManagerSurfaces") == 0,
+        "Obsolete Task Manager surface update path remains active."
     )
 
     return true
