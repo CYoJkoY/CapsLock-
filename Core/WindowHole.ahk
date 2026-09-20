@@ -342,7 +342,10 @@ class WindowHole {
         ; A layer follows the cursor while the cursor remains inside that
         ; window's geometry. Once the cursor leaves the window, its last hole
         ; position is preserved until the cursor re-enters its bounds.
-        for layerHwnd in this.HoleLayerOrder {
+        ; Clone the layer order because a failed region update can remove its
+        ; target while this pass is iterating.
+        layerHwnds := this.HoleLayerOrder.Clone()
+        for layerHwnd in layerHwnds {
             if !this.Targets.Has(layerHwnd)
                 continue
 
@@ -382,7 +385,7 @@ class WindowHole {
         ; This is important when a Chromium window is a secondary target:
         ; visual clipping alone is insufficient because its compositor HWNDs
         ; can remain the hit-test surface.
-        for layerHwnd in this.HoleLayerOrder {
+        for layerHwnd in layerHwnds {
             if !this.Targets.Has(layerHwnd)
                 continue
 
@@ -1350,6 +1353,7 @@ class WindowHole {
             }
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
+            firstRegionApply := !state.hasAppliedPosition
             state.regionActive := true
 
             state.lastAppliedX := mx
@@ -1359,7 +1363,7 @@ class WindowHole {
             ; Keep top-level region application separate from Chromium
             ; child-surface synchronization. _Update() handles the latter for
             ; every active HoleTarget, not only the primary window.
-            if !state.isChromium || !state.hasAppliedPosition
+            if !state.isChromium || firstRegionApply
                 this._RefreshWindow(
                     hwnd,
                     false,
@@ -1387,14 +1391,14 @@ class WindowHole {
             }
 
             this.Targets.Delete(hwnd)
-            this._RemoveHoleLayer(hwnd, true)
+            this._RemoveHoleLayer(hwnd)
             this._SetChromiumMousePassthrough(hwnd, false)
             return false
         }
     }
 
-    static _RemoveHoleLayer(hwnd, addedTarget := true) {
-        if !addedTarget || !this.HoleLayerOrder.Length
+    static _RemoveHoleLayer(hwnd) {
+        if !this.HoleLayerOrder.Length
             return
 
         for index, layerHwnd in this.HoleLayerOrder {
