@@ -228,12 +228,16 @@ class CloudSyncCoordinator {
         fingerprint := IsObject(response)
             ? response.Get("fingerprint", localHash)
             : localHash
+        providerRevision := IsObject(response)
+            ? response.Get("providerRevision", "")
+            : ""
 
         this._SaveBase(remotePackage)
         this._SetSuccessfulSync(
             remotePackage["revision"]["id"],
             fingerprint,
-            localHash
+            localHash,
+            providerRevision
         )
         return true
     }
@@ -313,10 +317,28 @@ class CloudSyncCoordinator {
         if !IsObject(conflictPackage)
             return false
 
-        result := this.ApplyRemote(conflictPackage)
-        if result
-            AppState.CloudSyncConflict := false
-        return result
+        try {
+            provider := this._GetProvider()
+            provider.Connect()
+
+            currentRemote := provider.Download()
+            expectedFingerprint :=
+                CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+
+            if !IsObject(currentRemote)
+                || !currentRemote.Get("exists", false)
+                || expectedFingerprint == ""
+                || currentRemote.Get("fingerprint", "") != expectedFingerprint
+            {
+                throw Error("The remote sync target changed while the conflict was open.")
+            }
+
+            result := this.ApplyRemote(conflictPackage, currentRemote)
+            return result
+        } catch as err {
+            this._HandleFailure(err)
+            return false
+        }
     }
 
     static ResolveMerge() {
@@ -346,9 +368,26 @@ class CloudSyncCoordinator {
         AppState.CloudSyncConflict := false
 
         provider := this._GetProvider()
+        provider.Connect()
+
+        currentRemote := provider.Download()
+        expectedFingerprint :=
+            CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+
+        if !IsObject(currentRemote)
+            || !currentRemote.Get("exists", false)
+            || expectedFingerprint == ""
+            || currentRemote.Get("fingerprint", "") != expectedFingerprint
+        {
+            AppState.CloudSyncConflict := true
+            this._SetState("conflict")
+            return false
+        }
+
         upload := provider.Upload(
             CloudSyncModel.Serialize(mergedPackage),
-            mergedPackage["integrity"]["contentHash"]
+            mergedPackage["integrity"]["contentHash"],
+            currentRemote.Get("providerRevision", "")
         )
 
         return this._HandleUploadSuccess(upload, mergedPackage)
@@ -416,7 +455,7 @@ class CloudSyncCoordinator {
         return true
     }
 
-    static _SetSuccessfulSync(revision, fingerprint, localHash) {
+    static _SetSuccessfulSync(revision, fingerprint, localHash, providerRevision := "") {
         AppState.CloudSyncLastSuccess :=
             FormatTime(, "yyyy-MM-dd HH:mm:ss")
         AppState.CloudSyncLocalDirty := false
