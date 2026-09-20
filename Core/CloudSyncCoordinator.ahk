@@ -70,6 +70,11 @@ class CloudSyncCoordinator {
         if this.Syncing
             return false
 
+        if !AppState.CloudSyncEnabled {
+            this._SetState("disabled")
+            return false
+        }
+
         try {
             provider := this._GetProvider()
             provider.Connect()
@@ -196,16 +201,17 @@ class CloudSyncCoordinator {
                 return this._CreateConflict(localPackage, remotePackage, merge.conflicts)
 
             mergedPackage := this._BuildPackageFromPayload(merge.value)
-            if !CloudSyncStorage.ApplyPackage(mergedPackage)
-                throw Error("Merged package could not be applied locally.")
 
             currentRemote := provider.Download()
             if !IsObject(currentRemote)
                 || !currentRemote.Get("exists", false)
-                || currentRemote.Get("fingerprint", "") != CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+                || currentRemote.Get("fingerprint", "") != remoteFingerprint
             {
                 return false
             }
+
+            if !CloudSyncStorage.ApplyPackage(mergedPackage)
+                throw Error("Merged package could not be applied locally.")
 
             upload := provider.Upload(
                 CloudSyncModel.Serialize(mergedPackage),
@@ -458,7 +464,7 @@ class CloudSyncCoordinator {
         localHash := package["integrity"]["contentHash"]
 
         this._SaveBase(package)
-        this._SetSuccessfulSync(revision, fingerprint, localHash)
+        this._SetSuccessfulSync(revision, fingerprint, localHash, providerRevision)
         return true
     }
 
