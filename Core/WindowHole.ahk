@@ -825,7 +825,8 @@ class WindowHole {
             state.windowHeight,
             relativeX,
             relativeY,
-            baseRegion
+            baseRegion,
+            state
         )
 
         if !region
@@ -1892,6 +1893,13 @@ class WindowHole {
         }
 
         if !this.HiddenTaskManagerWindows.Has(this.PrimaryHwnd) {
+            for hwnd, wasVisible in this.HiddenTaskManagerWindows {
+                if !wasVisible || !WinExist("ahk_id " hwnd)
+                    continue
+
+                try WinShow("ahk_id " hwnd)
+            }
+
             this.HiddenTaskManagerWindows := Map()
             return false
         }
