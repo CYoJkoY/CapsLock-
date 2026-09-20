@@ -78,7 +78,8 @@ class CloudSyncCoordinator {
         try {
             provider := this._GetProvider()
             provider.Connect()
-            provider.ValidateConnection()
+            if provider.ValidateConnection() != true
+                throw Error("Cloud Sync provider validation failed.")
             this._SetState("connected")
             return true
         } catch as err {
