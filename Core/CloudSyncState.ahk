@@ -25,6 +25,8 @@ class CloudSyncState {
             this.Get("Sync", "conflict", "0") == "1"
         AppState.CloudSyncLocalDirty :=
             this.Get("Sync", "localDirty", "0") == "1"
+        AppState.CloudSyncState :=
+            this.Get("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
     }
 
     static Get(section, key, default := "") {
@@ -50,11 +52,14 @@ class CloudSyncState {
 
     static ClearSyncMetadata() {
         this.Set("Sync", "lastRemoteRevision", "")
+        this.Set("Sync", "lastRemoteProviderRevision", "")
         this.Set("Sync", "lastRemoteFingerprint", "")
         this.Set("Sync", "lastLocalHash", "")
         this.Set("Sync", "lastSuccessfulSync", "")
         this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
         this.Set("Sync", "conflict", "0")
+        this.Set("Sync", "conflictRemoteFingerprint", "")
+        this.Set("Sync", "conflictReason", "")
     }
 
     static _EnsureDirectories() {
