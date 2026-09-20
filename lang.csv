@@ -362,3 +362,5 @@ GUI_CLOUD_SYNC_KEEP_LOCAL,Keep Local,,保留本地,,,,,,,,,,
 GUI_CLOUD_SYNC_USE_REMOTE,Use Remote,,使用远端,,,,,,,,,,
 GUI_CLOUD_SYNC_MERGE,Merge,,合并,,,,,,,,,,
 GUI_CLOUD_SYNC_CANCEL,Cancel,,取消,,,,,,,,,,
+
+MSG_CLOUD_SYNC_IDLE,Cloud Sync is ready.,,云同步已就绪.,,,,,,,,,,
