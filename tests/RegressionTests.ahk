@@ -96,8 +96,10 @@ RunTests() {
     Assert(
         InStr(source, "state.lastAppliedX") > 0
             && InStr(source, "state.lastAppliedY") > 0
-            && InStr(source, "this._ApplyHole(") > 0,
-        "Hole layers do not retain the cursor position needed for mouse-following updates."
+            && InStr(source, "this._ApplyHole(") > 0
+            && InStr(source, "isPrimary := layerHwnd == this.PrimaryHwnd") > 0
+            && InStr(source, "result := this._ApplyHole(") > 0,
+        "Hole layers do not retain or apply the cursor position needed for mouse-following updates."
     )
 
     Assert(
@@ -161,6 +163,12 @@ RunTests() {
         InStr(rootSource, "WindowHole.Stop()") > 0
             && InStr(rootSource, "WindowHole.Stop(true)") == 0,
         "Window Hole shutdown should not depend on an asynchronous restoration queue."
+    )
+    Assert(
+        InStr(source, "the same timer must remain active") > 0
+            && InStr(source, "SetTimer(") > 0
+            && InStr(source, "this._Update(true)") > 0,
+        "Task Manager compatibility mode must keep secondary layer tracking active."
     )
 
     return true
