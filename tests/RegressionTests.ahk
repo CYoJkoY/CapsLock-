@@ -71,18 +71,21 @@ RunTests() {
     )
     Assert(
         InStr(source, 'foregroundHwnd := WinExist("A")') > 0
-            && InStr(source, 'WinHide("ahk_id " foregroundHwnd)') > 0,
-        "Secondary penetration does not target and hide the current foreground window."
+            && InStr(source, 'WinMinimize("ahk_id " foregroundHwnd)') > 0,
+        "Secondary penetration does not target and minimize the current foreground window."
     )
     Assert(
         InStr(source, 'static _RestoreSecondaryHiddenWindows()') > 0
-            && InStr(source, 'WinShow("ahk_id " hwnd)') > 0,
-        "Temporarily hidden secondary windows are not restored on exit."
+            && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0
+            && InStr(source, 'state.previousState') > 0,
+        "Temporarily minimized secondary windows are not restored with their original state."
     )
     Assert(
         InStr(source, "SecondLevelActive") == 0
             && InStr(source, "SecondaryHwnd") == 0
             && InStr(source, "WindowHoleSecondLevelEnabled") == 0
+            && InStr(source, 'WinHide("ahk_id " foregroundHwnd)') == 0
+            && InStr(source, 'WinShow("ahk_id " hwnd)') == 0
             && InStr(source, "static ToggleSecondLevel(*)") == 0
             && InStr(source, "_GetRootWindowAtPoint(mouseHwnd)") == 0
             && InStr(source, "MSG_WINDOW_HOLE_SECOND_DISABLED") == 0,
