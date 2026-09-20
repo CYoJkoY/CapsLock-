@@ -44,7 +44,8 @@ RunTests() {
     )
     Assert(
         InStr(source, "lastRenderSurfaceScanTick: 0") > 0
-            && InStr(source, "this._EnsureChromiumRenderSurfaces(this.PrimaryHwnd, primaryState)") > 0,
+            && InStr(source, "this._EnsureChromiumRenderSurfaces(this.PrimaryHwnd, primaryState)") > 0
+            && InStr(source, "for layerHwnd in this.HoleLayerOrder") > 0,
         "Chromium surface scanning is not tracked per holed target."
     )
     Assert(
