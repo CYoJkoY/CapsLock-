@@ -1041,7 +1041,7 @@ class WindowHole {
         return region
     }
 
-    static _EnsureChromiumRenderSurfaces(targetHwnd, targetState, force := false) {
+    static _EnsureChromiumRenderSurfaces(targetHwnd, targetState) {
         if !targetHwnd || !IsObject(targetState)
             return false
 
@@ -1049,9 +1049,8 @@ class WindowHole {
             return false
 
         now := A_TickCount
-        if !force
-            && now - targetState.lastRenderSurfaceScanTick
-                < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
+        if now - targetState.lastRenderSurfaceScanTick
+            < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
             return false
 
         targetState.lastRenderSurfaceScanTick := now
