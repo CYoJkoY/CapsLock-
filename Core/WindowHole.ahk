@@ -246,26 +246,30 @@ class WindowHole {
         }
 
         try {
-            if !DllCall("IsWindowVisible", "Ptr", foregroundHwnd, "Int")
+            previousState := WinGetMinMax("ahk_id " foregroundHwnd)
+            if previousState == -1
                 return
 
             targetName := this._GetWindowLabel(foregroundHwnd)
 
-            WinHide("ahk_id " foregroundHwnd)
+            ; Minimize instead of SW_HIDE. A minimized top-level window stays
+            ; represented by its normal taskbar button, so the user can still
+            ; restore it through the taskbar while Window Hole is active.
+            WinMinimize("ahk_id " foregroundHwnd)
             Sleep(10)
 
-            if DllCall("IsWindowVisible", "Ptr", foregroundHwnd, "Int") {
-                throw Error("WinHide failed.")
+            if WinGetMinMax("ahk_id " foregroundHwnd) != -1 {
+                throw Error("WinMinimize failed.")
             }
 
             this.SecondaryHiddenWindows[foregroundHwnd] := Map(
-                "wasVisible",
-                true
+                "previousState",
+                previousState
             )
 
             message := Lang(
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
-                "Focused window temporarily hidden."
+                "Focused window temporarily minimized."
             )
 
             if targetName != ""
@@ -1671,8 +1675,17 @@ class WindowHole {
                 if !DllCall("IsWindow", "Ptr", hwnd, "Int")
                     continue
 
-                if state.wasVisible
-                    WinShow("ahk_id " hwnd)
+                ; Only restore a window that is still minimized. If the user
+                ; restored it from the taskbar while Window Hole was active,
+                ; leave that user action intact instead of changing its state
+                ; again during cleanup.
+                if WinGetMinMax("ahk_id " hwnd) != -1
+                    continue
+
+                WinRestore("ahk_id " hwnd)
+
+                if state.previousState == 1
+                    WinMaximize("ahk_id " hwnd)
             } catch {
             }
         }
