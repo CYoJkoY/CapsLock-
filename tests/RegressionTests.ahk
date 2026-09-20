@@ -82,9 +82,11 @@ RunTests() {
     Assert(
         InStr(source, "SecondLevelActive") == 0
             && InStr(source, "SecondaryHwnd") == 0
+            && InStr(source, "WindowHoleSecondLevelEnabled") == 0
             && InStr(source, "static ToggleSecondLevel(*)") == 0
-            && InStr(source, "_GetRootWindowAtPoint(mouseHwnd)") == 0,
-        "Obsolete single-secondary-window toggle logic remains."
+            && InStr(source, "_GetRootWindowAtPoint(mouseHwnd)") == 0
+            && InStr(source, "MSG_WINDOW_HOLE_SECOND_DISABLED") == 0,
+        "Obsolete secondary toggle/gate logic remains."
     )
     Assert(
         InStr(source, 'WinMinimize("ahk_id " hwnd)') > 0
