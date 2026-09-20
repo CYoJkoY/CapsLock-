@@ -134,7 +134,16 @@ class WindowHole {
                 return
             }
 
-            this._SetSecondLevelHotkeyEnabled(false)
+            ; Task Manager has no reliable window-region hit-testing path.
+            ; After minimizing it, continue the same layer traversal mode so
+            ; the next window can be focused and then minimized with 1.
+            if !this._SetSecondLevelHotkeyEnabled(true) {
+                this._RestoreTaskManagerWindow()
+                this._ResetState()
+                return
+            }
+
+            this._FocusNextWindowUnderCursor()
             return
         }
 
@@ -253,6 +262,8 @@ class WindowHole {
             ; Minimize instead of SW_HIDE. A minimized top-level window stays
             ; represented by its normal taskbar button, so the user can still
             ; restore it through the taskbar while Window Hole is active.
+            this._GetPhysicalCursorPosition(&mx, &my)
+
             WinMinimize("ahk_id " foregroundHwnd)
             Sleep(10)
 
@@ -264,6 +275,13 @@ class WindowHole {
                 "previousState",
                 previousState
             )
+
+            ; WinMinimize normally activates the next Z-order window, but the
+            ; Window Hole primary window can remain topmost. Resolve the actual
+            ; window under the hole point and hand it the foreground focus so
+            ; the revealed layer is immediately interactive.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
 
             message := Lang(
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
@@ -390,6 +408,63 @@ class WindowHole {
         } catch {
             return false
         }
+    }
+
+    static _GetTopLevelWindowAtPoint(x, y) {
+        try {
+            ; POINT is passed by value to WindowFromPoint. Pack the two signed
+            ; 32-bit coordinates into the 64-bit argument used by Win32.
+            packedPoint := (Integer(y) << 32) | (Integer(x) & 0xFFFFFFFF)
+
+            hwnd := DllCall(
+                "WindowFromPoint",
+                "Int64", packedPoint,
+                "Ptr"
+            )
+
+            if !hwnd
+                return 0
+
+            rootHwnd := DllCall(
+                "GetAncestor",
+                "Ptr", hwnd,
+                "UInt", 2,
+                "Ptr"
+            )
+
+            return rootHwnd ? rootHwnd : hwnd
+        } catch {
+            return 0
+        }
+    }
+
+    static _FocusNextWindowAtPoint(x, y) {
+        hwnd := this._GetTopLevelWindowAtPoint(x, y)
+
+        if (
+            !hwnd
+            || hwnd == this.PrimaryHwnd
+            || this._IsOwnWindow(hwnd)
+            || this.SecondaryHiddenWindows.Has(hwnd)
+            || !this.IsEligible(hwnd)
+        )
+            return 0
+
+        try {
+            WinActivate("ahk_id " hwnd)
+            Sleep(10)
+            return WinExist("A") == hwnd ? hwnd : 0
+        } catch {
+            return 0
+        }
+    }
+
+    static _FocusNextWindowUnderCursor() {
+        if !this._GetPhysicalCursorPosition(&x, &y)
+            return 0
+
+        Sleep(10)
+        return this._FocusNextWindowAtPoint(x, y)
     }
 
     static _GetPhysicalWindowGeometry(hwnd, &x, &y, &width, &height) {
@@ -1627,6 +1702,8 @@ class WindowHole {
             if previousState == -1
                 return false
 
+            this._GetPhysicalCursorPosition(&mx, &my)
+
             WinMinimize("ahk_id " hwnd)
             Sleep(10)
 
@@ -1635,6 +1712,14 @@ class WindowHole {
 
             state.fallback := true
             state.fallbackPreviousState := previousState
+
+            ; A minimized fallback window is no longer a hit-test surface.
+            ; Resolve and focus the real layer underneath the cursor so the
+            ; fallback behaves like actual penetration rather than merely
+            ; making the top window disappear.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
             ShowToolTip(
                 Lang("MSG_WINDOW_HOLE_FALLBACK_USED", "Incompatible window temporarily minimized."),
                 1500
@@ -1775,10 +1860,21 @@ class WindowHole {
             ; button for a minimized top-level window, so the user can restore
             ; Task Manager directly from the taskbar instead of relying on a
             ; taskbar context-menu command.
+            this._GetPhysicalCursorPosition(&mx, &my)
+
             WinMinimize("ahk_id " hwnd)
 
             Sleep(10)
-            return WinGetMinMax("ahk_id " hwnd) == -1
+            if WinGetMinMax("ahk_id " hwnd) != -1
+                return false
+
+            ; Task Manager is a fallback-only primary window. Once minimized,
+            ; focus the actual window under the cursor so the user can interact
+            ; with the revealed layer immediately.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
+            return true
         } catch {
             this.TaskManagerPreviousState := -1
             return false
