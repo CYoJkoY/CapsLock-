@@ -63,6 +63,30 @@ class ConfigManager {
                     IniRead(cfg, "CloudSync", "deviceName", "")
                 )
 
+            AppState.CloudSyncGitHubOwner :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "owner", ""))
+            AppState.CloudSyncGitHubRepository :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "repository", ""))
+            AppState.CloudSyncGitHubBranch :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "branch", "main"))
+            AppState.CloudSyncGitHubPath :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "path", "CapsLockSync/capslock-sync.json"))
+
+            AppState.CloudSyncWebDavUrl :=
+                Trim(IniRead(cfg, "CloudSyncWebDAV", "url", ""))
+            AppState.CloudSyncWebDavPath :=
+                Trim(IniRead(cfg, "CloudSyncWebDAV", "path", "capslock-sync.json"))
+
+            AppState.CloudSyncGoogleClientId :=
+                Trim(IniRead(cfg, "CloudSyncGoogle", "clientId", ""))
+
+            AppState.CloudSyncOneDriveClientId :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "clientId", ""))
+            AppState.CloudSyncOneDriveTenant :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "tenant", "common"))
+            AppState.CloudSyncOneDrivePath :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "path", "CapsLock-/capslock-sync.json"))
+
             ; ---- Window Hole ----
             windowHoleDiameter := IniRead(cfg, "WindowHole", "diameter", "360")
             AppState.WindowHoleDiameter := IsNumber(windowHoleDiameter)
@@ -149,6 +173,20 @@ class ConfigManager {
             IniWrite(AppState.CloudSyncInterval, cfg, "CloudSync", "interval")
             IniWrite(AppState.CloudSyncEncryptionEnabled ? "1" : "0", cfg, "CloudSync", "encryption")
             IniWrite(AppState.CloudSyncDeviceName, cfg, "CloudSync", "deviceName")
+
+            IniWrite(AppState.CloudSyncGitHubOwner, cfg, "CloudSyncGitHub", "owner")
+            IniWrite(AppState.CloudSyncGitHubRepository, cfg, "CloudSyncGitHub", "repository")
+            IniWrite(AppState.CloudSyncGitHubBranch, cfg, "CloudSyncGitHub", "branch")
+            IniWrite(AppState.CloudSyncGitHubPath, cfg, "CloudSyncGitHub", "path")
+
+            IniWrite(AppState.CloudSyncWebDavUrl, cfg, "CloudSyncWebDAV", "url")
+            IniWrite(AppState.CloudSyncWebDavPath, cfg, "CloudSyncWebDAV", "path")
+
+            IniWrite(AppState.CloudSyncGoogleClientId, cfg, "CloudSyncGoogle", "clientId")
+
+            IniWrite(AppState.CloudSyncOneDriveClientId, cfg, "CloudSyncOneDrive", "clientId")
+            IniWrite(AppState.CloudSyncOneDriveTenant, cfg, "CloudSyncOneDrive", "tenant")
+            IniWrite(AppState.CloudSyncOneDrivePath, cfg, "CloudSyncOneDrive", "path")
         }
 
         if !AppState.CloudSyncApplying
