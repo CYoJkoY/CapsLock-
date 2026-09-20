@@ -220,6 +220,25 @@ class CloudSyncCoordinator {
         return true
     }
 
+    static GetStatusText() {
+        switch AppState.CloudSyncState {
+            case "disabled":
+                return Lang("MSG_CLOUD_SYNC_DISABLED", "Cloud Sync is disabled.")
+            case "not-configured":
+                return Lang("MSG_CLOUD_SYNC_NOT_CONFIGURED", "Cloud Sync is not configured.")
+            case "syncing":
+                return Lang("MSG_CLOUD_SYNC_SYNCING", "Synchronizing...")
+            case "connected":
+                return Lang("MSG_CLOUD_SYNC_CONNECTED", "Connection validated.")
+            case "conflict":
+                return Lang("MSG_CLOUD_SYNC_CONFLICT", "Cloud Sync conflict requires attention.")
+            case "error":
+                return Lang("MSG_CLOUD_SYNC_FAILED", "The last synchronization failed.")
+            default:
+                return Lang("MSG_CLOUD_SYNC_IDLE", "Cloud Sync is ready.")
+        }
+    }
+
     static Disconnect() {
         try {
             if IsObject(this.Provider)
@@ -360,6 +379,12 @@ class CloudSyncCoordinator {
         AppState.CloudSyncConflict := true
         CloudSyncState.Set("Sync", "conflict", "1")
         this._SetState("conflict")
+
+        try {
+            CloudSyncConflictGui.Show()
+        } catch {
+        }
+
         return false
     }
 
