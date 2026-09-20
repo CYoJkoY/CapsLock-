@@ -6,16 +6,18 @@ class CloudSyncState {
 
         ; A previous crash during a multi-file replacement must never leave
         ; the local configuration in an untracked partial state.
-        if this.Get("Sync", "applyInProgress", "0") == "1"
-            CloudSyncStorage.RecoverInterruptedApply()
+        if this.Get("Sync", "applyInProgress", "0") == "1" {
+            if !CloudSyncStorage.RecoverInterruptedApply()
+                this.Set("Sync", "state", "recovery-error")
+        }
 
         id := CloudSyncIdentity.GetId()
         name := CloudSyncIdentity.GetName()
 
         this.Set("Device", "id", id)
         this.Set("Device", "name", name)
-        this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
-        this.Set("Sync", "applyInProgress", "0")
+        if this.Get("Sync", "state", "") != "recovery-error"
+            this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
 
         AppState.CloudSyncLastSuccess :=
             this.Get("Sync", "lastSuccessfulSync", "")
