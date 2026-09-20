@@ -140,6 +140,15 @@ class WindowHole {
                 return
             }
 
+            ; Task Manager itself is handled by the compatibility fallback, but
+            ; the same timer must remain active so any secondary Region Stack
+            ; layers continue following the physical cursor.
+            this.TimerCallback := (*) => this._Update()
+            SetTimer(
+                this.TimerCallback,
+                Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
+            )
+            this._Update(true)
             return
         }
 
@@ -221,9 +230,10 @@ class WindowHole {
             return
 
         ; Secondary penetration never changes window visibility or activation
-        ; state. The currently focused window receives a fixed Window Hole at
-        ; the current cursor location and remains in the layer stack until the
-        ; session ends.
+        ; state. The currently focused window receives a Window Hole at the
+        ; current cursor location and remains in the layer stack until the
+        ; session ends. Its hole then follows the cursor while the pointer
+        ; remains within that window's bounds.
         foregroundHwnd := WinExist("A")
 
         if (
@@ -1339,6 +1349,9 @@ class WindowHole {
                 throw Error("Window-hole center remained inside the assigned region.")
             }
 
+            ; For ordinary Win32 windows, the window region is the
+            ; actual window shape used by Windows for drawing/hit-testing. No
+            ; synthetic click forwarding is needed for the secondary layer.
             applied := DllCall(
                 "SetWindowRgn",
                 "Ptr", hwnd,
