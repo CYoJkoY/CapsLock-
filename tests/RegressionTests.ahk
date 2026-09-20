@@ -94,10 +94,15 @@ RunTests() {
         "Chromium primary-window mouse passthrough is missing."
     )
     Assert(
-        InStr(source, "if this.ChromiumMousePassthroughWindows.Count > 0") > 0
-            && InStr(source, "return") > 0
-            && InStr(source, "static _RestoreChromiumMousePassthrough()") > 0,
-        "Chromium passthrough state is not kept stable after WindowFromPoint resolves the underlying window."
+        InStr(source, '"SetLayeredWindowAttributes"') > 0
+            && InStr(source, "originalWasLayered") > 0
+            && InStr(source, "static _RestoreChromiumMousePassthrough()") > 0
+            && InStr(source, "this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)") > 0,
+        "Chromium passthrough does not preserve visibility and bind the transparent state to the primary HWND."
+    )
+    Assert(
+        InStr(source, "if this.ChromiumMousePassthroughWindows.Count > 0") == 0,
+        "Chromium passthrough still contains the obsolete WindowFromPoint feedback loop."
     )
     Assert(
         InStr(source, 'static _RestoreSecondaryHiddenWindows()') > 0
