@@ -89,7 +89,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         }
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
         token := CloudSyncCredentials.Get("github", "token", "")
