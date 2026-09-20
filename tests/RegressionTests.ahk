@@ -60,13 +60,13 @@ RunTests() {
     )
     Assert(
         InStr(source, "static _HideTaskManagerWindows()") > 0
-            && InStr(source, "static _RestoreHiddenTaskManagerWindows()") > 0,
-        "Task Manager hide/restore strategy is missing."
+            && InStr(source, "static _RestoreTaskManagerWindow()") > 0,
+        "Task Manager minimize/restore strategy is missing."
     )
     Assert(
-        InStr(source, 'WinHide("ahk_id " hwnd)') > 0
-            && InStr(source, 'WinShow("ahk_id " hwnd)') > 0,
-        "Task Manager hide/restore API calls are missing."
+        InStr(source, 'WinMinimize("ahk_id " hwnd)') > 0
+            && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0,
+        "Task Manager minimize/restore API calls are missing."
     )
     Assert(
         InStr(source, "_UpdateTaskManagerSurfaces") == 0
