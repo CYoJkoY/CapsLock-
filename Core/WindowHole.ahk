@@ -23,7 +23,7 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 80
+    static CHROMIUM_MIN_REGION_COMMIT_INTERVAL := 80
     static CHROMIUM_MIN_MOVE_DISTANCE := 12
     ; Geometry is stable for normal cursor tracking; revalidate it periodically
     ; so window moves/resizes are detected without a GetWindowRect call on every
@@ -147,8 +147,6 @@ class WindowHole {
 
         this.TimerCallback := (*) => this._Update()
         interval := Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
-        if this._IsChromiumWindow(hwnd)
-            interval := Max(interval, this.CHROMIUM_MIN_UPDATE_INTERVAL)
         SetTimer(this.TimerCallback, interval)
         this._Update()
     }
@@ -553,17 +551,26 @@ class WindowHole {
     }
 
     static _ShouldApplyPosition(state, x, y) {
-        if !IsObject(state) || !state.isChromium || !state.hasAppliedPosition
+        if !IsObject(state) || !state.hasAppliedPosition
             return true
 
-        return Max(
-            Abs(x - state.lastAppliedX),
-            Abs(y - state.lastAppliedY)
-        ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
+        if state.isChromium
+            && A_TickCount - state.lastRegionCommitTick
+                < this.CHROMIUM_MIN_REGION_COMMIT_INTERVAL
+            return false
+
+        if state.isChromium {
+            return Max(
+                Abs(x - state.lastAppliedX),
+                Abs(y - state.lastAppliedY)
+            ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
+        }
+
+        return true
     }
 
     static _EnsureWindowGeometry(hwnd, state, force := false) {
-        if !hwnd || !IsObject(state) || !WinExist("ahk_id " hwnd)
+        if !hwnd || !IsObject(state)
             return false
 
         now := A_TickCount
@@ -574,6 +581,9 @@ class WindowHole {
             && now - state.geometryLastRefreshTick < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
         )
             return true
+
+        if !WinExist("ahk_id " hwnd)
+            return false
 
         if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
             return false
@@ -591,7 +601,7 @@ class WindowHole {
     }
 
     static _IsPointInsideWindow(hwnd, x, y, state := "") {
-        if !hwnd || !WinExist("ahk_id " hwnd)
+        if !hwnd
             return false
 
         if IsObject(state) && state.isChromium {
@@ -606,6 +616,9 @@ class WindowHole {
 
             return false
         }
+
+        if !WinExist("ahk_id " hwnd)
+            return false
 
         try {
             if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
@@ -677,7 +690,10 @@ class WindowHole {
             relativeY := my - wy
             baseRegion := state.hadOriginalRegion
                 ? state.originalRegion
-                : 0
+                : this._EnsureBaseRegion(state, ww, wh)
+
+            if !baseRegion
+                throw Error("Could not prepare base window region.")
 
             region := this._CreateDifferenceRegion(
                 ww,
@@ -719,6 +735,7 @@ class WindowHole {
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
+            state.lastRegionCommitTick := A_TickCount
 
             ; SetWindowRgn(..., FALSE) is intentionally the only operation in
             ; the steady-state Chromium movement path. Chromium treats region
@@ -741,9 +758,53 @@ class WindowHole {
 
             this._RestoreWindowVisualState(hwnd, state)
             this._DiscardCapturedRegion(state)
+
+            if state.baseRegion {
+                try DllCall("DeleteObject", "Ptr", state.baseRegion)
+                state.baseRegion := 0
+                state.baseRegionWidth := 0
+                state.baseRegionHeight := 0
+            }
+
             this.Targets.Delete(hwnd)
             return false
         }
+    }
+
+    static _EnsureBaseRegion(state, width, height) {
+        if !IsObject(state)
+            return 0
+
+        if (
+            state.baseRegion
+            && state.baseRegionWidth == width
+            && state.baseRegionHeight == height
+        )
+            return state.baseRegion
+
+        if state.baseRegion {
+            try DllCall("DeleteObject", "Ptr", state.baseRegion)
+            state.baseRegion := 0
+            state.baseRegionWidth := 0
+            state.baseRegionHeight := 0
+        }
+
+        region := DllCall(
+            "CreateRectRgn",
+            "Int", 0,
+            "Int", 0,
+            "Int", width,
+            "Int", height,
+            "Ptr"
+        )
+
+        if !region
+            return 0
+
+        state.baseRegion := region
+        state.baseRegionWidth := width
+        state.baseRegionHeight := height
+        return region
     }
 
     static _CreateDifferenceRegion(
@@ -862,10 +923,14 @@ class WindowHole {
             lastAppliedX: 0,
             lastAppliedY: 0,
             hasAppliedPosition: false,
+            lastRegionCommitTick: 0,
             windowX: 0,
             windowY: 0,
             windowWidth: 0,
             windowHeight: 0,
+            baseRegion: 0,
+            baseRegionWidth: 0,
+            baseRegionHeight: 0,
             hwnd: hwnd,
             hasGeometry: false,
             geometryLastRefreshTick: 0,
@@ -1229,6 +1294,13 @@ class WindowHole {
 
         if state.originalRegion
             this._DiscardCapturedRegion(state)
+
+        if state.baseRegion {
+            try DllCall("DeleteObject", "Ptr", state.baseRegion)
+            state.baseRegion := 0
+            state.baseRegionWidth := 0
+            state.baseRegionHeight := 0
+        }
 
         state.fallback := false
     }
