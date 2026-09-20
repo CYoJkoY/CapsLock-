@@ -30,6 +30,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\CloudSyncProvider.ahk"
 #Include "Core\CloudSyncProviderFactory.ahk"
 #Include "Core\CloudSyncCoordinator.ahk"
+#Include "Core\Providers\GitHubGistProvider.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
