@@ -567,10 +567,12 @@ class WindowHole {
             return false
 
         now := A_TickCount
-        if state.isChromium
+        if (
+            state.isChromium
             && state.hasGeometry
             && !force
             && now - state.geometryLastRefreshTick < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
+        )
             return true
 
         if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
@@ -592,16 +594,9 @@ class WindowHole {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
 
-        if IsObject(state) {
-            if state.isChromium {
-                if !this._EnsureWindowGeometry(hwnd, state)
-                    return false
-            } else if state.hasGeometry {
-                return x >= state.windowX
-                    && x < state.windowX + state.windowWidth
-                    && y >= state.windowY
-                    && y < state.windowY + state.windowHeight
-            }
+        if IsObject(state) && state.isChromium {
+            if !this._EnsureWindowGeometry(hwnd, state)
+                return false
 
             if state.hasGeometry
                 return x >= state.windowX
