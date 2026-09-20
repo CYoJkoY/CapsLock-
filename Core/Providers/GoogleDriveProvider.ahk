@@ -79,7 +79,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         }
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
         fileId := Trim(AppState.CloudSyncTarget)
