@@ -91,6 +91,30 @@ BuildTrayMenuItems() {
         children: quickPhraseChildren
     })
 
+    ; --- Cloud Sync settings (sub-menu) ---
+    cloudSyncChildren := []
+    cloudSyncChildren.Push({
+        label: (AppState.CloudSyncEnabled ? "● " : "○ ")
+            . Lang("MENU_CLOUD_SYNC_ENABLE", "Enable synchronization"),
+        callback: (*) => ToggleCloudSync()
+    })
+    cloudSyncChildren.Push({
+        label: "⚙️ " Lang("MENU_CLOUD_SYNC_SETTINGS", "Cloud Sync Settings..."),
+        callback: (*) => ShowCloudSyncSettings()
+    })
+    cloudSyncChildren.Push({
+        label: "☁ " Lang("MENU_CLOUD_SYNC_NOW", "Sync now"),
+        callback: (*) => CloudSyncCoordinator.SyncNow()
+    })
+    cloudSyncChildren.Push({
+        label: "🔌 " Lang("MENU_CLOUD_SYNC_DISCONNECT", "Disconnect"),
+        callback: (*) => CloudSyncCoordinator.Disconnect()
+    })
+    items.Push({
+        label: "☁ " Lang("MENU_CLOUD_SYNC", "Cloud Sync"),
+        children: cloudSyncChildren
+    })
+
     ; --- Window Hole settings (sub-menu) ---
     windowHoleChildren := []
     windowHoleChildren.Push({
@@ -262,4 +286,27 @@ OpenCheatsheetFromTray(*) {
         HotkeyReferenceGui.Close()
     }
     HotkeyReferenceGui.Show()
+}
+
+
+ToggleCloudSync(*) {
+    AppState.CloudSyncEnabled := !AppState.CloudSyncEnabled
+
+    if !AppState.CloudSyncEnabled {
+        AppState.CloudSyncAutoEnabled := false
+        CloudSyncCoordinator.StopAutoSync()
+        CloudSyncState.Set("Sync", "state", "disabled")
+    } else {
+        CloudSyncState.Set("Sync", "state", "idle")
+        if AppState.CloudSyncAutoEnabled
+            CloudSyncCoordinator.StartAutoSync()
+    }
+
+    ConfigManager.Save()
+    ShowToolTip(
+        AppState.CloudSyncEnabled
+            ? Lang("MSG_CLOUD_SYNC_ENABLED", "Cloud Sync enabled.")
+            : Lang("MSG_CLOUD_SYNC_DISABLED", "Cloud Sync disabled."),
+        1800
+    )
 }
