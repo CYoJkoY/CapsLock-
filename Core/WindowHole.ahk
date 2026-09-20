@@ -25,6 +25,10 @@ class WindowHole {
     ; frequency without changing the normal-window configuration default.
     static CHROMIUM_MIN_UPDATE_INTERVAL := 80
     static CHROMIUM_MIN_MOVE_DISTANCE := 12
+    ; Geometry is stable for normal cursor tracking; revalidate it periodically
+    ; so window moves/resizes are detected without a GetWindowRect call on every
+    ; Chromium region commit.
+    static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
 
     static Active := false
     static SecondLevelActive := false
@@ -558,45 +562,55 @@ class WindowHole {
         ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
     }
 
-    static _WindowHasActiveRegion(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
+    static _EnsureWindowGeometry(hwnd, state, force := false) {
+        if !hwnd || !IsObject(state) || !WinExist("ahk_id " hwnd)
             return false
 
-        region := DllCall(
-            "CreateRectRgn",
-            "Int", 0,
-            "Int", 0,
-            "Int", 1,
-            "Int", 1,
-            "Ptr"
-        )
+        now := A_TickCount
+        if state.isChromium
+            && state.hasGeometry
+            && !force
+            && now - state.geometryLastRefreshTick < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
+            return true
 
-        if !region
+        if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
             return false
 
-        try {
-            return DllCall(
-                "GetWindowRgn",
-                "Ptr", hwnd,
-                "Ptr", region,
-                "Int"
-            ) > 0
-        } catch {
+        if ww <= 0 || wh <= 0
             return false
-        } finally {
-            DllCall("DeleteObject", "Ptr", region)
-        }
+
+        state.windowX := wx
+        state.windowY := wy
+        state.windowWidth := ww
+        state.windowHeight := wh
+        state.hasGeometry := true
+        state.geometryLastRefreshTick := now
+        return true
     }
 
     static _IsPointInsideWindow(hwnd, x, y, state := "") {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
 
-        if IsObject(state) && state.hasGeometry
-            return x >= state.windowX
-                && x < state.windowX + state.windowWidth
-                && y >= state.windowY
-                && y < state.windowY + state.windowHeight
+        if IsObject(state) {
+            if state.isChromium {
+                if !this._EnsureWindowGeometry(hwnd, state)
+                    return false
+            } else if state.hasGeometry {
+                return x >= state.windowX
+                    && x < state.windowX + state.windowWidth
+                    && y >= state.windowY
+                    && y < state.windowY + state.windowHeight
+            }
+
+            if state.hasGeometry
+                return x >= state.windowX
+                    && x < state.windowX + state.windowWidth
+                    && y >= state.windowY
+                    && y < state.windowY + state.windowHeight
+
+            return false
+        }
 
         try {
             if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
@@ -643,17 +657,16 @@ class WindowHole {
             return "minimized"
 
         try {
-            if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
+            if !this._EnsureWindowGeometry(hwnd, state)
                 throw Error("Could not get physical window geometry.")
+
+            wx := state.windowX
+            wy := state.windowY
+            ww := state.windowWidth
+            wh := state.windowHeight
 
             if (ww <= 0 || wh <= 0)
                 throw Error("Invalid window dimensions.")
-
-            state.windowX := wx
-            state.windowY := wy
-            state.windowWidth := ww
-            state.windowHeight := wh
-            state.hasGeometry := true
 
             if mouseX == "" {
                 if !this._GetPhysicalCursorPosition(&mx, &my)
@@ -663,8 +676,6 @@ class WindowHole {
                 my := mouseY
             }
 
-            previousAppliedX := state.lastAppliedX
-            previousAppliedY := state.lastAppliedY
             firstRegionApply := !state.hasAppliedPosition
 
             relativeX := mx - wx
@@ -710,24 +721,18 @@ class WindowHole {
             ; After SetWindowRgn succeeds, Windows owns the region handle.
             state.regionActive := true
 
-            refreshRect := 0
-            if state.isChromium && !firstRegionApply {
-                refreshRect := this._CreateChromiumUpdateRect(
-                    state,
-                    mx,
-                    my
-                )
-            }
-
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            if !state.isChromium {
-                this._RefreshWindow(hwnd, false, false)
-            } else {
-                this._RefreshWindow(hwnd, false, true, refreshRect)
-            }
+            ; SetWindowRgn(..., FALSE) is intentionally the only operation in
+            ; the steady-state Chromium movement path. Chromium treats region
+            ; changes as paint-affecting operations already, so an additional
+            ; RedrawWindow here only adds more work to its compositor path.
+            ; Keep the explicit refresh for the first region application so
+            ; activation remains visually immediate.
+            if !state.isChromium || firstRegionApply
+                this._RefreshWindow(hwnd, false, state.isChromium)
 
             return true
         } catch {
@@ -744,75 +749,6 @@ class WindowHole {
             this.Targets.Delete(hwnd)
             return false
         }
-    }
-
-    static _CreateChromiumUpdateRect(
-        state,
-        mx,
-        my
-    ) {
-        if !IsObject(state) || !state.hasGeometry
-            return 0
-
-        diameter := Clamp(Integer(AppState.WindowHoleDiameter), 80, 1200)
-        radius := Floor(diameter / 2)
-
-        left := Floor(Min(
-            state.lastAppliedX,
-            mx
-        ) - radius)
-        top := Floor(Min(
-            state.lastAppliedY,
-            my
-        ) - radius)
-        right := Floor(Max(
-            state.lastAppliedX,
-            mx
-        ) + radius)
-        bottom := Floor(Max(
-            state.lastAppliedY,
-            my
-        ) + radius)
-
-        left := Max(0, left)
-        top := Max(0, top)
-        right := Min(state.windowWidth, right)
-        bottom := Min(state.windowHeight, bottom)
-
-        if right <= left || bottom <= top
-            return 0
-
-        clientOrigin := Buffer(8, 0)
-        if !DllCall(
-            "ClientToScreen",
-            "Ptr", state.hwnd,
-            "Ptr", clientOrigin,
-            "Int"
-        )
-            return 0
-
-        clientX := NumGet(clientOrigin, 0, "Int") - state.windowX
-        clientY := NumGet(clientOrigin, 4, "Int") - state.windowY
-
-        left -= clientX
-        top -= clientY
-        right -= clientX
-        bottom -= clientY
-
-        left := Max(0, left)
-        top := Max(0, top)
-        right := Min(state.windowWidth, right)
-        bottom := Min(state.windowHeight, bottom)
-
-        if right <= left || bottom <= top
-            return 0
-
-        rect := Buffer(16, 0)
-        NumPut("Int", left, rect, 0)
-        NumPut("Int", top, rect, 4)
-        NumPut("Int", right, rect, 8)
-        NumPut("Int", bottom, rect, 12)
-        return rect
     }
 
     static _CreateDifferenceRegion(
@@ -937,6 +873,7 @@ class WindowHole {
             windowHeight: 0,
             hwnd: hwnd,
             hasGeometry: false,
+            geometryLastRefreshTick: 0,
             originalNCRenderingPolicy: 0,
             hadOriginalNCRenderingPolicy: false,
             visualPrepared: false,
@@ -1128,7 +1065,7 @@ class WindowHole {
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd, frameChanged := false, chromium := false, updateRect := 0) {
+    static _RefreshWindow(hwnd, frameChanged := false, chromium := false) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
 
@@ -1157,14 +1094,10 @@ class WindowHole {
             ? 0x0001 | 0x0020
             : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
 
-        redrawRect := updateRect
-        if chromium && !updateRect
-            redrawRect := 0
-
         try DllCall(
             "RedrawWindow",
             "Ptr", hwnd,
-            "Ptr", redrawRect,
+            "Ptr", 0,
             "Ptr", 0,
             "UInt", redrawFlags
         )
