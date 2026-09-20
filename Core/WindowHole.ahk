@@ -43,7 +43,7 @@ class WindowHole {
     static LastMouseX := ""
     static LastMouseY := ""
     static LastChromiumRenderSurfaceScanTick := 0
-    static HiddenTaskManagerWindows := Map()
+    static TaskManagerPreviousState := -1
     static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
@@ -128,8 +128,8 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
 
-        ; Task Manager is intentionally handled through a hide strategy rather
-        ; than attempting to manipulate its WinUI/Composition rendering surfaces.
+        ; Task Manager is intentionally handled through a taskbar-preserving
+        ; minimize strategy rather than manipulating its WinUI/Composition surfaces.
         if this._IsTaskManagerWindow(hwnd) {
             if !this._HideTaskManagerWindows() {
                 this._ResetState()
@@ -181,7 +181,7 @@ class WindowHole {
         }
 
         this._SetSecondLevelHotkeyEnabled(false)
-        this._RestoreHiddenTaskManagerWindows()
+        this._RestoreTaskManagerWindow()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -1856,60 +1856,57 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
         this.LastChromiumRenderSurfaceScanTick := 0
-        this.HiddenTaskManagerWindows := Map()
+        this.TaskManagerPreviousState := -1
         this.TimerCallback := ""
     }
 
     static _HideTaskManagerWindows() {
-        this.HiddenTaskManagerWindows := Map()
+        hwnd := this.PrimaryHwnd
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
 
         try {
-            hwnds := WinGetList("ahk_exe Taskmgr.exe")
+            previousState := WinGetMinMax("ahk_id " hwnd)
+            if previousState == -1
+                return false
+
+            this.TaskManagerPreviousState := previousState
+
+            ; Minimize instead of SW_HIDE. Windows keeps the normal taskbar
+            ; button for a minimized top-level window, so the user can restore
+            ; Task Manager directly from the taskbar instead of relying on a
+            ; taskbar context-menu command.
+            WinMinimize("ahk_id " hwnd)
+
+            Sleep(10)
+            return WinGetMinMax("ahk_id " hwnd) == -1
         } catch {
-            hwnds := []
-        }
-
-        for hwnd in hwnds {
-            try {
-                if !(WinGetStyle("ahk_id " hwnd) & 0x10000000)
-                    continue
-
-                this.HiddenTaskManagerWindows[hwnd] := true
-                WinHide("ahk_id " hwnd)
-            } catch {
-            }
-        }
-
-        if !this.HiddenTaskManagerWindows.Has(this.PrimaryHwnd) {
-            for hwnd, wasVisible in this.HiddenTaskManagerWindows {
-                if !wasVisible || !WinExist("ahk_id " hwnd)
-                    continue
-
-                try WinShow("ahk_id " hwnd)
-            }
-
-            this.HiddenTaskManagerWindows := Map()
+            this.TaskManagerPreviousState := -1
             return false
         }
-
-        return true
     }
 
-    static _RestoreHiddenTaskManagerWindows() {
-        if this.HiddenTaskManagerWindows.Count == 0
+    static _RestoreTaskManagerWindow() {
+        hwnd := this.PrimaryHwnd
+        previousState := this.TaskManagerPreviousState
+
+        if !hwnd || previousState == -1
             return
 
-        for hwnd, wasVisible in this.HiddenTaskManagerWindows {
-            if !wasVisible
-                continue
-
-            if !WinExist("ahk_id " hwnd)
-                continue
-
-            try WinShow("ahk_id " hwnd)
+        if !WinExist("ahk_id " hwnd) {
+            this.TaskManagerPreviousState := -1
+            return
         }
 
-        this.HiddenTaskManagerWindows := Map()
+        try {
+            WinRestore("ahk_id " hwnd)
+
+            if previousState == 1
+                WinMaximize("ahk_id " hwnd)
+        } catch {
+        }
+
+        this.TaskManagerPreviousState := -1
     }
 
     static IsTopmost(hwnd) {
