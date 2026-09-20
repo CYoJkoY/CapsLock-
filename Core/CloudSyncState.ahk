@@ -16,6 +16,13 @@ class CloudSyncState {
         this.Set("Device", "name", name)
         this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
         this.Set("Sync", "applyInProgress", "0")
+
+        AppState.CloudSyncLastSuccess :=
+            this.Get("Sync", "lastSuccessfulSync", "")
+        AppState.CloudSyncConflict :=
+            this.Get("Sync", "conflict", "0") == "1"
+        AppState.CloudSyncLocalDirty :=
+            this.Get("Sync", "localDirty", "0") == "1"
     }
 
     static Get(section, key, default := "") {
