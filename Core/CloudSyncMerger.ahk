@@ -5,8 +5,8 @@ class CloudSyncMerger {
         conflicts := []
         mergedConfig := this._MergeMap(
             IsObject(base) && base.Has("config") ? base["config"] : Map(),
-            IsObject(local) && local.Has("config") ? local["config"] : Map(),
-            IsObject(remote) && remote.Has("config") ? remote["config"] : Map(),
+            IsObject(localData) && localData.Has("config") ? localData["config"] : Map(),
+            IsObject(remoteData) && remoteData.Has("config") ? remoteData["config"] : Map(),
             "config",
             conflicts
         )
@@ -14,10 +14,10 @@ class CloudSyncMerger {
         basePhrases := IsObject(base) && base.Has("quickPhrases")
             ? base["quickPhrases"]
             : []
-        localPhrases := IsObject(local) && local.Has("quickPhrases")
+        localPhrases := IsObject(localData) && localData.Has("quickPhrases")
             ? local["quickPhrases"]
             : []
-        remotePhrases := IsObject(remote) && remote.Has("quickPhrases")
+        remotePhrases := IsObject(remoteData) && remoteData.Has("quickPhrases")
             ? remote["quickPhrases"]
             : []
 
@@ -44,8 +44,8 @@ class CloudSyncMerger {
             conflicts := []
 
         baseMap := this._IndexPhrases(base)
-        localMap := this._IndexPhrases(local)
-        remoteMap := this._IndexPhrases(remote)
+        localMap := this._IndexPhrases(localData)
+        remoteMap := this._IndexPhrases(remoteData)
 
         ids := Map()
         for id in baseMap
@@ -92,10 +92,10 @@ class CloudSyncMerger {
         if IsObject(base) && base is Map
             for key in base
                 keys[key] := true
-        if IsObject(local) && local is Map
+        if IsObject(localData) && localData is Map
             for key in local
                 keys[key] := true
-        if IsObject(remote) && remote is Map
+        if IsObject(remoteData) && remoteData is Map
             for key in remote
                 keys[key] := true
 
@@ -106,8 +106,8 @@ class CloudSyncMerger {
 
         for key in keyList {
             hasBase := IsObject(base) && base is Map && base.Has(key)
-            hasLocal := IsObject(local) && local is Map && local.Has(key)
-            hasRemote := IsObject(remote) && remote is Map && remote.Has(key)
+            hasLocal := IsObject(localData) && localData is Map && localData.Has(key)
+            hasRemote := IsObject(remoteData) && remoteData is Map && remoteData.Has(key)
 
             baseValue := hasBase ? base[key] : ""
             localValue := hasLocal ? local[key] : ""
@@ -156,7 +156,7 @@ class CloudSyncMerger {
 
         if hasLocal && hasRemote
             && this._CanMergeMaps(localValue, remoteValue)
-            && this._CanMergeMaps(baseValue, baseValue)
+            && (!hasBase || (IsObject(baseValue) && baseValue is Map))
         {
             baseMap := hasBase && baseValue is Map ? baseValue : Map()
             nestedConflicts := []
