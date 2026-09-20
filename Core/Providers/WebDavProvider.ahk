@@ -61,7 +61,7 @@ class WebDavProvider extends CloudSyncProvider {
         }
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
         response := HttpClient.Request(
