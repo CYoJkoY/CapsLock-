@@ -152,7 +152,6 @@ The default Window Hole settings are:
 | Diameter | `360 px` |
 | Shape | `circle` |
 | Activation | `hold` |
-| Second level | enabled |
 | Fallback minimize | enabled |
 | Update interval | `30 ms` |
 
@@ -248,7 +247,7 @@ Important configuration areas include:
 | `[General]` | Paste mode, auto-clean, language |
 | `[QuickPhrase]` | Quick Phrase enable/disable state |
 | `[Pandoc]` | Pandoc path and output format |
-| `[WindowHole]` | Diameter, shape, activation, update interval, second level, fallback, executable/class rules |
+| `[WindowHole]` | Diameter, shape, activation, update interval, fallback, executable/class rules |
 | `[Ignore]` | Gitignore-style path/file patterns |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
@@ -268,7 +267,6 @@ Quick Phrase              enabled
 Window Hole diameter      360 px
 Window Hole shape         circle
 Window Hole activation    hold
-Window Hole second level  enabled
 Window Hole fallback      enabled
 ```
 
