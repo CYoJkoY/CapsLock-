@@ -33,6 +33,12 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\CloudSyncProviderFactory.ahk"
 #Include "Core\CloudSyncCoordinator.ahk"
 #Include "Core\Providers\GitHubGistProvider.ahk"
+#Include "Core\Providers\GitHubRepositoryProvider.ahk"
+#Include "Core\Providers\GoogleOAuth.ahk"
+#Include "Core\Providers\GoogleDriveProvider.ahk"
+#Include "Core\Providers\OneDriveOAuth.ahk"
+#Include "Core\Providers\OneDriveProvider.ahk"
+#Include "Core\Providers\WebDavProvider.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
