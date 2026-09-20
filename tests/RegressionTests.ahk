@@ -85,6 +85,11 @@ RunTests() {
         "Task Manager generic companion overlap guard is missing."
     )
     Assert(
+        InStr(source, "Windows.UI.Composition.DesktopWindowContentBridge") > 0
+            && InStr(source, "Microsoft.UI.Content.DesktopChildSiteBridge") > 0,
+        "Known WinUI composition bridge classes are not recognized."
+    )
+    Assert(
         InStr(source, "taskManagerSurfaceTargets: Map()") > 0,
         "Task Manager child-surface state map is missing."
     )
