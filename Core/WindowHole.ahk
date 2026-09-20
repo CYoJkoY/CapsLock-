@@ -29,6 +29,9 @@ class WindowHole {
     ; so window moves/resizes are detected without a GetWindowRect call on every
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
+    static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
+    static TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL := 80
+    static TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE := 12
 
     static Active := false
     static SecondLevelActive := false
@@ -39,6 +42,7 @@ class WindowHole {
     static Targets := Map()
     static LastMouseX := ""
     static LastMouseY := ""
+    static LastTaskManagerCompanionScanTick := 0
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
     static SecondLevelHotkeyEnabled := false
@@ -369,6 +373,9 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
+        if this._IsTaskManagerWindow(this.PrimaryHwnd)
+            this._EnsureTaskManagerCompanions()
+
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
         if IsObject(primaryState) && !primaryState.fallback {
             ; The hole follows the cursor only while the cursor is still
@@ -390,6 +397,9 @@ class WindowHole {
                 }
             }
         }
+
+        if this._IsTaskManagerWindow(this.PrimaryHwnd)
+            this._UpdateTaskManagerCompanions(mx, my, mouseMoved)
 
         if !this.SecondLevelActive || !this.SecondaryHwnd
             return
@@ -549,6 +559,153 @@ class WindowHole {
                 || processName == "chromium.exe"
         } catch {
             return false
+        }
+    }
+
+    static _IsTaskManagerWindow(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
+                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
+        } catch {
+            return false
+        }
+    }
+
+    static _IsTaskManagerCompanionWindow(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            if StrLower(WinGetProcessName("ahk_id " hwnd)) != "taskmgr.exe"
+                return false
+
+            if !(WinGetStyle("ahk_id " hwnd) & 0x10000000)
+                return false
+
+            className := WinGetClass("ahk_id " hwnd)
+
+            return className == "GlassWindow"
+                || className == "FilterControlGlassWindow"
+                || className == "NativeHWNDHost"
+        } catch {
+            return false
+        }
+    }
+
+    static _IsTaskManagerSurface(hwnd) {
+        return this._IsTaskManagerWindow(hwnd)
+            || this._IsTaskManagerCompanionWindow(hwnd)
+    }
+
+    static _EnsureTaskManagerCompanions() {
+        if !this._IsTaskManagerWindow(this.PrimaryHwnd)
+            return
+
+        now := A_TickCount
+
+        if now - this.LastTaskManagerCompanionScanTick
+            < this.TASK_MANAGER_COMPANION_SCAN_INTERVAL
+            return
+
+        this.LastTaskManagerCompanionScanTick := now
+        seen := Map()
+
+        try {
+            hwnds := WinGetList("ahk_exe Taskmgr.exe")
+        } catch {
+            return
+        }
+
+        for hwnd in hwnds {
+            if hwnd == this.PrimaryHwnd
+                continue
+
+            if !this._IsTaskManagerCompanionWindow(hwnd)
+                continue
+
+            if !this.IsEligible(hwnd)
+                continue
+
+            seen[hwnd] := true
+
+            if !this.Targets.Has(hwnd) {
+                state := this._CaptureState(hwnd)
+
+                if !IsObject(state)
+                    continue
+
+                state.taskManagerSurface := true
+                state.taskManagerCompanion := true
+                this.Targets[hwnd] := state
+            }
+        }
+
+        stale := []
+
+        for hwnd, state in this.Targets {
+            if !IsObject(state) || !state.taskManagerCompanion
+                continue
+
+            if seen.Has(hwnd)
+                continue
+
+            this._RestoreTarget(hwnd, state)
+            stale.Push(hwnd)
+        }
+
+        for hwnd in stale {
+            if this.Targets.Has(hwnd)
+                this.Targets.Delete(hwnd)
+        }
+    }
+
+    static _ShouldApplyTaskManagerCompanionPosition(state, x, y) {
+        if !IsObject(state) || !state.taskManagerCompanion || !state.hasAppliedPosition
+            return true
+
+        if A_TickCount - state.taskManagerCompanionLastRegionCommitTick
+            < this.TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL
+            return false
+
+        return Max(
+            Abs(x - state.lastAppliedX),
+            Abs(y - state.lastAppliedY)
+        ) >= this.TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE
+    }
+
+    static _UpdateTaskManagerCompanions(x, y, mouseMoved) {
+        if !mouseMoved
+            return
+
+        companionHwnds := []
+
+        for hwnd, state in this.Targets {
+            if IsObject(state) && state.taskManagerCompanion
+                companionHwnds.Push(hwnd)
+        }
+
+        for hwnd in companionHwnds {
+            if !this.Targets.Has(hwnd)
+                continue
+
+            state := this.Targets[hwnd]
+
+            if !IsObject(state) || state.fallback
+                continue
+
+            if !this._IsPointInsideWindow(hwnd, x, y, state)
+                continue
+
+            if !this._ShouldApplyTaskManagerCompanionPosition(state, x, y)
+                continue
+
+            result := this._ApplyHole(hwnd, false, x, y)
+
+            if !result && this.Targets.Has(hwnd)
+                this.Targets.Delete(hwnd)
         }
     }
 
@@ -720,6 +877,9 @@ class WindowHole {
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
+            if state.taskManagerCompanion
+                state.taskManagerCompanionLastRegionCommitTick := A_TickCount
+
             ; SetWindowRgn(..., FALSE) is intentionally the only operation in
             ; the steady-state Chromium movement path. Chromium treats region
             ; changes as paint-affecting operations already, so an additional
@@ -731,7 +891,8 @@ class WindowHole {
 
             return true
         } catch {
-            if AppState.WindowHoleFallbackToMinimize {
+            if AppState.WindowHoleFallbackToMinimize
+                && !state.taskManagerCompanion {
                 if state.regionActive
                     this._RestoreOriginalRegion(hwnd, state)
 
@@ -859,6 +1020,9 @@ class WindowHole {
             fallback: false,
             fallbackPreviousState: 0,
             isChromium: this._IsChromiumWindow(hwnd),
+            taskManagerSurface: this._IsTaskManagerSurface(hwnd),
+            taskManagerCompanion: this._IsTaskManagerCompanionWindow(hwnd),
+            taskManagerCompanionLastRegionCommitTick: 0,
             lastAppliedX: 0,
             lastAppliedY: 0,
             hasAppliedPosition: false,
@@ -970,6 +1134,11 @@ class WindowHole {
     static _PrepareWindowForHole(hwnd, state) {
         if !IsObject(state) || !WinExist("ahk_id " hwnd)
             return
+
+        if state.taskManagerSurface {
+            state.visualPrepared := false
+            return
+        }
 
         ; A window may already be partially transparent because of the
         ; CapsLock opacity controls. Window Hole needs an opaque source
@@ -1268,6 +1437,7 @@ class WindowHole {
         this.Targets := Map()
         this.LastMouseX := ""
         this.LastMouseY := ""
+        this.LastTaskManagerCompanionScanTick := 0
         this.TimerCallback := ""
     }
 
