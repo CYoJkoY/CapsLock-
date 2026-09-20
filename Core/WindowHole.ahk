@@ -34,9 +34,8 @@ class WindowHole {
     static RENDER_SURFACE_MIN_MOVE_DISTANCE := 3
 
     static Active := false
-    static SecondLevelActive := false
     static PrimaryHwnd := 0
-    static SecondaryHwnd := 0
+    static SecondaryHiddenWindows := Map()
     static OriginalForeground := 0
     static OriginalTopmost := false
     static Targets := Map()
@@ -119,9 +118,8 @@ class WindowHole {
             return
 
         this.Active := true
-        this.SecondLevelActive := false
         this.PrimaryHwnd := hwnd
-        this.SecondaryHwnd := 0
+        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
@@ -182,6 +180,7 @@ class WindowHole {
 
         this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreTaskManagerWindow()
+        this._RestoreSecondaryHiddenWindows()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -199,7 +198,7 @@ class WindowHole {
 
         this.SecondLevelHotkeyKeyDown := true
         try {
-            this.ToggleSecondLevel()
+            this.HandleSecondLevelPenetration()
         } finally {
             try {
                 KeyWait("1")
@@ -209,7 +208,7 @@ class WindowHole {
         }
     }
 
-    static ToggleSecondLevel(*) {
+    static HandleSecondLevelPenetration(*) {
         if !this.Active
             return
 
@@ -224,61 +223,17 @@ class WindowHole {
             return
         }
 
-        if !this.SecondLevelHotkeyEnabled {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                    "No eligible window is available for second penetration."
-                ),
-                1500
-            )
-            return
-        }
-
-        if this.SecondLevelActive {
-            this.SecondLevelActive := false
-            this.SecondaryHwnd := 0
-            this._RemoveSecondaryTargets()
-
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1200
-            )
-            return
-        }
-
-        try {
-            MouseGetPos(&mouseX, &mouseY, &mouseHwnd)
-            if !this._GetPhysicalCursorPosition(&mx, &my) {
-                ShowToolTip(
-                    Lang(
-                        "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                        "No eligible window is available for second penetration."
-                    ),
-                    1500
-                )
-                return
-            }
-
-            secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
-        } catch {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                    "No eligible window is available for second penetration."
-                ),
-                1500
-            )
-            return
-        }
+        ; Secondary penetration is intentionally based on the window that is
+        ; focused when the key is pressed. Do not sample the mouse position:
+        ; the first Window Hole already lets the user click the window below,
+        ; making that window the new foreground window.
+        foregroundHwnd := WinExist("A")
 
         if (
-            !secondaryHwnd
-            || secondaryHwnd == this.PrimaryHwnd
-            || !this.IsEligible(secondaryHwnd)
+            !foregroundHwnd
+            || foregroundHwnd == this.PrimaryHwnd
+            || this._IsOwnWindow(foregroundHwnd)
+            || !this.IsEligible(foregroundHwnd)
         ) {
             ShowToolTip(
                 Lang(
@@ -290,15 +245,7 @@ class WindowHole {
             return
         }
 
-        result := this._ApplyHole(
-            secondaryHwnd,
-            false,
-            mx,
-            my
-        )
-
-        if !result {
-            this.SecondaryHwnd := 0
+        if this.SecondaryHiddenWindows.Has(foregroundHwnd) {
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -309,20 +256,40 @@ class WindowHole {
             return
         }
 
-        this.SecondaryHwnd := secondaryHwnd
-        this.SecondLevelActive := true
+        try {
+            if !DllCall("IsWindowVisible", "Ptr", foregroundHwnd, "Int")
+                return
 
-        targetName := this._GetWindowLabel(secondaryHwnd)
+            targetName := this._GetWindowLabel(foregroundHwnd)
 
-        message := Lang(
-            "MSG_WINDOW_HOLE_SECOND_ENABLED",
-            "Second penetration enabled."
-        )
+            WinHide("ahk_id " foregroundHwnd)
+            Sleep(10)
 
-        if targetName != ""
-            message .= " — " targetName
+            if DllCall("IsWindowVisible", "Ptr", foregroundHwnd, "Int") {
+                throw Error("WinHide failed.")
+            }
 
-        ShowToolTip(message, 1500)
+            this.SecondaryHiddenWindows[foregroundHwnd] := Map(
+                "wasVisible",
+                true
+            )
+
+            message := Lang(
+                "MSG_WINDOW_HOLE_SECOND_HIDDEN",
+                "Focused window temporarily hidden."
+            )
+
+            if targetName != ""
+                message .= " — " targetName
+
+            ShowToolTip(message, 1500)
+        } catch {
+            ; Never leave a window partially hidden when the operation fails.
+            try {
+                if DllCall("IsWindow", "Ptr", foregroundHwnd, "Int")
+                    WinShow("ahk_id " foregroundHwnd)
+            }
+        }
     }
 
     static IsEligible(hwnd) {
@@ -421,67 +388,6 @@ class WindowHole {
 
         if isChromium
             this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
-
-        if !this.SecondLevelActive || !this.SecondaryHwnd
-            return
-
-        ; Layer 2 is locked to the window selected when CapsLock + 1
-        ; was pressed. Do not discover deeper windows while moving.
-        if !WinExist("ahk_id " this.SecondaryHwnd) {
-            this.SecondLevelActive := false
-            this.SecondaryHwnd := 0
-            this._RemoveSecondaryTargets()
-
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1500
-            )
-            return
-        }
-
-        ; Apply the second-layer hole only while the cursor is inside that
-        ; target. Once the cursor penetrates beyond it, freeze the layer too.
-        secondaryState := this.Targets.Has(this.SecondaryHwnd)
-            ? this.Targets[this.SecondaryHwnd]
-            : ""
-
-        if !IsObject(secondaryState) || secondaryState.fallback
-            return
-
-        if !this._IsPointInsideWindow(
-            this.SecondaryHwnd,
-            mx,
-            my,
-            secondaryState
-        )
-            return
-
-        if mouseMoved && this._ShouldApplyPosition(secondaryState, mx, my) {
-            result := this._ApplyHole(
-                this.SecondaryHwnd,
-                false,
-                mx,
-                my
-            )
-
-            if !result {
-                this.SecondLevelActive := false
-                this.SecondaryHwnd := 0
-                this._RemoveSecondaryTargets()
-
-                ShowToolTip(
-                    Lang(
-                        "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                        "Second penetration disabled."
-                    ),
-                    1500
-                )
-            }
-        }
-    }
 
     static _GetPhysicalCursorPosition(&x, &y) {
         x := 0
@@ -1090,20 +996,17 @@ class WindowHole {
             return false
         }
     }
-    static _GetRootWindowAtPoint(hwnd) {
+    static _IsOwnWindow(hwnd) {
         if !hwnd
-            return 0
+            return false
 
         try {
-            root := DllCall(
-                "GetAncestor",
-                "Ptr", hwnd,
-                "UInt", 2,
-                "Ptr"
+            return WinGetPID("ahk_id " hwnd) == DllCall(
+                "GetCurrentProcessId",
+                "UInt"
             )
-            return root ? root : hwnd
         } catch {
-            return hwnd
+            return false
         }
     }
 
@@ -1769,6 +1672,24 @@ class WindowHole {
         }
     }
 
+    static _RestoreSecondaryHiddenWindows() {
+        for hwnd, state in this.SecondaryHiddenWindows {
+            if !IsObject(state)
+                continue
+
+            try {
+                if !DllCall("IsWindow", "Ptr", hwnd, "Int")
+                    continue
+
+                if state.wasVisible
+                    WinShow("ahk_id " hwnd)
+            } catch {
+            }
+        }
+
+        this.SecondaryHiddenWindows := Map()
+    }
+
     static _RestoreAll() {
         secondaryHwnds := []
         for hwnd, state in this.Targets {
@@ -1820,22 +1741,6 @@ class WindowHole {
         state.fallback := false
     }
 
-    static _RemoveSecondaryTargets() {
-        secondaryHwnds := []
-        for hwnd, state in this.Targets {
-            if hwnd != this.PrimaryHwnd
-                secondaryHwnds.Push(hwnd)
-        }
-
-        for hwnd in secondaryHwnds {
-            state := this.Targets[hwnd]
-            this._RestoreTarget(hwnd, state)
-            this.Targets.Delete(hwnd)
-        }
-
-        this.SecondaryHwnd := 0
-    }
-
     static _RestorePrimaryTopmost() {
         hwnd := this.PrimaryHwnd
         if !hwnd || !WinExist("ahk_id " hwnd)
@@ -1847,9 +1752,8 @@ class WindowHole {
     static _ResetState() {
         this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
-        this.SecondLevelActive := false
         this.PrimaryHwnd := 0
-        this.SecondaryHwnd := 0
+        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
