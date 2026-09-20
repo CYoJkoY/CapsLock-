@@ -42,6 +42,10 @@ RunTests() {
         "Chromium rendering-surface update path is missing."
     )
     Assert(
+        InStr(source, "baseRegion,\n            state\n        )") > 0,
+        "Chromium surface updates do not reuse the per-surface hole-region state."
+    )
+    Assert(
         InStr(source, "holeRegion: 0") > 0
             && InStr(source, '"OffsetRgn"') > 0,
         "Reusable hole-region cache is missing."
