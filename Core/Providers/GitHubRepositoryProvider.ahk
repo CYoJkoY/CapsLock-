@@ -98,13 +98,15 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         path := AppState.CloudSyncGitHubPath
         branch := AppState.CloudSyncGitHubBranch
 
-        sha := ""
-        existing := this._GetFileMetadata(owner, repo, path, branch, token)
-        if existing.status == 200 {
-            metadata := this._ParseJson(existing.body)
-            sha := IsObject(metadata) ? metadata.Get("sha", "") : ""
-        } else if existing.status != 404 {
-            throw Error(this._ErrorMessage(existing, "Could not inspect GitHub repository target."))
+        sha := expectedRevision
+        if sha == "" {
+            existing := this._GetFileMetadata(owner, repo, path, branch, token)
+            if existing.status == 200 {
+                metadata := this._ParseJson(existing.body)
+                sha := IsObject(metadata) ? metadata.Get("sha", "") : ""
+            } else if existing.status != 404 {
+                throw Error(this._ErrorMessage(existing, "Could not inspect GitHub repository target."))
+            }
         }
 
         body := Map()
