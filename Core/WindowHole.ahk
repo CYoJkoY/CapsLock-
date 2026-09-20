@@ -29,9 +29,12 @@ class WindowHole {
     ; so window moves/resizes are detected without a GetWindowRect call on every
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
+    static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
     static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
     static TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL := 80
     static TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE := 12
+    static TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH := 64
+    static TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT := 64
 
     static Active := false
     static SecondLevelActive := false
@@ -43,6 +46,8 @@ class WindowHole {
     static LastMouseX := ""
     static LastMouseY := ""
     static LastTaskManagerCompanionScanTick := 0
+    static LastChromiumRenderSurfaceScanTick := 0
+    static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
     static SecondLevelHotkeyEnabled := false
@@ -375,6 +380,8 @@ class WindowHole {
 
         if this._IsTaskManagerWindow(this.PrimaryHwnd)
             this._EnsureTaskManagerCompanions()
+        else if this._IsChromiumWindow(this.PrimaryHwnd)
+            this._EnsureChromiumRenderSurfaces()
 
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
         if IsObject(primaryState) && !primaryState.fallback {
@@ -400,6 +407,8 @@ class WindowHole {
 
         if this._IsTaskManagerWindow(this.PrimaryHwnd)
             this._UpdateTaskManagerCompanions(mx, my, mouseMoved)
+        else if this._IsChromiumWindow(this.PrimaryHwnd)
+            this._UpdateChromiumRenderSurfaces(mx, my, mouseMoved)
 
         if !this.SecondLevelActive || !this.SecondaryHwnd
             return
@@ -574,6 +583,32 @@ class WindowHole {
         }
     }
 
+    static _IsChromiumRenderingSurface(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            processName := StrLower(WinGetProcessName("ahk_id " hwnd))
+            if !(processName == "chrome.exe"
+                || processName == "msedge.exe"
+                || processName == "brave.exe"
+                || processName == "thorium.exe"
+                || processName == "vivaldi.exe"
+                || processName == "opera.exe"
+                || processName == "chromium.exe")
+                return false
+
+            if !(WinGetStyle("ahk_id " hwnd) & 0x40000000)
+                return false
+
+            className := WinGetClass("ahk_id " hwnd)
+            return className == "Intermediate D3D Window"
+                || className == "Chrome_RenderWidgetHostHWND"
+        } catch {
+            return false
+        }
+    }
+
     static _IsTaskManagerCompanionWindow(hwnd) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
@@ -595,13 +630,433 @@ class WindowHole {
         }
     }
 
+    static _IsTaskManagerChildSurface(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            if StrLower(WinGetProcessName("ahk_id " hwnd)) != "taskmgr.exe"
+                return false
+
+            style := WinGetStyle("ahk_id " hwnd)
+            if !(style & 0x40000000) || !(style & 0x10000000)
+                return false
+
+            className := WinGetClass("ahk_id " hwnd)
+            if className == "Button"
+                || className == "Edit"
+                || className == "Static"
+                || className == "ComboBox"
+                || className == "SysListView32"
+                || className == "SysTreeView32"
+                || className == "ScrollBar"
+                return false
+
+            if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
+                return false
+
+            return ww >= this.TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH
+                && wh >= this.TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT
+        } catch {
+            return false
+        }
+    }
+
+    static _EnumerateChildWindows(parentHwnd) {
+        if !parentHwnd
+            return []
+
+        this.EnumeratedChildWindows := []
+        callback := 0
+
+        try {
+            callback := CallbackCreate(
+                ObjBindMethod(this, "_CollectChildWindow"),
+                "Fast",
+                2
+            )
+
+            if !DllCall(
+                "EnumChildWindows",
+                "Ptr", parentHwnd,
+                "Ptr", callback,
+                "Ptr", 0,
+                "Int"
+            )
+                return []
+
+            return this.EnumeratedChildWindows
+        } catch {
+            return []
+        } finally {
+            if callback
+                try CallbackFree(callback)
+            this.EnumeratedChildWindows := []
+        }
+    }
+
+    static _CollectChildWindow(hwnd, lParam) {
+        this.EnumeratedChildWindows.Push(hwnd)
+        return true
+    }
+
+    static _CaptureSurfaceState(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return 0
+
+        state := {
+            originalRegion: 0,
+            hadOriginalRegion: false,
+            regionActive: false,
+            windowX: 0,
+            windowY: 0,
+            windowWidth: 0,
+            windowHeight: 0,
+            hasGeometry: false,
+            geometryLastRefreshTick: 0,
+            lastAppliedX: 0,
+            lastAppliedY: 0,
+            hasAppliedPosition: false,
+            lastRegionCommitTick: 0,
+            baseRegion: 0,
+            baseRegionWidth: 0,
+            baseRegionHeight: 0,
+            hwnd: hwnd
+        }
+
+        tempRegion := DllCall(
+            "CreateRectRgn",
+            "Int", 0,
+            "Int", 0,
+            "Int", 1,
+            "Int", 1,
+            "Ptr"
+        )
+
+        if !tempRegion
+            return 0
+
+        try {
+            type := DllCall(
+                "GetWindowRgn",
+                "Ptr", hwnd,
+                "Ptr", tempRegion,
+                "Int"
+            )
+
+            if type > 0 {
+                state.hadOriginalRegion := true
+                state.originalRegion := tempRegion
+                tempRegion := 0
+            }
+
+            if !this._GetPhysicalWindowGeometry(
+                hwnd,
+                &wx,
+                &wy,
+                &ww,
+                &wh
+            )
+                return 0
+
+            state.windowX := wx
+            state.windowY := wy
+            state.windowWidth := ww
+            state.windowHeight := wh
+            state.hasGeometry := true
+            state.geometryLastRefreshTick := A_TickCount
+            return state
+        } catch {
+            return 0
+        } finally {
+            if tempRegion
+                DllCall("DeleteObject", "Ptr", tempRegion)
+        }
+    }
+
+    static _CloneRegion(region) {
+        if !region
+            return 0
+
+        clone := DllCall(
+            "CreateRectRgn",
+            "Int", 0,
+            "Int", 0,
+            "Int", 0,
+            "Int", 0,
+            "Ptr"
+        )
+
+        if !clone
+            return 0
+
+        if DllCall(
+            "CombineRgn",
+            "Ptr", clone,
+            "Ptr", region,
+            "Ptr", 0,
+            "Int", 5,
+            "Int"
+        ) == 0 {
+            DllCall("DeleteObject", "Ptr", clone)
+            return 0
+        }
+
+        return clone
+    }
+
+    static _RestoreSurfaceRegion(hwnd, state) {
+        if !IsObject(state) || !state.regionActive
+            return true
+
+        if !WinExist("ahk_id " hwnd) {
+            state.regionActive := false
+            return false
+        }
+
+        region := state.hadOriginalRegion
+            ? this._CloneRegion(state.originalRegion)
+            : 0
+
+        restored := DllCall(
+            "SetWindowRgn",
+            "Ptr", hwnd,
+            "Ptr", region,
+            "Int", 0,
+            "Int"
+        )
+
+        if !restored && region
+            DllCall("DeleteObject", "Ptr", region)
+
+        if !restored
+            return false
+
+        state.regionActive := false
+        state.hasAppliedPosition := false
+        return true
+    }
+
+    static _ApplySurfaceHole(hwnd, state, mouseX, mouseY) {
+        if !IsObject(state)
+            return false
+
+        if !this._EnsureSurfaceGeometry(hwnd, state)
+            return false
+
+        inside := mouseX >= state.windowX
+            && mouseX < state.windowX + state.windowWidth
+            && mouseY >= state.windowY
+            && mouseY < state.windowY + state.windowHeight
+
+        if !inside
+            return this._RestoreSurfaceRegion(hwnd, state)
+
+        if state.hasAppliedPosition
+            && A_TickCount - state.lastRegionCommitTick
+                < this.TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL
+            && Max(
+                Abs(mouseX - state.lastAppliedX),
+                Abs(mouseY - state.lastAppliedY)
+            ) < this.TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE
+            return true
+
+        relativeX := mouseX - state.windowX
+        relativeY := mouseY - state.windowY
+
+        baseRegion := state.hadOriginalRegion
+            ? state.originalRegion
+            : this._EnsureSurfaceBaseRegion(
+                state,
+                state.windowWidth,
+                state.windowHeight
+            )
+
+        if !baseRegion
+            return false
+
+        region := this._CreateDifferenceRegion(
+            state.windowWidth,
+            state.windowHeight,
+            relativeX,
+            relativeY,
+            baseRegion
+        )
+
+        if !region
+            return false
+
+        applied := DllCall(
+            "SetWindowRgn",
+            "Ptr", hwnd,
+            "Ptr", region,
+            "Int", 0,
+            "Int"
+        )
+
+        if !applied {
+            DllCall("DeleteObject", "Ptr", region)
+            return false
+        }
+
+        state.regionActive := true
+        state.lastAppliedX := mouseX
+        state.lastAppliedY := mouseY
+        state.hasAppliedPosition := true
+        state.lastRegionCommitTick := A_TickCount
+        return true
+    }
+
+    static _EnsureSurfaceGeometry(hwnd, state) {
+        now := A_TickCount
+
+        if state.hasGeometry
+            && now - state.geometryLastRefreshTick
+                < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
+            return true
+
+        if !WinExist("ahk_id " hwnd)
+            return false
+
+        if !this._GetPhysicalWindowGeometry(
+            hwnd,
+            &wx,
+            &wy,
+            &ww,
+            &wh
+        )
+            return false
+
+        state.windowX := wx
+        state.windowY := wy
+        state.windowWidth := ww
+        state.windowHeight := wh
+        state.hasGeometry := true
+        state.geometryLastRefreshTick := now
+        return true
+    }
+
+    static _EnsureSurfaceBaseRegion(state, width, height) {
+        if !IsObject(state)
+            return 0
+
+        if (
+            state.baseRegion
+            && state.baseRegionWidth == width
+            && state.baseRegionHeight == height
+        )
+            return state.baseRegion
+
+        if state.baseRegion {
+            try DllCall("DeleteObject", "Ptr", state.baseRegion)
+            state.baseRegion := 0
+            state.baseRegionWidth := 0
+            state.baseRegionHeight := 0
+        }
+
+        region := DllCall(
+            "CreateRectRgn",
+            "Int", 0,
+            "Int", 0,
+            "Int", width,
+            "Int", height,
+            "Ptr"
+        )
+
+        if !region
+            return 0
+
+        state.baseRegion := region
+        state.baseRegionWidth := width
+        state.baseRegionHeight := height
+        return region
+    }
+
+    static _EnsureChromiumRenderSurfaces() {
+        if !this._IsChromiumWindow(this.PrimaryHwnd)
+            return
+
+        primaryState := this.Targets.Has(this.PrimaryHwnd)
+            ? this.Targets[this.PrimaryHwnd]
+            : ""
+
+        if !IsObject(primaryState)
+            return
+
+        now := A_TickCount
+        if now - this.LastChromiumRenderSurfaceScanTick
+            < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
+            return
+
+        this.LastChromiumRenderSurfaceScanTick := now
+        seen := Map()
+        childHwnds := this._EnumerateChildWindows(this.PrimaryHwnd)
+
+        for hwnd in childHwnds {
+            if !this._IsChromiumRenderingSurface(hwnd)
+                continue
+
+            seen[hwnd] := true
+
+            if primaryState.chromiumRenderSurfaces.Has(hwnd)
+                continue
+
+            state := this._CaptureSurfaceState(hwnd)
+            if !IsObject(state)
+                continue
+
+            primaryState.chromiumRenderSurfaces[hwnd] := state
+        }
+
+        stale := []
+        for hwnd, state in primaryState.chromiumRenderSurfaces {
+            if seen.Has(hwnd)
+                continue
+
+            this._RestoreSurfaceState(hwnd, state)
+            stale.Push(hwnd)
+        }
+
+        for hwnd in stale {
+            primaryState.chromiumRenderSurfaces.Delete(hwnd)
+        }
+    }
+
+    static _UpdateChromiumRenderSurfaces(x, y, mouseMoved) {
+        primaryState := this.Targets.Has(this.PrimaryHwnd)
+            ? this.Targets[this.PrimaryHwnd]
+            : ""
+
+        if !IsObject(primaryState)
+            return
+
+        if primaryState.chromiumRenderSurfaces.Count == 0
+            return
+
+        for hwnd, state in primaryState.chromiumRenderSurfaces {
+            if mouseMoved || state.regionActive {
+                result := this._ApplySurfaceHole(hwnd, state, x, y)
+                if !result
+                    this._RestoreSurfaceState(hwnd, state)
+            }
+        }
+    }
+
     static _IsTaskManagerSurface(hwnd) {
         return this._IsTaskManagerWindow(hwnd)
             || this._IsTaskManagerCompanionWindow(hwnd)
+            || this._IsTaskManagerChildSurface(hwnd)
     }
 
     static _EnsureTaskManagerCompanions() {
         if !this._IsTaskManagerWindow(this.PrimaryHwnd)
+            return
+
+        primaryState := this.Targets.Has(this.PrimaryHwnd)
+            ? this.Targets[this.PrimaryHwnd]
+            : ""
+
+        if !IsObject(primaryState)
             return
 
         now := A_TickCount
@@ -616,7 +1071,7 @@ class WindowHole {
         try {
             hwnds := WinGetList("ahk_exe Taskmgr.exe")
         } catch {
-            return
+            hwnds := []
         }
 
         for hwnd in hwnds {
@@ -626,86 +1081,100 @@ class WindowHole {
             if !this._IsTaskManagerCompanionWindow(hwnd)
                 continue
 
-            if !this.IsEligible(hwnd)
+            seen[hwnd] := true
+
+            if primaryState.taskManagerSurfaceTargets.Has(hwnd)
+                continue
+
+            state := this._CaptureSurfaceState(hwnd)
+            if !IsObject(state)
+                continue
+
+            primaryState.taskManagerSurfaceTargets[hwnd] := state
+        }
+
+        childHwnds := this._EnumerateChildWindows(this.PrimaryHwnd)
+        for hwnd in childHwnds {
+            if !this._IsTaskManagerChildSurface(hwnd)
                 continue
 
             seen[hwnd] := true
 
-            if !this.Targets.Has(hwnd) {
-                state := this._CaptureState(hwnd)
+            if primaryState.taskManagerSurfaceTargets.Has(hwnd)
+                continue
 
-                if !IsObject(state)
-                    continue
+            state := this._CaptureSurfaceState(hwnd)
+            if !IsObject(state)
+                continue
 
-                state.taskManagerSurface := true
-                state.taskManagerCompanion := true
-                this.Targets[hwnd] := state
-            }
+            primaryState.taskManagerSurfaceTargets[hwnd] := state
         }
 
         stale := []
-
-        for hwnd, state in this.Targets {
-            if !IsObject(state) || !state.taskManagerCompanion
-                continue
-
+        for hwnd, state in primaryState.taskManagerSurfaceTargets {
             if seen.Has(hwnd)
                 continue
 
-            this._RestoreTarget(hwnd, state)
+            this._RestoreSurfaceState(hwnd, state)
             stale.Push(hwnd)
         }
 
         for hwnd in stale {
-            if this.Targets.Has(hwnd)
-                this.Targets.Delete(hwnd)
+            primaryState.taskManagerSurfaceTargets.Delete(hwnd)
         }
-    }
-
-    static _ShouldApplyTaskManagerCompanionPosition(state, x, y) {
-        if !IsObject(state) || !state.taskManagerCompanion || !state.hasAppliedPosition
-            return true
-
-        if A_TickCount - state.taskManagerCompanionLastRegionCommitTick
-            < this.TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL
-            return false
-
-        return Max(
-            Abs(x - state.lastAppliedX),
-            Abs(y - state.lastAppliedY)
-        ) >= this.TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE
     }
 
     static _UpdateTaskManagerCompanions(x, y, mouseMoved) {
-        if !mouseMoved
+        primaryState := this.Targets.Has(this.PrimaryHwnd)
+            ? this.Targets[this.PrimaryHwnd]
+            : ""
+
+        if !IsObject(primaryState)
             return
 
-        companionHwnds := []
+        for hwnd, state in primaryState.taskManagerSurfaceTargets {
+            if mouseMoved || state.regionActive {
+                result := this._ApplySurfaceHole(hwnd, state, x, y)
+                if !result
+                    this._RestoreSurfaceState(hwnd, state)
+            }
+        }
+    }
 
-        for hwnd, state in this.Targets {
-            if IsObject(state) && state.taskManagerCompanion
-                companionHwnds.Push(hwnd)
+    static _RestoreSurfaceState(hwnd, state) {
+        if !IsObject(state)
+            return
+
+        if state.regionActive
+            this._RestoreSurfaceRegion(hwnd, state)
+
+        if state.originalRegion
+            this._DiscardCapturedRegion(state)
+
+        if state.baseRegion {
+            try DllCall("DeleteObject", "Ptr", state.baseRegion)
+            state.baseRegion := 0
+            state.baseRegionWidth := 0
+            state.baseRegionHeight := 0
+        }
+    }
+
+    static _RestoreSurfaceTargets(state) {
+        if !IsObject(state)
+            return
+
+        if state.HasProp("chromiumRenderSurfaces") {
+            for hwnd, surfaceState in state.chromiumRenderSurfaces
+                this._RestoreSurfaceState(hwnd, surfaceState)
+
+            state.chromiumRenderSurfaces := Map()
         }
 
-        for hwnd in companionHwnds {
-            if !this.Targets.Has(hwnd)
-                continue
+        if state.HasProp("taskManagerSurfaceTargets") {
+            for hwnd, surfaceState in state.taskManagerSurfaceTargets
+                this._RestoreSurfaceState(hwnd, surfaceState)
 
-            state := this.Targets[hwnd]
-
-            if !IsObject(state) || state.fallback
-                continue
-
-            if !this._IsPointInsideWindow(hwnd, x, y, state)
-                continue
-
-            if !this._ShouldApplyTaskManagerCompanionPosition(state, x, y)
-                continue
-
-            result := this._ApplyHole(hwnd, false, x, y)
-
-            if !result && this.Targets.Has(hwnd)
-                this.Targets.Delete(hwnd)
+            state.taskManagerSurfaceTargets := Map()
         }
     }
 
@@ -1097,7 +1566,9 @@ class WindowHole {
             originalCornerPreference: 0,
             hadOriginalCornerPreference: false,
             originalSystemBackdropType: 0,
-            hadOriginalSystemBackdropType: false
+            hadOriginalSystemBackdropType: false,
+            chromiumRenderSurfaces: Map(),
+            taskManagerSurfaceTargets: Map()
         }
 
         tempRegion := DllCall(
@@ -1445,6 +1916,11 @@ class WindowHole {
         if !IsObject(state)
             return
 
+        ; Restore child rendering surfaces before removing the primary region.
+        ; Modern compositors can otherwise retain the clipped frame for one or
+        ; more presentation cycles after the parent region is restored.
+        this._RestoreSurfaceTargets(state)
+
         ; Restore DWM/opacity state before returning the original region.
         this._RestoreWindowVisualState(hwnd, state)
 
@@ -1503,6 +1979,7 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
         this.LastTaskManagerCompanionScanTick := 0
+        this.LastChromiumRenderSurfaceScanTick := 0
         this.TimerCallback := ""
     }
 
