@@ -66,6 +66,44 @@ class CloudSyncCoordinator {
         this.SyncNow()
     }
 
+    static Connect(*) {
+        if this.Syncing
+            return false
+
+        try {
+            provider := this._GetProvider()
+            provider.Connect()
+            provider.ValidateConnection()
+            this._SetState("connected")
+            return true
+        } catch as err {
+            this._HandleFailure(err)
+            return false
+        }
+    }
+
+    static ResetProvider() {
+        try {
+            if IsObject(this.Provider)
+                this.Provider.Disconnect()
+        } catch {
+        }
+
+        this.Provider := ""
+        CloudSyncCredentials.Delete(AppState.CloudSyncProvider)
+        AppState.CloudSyncTarget := ""
+        AppState.CloudSyncConflict := false
+        AppState.CloudSyncLocalDirty := false
+
+        try IniWrite("", AppState.ConfigFile, "CloudSync", "target")
+        catch {
+        }
+
+        CloudSyncState.ClearSyncMetadata()
+        this._SetState(AppState.CloudSyncEnabled ? "not-configured" : "disabled")
+        return true
+    }
+
     static SyncNow(*) {
         if this.Syncing
             return false
