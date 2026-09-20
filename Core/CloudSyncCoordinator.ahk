@@ -162,6 +162,11 @@ class CloudSyncCoordinator {
             }
 
             if remoteFingerprint == lastRemote {
+                if localHash == CloudSyncState.Get("Sync", "lastLocalHash", "") {
+                    this._SetState("idle")
+                    return true
+                }
+
                 upload := provider.Upload(
                     CloudSyncModel.Serialize(localPackage),
                     localHash,
