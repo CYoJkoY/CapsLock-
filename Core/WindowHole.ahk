@@ -35,14 +35,13 @@ class WindowHole {
 
     static Active := false
     static PrimaryHwnd := 0
-    static SecondaryHiddenWindows := Map()
     static OriginalForeground := 0
     static OriginalTopmost := false
+    static TaskManagerPreviousState := -1
     static Targets := Map()
+    static HoleLayerOrder := []
     static LastMouseX := ""
     static LastMouseY := ""
-    static LastChromiumRenderSurfaceScanTick := 0
-    static TaskManagerPreviousState := -1
     static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
@@ -120,40 +119,49 @@ class WindowHole {
 
         this.Active := true
         this.PrimaryHwnd := hwnd
-        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
+        this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
 
-        ; Task Manager is intentionally handled through a taskbar-preserving
-        ; minimize strategy rather than manipulating its WinUI/Composition surfaces.
+        ; Task Manager remains a narrow primary-window compatibility case.
+        ; Secondary penetration never uses this minimize fallback.
         if this._IsTaskManagerWindow(hwnd) {
             if !this._HideTaskManagerWindows() {
                 this._ResetState()
                 return
             }
 
-            ; Task Manager has no reliable window-region hit-testing path.
-            ; After minimizing it, continue the same layer traversal mode so
-            ; the next window can be focused and then minimized with 1.
             if !this._SetSecondLevelHotkeyEnabled(true) {
                 this._RestoreTaskManagerWindow()
                 this._ResetState()
                 return
             }
 
+            ; Task Manager itself is handled by the compatibility fallback, but
+            ; the same timer must remain active so any secondary Region Stack
+            ; layers continue following the physical cursor.
+            this.TimerCallback := (*) => this._Update()
+            SetTimer(
+                this.TimerCallback,
+                Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
+            )
+            this._Update(true)
             return
         }
 
+        ; The primary window remains above the revealed layers without being
+        ; activated. Region clipping makes the hole itself pass hit-testing
+        ; through to the next eligible top-level window.
         ; Keep the original foreground window above the revealed content.
         ; The previous topmost state is restored when the mode ends.
         if !this.OriginalTopmost {
             try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
         }
 
-        if !this._ApplyHole(hwnd, true) {
+        if !this._ApplyHole(hwnd) {
             this._RestoreAll()
             this._RestorePrimaryTopmost()
             this._ResetState()
@@ -190,7 +198,6 @@ class WindowHole {
         this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreChromiumMousePassthrough()
         this._RestoreTaskManagerWindow()
-        this._RestoreSecondaryHiddenWindows()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -222,10 +229,11 @@ class WindowHole {
         if !this.Active
             return
 
-        ; Secondary penetration is intentionally based on the window that is
-        ; focused when the key is pressed. Do not sample the mouse position:
-        ; the first Window Hole already lets the user click the window below,
-        ; making that window the new foreground window.
+        ; Secondary penetration never changes window visibility or activation
+        ; state. The currently focused window receives a Window Hole at the
+        ; current cursor location and remains in the layer stack until the
+        ; session ends. Its hole then follows the cursor while the pointer
+        ; remains within that window's bounds.
         foregroundHwnd := WinExist("A")
 
         if (
@@ -233,6 +241,7 @@ class WindowHole {
             || foregroundHwnd == this.PrimaryHwnd
             || this._IsOwnWindow(foregroundHwnd)
             || !this.IsEligible(foregroundHwnd)
+            || this.Targets.Has(foregroundHwnd)
         ) {
             ShowToolTip(
                 Lang(
@@ -244,7 +253,17 @@ class WindowHole {
             return
         }
 
-        if this.SecondaryHiddenWindows.Has(foregroundHwnd) {
+        if !this._GetPhysicalCursorPosition(&mx, &my)
+            return
+
+        result := this._ApplyHole(
+            foregroundHwnd,
+            mx,
+            my,
+            false
+        )
+
+        if result != true {
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -255,45 +274,15 @@ class WindowHole {
             return
         }
 
-        try {
-            previousState := WinGetMinMax("ahk_id " foregroundHwnd)
-            if previousState == -1
-                return
+        this._Update(true)
 
-            ; Minimize instead of SW_HIDE. A minimized top-level window stays
-            ; represented by its normal taskbar button, so the user can still
-            ; restore it through the taskbar while Window Hole is active.
-            this._GetPhysicalCursorPosition(&mx, &my)
-
-            WinMinimize("ahk_id " foregroundHwnd)
-            Sleep(10)
-
-            if WinGetMinMax("ahk_id " foregroundHwnd) != -1 {
-                throw Error("WinMinimize failed.")
-            }
-
-            this.SecondaryHiddenWindows[foregroundHwnd] := Map(
-                "previousState",
-                previousState
-            )
-
-            ; WinMinimize normally activates the next Z-order window, but the
-            ; Window Hole primary window can remain topmost. Resolve the actual
-            ; window under the hole point and hand it the foreground focus so
-            ; the revealed layer is immediately interactive.
-            if IsSet(mx) && IsSet(my)
-                this._FocusNextWindowAtPoint(mx, my)
-
-            message := Lang(
+        ShowToolTip(
+            Lang(
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
-                "Focused window temporarily minimized."
-            )
-
-            ShowToolTip(message, 1500)
-        } catch {
-            ; Do not alter visibility on failure. The minimize call is the only
-            ; state transition owned by this operation.
-        }
+                "Focused window now has a temporary hole."
+            ),
+            1500
+        )
     }
 
     static IsEligible(hwnd) {
@@ -359,43 +348,83 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-        if !IsObject(primaryState)
-            return
+        ; Every Window Hole layer uses the same physical cursor position.
+        ; A layer follows the cursor while the cursor remains inside that
+        ; window's geometry. Once the cursor leaves the window, its last hole
+        ; position is preserved until the cursor re-enters its bounds.
+        ; Clone the layer order because a failed region update can remove its
+        ; target while this pass is iterating.
+        layerHwnds := this.HoleLayerOrder.Clone()
+        for layerHwnd in layerHwnds {
+            if !this.Targets.Has(layerHwnd)
+                continue
 
-        isChromium := primaryState.isChromium
-        if isChromium
-            this._EnsureChromiumRenderSurfaces(primaryState)
+            state := this.Targets[layerHwnd]
+            if !IsObject(state) || state.fallback
+                continue
 
-        if !primaryState.fallback {
-            ; The hole follows the cursor only while the cursor is still
-            ; geometrically inside the primary window. Once the cursor passes
-            ; through the hole into a lower window, freeze the hole in place.
-            ; This is essential for real drag/drop: the cursor must be able
-            ; to leave the hole and hit the primary window again.
-            if mouseMoved && this._IsPointInsideWindow(
-                this.PrimaryHwnd,
+            if !mouseMoved
+                continue
+
+            if !this._IsPointInsideWindow(
+                layerHwnd,
                 mx,
                 my,
-                primaryState
-            ) {
-                if this._ShouldApplyPosition(primaryState, mx, my) {
-                    if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
-                        this.Stop()
-                        return
-                    }
-                }
+                state
+            )
+                continue
+
+            if !this._ShouldApplyPosition(state, mx, my)
+                continue
+
+            isPrimary := layerHwnd == this.PrimaryHwnd
+            result := this._ApplyHole(
+                layerHwnd,
+                mx,
+                my,
+                isPrimary
+            )
+
+            if result != true && isPrimary {
+                this.Stop()
+                return
             }
         }
 
-        if isChromium {
-            this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
-            this._UpdateChromiumMousePassthrough(primaryState, mx, my)
-        } else {
-            this._RestoreChromiumMousePassthrough()
+        ; Chromium render surfaces and hit-testing are maintained per layer.
+        ; This is important when a Chromium window is a secondary target:
+        ; visual clipping alone is insufficient because its compositor HWNDs
+        ; can remain the hit-test surface.
+        for layerHwnd in layerHwnds {
+            if !this.Targets.Has(layerHwnd)
+                continue
+
+            layerState := this.Targets[layerHwnd]
+            if !IsObject(layerState) || !layerState.isChromium
+                continue
+
+            this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
+
+            if layerState.hasAppliedPosition {
+                this._UpdateChromiumRenderSurfaces(
+                    layerState,
+                    layerState.lastAppliedX,
+                    layerState.lastAppliedY,
+                    mouseMoved || force
+                )
+            }
+
+            this._UpdateChromiumMousePassthrough(
+                layerHwnd,
+                layerState,
+                mx,
+                my
+            )
         }
+
+        ; Restore passthrough on Chromium layers that no longer qualify. The
+        ; helper above is called for every active Chromium target, so the map
+        ; is authoritative for the current hole session.
     }
 
     static _GetPhysicalCursorPosition(&x, &y) {
@@ -579,29 +608,30 @@ class WindowHole {
         this.ChromiumMousePassthroughWindows := Map()
     }
 
-    static _UpdateChromiumMousePassthrough(primaryState, x, y) {
-        if !IsObject(primaryState) || !primaryState.isChromium {
-            this._RestoreChromiumMousePassthrough()
+    static _UpdateChromiumMousePassthrough(targetHwnd, targetState, x, y) {
+        if !targetHwnd || !IsObject(targetState) || !targetState.isChromium {
+            if targetHwnd
+                this._SetChromiumMousePassthrough(targetHwnd, false)
             return
         }
 
-        if primaryState.fallback
+        if targetState.fallback
             || !this._IsPointInsideWindow(
-                this.PrimaryHwnd,
+                targetHwnd,
                 x,
                 y,
-                primaryState
+                targetState
             )
-            || !this._IsPointInsideHole(primaryState, x, y) {
-            this._RestoreChromiumMousePassthrough()
+            || !this._IsPointInsideHole(targetState, x, y) {
+            this._SetChromiumMousePassthrough(targetHwnd, false)
             return
         }
 
-        ; The top-level Chrome HWND is the only window that needs to become
-        ; mouse-transparent. Changing its hit-test behavior means Chromium
-        ; descendants are skipped as well, while avoiding layered-window
-        ; changes on the compositor child surfaces.
-        this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)
+        ; Keep only the Chromium layer whose hole currently contains the
+        ; pointer mouse-transparent. Other Chromium layers remain interactive
+        ; outside their own hole and are restored immediately when the cursor
+        ; leaves that layer's hole.
+        this._SetChromiumMousePassthrough(targetHwnd, true)
     }
 
     static _GetTopLevelWindowAtPoint(x, y) {
@@ -639,7 +669,7 @@ class WindowHole {
             !hwnd
             || hwnd == this.PrimaryHwnd
             || this._IsOwnWindow(hwnd)
-            || this.SecondaryHiddenWindows.Has(hwnd)
+            || this.Targets.Has(hwnd)
             || !this.IsEligible(hwnd)
         )
             return 0
@@ -651,14 +681,6 @@ class WindowHole {
         } catch {
             return 0
         }
-    }
-
-    static _FocusNextWindowUnderCursor() {
-        if !this._GetPhysicalCursorPosition(&x, &y)
-            return 0
-
-        Sleep(10)
-        return this._FocusNextWindowAtPoint(x, y)
     }
 
     static _GetPhysicalWindowGeometry(hwnd, &x, &y, &width, &height) {
@@ -721,18 +743,6 @@ class WindowHole {
                 || processName == "vivaldi.exe"
                 || processName == "opera.exe"
                 || processName == "chromium.exe"
-        } catch {
-            return false
-        }
-    }
-
-    static _IsTaskManagerWindow(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
-            return false
-
-        try {
-            return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
-                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
         } catch {
             return false
         }
@@ -1084,21 +1094,21 @@ class WindowHole {
         return region
     }
 
-    static _EnsureChromiumRenderSurfaces(primaryState := "") {
-        if !IsObject(primaryState)
-            return
+    static _EnsureChromiumRenderSurfaces(targetHwnd, targetState) {
+        if !targetHwnd || !IsObject(targetState)
+            return false
 
-        if !primaryState.isChromium
-            return
+        if !targetState.isChromium
+            return false
 
         now := A_TickCount
-        if now - this.LastChromiumRenderSurfaceScanTick
+        if now - targetState.lastRenderSurfaceScanTick
             < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
-            return
+            return false
 
-        this.LastChromiumRenderSurfaceScanTick := now
+        targetState.lastRenderSurfaceScanTick := now
         seen := Map()
-        childHwnds := this._EnumerateChildWindows(this.PrimaryHwnd)
+        childHwnds := this._EnumerateChildWindows(targetHwnd)
 
         for hwnd in childHwnds {
             if !this._IsChromiumRenderingSurface(hwnd)
@@ -1106,18 +1116,18 @@ class WindowHole {
 
             seen[hwnd] := true
 
-            if primaryState.chromiumRenderSurfaces.Has(hwnd)
+            if targetState.chromiumRenderSurfaces.Has(hwnd)
                 continue
 
             state := this._CaptureSurfaceState(hwnd)
             if !IsObject(state)
                 continue
 
-            primaryState.chromiumRenderSurfaces[hwnd] := state
+            targetState.chromiumRenderSurfaces[hwnd] := state
         }
 
         stale := []
-        for hwnd, state in primaryState.chromiumRenderSurfaces {
+        for hwnd, state in targetState.chromiumRenderSurfaces {
             if seen.Has(hwnd)
                 continue
 
@@ -1125,19 +1135,20 @@ class WindowHole {
             stale.Push(hwnd)
         }
 
-        for hwnd in stale {
-            primaryState.chromiumRenderSurfaces.Delete(hwnd)
-        }
+        for hwnd in stale
+            targetState.chromiumRenderSurfaces.Delete(hwnd)
+
+        return true
     }
 
-    static _UpdateChromiumRenderSurfaces(primaryState, x, y, mouseMoved) {
-        if !IsObject(primaryState)
+    static _UpdateChromiumRenderSurfaces(targetState, x, y, mouseMoved) {
+        if !IsObject(targetState)
             return
 
-        if primaryState.chromiumRenderSurfaces.Count == 0
+        if targetState.chromiumRenderSurfaces.Count == 0
             return
 
-        for hwnd, state in primaryState.chromiumRenderSurfaces {
+        for hwnd, state in targetState.chromiumRenderSurfaces {
             if mouseMoved || state.regionActive {
                 result := this._ApplySurfaceHole(hwnd, state, x, y)
                 if !result
@@ -1265,7 +1276,9 @@ class WindowHole {
         }
     }
 
-    static _ApplyHole(hwnd, isPrimary, mouseX := "", mouseY := "") {
+    static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true) {
+        addedTarget := false
+
         if !this.Targets.Has(hwnd) {
             if !this.IsEligible(hwnd)
                 return false
@@ -1275,7 +1288,9 @@ class WindowHole {
                 return false
 
             this.Targets[hwnd] := state
+            this.HoleLayerOrder.Push(hwnd)
             this._PrepareWindowForHole(hwnd, state)
+            addedTarget := true
         }
 
         state := this.Targets[hwnd]
@@ -1302,8 +1317,6 @@ class WindowHole {
                 mx := mouseX
                 my := mouseY
             }
-
-            firstRegionApply := !state.hasAppliedPosition
 
             relativeX := mx - wx
             relativeY := my - wy
@@ -1336,6 +1349,9 @@ class WindowHole {
                 throw Error("Window-hole center remained inside the assigned region.")
             }
 
+            ; For ordinary Win32 windows, the window region is the
+            ; actual window shape used by Windows for drawing/hit-testing. No
+            ; synthetic click forwarding is needed for the secondary layer.
             applied := DllCall(
                 "SetWindowRgn",
                 "Ptr", hwnd,
@@ -1350,27 +1366,29 @@ class WindowHole {
             }
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
+            firstRegionApply := !state.hasAppliedPosition
             state.regionActive := true
 
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            ; SetWindowRgn(..., FALSE) is intentionally the only operation in
-            ; the steady-state Chromium movement path. Chromium treats region
-            ; changes as paint-affecting operations already, so an additional
-            ; RedrawWindow here only adds more work to its compositor path.
-            ; Keep the explicit refresh for the first region application so
-            ; activation remains visually immediate.
+            ; Keep top-level region application separate from Chromium
+            ; child-surface synchronization. _Update() handles the latter for
+            ; every active HoleTarget, not only the primary window.
             if !state.isChromium || firstRegionApply
-                this._RefreshWindow(hwnd, false, state.isChromium)
+                this._RefreshWindow(
+                    hwnd,
+                    false,
+                    state.isChromium
+                )
 
             return true
         } catch {
-            if AppState.WindowHoleFallbackToMinimize {
-                if state.regionActive
-                    this._RestoreOriginalRegion(hwnd, state)
+            if state.regionActive
+                this._RestoreOriginalRegion(hwnd, state)
 
+            if allowFallback && AppState.WindowHoleFallbackToMinimize {
                 if this._MinimizeFallback(hwnd, state)
                     return "minimized"
             }
@@ -1386,7 +1404,22 @@ class WindowHole {
             }
 
             this.Targets.Delete(hwnd)
+            this._RemoveHoleLayer(hwnd)
+            this._SetChromiumMousePassthrough(hwnd, false)
             return false
+        }
+    }
+
+    static _RemoveHoleLayer(hwnd) {
+        if !this.HoleLayerOrder.Length
+            return
+
+        for index, layerHwnd in this.HoleLayerOrder {
+            if layerHwnd != hwnd
+                continue
+
+            this.HoleLayerOrder.RemoveAt(index)
+            break
         }
     }
 
@@ -1606,7 +1639,8 @@ class WindowHole {
             hadOriginalCornerPreference: false,
             originalSystemBackdropType: 0,
             hadOriginalSystemBackdropType: false,
-            chromiumRenderSurfaces: Map()
+            chromiumRenderSurfaces: Map(),
+            lastRenderSurfaceScanTick: 0
         }
 
         tempRegion := DllCall(
@@ -1937,51 +1971,23 @@ class WindowHole {
         }
     }
 
-    static _RestoreSecondaryHiddenWindows() {
-        for hwnd, state in this.SecondaryHiddenWindows {
-            if !IsObject(state)
-                continue
-
-            try {
-                if !DllCall("IsWindow", "Ptr", hwnd, "Int")
-                    continue
-
-                ; Only restore a window that is still minimized. If the user
-                ; restored it from the taskbar while Window Hole was active,
-                ; leave that user action intact instead of changing its state
-                ; again during cleanup.
-                if WinGetMinMax("ahk_id " hwnd) != -1
-                    continue
-
-                WinRestore("ahk_id " hwnd)
-
-                if state.previousState == 1
-                    WinMaximize("ahk_id " hwnd)
-            } catch {
-            }
-        }
-
-        this.SecondaryHiddenWindows := Map()
-    }
-
     static _RestoreAll() {
-        secondaryHwnds := []
-        for hwnd, state in this.Targets {
-            if hwnd == this.PrimaryHwnd
-                continue
-            secondaryHwnds.Push(hwnd)
-        }
+        ; Restore the deepest layer first and the primary layer last. Region
+        ; restoration does not modify Z-order, but this order minimizes visual
+        ; churn while the stack is being torn down.
+        index := this.HoleLayerOrder.Length
 
-        ; Restore lower layers first, then the primary window.
-        for hwnd in secondaryHwnds {
+        while index > 0 {
+            hwnd := this.HoleLayerOrder[index]
+
             if this.Targets.Has(hwnd)
                 this._RestoreTarget(hwnd, this.Targets[hwnd])
+
+            index -= 1
         }
 
-        if this.PrimaryHwnd && this.Targets.Has(this.PrimaryHwnd)
-            this._RestoreTarget(this.PrimaryHwnd, this.Targets[this.PrimaryHwnd])
-
         this.Targets := Map()
+        this.HoleLayerOrder := []
     }
 
     static _RestoreTarget(hwnd, state) {
@@ -2027,16 +2033,27 @@ class WindowHole {
         this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
         this.PrimaryHwnd := 0
-        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
+        this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
-        this.LastChromiumRenderSurfaceScanTick := 0
         this.TaskManagerPreviousState := -1
         this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
+    }
+
+    static _IsTaskManagerWindow(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
+                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
+        } catch {
+            return false
+        }
     }
 
     static _HideTaskManagerWindows() {
@@ -2051,21 +2068,13 @@ class WindowHole {
 
             this.TaskManagerPreviousState := previousState
 
-            ; Minimize instead of SW_HIDE. Windows keeps the normal taskbar
-            ; button for a minimized top-level window, so the user can restore
-            ; Task Manager directly from the taskbar instead of relying on a
-            ; taskbar context-menu command.
             this._GetPhysicalCursorPosition(&mx, &my)
-
             WinMinimize("ahk_id " hwnd)
 
             Sleep(10)
             if WinGetMinMax("ahk_id " hwnd) != -1
                 return false
 
-            ; Task Manager is a fallback-only primary window. Once minimized,
-            ; focus the actual window under the cursor so the user can interact
-            ; with the revealed layer immediately.
             if IsSet(mx) && IsSet(my)
                 this._FocusNextWindowAtPoint(mx, my)
 
