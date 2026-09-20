@@ -153,10 +153,19 @@ class CloudSyncCoordinator {
 
             lastRemote := CloudSyncState.Get("Sync", "lastRemoteFingerprint", "")
 
-            if lastRemote == "" || remoteFingerprint == lastRemote {
+            if lastRemote == "" {
+                return this._CreateConflict(
+                    localPackage,
+                    remotePackage,
+                    "initial-sync-existing-remote"
+                )
+            }
+
+            if remoteFingerprint == lastRemote {
                 upload := provider.Upload(
                     CloudSyncModel.Serialize(localPackage),
-                    localHash
+                    localHash,
+                    response.Get("providerRevision", "")
                 )
                 return this._HandleUploadSuccess(upload, localPackage)
             }
@@ -255,7 +264,36 @@ class CloudSyncCoordinator {
     }
 
     static ResolveKeepLocal() {
-        return this.SyncNow()
+        if !AppState.CloudSyncConflict
+            return false
+
+        try {
+            provider := this._GetProvider()
+            provider.Connect()
+
+            currentRemote := provider.Download()
+            if !IsObject(currentRemote) || !currentRemote.Get("exists", false)
+                throw Error("The remote sync target disappeared.")
+
+            expectedFingerprint :=
+                CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+
+            currentFingerprint := currentRemote.Get("fingerprint", "")
+            if expectedFingerprint == "" || currentFingerprint != expectedFingerprint
+                throw Error("The remote sync target changed while the conflict was open.")
+
+            package := CloudSyncModel.FinalizePackage(CloudSyncModel.BuildPackage())
+            upload := provider.Upload(
+                CloudSyncModel.Serialize(package),
+                package["integrity"]["contentHash"],
+                currentRemote.Get("providerRevision", "")
+            )
+
+            return this._HandleUploadSuccess(upload, package)
+        } catch as err {
+            this._HandleFailure(err)
+            return false
+        }
     }
 
     static ResolveUseRemote() {
@@ -335,6 +373,7 @@ class CloudSyncCoordinator {
             "fingerprint",
             package["integrity"]["contentHash"]
         )
+        providerRevision := response.Get("providerRevision", "")
         localHash := package["integrity"]["contentHash"]
 
         this._SaveBase(package)
@@ -350,6 +389,7 @@ class CloudSyncCoordinator {
 
         CloudSyncState.Set("Sync", "lastRemoteRevision", revision)
         CloudSyncState.Set("Sync", "lastRemoteFingerprint", fingerprint)
+        CloudSyncState.Set("Sync", "lastRemoteProviderRevision", providerRevision)
         CloudSyncState.Set("Sync", "lastLocalHash", localHash)
         CloudSyncState.Set("Sync", "lastSuccessfulSync", AppState.CloudSyncLastSuccess)
         CloudSyncState.Set("Sync", "localDirty", "0")
@@ -378,6 +418,11 @@ class CloudSyncCoordinator {
 
         AppState.CloudSyncConflict := true
         CloudSyncState.Set("Sync", "conflict", "1")
+        try {
+            remoteFingerprint := remotePackage["integrity"]["contentHash"]
+            CloudSyncState.Set("Sync", "conflictRemoteFingerprint", remoteFingerprint)
+        } catch {
+        }
         this._SetState("conflict")
 
         try {
