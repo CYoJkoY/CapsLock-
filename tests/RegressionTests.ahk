@@ -13,13 +13,13 @@ RunTests() {
     source := ReadSource("Core\WindowHole.ahk")
 
     Assert(
-        InStr(source, "static CHROMIUM_MIN_UPDATE_INTERVAL := 25")
-            && InStr(source, "static CHROMIUM_MIN_MOVE_DISTANCE := 5"),
+        InStr(source, "static CHROMIUM_MIN_UPDATE_INTERVAL := 16")
+            && InStr(source, "static CHROMIUM_MIN_MOVE_DISTANCE := 3"),
         "Chromium movement smoothing targets are missing."
     )
     Assert(
-        InStr(source, "static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 25")
-            && InStr(source, "static RENDER_SURFACE_MIN_MOVE_DISTANCE := 5"),
+        InStr(source, "static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 16")
+            && InStr(source, "static RENDER_SURFACE_MIN_MOVE_DISTANCE := 3"),
         "Chromium render-surface pacing targets are missing."
     )
     Assert(
@@ -40,6 +40,14 @@ RunTests() {
     Assert(
         InStr(source, "static _UpdateChromiumRenderSurfaces") > 0,
         "Chromium rendering-surface update path is missing."
+    )
+    Assert(
+        InStr(source, "static _EnsureChromiumRenderSurfaces(primaryState := "")") > 0,
+        "Chromium surface discovery does not reuse cached primary state."
+    )
+    Assert(
+        InStr(source, "className := WinGetClass("ahk_id " hwnd)") > 0,
+        "Chromium surface class-first filtering is missing."
     )
     Assert(
         InStr(source, "baseRegion,\n            state\n        )") > 0,
