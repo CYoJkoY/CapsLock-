@@ -125,7 +125,13 @@ Phrase data is stored locally under:
 ```text
 configs/
 ├── QuickPhrases.ini
-└── QuickPhrases/
+├── QuickPhrases/
+└── CloudSync/
+    ├── state.ini
+    ├── base.json
+    ├── credentials.dat
+    ├── backups/
+    └── conflicts/
     └── phrase template files
 ```
 
@@ -237,7 +243,7 @@ configs/
 └── QuickPhrases/
 ```
 
-The application creates this directory automatically and does not require an account or network connection for normal local use.
+The application creates this directory automatically. Cloud Sync remains opt-in; without an enabled and configured provider, the application stays entirely local. The CloudSync directory contains synchronization metadata, encrypted local credentials, backups, conflicts, and staging state. These files are not uploaded as a directory.
 
 Important configuration areas include:
 
@@ -252,6 +258,24 @@ Important configuration areas include:
 | `[Ignore]` | Gitignore-style path/file patterns |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
+
+### Cloud Sync
+
+Cloud Sync is optional and disabled by default. Normal local use does not require a CapsLock account or a cloud provider.
+
+Current provider adapters:
+
+- GitHub Gist
+- GitHub Private Repository
+- Google Drive
+- OneDrive
+- WebDAV
+
+Only intentionally syncable configuration and Quick Phrase data are included in the sync package. Clipboard history, transient runtime state, window handles, temporary files, and provider credentials are excluded.
+
+Cloud Sync uses a versioned JSON package with integrity verification, a device identity, local synchronization state, conflict detection, three-way merging, and transactional local replacement with backups.
+
+Provider credentials and OAuth refresh tokens are stored locally with Windows DPAPI and are never placed in the synchronization payload.
 
 ### Configuration defaults
 
@@ -356,7 +380,7 @@ The current implementation is centered on local Windows productivity workflows. 
 | Roadmap item | Status |
 | :--- | :--- |
 | [Custom low-glare light theme](https://github.com/CYoJkoY/CapsLock-/issues/41) | Planned |
-| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42) | Planned |
+| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42) | In progress |
 
 Cloud Sync is intended to remain optional; normal local use should not depend on a hosted CapsLock service.
 
