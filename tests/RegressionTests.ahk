@@ -62,8 +62,9 @@ RunTests() {
         InStr(source, "static HoleLayerOrder := []") > 0
             && InStr(source, "static HandleSecondLevelPenetration(*)") > 0
             && InStr(source, "this.Targets[hwnd] := state") > 0
-            && InStr(source, "this.HoleLayerOrder.Push(hwnd)") > 0,
-        "Region-stack secondary penetration state is missing."
+            && InStr(source, "this.HoleLayerOrder.Push(hwnd)") > 0
+            && InStr(source, "layerHwnds := this.HoleLayerOrder.Clone()") > 0,
+        "Region-stack secondary penetration state or safe layer iteration is missing."
     )
     secondaryStart := InStr(source, "static HandleSecondLevelPenetration(*)")
     secondaryEnd := InStr(source, "static IsEligible(hwnd) {", secondaryStart)
@@ -73,14 +74,30 @@ RunTests() {
         secondaryStart > 0
             && secondaryEnd > secondaryStart
             && InStr(secondarySource, 'foregroundHwnd := WinExist("A")') > 0
+            && InStr(secondarySource, "this._GetPhysicalCursorPosition(&mx, &my)") > 0
             && InStr(secondarySource, "this._ApplyHole(") > 0
+            && InStr(secondarySource, "mx") > 0
+            && InStr(secondarySource, "my") > 0
             && InStr(secondarySource, "false") > 0,
-        "Secondary penetration does not create a fixed region layer without fallback."
+        "Secondary penetration does not create a cursor-positioned region layer without fallback."
     )
     Assert(
         InStr(source, 'static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true)') > 0
             && InStr(source, "if allowFallback && AppState.WindowHoleFallbackToMinimize") > 0,
         "Minimize fallback is not isolated from normal secondary region penetration."
+    )
+
+    Assert(
+        InStr(source, "static _UpdateChromiumMousePassthrough(targetHwnd, targetState, x, y)") > 0
+            && InStr(source, "this._UpdateChromiumMousePassthrough(") > 0
+            && InStr(source, "this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)") > 0,
+        "Chromium mouse passthrough is not applied independently to each hole layer."
+    )
+    Assert(
+        InStr(source, "state.lastAppliedX") > 0
+            && InStr(source, "state.lastAppliedY") > 0
+            && InStr(source, "this._ApplyHole(") > 0,
+        "Hole layers do not retain the cursor position needed for mouse-following updates."
     )
 
     Assert(
@@ -100,6 +117,7 @@ RunTests() {
         InStr(secondarySource, "WinMinimize(") == 0
             && InStr(secondarySource, "WinRestore(") == 0
             && InStr(secondarySource, "WinMaximize(") == 0
+            && InStr(secondarySource, "WinActivate(") == 0
             && InStr(secondarySource, "_FocusNextWindowAtPoint") == 0,
         "Secondary penetration still changes show state or forcibly activates the next layer."
     )
