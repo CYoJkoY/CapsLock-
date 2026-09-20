@@ -369,34 +369,32 @@ class WindowHole {
 
         if isChromium {
             this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
-
-            ; Secondary Chromium layers keep a fixed hole position. Re-scan
-            ; their child surfaces only on the per-target cadence so newly
-            ; created render HWNDs inherit the same fixed hole without adding
-            ; per-frame compositor work.
-            for layerHwnd in this.HoleLayerOrder {
-                if layerHwnd == this.PrimaryHwnd
-                    continue
-
-                if !this.Targets.Has(layerHwnd)
-                    continue
-
-                layerState := this.Targets[layerHwnd]
-                if !layerState.isChromium
-                    continue
-
-                if this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
-                    this._UpdateChromiumRenderSurfaces(
-                        layerState,
-                        layerState.lastAppliedX,
-                        layerState.lastAppliedY,
-                        true
-                    )
-            }
-
             this._UpdateChromiumMousePassthrough(primaryState, mx, my)
         } else {
             this._RestoreChromiumMousePassthrough()
+        }
+
+        ; Secondary Chromium layers keep a fixed hole position. Re-scan their
+        ; child surfaces only on the per-target cadence so newly created render
+        ; HWNDs inherit the same fixed hole regardless of which layer is primary.
+        for layerHwnd in this.HoleLayerOrder {
+            if layerHwnd == this.PrimaryHwnd
+                continue
+
+            if !this.Targets.Has(layerHwnd)
+                continue
+
+            layerState := this.Targets[layerHwnd]
+            if !layerState.isChromium
+                continue
+
+            if this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
+                this._UpdateChromiumRenderSurfaces(
+                    layerState,
+                    layerState.lastAppliedX,
+                    layerState.lastAppliedY,
+                    true
+                )
         }
     }
 
