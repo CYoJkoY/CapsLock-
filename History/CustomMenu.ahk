@@ -5,8 +5,14 @@ class CustomMenu {
     static menuHwnd := 0
     static items := []
     static lastHoveredEntry := ""
-    static hoverTimer := ""
     static outsideTimer := ""
+    static outsideSurfaceSince := 0
+    static outsideDismissDelay := 240
+    static interactionPadding := 10
+    static mouseMoveHandler := ""
+    static mouseMoveRegistered := false
+    static controlEntries := Map()
+    static WM_MOUSEMOVE := 0x0200
 
     ; Top-level tray menus need a short opening grace period because the
     ; pointer is still over the tray anchor when the custom menu appears.
@@ -56,6 +62,7 @@ class CustomMenu {
         this.Hide()
         this.items := this.NormalizeItems(itemsArray)
         this.lastHoveredEntry := ""
+        this.outsideSurfaceSince := 0
 
         if anchorBottom {
             ; Preserve the original tray click point. BuildAndShow may shift
@@ -242,18 +249,21 @@ class CustomMenu {
 
             entry.bgCtrl := bgCtrl
             entry.txtCtrl := txtCtrl
+            this.RegisterControlHit(bgCtrl, entry, "main")
+            this.RegisterControlHit(txtCtrl, entry, "main")
 
+            ; Parent rows are hover targets; clicking them should not toggle
+            ; an already-open submenu closed.
             if entry.HasProp("children") {
-                cb := ObjBindMethod(this, "ToggleSubMenu", entry)
-            } else if entry.HasProp("callback") && IsObject(entry.callback) {
-                cb := ObjBindMethod(this, "InvokeAndClose", entry.callback)
-            } else {
                 curY += itemH
                 continue
             }
 
-            bgCtrl.OnEvent("Click", cb)
-            txtCtrl.OnEvent("Click", cb)
+            if entry.HasProp("callback") && IsObject(entry.callback) {
+                cb := ObjBindMethod(this, "InvokeAndClose", entry.callback)
+                bgCtrl.OnEvent("Click", cb)
+                txtCtrl.OnEvent("Click", cb)
+            }
 
             curY += itemH
         }
@@ -280,26 +290,134 @@ class CustomMenu {
         this.menuGui := myGui
         this.menuHwnd := myGui.Hwnd
 
-        if this.hoverTimer == ""
-            this.hoverTimer := ObjBindMethod(this, "CheckHover")
+        if this.mouseMoveHandler == ""
+            this.mouseMoveHandler := ObjBindMethod(this, "HandleMouseMove")
+        if !this.mouseMoveRegistered {
+            OnMessage(this.WM_MOUSEMOVE, this.mouseMoveHandler)
+            this.mouseMoveRegistered := true
+        }
+
         if this.outsideTimer == ""
-            this.outsideTimer := ObjBindMethod(this, "CheckOutsideClick")
+            this.outsideTimer := ObjBindMethod(this, "CheckOutsideSurface")
 
         ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
         myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
         this.RepositionShownWindow(this.menuHwnd, monIdx)
 
-        ; Start dismissal timers only after the native window is visible.
-        ; This prevents the opening operation from racing its own hover check.
+        ; Protect the short tray-to-menu transition. Hover handling itself is
+        ; now message-driven and no longer waits for a timer tick.
         if anchorBottom
-            this.menuOpenGraceUntil := A_TickCount + 750
+            this.menuOpenGraceUntil := A_TickCount + 1200
         else
             this.menuOpenGraceUntil := 0
 
-        ; Timers optimized: hover at 50ms (was 30ms), outside click at 150ms (was 100ms)
-        ; Reduces CPU usage by ~40% during menu display with imperceptible UX difference
-        SetTimer(this.hoverTimer, 50)
-        SetTimer(this.outsideTimer, 150)
+        ; Keep only a lightweight watchdog for leaving the menu surface.
+        SetTimer(this.outsideTimer, 75)
+    }
+
+    static RegisterControlHit(ctrl, entry, level) {
+        if !IsObject(ctrl) || !IsObject(entry)
+            return
+
+        this.controlEntries[ctrl.Hwnd] := {
+            entry: entry,
+            level: level
+        }
+    }
+
+    static UnregisterControlHits(itemsArray) {
+        if !IsObject(itemsArray)
+            return
+
+        for entry in itemsArray {
+            if !IsObject(entry) || (entry.HasProp("isSep") && entry.isSep)
+                continue
+
+            try {
+                if entry.HasProp("bgCtrl")
+                    this.controlEntries.Delete(entry.bgCtrl.Hwnd)
+            }
+
+            try {
+                if entry.HasProp("txtCtrl")
+                    this.controlEntries.Delete(entry.txtCtrl.Hwnd)
+            }
+        }
+    }
+
+    static HandleMouseMove(wParam, lParam, msg, hWnd) {
+        if !this.mouseMoveRegistered || !IsObject(this.menuGui) || !hWnd
+            return
+
+        if !this.controlEntries.Has(hWnd)
+            return
+
+        hit := this.controlEntries[hWnd]
+        if !IsObject(hit) || !hit.HasProp("entry")
+            return
+
+        entry := hit.entry
+
+        if hit.level == "nested" {
+            this.HandleNestedHover(entry)
+        } else if hit.level == "sub" {
+            this.HandleSubHover(entry)
+        } else {
+            this.HandleMainHover(entry)
+        }
+    }
+
+    static HandleMainHover(entry) {
+        if !IsObject(entry) || entry.isSep
+            return
+
+        if entry != this.lastHoveredEntry {
+            this.SetHover(this.lastHoveredEntry, false)
+            this.lastHoveredEntry := entry
+            this.SetHover(entry, true)
+        }
+
+        if entry.HasProp("children") {
+            if this.subMenuParentEntry != entry {
+                this.HideSubMenu()
+                this.lastHoveredEntry := entry
+                this.SetHover(entry, true)
+                this.ShowSubMenu(entry)
+            }
+        } else if this.subMenuGui != "" {
+            this.HideSubMenu()
+        }
+    }
+
+    static HandleSubHover(entry) {
+        if !IsObject(entry) || entry.isSep
+            return
+
+        if entry != this.subMenuLastHoveredEntry {
+            this.SetHover(this.subMenuLastHoveredEntry, false)
+            this.SetHover(entry, true)
+            this.subMenuLastHoveredEntry := entry
+        }
+
+        if entry.HasProp("children") {
+            if this.nestedSubMenuParentEntry != entry {
+                this.HideNestedSubMenu()
+                this.ShowNestedSubMenu(entry)
+            }
+        } else if this.nestedSubMenuGui != "" {
+            this.HideNestedSubMenu()
+        }
+    }
+
+    static HandleNestedHover(entry) {
+        if !IsObject(entry) || entry.isSep
+            return
+
+        if entry != this.nestedSubMenuLastHoveredEntry {
+            this.SetHover(this.nestedSubMenuLastHoveredEntry, false)
+            this.SetHover(entry, true)
+            this.nestedSubMenuLastHoveredEntry := entry
+        }
     }
 
     static ToggleSubMenu(entry, *) {
@@ -374,12 +492,16 @@ class CustomMenu {
 
             entry.bgCtrl := bgCtrl
             entry.txtCtrl := txtCtrl
+            this.RegisterControlHit(bgCtrl, entry, "sub")
+            this.RegisterControlHit(txtCtrl, entry, "sub")
 
             if entry.HasProp("children") {
-                cb := ObjBindMethod(this, "ToggleNestedSubMenu", entry)
-                bgCtrl.OnEvent("Click", cb)
-                txtCtrl.OnEvent("Click", cb)
-            } else if entry.HasProp("callback") && IsObject(entry.callback) {
+                ; Nested submenus are opened by pointer hover.
+                subCurY += subItemH
+                continue
+            }
+
+            if entry.HasProp("callback") && IsObject(entry.callback) {
                 cb := ObjBindMethod(this, "InvokeSubAndClose", entry.callback)
                 bgCtrl.OnEvent("Click", cb)
                 txtCtrl.OnEvent("Click", cb)
@@ -533,6 +655,13 @@ class CustomMenu {
 
             entry.bgCtrl := bgCtrl
             entry.txtCtrl := txtCtrl
+            this.RegisterControlHit(bgCtrl, entry, "nested")
+            this.RegisterControlHit(txtCtrl, entry, "nested")
+
+            if entry.HasProp("children") {
+                curY += nestedItemH
+                continue
+            }
 
             if entry.HasProp("callback") && IsObject(entry.callback) {
                 cb := ObjBindMethod(this, "InvokeSubAndClose", entry.callback)
@@ -589,6 +718,8 @@ class CustomMenu {
         if this.nestedSubMenuParentEntry != "" && IsObject(this.nestedSubMenuParentEntry)
             this.SetHover(this.nestedSubMenuParentEntry, false)
 
+        this.UnregisterControlHits(this.nestedSubMenuItems)
+
         try this.nestedSubMenuGui.Destroy()
         this.nestedSubMenuGui := ""
         this.nestedSubMenuHwnd := 0
@@ -606,6 +737,8 @@ class CustomMenu {
             if this.subMenuParentEntry != "" && IsObject(this.subMenuParentEntry)
                 this.SetHover(this.subMenuParentEntry, false)
 
+            this.UnregisterControlHits(this.subMenuItems)
+
             try this.subMenuGui.Destroy()
             this.subMenuGui := ""
             this.subMenuHwnd := 0
@@ -616,195 +749,123 @@ class CustomMenu {
         }
     }
 
-    static CheckHover() {
+    static IsPointInWindow(hwnd, x, y, padding := 0) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " hwnd)
+            return x >= wx - padding && x <= wx + ww + padding
+                && y >= wy - padding && y <= wy + wh + padding
+        } catch {
+            return false
+        }
+    }
+
+    static IsPointInWindowBridge(hwndA, hwndB, x, y, padding := 10) {
+        if !hwndA || !hwndB
+            return false
+        if !WinExist("ahk_id " hwndA) || !WinExist("ahk_id " hwndB)
+            return false
+
+        try {
+            WinGetPos(&ax, &ay, &aw, &ah, "ahk_id " hwndA)
+            WinGetPos(&bx, &by, &bw, &bh, "ahk_id " hwndB)
+
+            left := Min(ax, bx) - padding
+            top := Min(ay, by) - padding
+            right := Max(ax + aw, bx + bw) + padding
+            bottom := Max(ay + ah, by + bh) + padding
+
+            return x >= left && x <= right && y >= top && y <= bottom
+        } catch {
+            return false
+        }
+    }
+
+    static IsPointInInteractionSurface(x, y) {
+        if this.menuAnchorX != "" && this.menuAnchorY != ""
+            && Abs(x - this.menuAnchorX) <= this.menuAnchorRadius
+            && Abs(y - this.menuAnchorY) <= this.menuAnchorRadius
+            return true
+
+        padding := this.interactionPadding
+
+        if this.IsPointInWindow(this.menuHwnd, x, y, padding)
+            return true
+        if this.IsPointInWindow(this.subMenuHwnd, x, y, padding)
+            return true
+        if this.IsPointInWindow(this.nestedSubMenuHwnd, x, y, padding)
+            return true
+
+        if this.subMenuHwnd
+            && this.IsPointInWindowBridge(this.menuHwnd, this.subMenuHwnd, x, y, padding)
+            return true
+
+        if this.nestedSubMenuHwnd
+            && this.IsPointInWindowBridge(this.subMenuHwnd, this.nestedSubMenuHwnd, x, y, padding)
+            return true
+
+        return false
+    }
+
+    static CheckOutsideSurface() {
         if !IsObject(this.menuGui)
             return
 
-        MouseGetPos(&mx, &my, , &hCtrl, 2)
+        hasMain := this.menuHwnd && WinExist("ahk_id " this.menuHwnd)
+        hasSub := this.subMenuHwnd && WinExist("ahk_id " this.subMenuHwnd)
+        hasNested := this.nestedSubMenuHwnd && WinExist("ahk_id " this.nestedSubMenuHwnd)
 
-        mainInside := false
-        subInside := false
-        nestedInside := false
-
-        try {
-            if this.menuHwnd && WinExist("ahk_id " this.menuHwnd) {
-                WinGetPos(&mxMain, &myMain, &mwMain, &mhMain, "ahk_id " this.menuHwnd)
-                mainInside := mx >= mxMain && mx <= mxMain + mwMain
-                    && my >= myMain && my <= myMain + mhMain
-            }
-        } catch {
-        }
-
-        try {
-            if this.subMenuHwnd && WinExist("ahk_id " this.subMenuHwnd) {
-                WinGetPos(&mxSub, &mySub, &mwSub, &mhSub, "ahk_id " this.subMenuHwnd)
-                subInside := mx >= mxSub && mx <= mxSub + mwSub
-                    && my >= mySub && my <= mySub + mhSub
-            }
-        } catch {
-        }
-
-        try {
-            if this.nestedSubMenuHwnd && WinExist("ahk_id " this.nestedSubMenuHwnd) {
-                WinGetPos(&mxNested, &myNested, &mwNested, &mhNested, "ahk_id " this.nestedSubMenuHwnd)
-                nestedInside := mx >= mxNested && mx <= mxNested + mwNested
-                    && my >= myNested && my <= myNested + mhNested
-            }
-        } catch {
-        }
-
-        ; Check the deepest submenu first.
-        if this.nestedSubMenuHwnd && WinExist("ahk_id " this.nestedSubMenuHwnd) {
-            nestedHovered := ""
-            if hCtrl {
-                for entry in this.nestedSubMenuItems {
-                    if entry.isSep
-                        continue
-                    try {
-                        if entry.bgCtrl.Hwnd == hCtrl || entry.txtCtrl.Hwnd == hCtrl {
-                            nestedHovered := entry
-                            break
-                        }
-                    }
-                }
-            }
-
-            if nestedHovered != "" {
-                if this.nestedSubMenuLastHoveredEntry != nestedHovered
-                    this.SetHover(this.nestedSubMenuLastHoveredEntry, false)
-
-                this.SetHover(nestedHovered, true)
-                this.nestedSubMenuLastHoveredEntry := nestedHovered
-
-                ; The nested level is the deepest supported level. Its entries
-                ; are expected to be actions rather than more submenus.
-                if nestedHovered.HasProp("children")
-                    return
-                return
-            }
-
-            if nestedInside
-                return
-
-            if this.nestedSubMenuGui != "" && A_TickCount < this.nestedSubMenuGraceUntil
-                return
-        }
-
-        ; Then inspect the first submenu.
-        if this.subMenuHwnd && WinExist("ahk_id " this.subMenuHwnd) {
-            subHovered := ""
-            if hCtrl {
-                for entry in this.subMenuItems {
-                    if entry.isSep
-                        continue
-                    try {
-                        if entry.bgCtrl.Hwnd == hCtrl || entry.txtCtrl.Hwnd == hCtrl {
-                            subHovered := entry
-                            break
-                        }
-                    }
-                }
-            }
-
-            if subHovered != "" {
-                if this.subMenuLastHoveredEntry != subHovered {
-                    this.SetHover(this.subMenuLastHoveredEntry, false)
-                    this.SetHover(subHovered, true)
-                    this.subMenuLastHoveredEntry := subHovered
-                }
-
-                ; Parent menu stays highlighted while its submenu is open.
-                if this.lastHoveredEntry != "" && this.lastHoveredEntry != this.subMenuParentEntry {
-                    this.SetHover(this.lastHoveredEntry, false)
-                    this.lastHoveredEntry := ""
-                }
-
-                if subHovered.HasProp("children") {
-                    if this.nestedSubMenuParentEntry != subHovered {
-                        this.HideNestedSubMenu()
-                        this.ShowNestedSubMenu(subHovered)
-                    }
-                } else if this.nestedSubMenuGui != "" {
-                    this.HideNestedSubMenu()
-                }
-
-                return
-            }
-
-            if subInside
-                return
-        }
-
-        ; While a tray menu is opening, treat the tray anchor as part of the
-        ; current interaction surface. The cursor is expected to remain there
-        ; until the user starts moving into the custom menu.
-        if this.menuAnchorX != "" && this.menuAnchorY != "" {
-            if Abs(mx - this.menuAnchorX) <= this.menuAnchorRadius
-                && Abs(my - this.menuAnchorY) <= this.menuAnchorRadius
-                return
-        }
-
-        if this.menuOpenGraceUntil > A_TickCount
-            return
-
-        ; Finally inspect the main menu.
-        hovered := ""
-        if hCtrl {
-            for entry in this.items {
-                if entry.isSep
-                    continue
-                try {
-                    if entry.bgCtrl.Hwnd == hCtrl || entry.txtCtrl.Hwnd == hCtrl {
-                        hovered := entry
-                        break
-                    }
-                }
-            }
-        }
-
-        if hovered != "" {
-            if this.nestedSubMenuGui != ""
-                this.HideNestedSubMenu()
-
-            if this.subMenuLastHoveredEntry != "" {
-                this.SetHover(this.subMenuLastHoveredEntry, false)
-                this.subMenuLastHoveredEntry := ""
-            }
-
-            if hovered != this.lastHoveredEntry {
-                this.SetHover(this.lastHoveredEntry, false)
-                this.SetHover(hovered, true)
-                this.lastHoveredEntry := hovered
-            }
-
-            if hovered.HasProp("children") {
-                if this.subMenuParentEntry != hovered {
-                    this.HideSubMenu()
-                    this.ShowSubMenu(hovered)
-                }
-            } else if this.subMenuGui != "" {
-                this.HideSubMenu()
-            }
-
+        if !hasMain && !hasSub && !hasNested {
+            if this.outsideTimer != ""
+                SetTimer(this.outsideTimer, 0)
+            this.outsideSurfaceSince := 0
             return
         }
 
-        ; Keep open while inside menu padding or while crossing a narrow gap.
-        if nestedInside || subInside || mainInside
+        ; SetTimer callbacks start in a fresh AHK thread, whose mouse
+        ; coordinate mode defaults to the active window's client area.
+        ; Menu HWND rectangles from WinGetPos() are screen coordinates, so
+        ; explicitly switch this watchdog to screen coordinates before reading
+        ; the cursor position. Without this, the watchdog falsely concludes
+        ; that the pointer left the menu and calls Hide().
+        CoordMode("Mouse", "Screen")
+        MouseGetPos(&mx, &my)
+        now := A_TickCount
+
+        if this.IsPointInInteractionSurface(mx, my) {
+            this.outsideSurfaceSince := 0
+            return
+        }
+
+        graceUntil := Max(
+            this.menuOpenGraceUntil,
+            this.subMenuGraceUntil,
+            this.nestedSubMenuGraceUntil
+        )
+
+        if now < graceUntil {
+            this.outsideSurfaceSince := 0
+            return
+        }
+
+        if GetKeyState("LButton", "P")
+            || GetKeyState("RButton", "P")
+            || GetKeyState("MButton", "P") {
+            this.outsideSurfaceSince := 0
+            this.Hide()
+            return
+        }
+
+        if !this.outsideSurfaceSince
+            this.outsideSurfaceSince := now
+
+        if now - this.outsideSurfaceSince < this.outsideDismissDelay
             return
 
-        if this.subMenuGui != "" && A_TickCount < this.subMenuGraceUntil
-            return
-
-        if this.nestedSubMenuGui != "" && A_TickCount < this.nestedSubMenuGraceUntil
-            return
-
+        this.outsideSurfaceSince := 0
         this.Hide()
-
-        if this.lastHoveredEntry != "" {
-            this.SetHover(this.lastHoveredEntry, false)
-            this.lastHoveredEntry := ""
-        }
     }
 
     static SetHover(entry, isHover) {
@@ -834,60 +895,18 @@ class CustomMenu {
             cb.Call()
     }
 
-    static CheckOutsideClick() {
-        hasMain := IsObject(this.menuGui) && WinExist("ahk_id " this.menuHwnd)
-        hasSub := this.subMenuGui != "" && WinExist("ahk_id " this.subMenuHwnd)
-        hasNested := this.nestedSubMenuGui != "" && WinExist("ahk_id " this.nestedSubMenuHwnd)
-
-        if !hasMain && !hasSub && !hasNested {
-            if this.outsideTimer != ""
-                SetTimer(this.outsideTimer, 0)
-            return
-        }
-
-        if !GetKeyState("LButton", "P")
-            return
-
-        MouseGetPos(&mx, &my)
-        insideMain := false
-        insideSub := false
-        insideNested := false
-
-        if hasMain {
-            try {
-                WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " this.menuHwnd)
-                if mx >= wx && mx <= wx + ww && my >= wy && my <= wy + wh
-                    insideMain := true
-            }
-        }
-
-        if hasSub {
-            try {
-                WinGetPos(&sx, &sy, &sw, &sh, "ahk_id " this.subMenuHwnd)
-                if mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh
-                    insideSub := true
-            }
-        }
-
-        if hasNested {
-            try {
-                WinGetPos(&nx, &ny, &nw, &nh, "ahk_id " this.nestedSubMenuHwnd)
-                if mx >= nx && mx <= nx + nw && my >= ny && my <= ny + nh
-                    insideNested := true
-            }
-        }
-
-        if !insideMain && !insideSub && !insideNested
-            this.Hide()
-    }
-
     static Hide() {
         this.HideSubMenu()
 
-        if this.hoverTimer != ""
-            SetTimer(this.hoverTimer, 0)
+        if this.mouseMoveRegistered {
+            OnMessage(this.WM_MOUSEMOVE, this.mouseMoveHandler, 0)
+            this.mouseMoveRegistered := false
+        }
+
         if this.outsideTimer != ""
             SetTimer(this.outsideTimer, 0)
+
+        this.UnregisterControlHits(this.items)
 
         if IsObject(this.menuGui) {
             try this.menuGui.Destroy()
@@ -896,10 +915,12 @@ class CustomMenu {
         this.menuGui := ""
         this.menuHwnd := 0
         this.items := []
+        this.controlEntries := Map()
         this.lastHoveredEntry := ""
         this.menuOpenGraceUntil := 0
         this.menuAnchorX := ""
         this.menuAnchorY := ""
+        this.outsideSurfaceSince := 0
     }
 
     ; ClipLabel truncates text to fit within maxUnits display width units.

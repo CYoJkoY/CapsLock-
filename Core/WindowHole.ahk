@@ -12,10 +12,23 @@
 ; handled by a temporary minimize fallback and restored when the mode ends.
 ; ---------------------------------------------------------------------------
 class WindowHole {
+    static DWM_NCRENDERING_POLICY := 2
     static DWM_WINDOW_CORNER_PREFERENCE := 33
     static DWM_SYSTEMBACKDROP_TYPE := 38
+    static DWMNCRP_DISABLED := 1
     static DWMWCP_DONOTROUND := 1
     static DWMSBT_NONE := 1
+    static DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 := -4
+
+    ; Chromium uses a high-frequency compositor path. Avoid issuing native
+    ; region changes for sub-pixel-looking mouse motion and cap the update
+    ; frequency without changing the normal-window configuration default.
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 80
+    static CHROMIUM_MIN_MOVE_DISTANCE := 12
+    ; Geometry is stable for normal cursor tracking; revalidate it periodically
+    ; so window moves/resizes are detected without a GetWindowRect call on every
+    ; Chromium region commit.
+    static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
 
     static Active := false
     static SecondLevelActive := false
@@ -24,13 +37,51 @@ class WindowHole {
     static OriginalForeground := 0
     static OriginalTopmost := false
     static Targets := Map()
-    static FallbackMinimized := Map()
     static LastMouseX := ""
     static LastMouseY := ""
     static TimerCallback := ""
+    static SecondLevelHotkeyCallback := ""
+    static SecondLevelHotkeyEnabled := false
+    static SecondLevelHotkeyKeyDown := false
 
     static IsActive() {
         return this.Active
+    }
+
+    static InitializeSecondLevelHotkey() {
+        if IsObject(this.SecondLevelHotkeyCallback)
+            return true
+
+        this.SecondLevelHotkeyCallback := ObjBindMethod(this, "HandleSecondLevelHotkey")
+
+        try {
+            ; Always register the second-level key as a context-insensitive
+            ; hotkey. Context-sensitive #HotIf evaluation can be delayed while
+            ; the script is busy, which makes the X + 1 sequence intermittent.
+            HotIf
+            Hotkey("1", this.SecondLevelHotkeyCallback, "Off")
+            this.SecondLevelHotkeyEnabled := false
+            return true
+        } catch {
+            this.SecondLevelHotkeyCallback := ""
+            this.SecondLevelHotkeyEnabled := false
+            return false
+        }
+    }
+
+    static _SetSecondLevelHotkeyEnabled(enabled) {
+        if !IsObject(this.SecondLevelHotkeyCallback)
+            return false
+
+        try {
+            HotIf
+            Hotkey("1", enabled ? "On" : "Off")
+            this.SecondLevelHotkeyEnabled := enabled
+            return true
+        } catch {
+            this.SecondLevelHotkeyEnabled := false
+            return false
+        }
     }
 
     static HandleXDown(*) {
@@ -68,7 +119,6 @@ class WindowHole {
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
-        this.FallbackMinimized := Map()
         this.LastMouseX := ""
         this.LastMouseY := ""
 
@@ -85,8 +135,20 @@ class WindowHole {
             return
         }
 
+        ; Enable the second-level key only after the primary hole is fully
+        ; established. This prevents a very fast X + 1 sequence from
+        ; interrupting Start() while its target state is still incomplete.
+        if !this._SetSecondLevelHotkeyEnabled(true) {
+            this._RestoreAll()
+            this._RestorePrimaryTopmost()
+            this._ResetState()
+            return
+        }
+
         this.TimerCallback := (*) => this._Update()
         interval := Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
+        if this._IsChromiumWindow(hwnd)
+            interval := Max(interval, this.CHROMIUM_MIN_UPDATE_INTERVAL)
         SetTimer(this.TimerCallback, interval)
         this._Update()
     }
@@ -100,6 +162,7 @@ class WindowHole {
                 SetTimer(this.TimerCallback, 0)
         }
 
+        this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -111,9 +174,47 @@ class WindowHole {
         }
     }
 
-    static ToggleSecondLevel(*) {
-        if !this.Active || !AppState.WindowHoleSecondLevelEnabled
+    static HandleSecondLevelHotkey(*) {
+        if this.SecondLevelHotkeyKeyDown
             return
+
+        this.SecondLevelHotkeyKeyDown := true
+        try {
+            this.ToggleSecondLevel()
+        } finally {
+            try {
+                KeyWait("1")
+            } finally {
+                this.SecondLevelHotkeyKeyDown := false
+            }
+        }
+    }
+
+    static ToggleSecondLevel(*) {
+        if !this.Active
+            return
+
+        if !AppState.WindowHoleSecondLevelEnabled {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                    "Second penetration disabled."
+                ),
+                1200
+            )
+            return
+        }
+
+        if !this.SecondLevelHotkeyEnabled {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
+            return
+        }
 
         if this.SecondLevelActive {
             this.SecondLevelActive := false
@@ -131,9 +232,27 @@ class WindowHole {
         }
 
         try {
-            MouseGetPos(&mx, &my, &mouseHwnd)
+            MouseGetPos(&mouseX, &mouseY, &mouseHwnd)
+            if !this._GetPhysicalCursorPosition(&mx, &my) {
+                ShowToolTip(
+                    Lang(
+                        "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                        "No eligible window is available for second penetration."
+                    ),
+                    1500
+                )
+                return
+            }
+
             secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
         } catch {
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
             return
         }
 
@@ -142,7 +261,6 @@ class WindowHole {
             || secondaryHwnd == this.PrimaryHwnd
             || !this.IsEligible(secondaryHwnd)
         ) {
-
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -162,6 +280,13 @@ class WindowHole {
 
         if !result {
             this.SecondaryHwnd := 0
+            ShowToolTip(
+                Lang(
+                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
+                    "No eligible window is available for second penetration."
+                ),
+                1500
+            )
             return
         }
 
@@ -236,14 +361,10 @@ class WindowHole {
         if !this.Active
             return
 
-        try {
-            MouseGetPos(&mx, &my, &mouseHwnd)
-        } catch {
+        if !this._GetPhysicalCursorPosition(&mx, &my)
             return
-        }
 
-        if !force && mx == this.LastMouseX && my == this.LastMouseY
-            return
+        mouseMoved := force || mx != this.LastMouseX || my != this.LastMouseY
 
         this.LastMouseX := mx
         this.LastMouseY := my
@@ -255,10 +376,17 @@ class WindowHole {
             ; through the hole into a lower window, freeze the hole in place.
             ; This is essential for real drag/drop: the cursor must be able
             ; to leave the hole and hit the primary window again.
-            if this._IsPointInsideWindow(this.PrimaryHwnd, mx, my) {
-                if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
-                    this.Stop()
-                    return
+            if mouseMoved && this._IsPointInsideWindow(
+                this.PrimaryHwnd,
+                mx,
+                my,
+                primaryState
+            ) {
+                if this._ShouldApplyPosition(primaryState, mx, my) {
+                    if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
+                        this.Stop()
+                        return
+                    }
                 }
             }
         }
@@ -285,37 +413,204 @@ class WindowHole {
 
         ; Apply the second-layer hole only while the cursor is inside that
         ; target. Once the cursor penetrates beyond it, freeze the layer too.
-        if !this._IsPointInsideWindow(this.SecondaryHwnd, mx, my)
+        secondaryState := this.Targets.Has(this.SecondaryHwnd)
+            ? this.Targets[this.SecondaryHwnd]
+            : ""
+
+        if !IsObject(secondaryState) || secondaryState.fallback
             return
 
-        result := this._ApplyHole(
+        if !this._IsPointInsideWindow(
             this.SecondaryHwnd,
-            false,
             mx,
-            my
+            my,
+            secondaryState
         )
+            return
 
-        if !result {
-            this.SecondLevelActive := false
-            this.SecondaryHwnd := 0
-            this._RemoveSecondaryTargets()
-
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1500
+        if mouseMoved && this._ShouldApplyPosition(secondaryState, mx, my) {
+            result := this._ApplyHole(
+                this.SecondaryHwnd,
+                false,
+                mx,
+                my
             )
+
+            if !result {
+                this.SecondLevelActive := false
+                this.SecondaryHwnd := 0
+                this._RemoveSecondaryTargets()
+
+                ShowToolTip(
+                    Lang(
+                        "MSG_WINDOW_HOLE_SECOND_DISABLED",
+                        "Second penetration disabled."
+                    ),
+                    1500
+                )
+            }
         }
     }
 
-    static _IsPointInsideWindow(hwnd, x, y) {
+    static _GetPhysicalCursorPosition(&x, &y) {
+        x := 0
+        y := 0
+
+        previousContext := 0
+        contextChanged := false
+
+        try {
+            previousContext := DllCall(
+                "SetThreadDpiAwarenessContext",
+                "Ptr", this.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+                "Ptr"
+            )
+            contextChanged := previousContext != 0
+
+            point := Buffer(8, 0)
+            if !DllCall("GetCursorPos", "Ptr", point, "Int")
+                return false
+
+            x := NumGet(point, 0, "Int")
+            y := NumGet(point, 4, "Int")
+            return true
+        } catch {
+            return false
+        } finally {
+            if contextChanged {
+                try DllCall(
+                    "SetThreadDpiAwarenessContext",
+                    "Ptr", previousContext,
+                    "Ptr"
+                )
+            }
+        }
+    }
+
+    static _GetPhysicalWindowGeometry(hwnd, &x, &y, &width, &height) {
+        x := 0
+        y := 0
+        width := 0
+        height := 0
+
+        if !hwnd
+            return false
+
+        previousContext := 0
+        contextChanged := false
+
+        try {
+            previousContext := DllCall(
+                "SetThreadDpiAwarenessContext",
+                "Ptr", this.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+                "Ptr"
+            )
+            contextChanged := previousContext != 0
+
+            rect := Buffer(16, 0)
+            if !DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", rect, "Int")
+                return false
+
+            left := NumGet(rect, 0, "Int")
+            top := NumGet(rect, 4, "Int")
+            right := NumGet(rect, 8, "Int")
+            bottom := NumGet(rect, 12, "Int")
+
+            x := left
+            y := top
+            width := right - left
+            height := bottom - top
+            return width > 0 && height > 0
+        } catch {
+            return false
+        } finally {
+            if contextChanged {
+                try DllCall(
+                    "SetThreadDpiAwarenessContext",
+                    "Ptr", previousContext,
+                    "Ptr"
+                )
+            }
+        }
+    }
+
+    static _IsChromiumWindow(hwnd) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
 
         try {
-            WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " hwnd)
+            processName := StrLower(WinGetProcessName("ahk_id " hwnd))
+            return processName == "chrome.exe"
+                || processName == "msedge.exe"
+                || processName == "brave.exe"
+                || processName == "thorium.exe"
+                || processName == "vivaldi.exe"
+                || processName == "opera.exe"
+                || processName == "chromium.exe"
+        } catch {
+            return false
+        }
+    }
+
+    static _ShouldApplyPosition(state, x, y) {
+        if !IsObject(state) || !state.isChromium || !state.hasAppliedPosition
+            return true
+
+        return Max(
+            Abs(x - state.lastAppliedX),
+            Abs(y - state.lastAppliedY)
+        ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
+    }
+
+    static _EnsureWindowGeometry(hwnd, state, force := false) {
+        if !hwnd || !IsObject(state) || !WinExist("ahk_id " hwnd)
+            return false
+
+        now := A_TickCount
+        if (
+            state.isChromium
+            && state.hasGeometry
+            && !force
+            && now - state.geometryLastRefreshTick < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
+        )
+            return true
+
+        if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
+            return false
+
+        if ww <= 0 || wh <= 0
+            return false
+
+        state.windowX := wx
+        state.windowY := wy
+        state.windowWidth := ww
+        state.windowHeight := wh
+        state.hasGeometry := true
+        state.geometryLastRefreshTick := now
+        return true
+    }
+
+    static _IsPointInsideWindow(hwnd, x, y, state := "") {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        if IsObject(state) && state.isChromium {
+            if !this._EnsureWindowGeometry(hwnd, state)
+                return false
+
+            if state.hasGeometry
+                return x >= state.windowX
+                    && x < state.windowX + state.windowWidth
+                    && y >= state.windowY
+                    && y < state.windowY + state.windowHeight
+
+            return false
+        }
+
+        try {
+            if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
+                return false
+
             return x >= wx && x < wx + ww && y >= wy && y < wy + wh
         } catch {
             return false
@@ -339,10 +634,10 @@ class WindowHole {
     }
 
     static _ApplyHole(hwnd, isPrimary, mouseX := "", mouseY := "") {
-        if !this.IsEligible(hwnd)
-            return false
-
         if !this.Targets.Has(hwnd) {
+            if !this.IsEligible(hwnd)
+                return false
+
             state := this._CaptureState(hwnd)
             if !IsObject(state)
                 return false
@@ -357,16 +652,26 @@ class WindowHole {
             return "minimized"
 
         try {
-            WinGetPos(&wx, &wy, &ww, &wh, "ahk_id " hwnd)
+            if !this._EnsureWindowGeometry(hwnd, state)
+                throw Error("Could not get physical window geometry.")
+
+            wx := state.windowX
+            wy := state.windowY
+            ww := state.windowWidth
+            wh := state.windowHeight
+
             if (ww <= 0 || wh <= 0)
                 throw Error("Invalid window dimensions.")
 
-            if mouseX == ""
-                MouseGetPos(&mx, &my)
-            else {
+            if mouseX == "" {
+                if !this._GetPhysicalCursorPosition(&mx, &my)
+                    throw Error("Could not get physical cursor position.")
+            } else {
                 mx := mouseX
                 my := mouseY
             }
+
+            firstRegionApply := !state.hasAppliedPosition
 
             relativeX := mx - wx
             relativeY := my - wy
@@ -399,7 +704,7 @@ class WindowHole {
                 "SetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", region,
-                "Int", 1,
+                "Int", state.isChromium ? 0 : 1,
                 "Int"
             )
 
@@ -410,7 +715,20 @@ class WindowHole {
 
             ; After SetWindowRgn succeeds, Windows owns the region handle.
             state.regionActive := true
-            this._RefreshWindow(hwnd)
+
+            state.lastAppliedX := mx
+            state.lastAppliedY := my
+            state.hasAppliedPosition := true
+
+            ; SetWindowRgn(..., FALSE) is intentionally the only operation in
+            ; the steady-state Chromium movement path. Chromium treats region
+            ; changes as paint-affecting operations already, so an additional
+            ; RedrawWindow here only adds more work to its compositor path.
+            ; Keep the explicit refresh for the first region application so
+            ; activation remains visually immediate.
+            if !state.isChromium || firstRegionApply
+                this._RefreshWindow(hwnd, false, state.isChromium)
+
             return true
         } catch {
             if AppState.WindowHoleFallbackToMinimize {
@@ -540,6 +858,19 @@ class WindowHole {
             regionActive: false,
             fallback: false,
             fallbackPreviousState: 0,
+            isChromium: this._IsChromiumWindow(hwnd),
+            lastAppliedX: 0,
+            lastAppliedY: 0,
+            hasAppliedPosition: false,
+            windowX: 0,
+            windowY: 0,
+            windowWidth: 0,
+            windowHeight: 0,
+            hwnd: hwnd,
+            hasGeometry: false,
+            geometryLastRefreshTick: 0,
+            originalNCRenderingPolicy: 0,
+            hadOriginalNCRenderingPolicy: false,
             visualPrepared: false,
             originalOpacity: 255,
             hadOriginalOpacity: false,
@@ -573,6 +904,15 @@ class WindowHole {
                 state.hadOriginalRegion := true
                 state.originalRegion := tempRegion
                 tempRegion := 0
+            }
+
+            if this._DwmGetIntAttribute(
+                hwnd,
+                this.DWM_NCRENDERING_POLICY,
+                &ncrp
+            ) {
+                state.hadOriginalNCRenderingPolicy := true
+                state.originalNCRenderingPolicy := ncrp
             }
 
             return state
@@ -646,26 +986,41 @@ class WindowHole {
         } catch {
         }
 
-        ; Windows 11 can draw system backdrop material (Mica/Acrylic) across
-        ; the window bounds independently of client pixels. Remove it while
-        ; the region-hole mode is active so a carved region cannot retain a
-        ; solid backdrop instead of revealing the window underneath.
+        ; A custom external region must not coexist with DWM-rendered
+        ; non-client/backdrop pixels. Apply these policies once at session
+        ; start, but never force SWP_FRAMECHANGED on Chromium while the hole
+        ; is moving.
+        if state.hadOriginalNCRenderingPolicy {
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_NCRENDERING_POLICY,
+                this.DWMNCRP_DISABLED
+            )
+        }
+
         if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
             state.hadOriginalSystemBackdropType := true
             state.originalSystemBackdropType := backdropType
-            this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, this.DWMSBT_NONE)
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_SYSTEMBACKDROP_TYPE,
+                this.DWMSBT_NONE
+            )
         }
 
-        ; Do not let Windows 11 add rounded-corner pixels around a custom
-        ; window region. The region itself owns the hole geometry.
         if this._DwmGetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, &cornerPreference) {
             state.hadOriginalCornerPreference := true
             state.originalCornerPreference := cornerPreference
-            this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, this.DWMWCP_DONOTROUND)
+            this._DwmSetIntAttribute(
+                hwnd,
+                this.DWM_WINDOW_CORNER_PREFERENCE,
+                this.DWMWCP_DONOTROUND
+            )
         }
 
         state.visualPrepared := true
-        this._RefreshWindow(hwnd)
+        frameChanged := !state.isChromium
+        this._RefreshWindow(hwnd, frameChanged, state.isChromium)
     }
 
     static _RestoreWindowVisualState(hwnd, state) {
@@ -673,41 +1028,79 @@ class WindowHole {
             return
 
         if WinExist("ahk_id " hwnd) {
-            ; Restore DWM attributes before restoring the final opacity so
-            ; the compositor rebuilds the window from its original policy.
+            ; Restore the exact DWM state captured at session start.
+            if state.hadOriginalNCRenderingPolicy
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_NCRENDERING_POLICY,
+                    state.originalNCRenderingPolicy
+                )
+
             if state.hadOriginalSystemBackdropType
-                this._DwmSetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, state.originalSystemBackdropType)
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_SYSTEMBACKDROP_TYPE,
+                    state.originalSystemBackdropType
+                )
 
             if state.hadOriginalCornerPreference
-                this._DwmSetIntAttribute(hwnd, this.DWM_WINDOW_CORNER_PREFERENCE, state.originalCornerPreference)
+                this._DwmSetIntAttribute(
+                    hwnd,
+                    this.DWM_WINDOW_CORNER_PREFERENCE,
+                    state.originalCornerPreference
+                )
 
             if state.hadOriginalOpacity
                 try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
 
-            this._RefreshWindow(hwnd)
+            frameChanged := !state.isChromium
+            this._RefreshWindow(hwnd, frameChanged, state.isChromium)
         }
 
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd) {
+    static _RefreshWindow(hwnd, frameChanged := false, chromium := false) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
+
+        ; DWM-backed/custom-framed windows may cache their non-client metrics.
+        ; SWP_FRAMECHANGED forces Windows to recalculate the frame after a
+        ; temporary DWM non-client rendering policy change.
+        if frameChanged {
+            try DllCall(
+                "SetWindowPos",
+                "Ptr", hwnd,
+                "Ptr", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "UInt",
+                0x0001 ; SWP_NOSIZE
+                | 0x0002 ; SWP_NOMOVE
+                | 0x0004 ; SWP_NOZORDER
+                | 0x0010 ; SWP_NOACTIVATE
+                | 0x0020 ; SWP_FRAMECHANGED
+            )
+        }
+
+        redrawFlags := chromium
+            ? 0x0001 | 0x0020
+            : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
 
         try DllCall(
             "RedrawWindow",
             "Ptr", hwnd,
             "Ptr", 0,
             "Ptr", 0,
-            "UInt", 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
+            "UInt", redrawFlags
         )
 
-        try DllCall("UpdateWindow", "Ptr", hwnd)
+        if !chromium
+            try DllCall("UpdateWindow", "Ptr", hwnd)
 
-        ; Wait until the compositor has processed the region change so the
-        ; removed area is presented as actual desktop/window transparency,
-        ; not a stale composed frame.
-        try DllCall("DwmFlush")
+
     }
 
     static _RestoreOriginalRegion(hwnd, state) {
@@ -722,7 +1115,7 @@ class WindowHole {
                         "SetWindowRgn",
                         "Ptr", hwnd,
                         "Ptr", state.originalRegion,
-                        "Int", 1,
+                        "Int", state.isChromium ? 0 : 1,
                         "Int"
                     )
                 }
@@ -736,9 +1129,16 @@ class WindowHole {
                     try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
                 }
             } else {
-                try DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", 0, "Int", 1, "Int")
+                try DllCall(
+                    "SetWindowRgn",
+                    "Ptr", hwnd,
+                    "Ptr", 0,
+                    "Int", state.isChromium ? 0 : 1,
+                    "Int"
+                )
             }
 
+            this._RefreshWindow(hwnd, false, state.isChromium)
             state.regionActive := false
         }
     }
@@ -771,7 +1171,6 @@ class WindowHole {
 
             state.fallback := true
             state.fallbackPreviousState := previousState
-            this.FallbackMinimized[hwnd] := previousState
             ShowToolTip(
                 Lang("MSG_WINDOW_HOLE_FALLBACK_USED", "Incompatible window temporarily minimized."),
                 1500
@@ -813,20 +1212,20 @@ class WindowHole {
             this._RestoreTarget(this.PrimaryHwnd, this.Targets[this.PrimaryHwnd])
 
         this.Targets := Map()
-        this.FallbackMinimized := Map()
     }
 
     static _RestoreTarget(hwnd, state) {
         if !IsObject(state)
             return
 
+        ; Restore DWM/opacity state before returning the original region.
+        this._RestoreWindowVisualState(hwnd, state)
+
         if state.regionActive
             this._RestoreOriginalRegion(hwnd, state)
 
         if state.fallback
             this._RestoreFallback(hwnd, state.fallbackPreviousState)
-
-        this._RestoreWindowVisualState(hwnd, state)
 
         if state.originalRegion
             this._DiscardCapturedRegion(state)
@@ -842,10 +1241,9 @@ class WindowHole {
         }
 
         for hwnd in secondaryHwnds {
-            if this.Targets.Has(hwnd)
-                this._RestoreTarget(hwnd, this.Targets[hwnd])
+            state := this.Targets[hwnd]
+            this._RestoreTarget(hwnd, state)
             this.Targets.Delete(hwnd)
-            this.FallbackMinimized.Delete(hwnd)
         }
 
         this.SecondaryHwnd := 0
@@ -860,6 +1258,7 @@ class WindowHole {
     }
 
     static _ResetState() {
+        this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
         this.SecondLevelActive := false
         this.PrimaryHwnd := 0
@@ -867,7 +1266,6 @@ class WindowHole {
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
-        this.FallbackMinimized := Map()
         this.LastMouseX := ""
         this.LastMouseY := ""
         this.TimerCallback := ""

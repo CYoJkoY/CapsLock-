@@ -108,10 +108,12 @@
 ; when CapsLock is released first. The tilde keeps the key-up event visible.
 ~x up:: WindowHole.HandleXUp()
 
-#HotIf GetKeyState( "CapsLock", "P" ) && WindowHole.IsActive()
-    1:: WindowHole.ToggleSecondLevel()
-#HotIf
-
 #HotIf GetKeyState( "CapsLock", "P" ) && AppState.QuickPhraseEnabled
     +p:: ShowQuickPhraseSelector()
 #HotIf
+
+
+; Window Hole second-level penetration is registered as a global hotkey and
+; enabled only for the lifetime of an active Window Hole session. This avoids
+; #HotIf timing on the CapsLock + X + 1 sequence.
+WindowHole.InitializeSecondLevelHotkey()
