@@ -112,7 +112,7 @@ BuildTrayMenuItems() {
         callback: (*) => SetWindowHoleShape("square")
     })
     windowHoleChildren.Push({
-        label: "◯ " Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape"),
+        label: "◇ " Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape"),
         children: shapeChildren
     })
 
