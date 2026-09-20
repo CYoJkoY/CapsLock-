@@ -194,9 +194,18 @@ class CloudSyncCoordinator {
             if !CloudSyncStorage.ApplyPackage(mergedPackage)
                 throw Error("Merged package could not be applied locally.")
 
+            currentRemote := provider.Download()
+            if !IsObject(currentRemote)
+                || !currentRemote.Get("exists", false)
+                || currentRemote.Get("fingerprint", "") != CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+            {
+                return false
+            }
+
             upload := provider.Upload(
                 CloudSyncModel.Serialize(mergedPackage),
-                mergedPackage["integrity"]["contentHash"]
+                mergedPackage["integrity"]["contentHash"],
+                currentRemote.Get("providerRevision", "")
             )
 
             return this._HandleUploadSuccess(upload, mergedPackage)
@@ -447,6 +456,12 @@ class CloudSyncCoordinator {
         try {
             remoteFingerprint := remotePackage["integrity"]["contentHash"]
             CloudSyncState.Set("Sync", "conflictRemoteFingerprint", remoteFingerprint)
+            if reason is String
+                CloudSyncState.Set(
+                    "Sync",
+                    "conflictReason",
+                    reason
+                )
         } catch {
         }
         this._SetState("conflict")
