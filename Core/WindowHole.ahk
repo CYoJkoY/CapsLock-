@@ -23,15 +23,15 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 25
-    static CHROMIUM_MIN_MOVE_DISTANCE := 5
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 16
+    static CHROMIUM_MIN_MOVE_DISTANCE := 3
     ; Geometry is stable for normal cursor tracking; revalidate it periodically
     ; so window moves/resizes are detected without a GetWindowRect call on every
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
     static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
-    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 25
-    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 5
+    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 16
+    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 3
 
     static Active := false
     static SecondLevelActive := false
@@ -388,11 +388,17 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        if this._IsChromiumWindow(this.PrimaryHwnd)
-            this._EnsureChromiumRenderSurfaces()
+        primaryState := this.Targets.Has(this.PrimaryHwnd)
+            ? this.Targets[this.PrimaryHwnd]
+            : ""
+        if !IsObject(primaryState)
+            return
 
-        primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
-        if IsObject(primaryState) && !primaryState.fallback {
+        isChromium := primaryState.isChromium
+        if isChromium
+            this._EnsureChromiumRenderSurfaces(primaryState)
+
+        if !primaryState.fallback {
             ; The hole follows the cursor only while the cursor is still
             ; geometrically inside the primary window. Once the cursor passes
             ; through the hole into a lower window, freeze the hole in place.
@@ -413,8 +419,8 @@ class WindowHole {
             }
         }
 
-        if this._IsChromiumWindow(this.PrimaryHwnd)
-            this._UpdateChromiumRenderSurfaces(mx, my, mouseMoved)
+        if isChromium
+            this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
 
         if !this.SecondLevelActive || !this.SecondaryHwnd
             return
@@ -572,26 +578,23 @@ class WindowHole {
     }
 
     static _IsChromiumRenderingSurface(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
+        if !hwnd
             return false
 
         try {
+            className := WinGetClass("ahk_id " hwnd)
+            if !(className == "Intermediate D3D Window"
+                || className == "Chrome_RenderWidgetHostHWND")
+                return false
+
             processName := StrLower(WinGetProcessName("ahk_id " hwnd))
-            if !(processName == "chrome.exe"
+            return processName == "chrome.exe"
                 || processName == "msedge.exe"
                 || processName == "brave.exe"
                 || processName == "thorium.exe"
                 || processName == "vivaldi.exe"
                 || processName == "opera.exe"
-                || processName == "chromium.exe")
-                return false
-
-            if !(WinGetStyle("ahk_id " hwnd) & 0x40000000)
-                return false
-
-            className := WinGetClass("ahk_id " hwnd)
-            return className == "Intermediate D3D Window"
-                || className == "Chrome_RenderWidgetHostHWND"
+                || processName == "chromium.exe"
         } catch {
             return false
         }
@@ -795,11 +798,12 @@ class WindowHole {
         if !inside
             return this._RestoreSurfaceRegion(hwnd, state)
 
+        now := A_TickCount
         minCommitInterval := this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
         minMoveDistance := this.RENDER_SURFACE_MIN_MOVE_DISTANCE
 
         if state.hasAppliedPosition
-            && A_TickCount - state.lastRegionCommitTick < minCommitInterval
+            && now - state.lastRegionCommitTick < minCommitInterval
             && Max(
                 Abs(mouseX - state.lastAppliedX),
                 Abs(mouseY - state.lastAppliedY)
@@ -849,7 +853,7 @@ class WindowHole {
         state.lastAppliedX := mouseX
         state.lastAppliedY := mouseY
         state.hasAppliedPosition := true
-        state.lastRegionCommitTick := A_TickCount
+        state.lastRegionCommitTick := now
 
         return true
     }
@@ -919,15 +923,11 @@ class WindowHole {
         return region
     }
 
-    static _EnsureChromiumRenderSurfaces() {
-        if !this._IsChromiumWindow(this.PrimaryHwnd)
+    static _EnsureChromiumRenderSurfaces(primaryState := "") {
+        if !IsObject(primaryState)
             return
 
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-
-        if !IsObject(primaryState)
+        if !primaryState.isChromium
             return
 
         now := A_TickCount
@@ -969,11 +969,7 @@ class WindowHole {
         }
     }
 
-    static _UpdateChromiumRenderSurfaces(x, y, mouseMoved) {
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-
+    static _UpdateChromiumRenderSurfaces(primaryState, x, y, mouseMoved) {
         if !IsObject(primaryState)
             return
 
@@ -1546,12 +1542,9 @@ class WindowHole {
         if !IsObject(state) || !WinExist("ahk_id " hwnd)
             return
 
-        ; Task Manager and its modern helper surfaces can retain DWM-
-        ; rendered backdrop/frame pixels when a custom window region is used.
-        ; Keep the same visual sanitization path as other Win11 windows and
-        ; restore every captured attribute when the Window Hole session ends.
-        ; This is intentionally done for Task Manager surfaces as a compatibility
-        ; requirement; bypassing this path leaves the carved area visually opaque.
+        ; Some DWM-backed windows can retain rendered backdrop/frame pixels when
+        ; a custom window region is used. Keep the visual state changes scoped
+        ; to the Window Hole session and restore every captured attribute on exit.
 
         ; A window may already be partially transparent because of the
         ; CapsLock opacity controls. Window Hole needs an opaque source
