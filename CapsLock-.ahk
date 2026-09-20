@@ -13,6 +13,8 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\DarkInputDialog.ahk"
 #Include "Utils\Json.ahk"
 #Include "Utils\Hash.ahk"
+#Include "Utils\Base64.ahk"
+#Include "Utils\Random.ahk"
 #Include "Utils\HttpClient.ahk"
 #Include "Utils\SecureStorage.ahk"
 
