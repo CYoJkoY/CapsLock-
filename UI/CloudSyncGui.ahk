@@ -56,39 +56,39 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.StyleComboBox(provider)
 
     ; --- Provider-specific fields ---
-    gistTargetLabel := myGui.AddText("w620 y+12", "Gist ID")
+    gistTargetLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_TARGET", "Target") " (Gist ID; leave blank to create automatically)")
     gistTarget := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(gistTarget)
 
-    gistTokenLabel := myGui.AddText("w620 y+8", "GitHub token")
+    gistTokenLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
     gistToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(gistToken)
 
-    repoOwnerLabel := myGui.AddText("w620 y+12", "GitHub owner")
+    repoOwnerLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_GITHUB_OWNER", "GitHub owner"))
     repoOwner := myGui.Add("Edit", "w300 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoOwner)
 
-    repoNameLabel := myGui.AddText("x+10 yp w310", "Repository")
+    repoNameLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_REPOSITORY", "Repository"))
     repoName := myGui.Add("Edit", "x+10 yp+20 w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoName)
 
-    repoBranchLabel := myGui.AddText("x0 y+8 w300", "Branch")
+    repoBranchLabel := myGui.AddText("x0 y+8 w300", Lang("GUI_CLOUD_SYNC_GITHUB_BRANCH", "Branch"))
     repoBranch := myGui.Add("Edit", "w300 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoBranch)
 
-    repoPathLabel := myGui.AddText("x+10 yp w310", "Path")
+    repoPathLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_PATH", "Path"))
     repoPath := myGui.Add("Edit", "x+10 yp+20 w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoPath)
 
-    repoTokenLabel := myGui.AddText("x0 y+8 w620", "GitHub token")
+    repoTokenLabel := myGui.AddText("x0 y+8 w620", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
     repoToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoToken)
 
-    googleClientLabel := myGui.AddText("w620 y+12", "Google OAuth client ID")
+    googleClientLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_GOOGLE_CLIENT_ID", "Google OAuth client ID"))
     googleClient := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(googleClient)
 
-    googleTargetLabel := myGui.AddText("w620 y+8", "Drive file ID (optional)")
+    googleTargetLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_GOOGLE_TARGET", "Drive file ID") " (optional)")
     googleTarget := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(googleTarget)
 
@@ -99,15 +99,15 @@ ShowCloudSyncSettings(*) {
         "primary"
     )
 
-    oneDriveClientLabel := myGui.AddText("w620 y+12", "Microsoft client ID")
+    oneDriveClientLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_ONEDRIVE_CLIENT_ID", "Microsoft client ID"))
     oneDriveClient := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(oneDriveClient)
 
-    oneDriveTenantLabel := myGui.AddText("w620 y+8", "Tenant")
+    oneDriveTenantLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_ONEDRIVE_TENANT", "Tenant"))
     oneDriveTenant := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(oneDriveTenant)
 
-    oneDrivePathLabel := myGui.AddText("w620 y+8", "OneDrive path")
+    oneDrivePathLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_ONEDRIVE_PATH", "OneDrive path"))
     oneDrivePath := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(oneDrivePath)
 
@@ -118,19 +118,19 @@ ShowCloudSyncSettings(*) {
         "primary"
     )
 
-    webdavUrlLabel := myGui.AddText("w620 y+12", "WebDAV URL")
+    webdavUrlLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_WEBDAV_URL", "WebDAV URL"))
     webdavUrl := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavUrl)
 
-    webdavPathLabel := myGui.AddText("w620 y+8", "Remote path")
+    webdavPathLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_WEBDAV_PATH", "Remote path"))
     webdavPath := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavPath)
 
-    webdavUserLabel := myGui.AddText("w620 y+8", "Username")
+    webdavUserLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_WEBDAV_USERNAME", "Username"))
     webdavUser := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavUser)
 
-    webdavPasswordLabel := myGui.AddText("w620 y+8", "Password")
+    webdavPasswordLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_WEBDAV_PASSWORD", "Password"))
     webdavPassword := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavPassword)
 
