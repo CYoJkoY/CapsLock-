@@ -284,6 +284,7 @@ class CloudSyncCoordinator {
         this.StopAutoSync()
         AppState.CloudSyncConflict := false
         AppState.CloudSyncLocalDirty := false
+        AppState.CloudSyncLastError := ""
         CloudSyncState.ClearSyncMetadata()
         this._SetState(AppState.CloudSyncEnabled ? "idle" : "disabled")
         return true
