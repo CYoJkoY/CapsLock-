@@ -9,9 +9,9 @@ class Json {
         if !IsObject(value) {
             if value is String
                 return '"' this._Escape(String(value)) '"'
-            if value == true
+            if value === true
                 return "true"
-            if value == false
+            if value === false
                 return "false"
             if value == ""
                 return "null"
