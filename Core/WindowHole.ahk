@@ -143,7 +143,6 @@ class WindowHole {
                 return
             }
 
-            this._FocusNextWindowUnderCursor()
             return
         }
 
