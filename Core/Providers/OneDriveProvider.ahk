@@ -85,7 +85,7 @@ class OneDriveProvider extends CloudSyncProvider {
         }
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
         path := Trim(AppState.CloudSyncOneDrivePath, "/")
