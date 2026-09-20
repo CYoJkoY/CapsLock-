@@ -191,21 +191,24 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
 }
 
 UriEncode(text) {
-    encoded := ""
-    Loop Parse, String(text) {
-        code := Ord(A_LoopField)
-        ch := A_LoopField
+    text := String(text)
+    size := StrPut(text, "UTF-8") - 1
+    buffer := Buffer(Max(size, 1), 0)
+    if size > 0
+        StrPut(text, buffer, "UTF-8")
 
-        if (code >= 0x30 && code <= 0x39)
-            || (code >= 0x41 && code <= 0x5A)
-            || (code >= 0x61 && code <= 0x7A)
-            || InStr("-_.~", ch)
-        {
-            encoded .= ch
-        } else {
-            encoded .= "%" Format("{:02X}", code)
-        }
+    alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    result := ""
+
+    Loop size {
+        byte := NumGet(buffer, A_Index - 1, "UChar")
+        ch := Chr(byte)
+
+        if InStr(alphabet, ch)
+            result .= ch
+        else
+            result .= "%" Format("{:02X}", byte)
     }
 
-    return encoded
+    return result
 }
