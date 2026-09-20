@@ -87,6 +87,19 @@ RunTests() {
         "Revealed layers are not explicitly focused after minimize."
     )
     Assert(
+        InStr(source, "static ChromiumMousePassthroughWindows := Map()") > 0
+            && InStr(source, "static _UpdateChromiumMousePassthrough(primaryState, x, y)") > 0
+            && InStr(source, '0x00000020 ; WS_EX_TRANSPARENT') > 0
+            && InStr(source, '0x00080000 ; WS_EX_LAYERED') > 0,
+        "Chromium primary-window mouse passthrough is missing."
+    )
+    Assert(
+        InStr(source, "if this.ChromiumMousePassthroughWindows.Count > 0") > 0
+            && InStr(source, "return") > 0
+            && InStr(source, "static _RestoreChromiumMousePassthrough()") > 0,
+        "Chromium passthrough state is not kept stable after WindowFromPoint resolves the underlying window."
+    )
+    Assert(
         InStr(source, 'static _RestoreSecondaryHiddenWindows()') > 0
             && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0
             && InStr(source, 'state.previousState') > 0,
