@@ -91,8 +91,12 @@ class CloudSyncStorage {
             return false
 
         ok := this._RestoreBackup(backupDir)
-        CloudSyncState.Set("Sync", "applyInProgress", "0")
-        CloudSyncState.Set("Sync", "backupPath", "")
+        if ok {
+            CloudSyncState.Set("Sync", "applyInProgress", "0")
+            CloudSyncState.Set("Sync", "backupPath", "")
+        } else {
+            CloudSyncState.Set("Sync", "state", "recovery-error")
+        }
         return ok
     }
 
