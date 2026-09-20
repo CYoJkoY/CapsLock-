@@ -19,7 +19,7 @@ class CloudSyncProvider {
         throw Error("Provider does not implement Download().")
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         throw Error("Provider does not implement Upload().")
     }
 
