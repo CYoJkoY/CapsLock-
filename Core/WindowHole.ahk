@@ -30,13 +30,8 @@ class WindowHole {
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
     static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
-    static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
     static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 25
     static RENDER_SURFACE_MIN_MOVE_DISTANCE := 5
-    static TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80
-    static TASK_MANAGER_SURFACE_MIN_MOVE_DISTANCE := 12
-    static TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH := 64
-    static TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT := 64
 
     static Active := false
     static SecondLevelActive := false
@@ -47,7 +42,6 @@ class WindowHole {
     static Targets := Map()
     static LastMouseX := ""
     static LastMouseY := ""
-    static LastTaskManagerCompanionScanTick := 0
     static LastChromiumRenderSurfaceScanTick := 0
     static HiddenTaskManagerWindows := Map()
     static EnumeratedChildWindows := []
@@ -603,120 +597,6 @@ class WindowHole {
         }
     }
 
-    static _IsTaskManagerCompanionWindow(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
-            return false
-
-        try {
-            if StrLower(WinGetProcessName("ahk_id " hwnd)) != "taskmgr.exe"
-                return false
-
-            if !(WinGetStyle("ahk_id " hwnd) & 0x10000000)
-                return false
-
-            className := WinGetClass("ahk_id " hwnd)
-
-            if className == "GlassWindow"
-                || className == "FilterControlGlassWindow"
-                || className == "NativeHWNDHost"
-                || className == "Windows.UI.Composition.DesktopWindowContentBridge"
-                || className == "Microsoft.UI.Content.DesktopChildSiteBridge"
-                return true
-
-            ; Newer Task Manager builds can introduce additional helper windows
-            ; for the same composed surface. Only accept a large visible helper
-            ; that substantially overlaps the main Task Manager window and is
-            ; either ownerless or owned directly by that main window.
-            if className == "TaskManagerWindow"
-                || className == "#32770"
-                || className == "tooltips_class32"
-                return false
-
-            owner := DllCall(
-                "GetWindow",
-                "Ptr", hwnd,
-                "UInt", 4, ; GW_OWNER
-                "Ptr"
-            )
-
-            if owner && owner != this.PrimaryHwnd
-                return false
-
-            if !this._GetPhysicalWindowGeometry(
-                hwnd,
-                &helperX,
-                &helperY,
-                &helperW,
-                &helperH
-            )
-                return false
-
-            if helperW < this.TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH
-                || helperH < this.TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT
-                return false
-
-            if !this._GetPhysicalWindowGeometry(
-                this.PrimaryHwnd,
-                &primaryX,
-                &primaryY,
-                &primaryW,
-                &primaryH
-            )
-                return false
-
-            overlapLeft := Max(helperX, primaryX)
-            overlapTop := Max(helperY, primaryY)
-            overlapRight := Min(
-                helperX + helperW,
-                primaryX + primaryW
-            )
-            overlapBottom := Min(
-                helperY + helperH,
-                primaryY + primaryH
-            )
-
-            overlapW := overlapRight - overlapLeft
-            overlapH := overlapBottom - overlapTop
-
-            return overlapW >= Floor(helperW * 0.8)
-                && overlapH >= Floor(helperH * 0.8)
-        } catch {
-            return false
-        }
-    }
-
-    static _IsTaskManagerChildSurface(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
-            return false
-
-        try {
-            if StrLower(WinGetProcessName("ahk_id " hwnd)) != "taskmgr.exe"
-                return false
-
-            style := WinGetStyle("ahk_id " hwnd)
-            if !(style & 0x40000000) || !(style & 0x10000000)
-                return false
-
-            className := WinGetClass("ahk_id " hwnd)
-            if className == "Button"
-                || className == "Edit"
-                || className == "Static"
-                || className == "ComboBox"
-                || className == "SysListView32"
-                || className == "SysTreeView32"
-                || className == "ScrollBar"
-                return false
-
-            if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
-                return false
-
-            return ww >= this.TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH
-                && wh >= this.TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT
-        } catch {
-            return false
-        }
-    }
-
     static _EnumerateChildWindows(parentHwnd) {
         if !parentHwnd
             return []
@@ -755,25 +635,12 @@ class WindowHole {
         return true
     }
 
-    static _CaptureSurfaceState(hwnd, taskManagerSurface := false) {
+    static _CaptureSurfaceState(hwnd) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return 0
 
         state := {
             originalRegion: 0,
-            isChromium: false,
-            taskManagerSurface: taskManagerSurface,
-            taskManagerCompanion: false,
-            taskManagerCompanionLastRegionCommitTick: 0,
-            originalNCRenderingPolicy: 0,
-            hadOriginalNCRenderingPolicy: false,
-            visualPrepared: false,
-            originalOpacity: 255,
-            hadOriginalOpacity: false,
-            originalCornerPreference: 0,
-            hadOriginalCornerPreference: false,
-            originalSystemBackdropType: 0,
-            hadOriginalSystemBackdropType: false,
             hadOriginalRegion: false,
             regionActive: false,
             windowX: 0,
@@ -838,10 +705,6 @@ class WindowHole {
             state.windowHeight := wh
             state.hasGeometry := true
             state.geometryLastRefreshTick := A_TickCount
-
-            if taskManagerSurface
-                this._PrepareWindowForHole(hwnd, state)
-
             return state
         } catch {
             return 0
@@ -898,14 +761,11 @@ class WindowHole {
                 return false
         }
 
-        redraw := state.HasProp("taskManagerSurface")
-            && state.taskManagerSurface
-
         restored := DllCall(
             "SetWindowRgn",
             "Ptr", hwnd,
             "Ptr", region,
-            "Int", redraw ? 1 : 0,
+            "Int", 0,
             "Int"
         )
 
@@ -935,16 +795,8 @@ class WindowHole {
         if !inside
             return this._RestoreSurfaceRegion(hwnd, state)
 
-        isTaskManagerSurface := state.HasProp("taskManagerSurface")
-            && state.taskManagerSurface
-
-        minCommitInterval := isTaskManagerSurface
-            ? this.TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL
-            : this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
-
-        minMoveDistance := isTaskManagerSurface
-            ? this.TASK_MANAGER_SURFACE_MIN_MOVE_DISTANCE
-            : this.RENDER_SURFACE_MIN_MOVE_DISTANCE
+        minCommitInterval := this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
+        minMoveDistance := this.RENDER_SURFACE_MIN_MOVE_DISTANCE
 
         if state.hasAppliedPosition
             && A_TickCount - state.lastRegionCommitTick < minCommitInterval
@@ -979,13 +831,11 @@ class WindowHole {
         if !region
             return false
 
-        redraw := isTaskManagerSurface ? 1 : 0
-
         applied := DllCall(
             "SetWindowRgn",
             "Ptr", hwnd,
             "Ptr", region,
-            "Int", redraw,
+            "Int", 0,
             "Int"
         )
 
@@ -999,9 +849,6 @@ class WindowHole {
         state.lastAppliedY := mouseY
         state.hasAppliedPosition := true
         state.lastRegionCommitTick := A_TickCount
-
-        if isTaskManagerSurface
-            this._RefreshWindow(hwnd, false, false)
 
         return true
     }
@@ -1100,7 +947,7 @@ class WindowHole {
             if primaryState.chromiumRenderSurfaces.Has(hwnd)
                 continue
 
-            state := this._CaptureSurfaceState(hwnd, false)
+            state := this._CaptureSurfaceState(hwnd)
             if !IsObject(state)
                 continue
 
@@ -1141,105 +988,6 @@ class WindowHole {
         }
     }
 
-    static _IsTaskManagerSurface(hwnd) {
-        return this._IsTaskManagerWindow(hwnd)
-            || this._IsTaskManagerCompanionWindow(hwnd)
-            || this._IsTaskManagerChildSurface(hwnd)
-    }
-
-    static _EnsureTaskManagerCompanions() {
-        if !this._IsTaskManagerWindow(this.PrimaryHwnd)
-            return
-
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-
-        if !IsObject(primaryState)
-            return
-
-        now := A_TickCount
-
-        if now - this.LastTaskManagerCompanionScanTick
-            < this.TASK_MANAGER_COMPANION_SCAN_INTERVAL
-            return
-
-        this.LastTaskManagerCompanionScanTick := now
-        seen := Map()
-
-        try {
-            hwnds := WinGetList("ahk_exe Taskmgr.exe")
-        } catch {
-            hwnds := []
-        }
-
-        for hwnd in hwnds {
-            if hwnd == this.PrimaryHwnd
-                continue
-
-            if !this._IsTaskManagerCompanionWindow(hwnd)
-                continue
-
-            seen[hwnd] := true
-
-            if primaryState.taskManagerSurfaceTargets.Has(hwnd)
-                continue
-
-            state := this._CaptureSurfaceState(hwnd, true)
-            if !IsObject(state)
-                continue
-
-            primaryState.taskManagerSurfaceTargets[hwnd] := state
-        }
-
-        childHwnds := this._EnumerateChildWindows(this.PrimaryHwnd)
-        for hwnd in childHwnds {
-            if !this._IsTaskManagerChildSurface(hwnd)
-                continue
-
-            seen[hwnd] := true
-
-            if primaryState.taskManagerSurfaceTargets.Has(hwnd)
-                continue
-
-            state := this._CaptureSurfaceState(hwnd, true)
-            if !IsObject(state)
-                continue
-
-            primaryState.taskManagerSurfaceTargets[hwnd] := state
-        }
-
-        stale := []
-        for hwnd, state in primaryState.taskManagerSurfaceTargets {
-            if seen.Has(hwnd)
-                continue
-
-            this._RestoreSurfaceState(hwnd, state)
-            stale.Push(hwnd)
-        }
-
-        for hwnd in stale {
-            primaryState.taskManagerSurfaceTargets.Delete(hwnd)
-        }
-    }
-
-    static _UpdateTaskManagerSurfaces(x, y, mouseMoved) {
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-
-        if !IsObject(primaryState)
-            return
-
-        for hwnd, state in primaryState.taskManagerSurfaceTargets {
-            if mouseMoved || state.regionActive {
-                result := this._ApplySurfaceHole(hwnd, state, x, y)
-                if !result
-                    this._RestoreSurfaceState(hwnd, state)
-            }
-        }
-    }
-
     static _RestoreSurfaceState(hwnd, state) {
         if !IsObject(state)
             return
@@ -1272,13 +1020,6 @@ class WindowHole {
                 this._RestoreSurfaceState(hwnd, surfaceState)
 
             state.chromiumRenderSurfaces := Map()
-        }
-
-        if state.HasProp("taskManagerSurfaceTargets") {
-            for hwnd, surfaceState in state.taskManagerSurfaceTargets
-                this._RestoreSurfaceState(hwnd, surfaceState)
-
-            state.taskManagerSurfaceTargets := Map()
         }
     }
 
@@ -1460,9 +1201,6 @@ class WindowHole {
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            if state.taskManagerCompanion
-                state.taskManagerCompanionLastRegionCommitTick := A_TickCount
-
             ; SetWindowRgn(..., FALSE) is intentionally the only operation in
             ; the steady-state Chromium movement path. Chromium treats region
             ; changes as paint-affecting operations already, so an additional
@@ -1474,8 +1212,7 @@ class WindowHole {
 
             return true
         } catch {
-            if AppState.WindowHoleFallbackToMinimize
-                && !state.taskManagerCompanion {
+            if AppState.WindowHoleFallbackToMinimize {
                 if state.regionActive
                     this._RestoreOriginalRegion(hwnd, state)
 
@@ -1687,11 +1424,13 @@ class WindowHole {
             fallback: false,
             fallbackPreviousState: 0,
             isChromium: this._IsChromiumWindow(hwnd),
-            taskManagerSurface: this._IsTaskManagerSurface(hwnd),
-            taskManagerCompanion: this._IsTaskManagerCompanionWindow(hwnd),
-            taskManagerCompanionLastRegionCommitTick: 0,
             lastAppliedX: 0,
             lastAppliedY: 0,
+            holeRegion: 0,
+            holeRegionX: 0,
+            holeRegionY: 0,
+            holeRegionDiameter: 0,
+            holeRegionShape: "",
             holeRegion: 0,
             holeRegionX: 0,
             holeRegionY: 0,
@@ -1717,8 +1456,7 @@ class WindowHole {
             hadOriginalCornerPreference: false,
             originalSystemBackdropType: 0,
             hadOriginalSystemBackdropType: false,
-            chromiumRenderSurfaces: Map(),
-            taskManagerSurfaceTargets: Map()
+            chromiumRenderSurfaces: Map()
         }
 
         tempRegion := DllCall(
@@ -2066,12 +1804,7 @@ class WindowHole {
         if !IsObject(state)
             return
 
-        ; Restore child rendering surfaces before removing the primary region.
-        ; Modern compositors can otherwise retain the clipped frame for one or
-        ; more presentation cycles after the parent region is restored.
         this._RestoreSurfaceTargets(state)
-
-        ; Restore DWM/opacity state before returning the original region.
         this._RestoreWindowVisualState(hwnd, state)
 
         if state.regionActive
@@ -2133,7 +1866,6 @@ class WindowHole {
         this.Targets := Map()
         this.LastMouseX := ""
         this.LastMouseY := ""
-        this.LastTaskManagerCompanionScanTick := 0
         this.LastChromiumRenderSurfaceScanTick := 0
         this.HiddenTaskManagerWindows := Map()
         this.TimerCallback := ""
