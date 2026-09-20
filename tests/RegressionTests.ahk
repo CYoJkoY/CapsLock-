@@ -17,6 +17,30 @@ RunTests() {
         "Chromium rendering-surface scan interval is missing."
     )
     Assert(
+        InStr(source, "static CHROMIUM_MIN_UPDATE_INTERVAL := 40") > 0,
+        "Chromium movement update interval is not using the smoother target."
+    )
+    Assert(
+        InStr(source, "static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 40") > 0,
+        "Chromium rendering-surface commit interval is missing."
+    )
+    Assert(
+        InStr(source, "static TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80") > 0,
+        "Task Manager surface commit pacing is not separated from Chromium."
+    )
+    Assert(
+        InStr(source, 'taskManagerSurface: taskManagerSurface') > 0,
+        "Task Manager surface state flag is missing."
+    )
+    Assert(
+        InStr(source, 'redraw := state.HasProp("taskManagerSurface")') > 0,
+        "Task Manager surface redraw selection is missing."
+    )
+    Assert(
+        InStr(source, "if taskManagerSurface" Chr(10) "                this._PrepareWindowForHole(hwnd, state)") > 0,
+        "Task Manager surfaces are not prepared through the visual compatibility path."
+    )
+    Assert(
         InStr(source, 'className == "Intermediate D3D Window"') > 0,
         "Intermediate D3D Window is not recognized as a Chromium rendering surface."
     )
