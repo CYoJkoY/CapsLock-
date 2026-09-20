@@ -23,16 +23,18 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 80
-    static CHROMIUM_MIN_MOVE_DISTANCE := 12
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 40
+    static CHROMIUM_MIN_MOVE_DISTANCE := 8
     ; Geometry is stable for normal cursor tracking; revalidate it periodically
     ; so window moves/resizes are detected without a GetWindowRect call on every
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
     static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
     static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
-    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80
-    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 12
+    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 40
+    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 8
+    static TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80
+    static TASK_MANAGER_SURFACE_MIN_MOVE_DISTANCE := 12
     static TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH := 64
     static TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT := 64
 
@@ -700,12 +702,25 @@ class WindowHole {
         return true
     }
 
-    static _CaptureSurfaceState(hwnd) {
+    static _CaptureSurfaceState(hwnd, taskManagerSurface := false) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return 0
 
         state := {
             originalRegion: 0,
+            isChromium: false,
+            taskManagerSurface: taskManagerSurface,
+            taskManagerCompanion: false,
+            taskManagerCompanionLastRegionCommitTick: 0,
+            originalNCRenderingPolicy: 0,
+            hadOriginalNCRenderingPolicy: false,
+            visualPrepared: false,
+            originalOpacity: 255,
+            hadOriginalOpacity: false,
+            originalCornerPreference: 0,
+            hadOriginalCornerPreference: false,
+            originalSystemBackdropType: 0,
+            hadOriginalSystemBackdropType: false,
             hadOriginalRegion: false,
             regionActive: false,
             windowX: 0,
@@ -765,6 +780,10 @@ class WindowHole {
             state.windowHeight := wh
             state.hasGeometry := true
             state.geometryLastRefreshTick := A_TickCount
+
+            if taskManagerSurface
+                this._PrepareWindowForHole(hwnd, state)
+
             return state
         } catch {
             return 0
@@ -821,11 +840,14 @@ class WindowHole {
                 return false
         }
 
+        redraw := state.HasProp("taskManagerSurface")
+            && state.taskManagerSurface
+
         restored := DllCall(
             "SetWindowRgn",
             "Ptr", hwnd,
             "Ptr", region,
-            "Int", 0,
+            "Int", redraw ? 1 : 0,
             "Int"
         )
 
@@ -855,13 +877,23 @@ class WindowHole {
         if !inside
             return this._RestoreSurfaceRegion(hwnd, state)
 
+        isTaskManagerSurface := state.HasProp("taskManagerSurface")
+            && state.taskManagerSurface
+
+        minCommitInterval := isTaskManagerSurface
+            ? this.TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL
+            : this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
+
+        minMoveDistance := isTaskManagerSurface
+            ? this.TASK_MANAGER_SURFACE_MIN_MOVE_DISTANCE
+            : this.RENDER_SURFACE_MIN_MOVE_DISTANCE
+
         if state.hasAppliedPosition
-            && A_TickCount - state.lastRegionCommitTick
-                < this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
+            && A_TickCount - state.lastRegionCommitTick < minCommitInterval
             && Max(
                 Abs(mouseX - state.lastAppliedX),
                 Abs(mouseY - state.lastAppliedY)
-            ) < this.RENDER_SURFACE_MIN_MOVE_DISTANCE
+            ) < minMoveDistance
             return true
 
         relativeX := mouseX - state.windowX
@@ -889,11 +921,13 @@ class WindowHole {
         if !region
             return false
 
+        redraw := isTaskManagerSurface ? 1 : 0
+
         applied := DllCall(
             "SetWindowRgn",
             "Ptr", hwnd,
             "Ptr", region,
-            "Int", 0,
+            "Int", redraw,
             "Int"
         )
 
@@ -907,6 +941,10 @@ class WindowHole {
         state.lastAppliedY := mouseY
         state.hasAppliedPosition := true
         state.lastRegionCommitTick := A_TickCount
+
+        if isTaskManagerSurface
+            this._RefreshWindow(hwnd, false, false)
+
         return true
     }
 
@@ -1004,7 +1042,7 @@ class WindowHole {
             if primaryState.chromiumRenderSurfaces.Has(hwnd)
                 continue
 
-            state := this._CaptureSurfaceState(hwnd)
+            state := this._CaptureSurfaceState(hwnd, false)
             if !IsObject(state)
                 continue
 
@@ -1089,7 +1127,7 @@ class WindowHole {
             if primaryState.taskManagerSurfaceTargets.Has(hwnd)
                 continue
 
-            state := this._CaptureSurfaceState(hwnd)
+            state := this._CaptureSurfaceState(hwnd, true)
             if !IsObject(state)
                 continue
 
@@ -1106,7 +1144,7 @@ class WindowHole {
             if primaryState.taskManagerSurfaceTargets.Has(hwnd)
                 continue
 
-            state := this._CaptureSurfaceState(hwnd)
+            state := this._CaptureSurfaceState(hwnd, true)
             if !IsObject(state)
                 continue
 
@@ -1150,6 +1188,9 @@ class WindowHole {
 
         if state.regionActive
             this._RestoreSurfaceRegion(hwnd, state)
+
+        if state.HasProp("visualPrepared") && state.visualPrepared
+            this._RestoreWindowVisualState(hwnd, state)
 
         if state.originalRegion
             this._DiscardCapturedRegion(state)
