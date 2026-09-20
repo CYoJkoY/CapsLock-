@@ -570,7 +570,7 @@ class WindowHole {
     }
 
     static _EnsureWindowGeometry(hwnd, state, force := false) {
-        if !hwnd || !IsObject(state) || !WinExist("ahk_id " hwnd)
+        if !hwnd || !IsObject(state)
             return false
 
         now := A_TickCount
@@ -581,6 +581,9 @@ class WindowHole {
             && now - state.geometryLastRefreshTick < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
         )
             return true
+
+        if !WinExist("ahk_id " hwnd)
+            return false
 
         if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
             return false
@@ -598,7 +601,7 @@ class WindowHole {
     }
 
     static _IsPointInsideWindow(hwnd, x, y, state := "") {
-        if !hwnd || !WinExist("ahk_id " hwnd)
+        if !hwnd
             return false
 
         if IsObject(state) && state.isChromium {
@@ -613,6 +616,9 @@ class WindowHole {
 
             return false
         }
+
+        if !WinExist("ahk_id " hwnd)
+            return false
 
         try {
             if !this._GetPhysicalWindowGeometry(hwnd, &wx, &wy, &ww, &wh)
