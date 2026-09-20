@@ -597,7 +597,7 @@ class WindowHole {
             !hwnd
             || hwnd == this.PrimaryHwnd
             || this._IsOwnWindow(hwnd)
-            || this.SecondaryHiddenWindows.Has(hwnd)
+            || this.Targets.Has(hwnd)
             || !this.IsEligible(hwnd)
         )
             return 0
