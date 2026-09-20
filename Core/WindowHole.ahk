@@ -439,44 +439,25 @@ class WindowHole {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return false
 
-        try {
-            if enabled {
-                if this.ChromiumMousePassthroughWindows.Has(hwnd)
-                    return true
+        if !enabled {
+            if !this.ChromiumMousePassthroughWindows.Has(hwnd)
+                return true
 
-                originalExStyle := DllCall(
-                    "GetWindowLongPtrW",
-                    "Ptr", hwnd,
-                    "Int", -20 ; GWL_EXSTYLE
-                    ,
-                    "Ptr"
-                )
+            originalExStyle := this.ChromiumMousePassthroughWindows[hwnd]["originalExStyle"]
+            originalWasLayered := this.ChromiumMousePassthroughWindows[hwnd]["originalWasLayered"]
+            this.ChromiumMousePassthroughWindows.Delete(hwnd)
 
-                if originalExStyle == 0
-                    return false
+            if !WinExist("ahk_id " hwnd)
+                return true
 
-                targetExStyle := originalExStyle
-                    | 0x00000020 ; WS_EX_TRANSPARENT
-                    | 0x00080000 ; WS_EX_LAYERED
-
-                if targetExStyle == originalExStyle
-                    return true
-
-                previousExStyle := DllCall(
+            try {
+                DllCall(
                     "SetWindowLongPtrW",
                     "Ptr", hwnd,
                     "Int", -20 ; GWL_EXSTYLE
                     ,
-                    "Ptr", targetExStyle,
+                    "Ptr", originalExStyle,
                     "Ptr"
-                )
-
-                if previousExStyle == 0
-                    return false
-
-                this.ChromiumMousePassthroughWindows[hwnd] := Map(
-                    "originalExStyle",
-                    originalExStyle
                 )
 
                 DllCall(
@@ -496,24 +477,72 @@ class WindowHole {
                 )
 
                 return true
+            } catch {
+                return false
             }
+        }
 
-            if !this.ChromiumMousePassthroughWindows.Has(hwnd)
+        if this.ChromiumMousePassthroughWindows.Has(hwnd)
+            return true
+
+        try {
+            originalExStyle := DllCall(
+                "GetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -20 ; GWL_EXSTYLE
+                ,
+                "Ptr"
+            )
+
+            targetExStyle := originalExStyle
+                | 0x00000020 ; WS_EX_TRANSPARENT
+                | 0x00080000 ; WS_EX_LAYERED
+
+            if targetExStyle == originalExStyle
                 return true
 
-            originalExStyle := this.ChromiumMousePassthroughWindows[hwnd]["originalExStyle"]
-            this.ChromiumMousePassthroughWindows.Delete(hwnd)
+            originalWasLayered := (originalExStyle & 0x00080000) != 0
 
-            if !WinExist("ahk_id " hwnd)
-                return true
-
-            DllCall(
+            if DllCall(
                 "SetWindowLongPtrW",
                 "Ptr", hwnd,
                 "Int", -20 ; GWL_EXSTYLE
                 ,
-                "Ptr", originalExStyle,
+                "Ptr", targetExStyle,
                 "Ptr"
+            ) == 0 {
+                return false
+            }
+
+            ; A runtime-added WS_EX_LAYERED window must have a layered
+            ; presentation initialized or Windows may stop displaying it.
+            ; Keep the source fully opaque; WS_EX_TRANSPARENT is responsible
+            ; for the mouse passthrough, not visual translucency.
+            if !originalWasLayered {
+                if !DllCall(
+                    "SetLayeredWindowAttributes",
+                    "Ptr", hwnd,
+                    "UInt", 0,
+                    "UChar", 255,
+                    "UInt", 0x00000002 ; LWA_ALPHA
+                ) {
+                    DllCall(
+                        "SetWindowLongPtrW",
+                        "Ptr", hwnd,
+                        "Int", -20 ; GWL_EXSTYLE
+                        ,
+                        "Ptr", originalExStyle,
+                        "Ptr"
+                    )
+                    return false
+                }
+            }
+
+            this.ChromiumMousePassthroughWindows[hwnd] := Map(
+                "originalExStyle",
+                originalExStyle,
+                "originalWasLayered",
+                originalWasLayered
             )
 
             DllCall(
@@ -568,71 +597,11 @@ class WindowHole {
             return
         }
 
-        ; Once passthrough is active, WindowFromPoint intentionally returns
-        ; the underlying window. Do not treat that expected result as a reason
-        ; to disable passthrough on the next timer tick. The hole geometry is
-        ; the only authority for entering/leaving this state.
-        if this.ChromiumMousePassthroughWindows.Count > 0
-            return
-
-        hitHwnd := this._GetWindowAtPoint(x, y)
-        if !hitHwnd
-            return
-
-        try {
-            targetPid := WinGetPID("ahk_id " this.PrimaryHwnd)
-        } catch {
-            return
-        }
-
-        desired := Map()
-        current := hitHwnd
-
-        ; Chromium can expose nested HWNDs (for example the render-widget
-        ; surface) inside the top-level Chrome window. Make the hit-test chain
-        ; itself mouse-transparent while the pointer is inside the hole.
-        while current {
-            try {
-                if WinGetPID("ahk_id " current) != targetPid
-                    break
-            } catch {
-                break
-            }
-
-            desired[current] := true
-
-            parent := 0
-            try parent := DllCall(
-                "GetParent",
-                "Ptr", current,
-                "Ptr"
-            )
-
-            if !parent || parent == current
-                break
-
-            current := parent
-        }
-
-        if desired.Count == 0
-            return
-
-        for hwnd in desired
-            this._SetChromiumMousePassthrough(hwnd, true)
-    }
-
-    static _GetWindowAtPoint(x, y) {
-        try {
-            packedPoint := (Integer(y) << 32) | (Integer(x) & 0xFFFFFFFF)
-
-            return DllCall(
-                "WindowFromPoint",
-                "Int64", packedPoint,
-                "Ptr"
-            )
-        } catch {
-            return 0
-        }
+        ; The top-level Chrome HWND is the only window that needs to become
+        ; mouse-transparent. Changing its hit-test behavior means Chromium
+        ; descendants are skipped as well, while avoiding layered-window
+        ; changes on the compositor child surfaces.
+        this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)
     }
 
     static _GetTopLevelWindowAtPoint(x, y) {
