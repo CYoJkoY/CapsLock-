@@ -1,0 +1,123 @@
+name: "Performance Issue"
+description: Report lag, high latency, high CPU/memory usage, slow startup, or other performance regressions.
+title: "[Performance]: "
+labels: ["bug", "performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the feature works but is observably slow, stuttery, resource-heavy, or less responsive than expected.
+
+        Prefer measurements over subjective descriptions when practical.
+  - type: input
+    id: capslock-version
+    attributes:
+      label: CapsLock Extended version
+      placeholder: v0.9.6
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version / build
+      placeholder: Windows 11 24H2 (26100.x)
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware / display context
+      description: Optional CPU, RAM, GPU, monitor count, and DPI/scaling details relevant to the issue.
+      placeholder: 16 GB RAM, 2 monitors, 125% scaling
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Startup
+        - Hotkey response
+        - Tray menu / submenu
+        - Window Hole
+        - Window management
+        - Clipboard / history
+        - Quick Phrase
+        - File operations
+        - GUI rendering
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: Performance symptom
+      options:
+        - Input / hotkey latency
+        - Animation / rendering stutter
+        - Startup delay
+        - High CPU usage
+        - High memory usage
+        - Periodic freezes
+        - Throughput regression
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed performance
+      description: Give approximate latency, frame rate, CPU/memory usage, or a clear description of the degradation.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected performance
+      description: Describe the baseline or behavior you consider normal.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: frequency
+    attributes:
+      label: Frequency / conditions
+      description: State whether it happens always and what conditions change it.
+      placeholder: Always while moving Window Hole over Chrome; normal on Notepad.
+    validations:
+      required: false
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements / benchmark results
+      description: Include Task Manager, timing, profiling, or before/after measurements when available.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression information
+      description: Include the first known affected version if known.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or recording
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I compared the behavior against another application or a previous CapsLock Extended version where practical.
+          required: true
+        - label: I removed or redacted sensitive information from measurements and screenshots.
+          required: true

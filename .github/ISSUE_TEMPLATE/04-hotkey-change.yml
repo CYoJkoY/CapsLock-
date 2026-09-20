@@ -1,0 +1,94 @@
+name: "Hotkey & Input Change"
+description: Request adding, removing, remapping, or changing CapsLock shortcut and input behavior.
+title: "[Hotkey]: "
+labels: ["enhancement", "hotkey"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the primary subject is the shortcut layer itself rather than a general feature implemented behind it.
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Requested change
+      options:
+        - Add shortcut
+        - Remove shortcut
+        - Remap shortcut
+        - Change shortcut behavior
+        - Change key-state / modifier behavior
+    validations:
+      required: true
+  - type: input
+    id: current-shortcut
+    attributes:
+      label: Current shortcut
+      description: Leave blank when introducing a new shortcut.
+      placeholder: CapsLock + Left
+    validations:
+      required: false
+  - type: input
+    id: proposed-shortcut
+    attributes:
+      label: Proposed shortcut
+      placeholder: CapsLock + J
+    validations:
+      required: true
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: Describe what the key does today, if anything.
+    validations:
+      required: false
+  - type: textarea
+    id: desired-behavior
+    attributes:
+      label: Desired behavior
+      description: Define the exact behavior, including key-down/key-up semantics when relevant.
+    validations:
+      required: true
+  - type: dropdown
+    id: conflict
+    attributes:
+      label: Existing shortcut conflict
+      options:
+        - No known conflict
+        - Yes — another shortcut must move
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: configurable
+    attributes:
+      label: Configuration requirement
+      options:
+        - Fixed shortcut is sufficient
+        - Should be configurable
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: affected-apps
+    attributes:
+      label: Affected applications
+      description: List applications where the new or changed behavior must be tested.
+      placeholder: Chrome, VS Code, Windows Explorer
+    validations:
+      required: false
+  - type: textarea
+    id: docs
+    attributes:
+      label: Reference and documentation impact
+      description: Mention whether the change should update the hotkey reference, help panel, README, or localization strings.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the current shortcut reference before proposing the change.
+          required: true
+        - label: I considered CapsLock's existing modifier and release semantics.
+          required: true

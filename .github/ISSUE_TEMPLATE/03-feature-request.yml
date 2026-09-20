@@ -1,0 +1,93 @@
+name: "Feature Request"
+description: Suggest a new user workflow, capability, or configuration option.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep proposals aligned with the CapsLock-as-modifier model: a predictable modifier layer rather than a collection of unrelated global hotkeys.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Text navigation / selection
+        - Editing
+        - Clipboard & history
+        - Smart paste & file workflows
+        - Window management & transparency
+        - Tabs & taskbar switching
+        - Quick Phrase
+        - Documents / Pandoc conversion
+        - Tray menu & settings
+        - Configuration options
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the task or workflow that is currently slow, awkward, or impossible.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Explain when you would use the feature and what outcome you need.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired workflow step by step. This is a proposal, not a required implementation plan.
+    validations:
+      required: true
+  - type: input
+    id: shortcut
+    attributes:
+      label: Proposed shortcut (optional)
+      description: Use CapsLock + <key> form when relevant.
+      placeholder: CapsLock + N
+    validations:
+      required: false
+  - type: dropdown
+    id: conflict
+    attributes:
+      label: Shortcut conflict
+      options:
+        - No known conflict
+        - Yes — an existing shortcut would need to move
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: configurable
+    attributes:
+      label: Should it be configurable?
+      options:
+        - Yes
+        - No
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: dependency
+    attributes:
+      label: External dependency
+      options:
+        - None
+        - Optional dependency with graceful degradation
+        - Required dependency
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention existing shortcuts, Windows features, or tools you use as workarounds.
+    validations:
+      required: false

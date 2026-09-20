@@ -1,0 +1,89 @@
+name: "UI / UX Issue"
+description: Report Tray, GUI, theme, layout, interaction, visual, or accessibility problems.
+title: "[UI/UX]: "
+labels: ["enhancement", "ui/ux"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the primary issue is presentation or interaction rather than core feature logic.
+  - type: dropdown
+    id: area
+    attributes:
+      label: UI area
+      options:
+        - Tray menu
+        - Tray submenu
+        - Window Hole menu
+        - Settings
+        - Quick Phrase
+        - OSD
+        - Hotkey reference / help
+        - Theme
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue type
+      multiple: true
+      options:
+        - Layout / spacing
+        - Visual design
+        - Interaction behavior
+        - Hover / focus
+        - Menu dismissal
+        - Theme inconsistency
+        - Accessibility / readability
+        - Performance / responsiveness
+        - Localization / text
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme / appearance
+      options:
+        - Dark
+        - Light
+        - Both
+        - System-dependent
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: windows-context
+    attributes:
+      label: Windows / display context
+      description: Include Windows version, DPI scaling, monitor count, and relevant display details when applicable.
+      placeholder: Windows 11 24H2, 150% scaling, 2 monitors
+    validations:
+      required: false
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired behavior
+      description: Describe the intended interaction or visual relationship rather than only naming a cosmetic change.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshot / recording
+      description: Attach the clearest visual evidence available.
+    validations:
+      required: false

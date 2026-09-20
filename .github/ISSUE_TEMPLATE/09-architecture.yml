@@ -1,0 +1,65 @@
+name: "Architecture / Refactor"
+description: Propose or document a substantial internal architecture, refactor, or technical-debt change.
+title: "[Architecture]: "
+labels: ["enhancement", "architecture"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for changes to internal structure, subsystem boundaries, maintainability, or technical debt. Keep implementation plans evidence-driven and preserve user-facing behavior unless a breaking change is explicitly part of the proposal.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / technical debt
+      description: Describe the architectural limitation or recurring cost that justifies the change.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current architecture
+      description: Summarize the relevant components, data flow, and boundaries.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed architecture
+      description: Describe the target structure and the responsibilities of each affected layer or module.
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale / evidence
+      description: Include benchmarks, failure modes, maintainability concerns, or other evidence supporting the change.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility constraints
+      description: Identify APIs, configuration keys, persistence formats, hotkeys, or user-visible behavior that must remain compatible.
+    validations:
+      required: true
+  - type: textarea
+    id: migration
+    attributes:
+      label: Migration strategy
+      description: Explain how the change can be introduced incrementally and how rollback or compatibility will be handled.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and alternatives
+      description: List important regression risks and credible alternatives considered.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define measurable outcomes that determine whether the architectural change is complete.
+    validations:
+      required: true
