@@ -41,18 +41,18 @@ class CloudSyncCoordinator {
         if !AppState.CloudSyncEnabled || !AppState.CloudSyncAutoEnabled
             return
 
-        SetTimer(this._AutoSyncTick.Bind(this), -5000)
+        SetTimer(CloudSyncAutoSyncTimer, -5000)
     }
 
     static StartAutoSync() {
         this.StopAutoSync()
 
         intervalMs := Max(5, AppState.CloudSyncInterval) * 60000
-        SetTimer(this._AutoSyncTick.Bind(this), intervalMs)
+        SetTimer(CloudSyncAutoSyncTimer, intervalMs)
     }
 
     static StopAutoSync() {
-        try SetTimer(this._AutoSyncTick.Bind(this), 0)
+        try SetTimer(CloudSyncAutoSyncTimer, 0)
     }
 
     static _AutoSyncTick(*) {
@@ -386,7 +386,7 @@ class CloudSyncCoordinator {
 
         delay := Min(600000, 30000 * (2 ** (this.RetryCount - 1)))
         if AppState.CloudSyncAutoEnabled
-            SetTimer(this._RetryTick.Bind(this), -delay)
+            SetTimer(CloudSyncRetryTimer, -delay)
     }
 
     static _RetryTick(*) {
@@ -398,4 +398,13 @@ class CloudSyncCoordinator {
         AppState.CloudSyncState := state
         CloudSyncState.Set("Sync", "state", state)
     }
+}
+
+
+CloudSyncAutoSyncTimer(*) {
+    CloudSyncCoordinator._AutoSyncTick()
+}
+
+CloudSyncRetryTimer(*) {
+    CloudSyncCoordinator._RetryTick()
 }
