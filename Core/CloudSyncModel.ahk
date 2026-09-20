@@ -110,9 +110,7 @@ class CloudSyncModel {
     }
 
     static CreateRevisionId() {
-        return FormatTime(, "yyyyMMddHHmmss")
-            "-" A_TickCount
-            "-" Random(100000, 999999)
+        return FormatTime(, "yyyyMMddHHmmss") "-" A_TickCount "-" Random(100000, 999999)
     }
 
     static GetApplicationVersion() {
