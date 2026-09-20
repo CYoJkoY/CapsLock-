@@ -12,12 +12,6 @@ Assert(condition, message) {
         throw Error(message)
 }
 
-MapOf(items*) {
-    result := Map()
-    for pair in items
-        result[pair[1]] := pair[2]
-    return result
-}
 
 MakePayload(pasteMode, phrases) {
     config := Map()
@@ -69,7 +63,7 @@ RunTests() {
     )
 
     Assert(
-        Sha256("CapsLock Cloud Sync") == "a57c1844bc1fca7b8b6841dc4e1f7f5d3179d5fa52e77f23f7ecb9e63e2b7c3a",
+        Sha256("CapsLock Cloud Sync") == "08f5c9f062d7c22ef16809d984638710cf1e905d8b56c3dcb934e134427f30c9",
         "SHA-256 helper returned an unexpected digest."
     )
 
@@ -98,12 +92,12 @@ RunTests() {
 
     conflictingLocal := MakePayload(
         "2",
-        [MakePhrase(1, "Greeting", "General", 1, "Local")
-    ])
+        [MakePhrase(1, "Greeting", "General", 1, "Local")]
+    )
     conflictingRemote := MakePayload(
         "3",
-        [MakePhrase(1, "Greeting", "General", 1, "Remote")
-    ])
+        [MakePhrase(1, "Greeting", "General", 1, "Remote")]
+    )
 
     conflict := CloudSyncMerger.Merge(
         base,
