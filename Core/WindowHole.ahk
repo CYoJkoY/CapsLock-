@@ -48,6 +48,7 @@ class WindowHole {
     static SecondLevelHotkeyCallback := ""
     static SecondLevelHotkeyEnabled := false
     static SecondLevelHotkeyKeyDown := false
+    static ChromiumMousePassthroughWindows := Map()
 
     static IsActive() {
         return this.Active
@@ -187,6 +188,7 @@ class WindowHole {
         }
 
         this._SetSecondLevelHotkeyEnabled(false)
+        this._RestoreChromiumMousePassthrough()
         this._RestoreTaskManagerWindow()
         this._RestoreSecondaryHiddenWindows()
         this._RestoreAll()
@@ -388,8 +390,12 @@ class WindowHole {
             }
         }
 
-        if isChromium
+        if isChromium {
             this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
+            this._UpdateChromiumMousePassthrough(primaryState, mx, my)
+        } else {
+            this._RestoreChromiumMousePassthrough()
+        }
     }
 
     static _GetPhysicalCursorPosition(&x, &y) {
@@ -406,6 +412,232 @@ class WindowHole {
             return true
         } catch {
             return false
+        }
+    }
+
+    static _IsPointInsideHole(state, x, y) {
+        if !IsObject(state) || !state.hasAppliedPosition || !state.holeRegion
+            return false
+
+        try {
+            relativeX := x - state.windowX
+            relativeY := y - state.windowY
+
+            return DllCall(
+                "PtInRegion",
+                "Ptr", state.holeRegion,
+                "Int", Floor(relativeX),
+                "Int", Floor(relativeY),
+                "Int"
+            ) != 0
+        } catch {
+            return false
+        }
+    }
+
+    static _SetChromiumMousePassthrough(hwnd, enabled) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            if enabled {
+                if this.ChromiumMousePassthroughWindows.Has(hwnd)
+                    return true
+
+                originalExStyle := DllCall(
+                    "GetWindowLongPtrW",
+                    "Ptr", hwnd,
+                    "Int", -20 ; GWL_EXSTYLE
+                    ,
+                    "Ptr"
+                )
+
+                if originalExStyle == 0
+                    return false
+
+                targetExStyle := originalExStyle
+                    | 0x00000020 ; WS_EX_TRANSPARENT
+                    | 0x00080000 ; WS_EX_LAYERED
+
+                if targetExStyle == originalExStyle
+                    return true
+
+                previousExStyle := DllCall(
+                    "SetWindowLongPtrW",
+                    "Ptr", hwnd,
+                    "Int", -20 ; GWL_EXSTYLE
+                    ,
+                    "Ptr", targetExStyle,
+                    "Ptr"
+                )
+
+                if previousExStyle == 0
+                    return false
+
+                this.ChromiumMousePassthroughWindows[hwnd] := Map(
+                    "originalExStyle",
+                    originalExStyle
+                )
+
+                DllCall(
+                    "SetWindowPos",
+                    "Ptr", hwnd,
+                    "Ptr", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "UInt",
+                    0x0001 ; SWP_NOSIZE
+                    | 0x0002 ; SWP_NOMOVE
+                    | 0x0004 ; SWP_NOZORDER
+                    | 0x0010 ; SWP_NOACTIVATE
+                    | 0x0020 ; SWP_FRAMECHANGED
+                )
+
+                return true
+            }
+
+            if !this.ChromiumMousePassthroughWindows.Has(hwnd)
+                return true
+
+            originalExStyle := this.ChromiumMousePassthroughWindows[hwnd]["originalExStyle"]
+            this.ChromiumMousePassthroughWindows.Delete(hwnd)
+
+            if !WinExist("ahk_id " hwnd)
+                return true
+
+            DllCall(
+                "SetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -20 ; GWL_EXSTYLE
+                ,
+                "Ptr", originalExStyle,
+                "Ptr"
+            )
+
+            DllCall(
+                "SetWindowPos",
+                "Ptr", hwnd,
+                "Ptr", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "UInt",
+                0x0001 ; SWP_NOSIZE
+                | 0x0002 ; SWP_NOMOVE
+                | 0x0004 ; SWP_NOZORDER
+                | 0x0010 ; SWP_NOACTIVATE
+                | 0x0020 ; SWP_FRAMECHANGED
+            )
+
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    static _RestoreChromiumMousePassthrough() {
+        hwnds := []
+
+        for hwnd in this.ChromiumMousePassthroughWindows
+            hwnds.Push(hwnd)
+
+        for hwnd in hwnds
+            this._SetChromiumMousePassthrough(hwnd, false)
+
+        this.ChromiumMousePassthroughWindows := Map()
+    }
+
+    static _UpdateChromiumMousePassthrough(primaryState, x, y) {
+        if !IsObject(primaryState) || !primaryState.isChromium {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        if primaryState.fallback
+            || !this._IsPointInsideWindow(
+                this.PrimaryHwnd,
+                x,
+                y,
+                primaryState
+            )
+            || !this._IsPointInsideHole(primaryState, x, y) {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        hitHwnd := this._GetWindowAtPoint(x, y)
+        if !hitHwnd {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        try {
+            targetPid := WinGetPID("ahk_id " this.PrimaryHwnd)
+        } catch {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        desired := Map()
+        current := hitHwnd
+
+        ; Chromium can expose nested HWNDs (for example the render-widget
+        ; surface) inside the top-level Chrome window. Make the hit-test chain
+        ; itself mouse-transparent while the pointer is inside the hole.
+        while current {
+            try {
+                if WinGetPID("ahk_id " current) != targetPid
+                    break
+            } catch {
+                break
+            }
+
+            desired[current] := true
+
+            parent := 0
+            try parent := DllCall(
+                "GetParent",
+                "Ptr", current,
+                "Ptr"
+            )
+
+            if !parent || parent == current
+                break
+
+            current := parent
+        }
+
+        if desired.Count == 0 {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        stale := []
+        for hwnd in this.ChromiumMousePassthroughWindows {
+            if !desired.Has(hwnd)
+                stale.Push(hwnd)
+
+        for hwnd in stale
+            this._SetChromiumMousePassthrough(hwnd, false)
+
+        for hwnd in desired
+            this._SetChromiumMousePassthrough(hwnd, true)
+    }
+
+    static _GetWindowAtPoint(x, y) {
+        try {
+            packedPoint := (Integer(y) << 32) | (Integer(x) & 0xFFFFFFFF)
+
+            return DllCall(
+                "WindowFromPoint",
+                "Int64", packedPoint,
+                "Ptr"
+            )
+        } catch {
+            return 0
         }
     }
 
@@ -1840,6 +2072,7 @@ class WindowHole {
         this.LastMouseY := ""
         this.LastChromiumRenderSurfaceScanTick := 0
         this.TaskManagerPreviousState := -1
+        this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
     }
 
