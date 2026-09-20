@@ -261,6 +261,7 @@ class CloudSyncCoordinator {
                 return Lang("MSG_CLOUD_SYNC_CONFLICT", "Cloud Sync conflict requires attention.")
             case "error":
                 return Lang("MSG_CLOUD_SYNC_FAILED", "The last synchronization failed.")
+                    " " AppState.CloudSyncLastError
             default:
                 return Lang("MSG_CLOUD_SYNC_IDLE", "Cloud Sync is ready.")
         }
@@ -274,6 +275,7 @@ class CloudSyncCoordinator {
         }
 
         this.Provider := ""
+        this.StopAutoSync()
         AppState.CloudSyncConflict := false
         AppState.CloudSyncLocalDirty := false
         CloudSyncState.ClearSyncMetadata()
@@ -465,6 +467,7 @@ class CloudSyncCoordinator {
             FormatTime(, "yyyy-MM-dd HH:mm:ss")
         AppState.CloudSyncLocalDirty := false
         AppState.CloudSyncConflict := false
+        AppState.CloudSyncLastError := ""
 
         CloudSyncState.Set("Sync", "lastRemoteRevision", revision)
         CloudSyncState.Set("Sync", "lastRemoteFingerprint", fingerprint)
@@ -473,6 +476,7 @@ class CloudSyncCoordinator {
         CloudSyncState.Set("Sync", "lastSuccessfulSync", AppState.CloudSyncLastSuccess)
         CloudSyncState.Set("Sync", "localDirty", "0")
         CloudSyncState.Set("Sync", "conflict", "0")
+        CloudSyncState.Set("Sync", "lastError", "")
         this._SetState("idle")
         this.RetryCount := 0
     }
@@ -575,6 +579,8 @@ class CloudSyncCoordinator {
 
     static _HandleFailure(err) {
         this.RetryCount := Min(3, this.RetryCount + 1)
+        AppState.CloudSyncLastError := err.Message
+        CloudSyncState.Set("Sync", "lastError", err.Message)
         this._SetState("error")
 
         delay := Min(600000, 30000 * (2 ** (this.RetryCount - 1)))
