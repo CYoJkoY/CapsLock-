@@ -568,16 +568,20 @@ class WindowHole {
             return
         }
 
-        hitHwnd := this._GetWindowAtPoint(x, y)
-        if !hitHwnd {
-            this._RestoreChromiumMousePassthrough()
+        ; Once passthrough is active, WindowFromPoint intentionally returns
+        ; the underlying window. Do not treat that expected result as a reason
+        ; to disable passthrough on the next timer tick. The hole geometry is
+        ; the only authority for entering/leaving this state.
+        if this.ChromiumMousePassthroughWindows.Count > 0
             return
-        }
+
+        hitHwnd := this._GetWindowAtPoint(x, y)
+        if !hitHwnd
+            return
 
         try {
             targetPid := WinGetPID("ahk_id " this.PrimaryHwnd)
         } catch {
-            this._RestoreChromiumMousePassthrough()
             return
         }
 
@@ -610,18 +614,8 @@ class WindowHole {
             current := parent
         }
 
-        if desired.Count == 0 {
-            this._RestoreChromiumMousePassthrough()
+        if desired.Count == 0
             return
-        }
-
-        stale := []
-        for hwnd in this.ChromiumMousePassthroughWindows {
-            if !desired.Has(hwnd)
-                stale.Push(hwnd)
-
-        for hwnd in stale
-            this._SetChromiumMousePassthrough(hwnd, false)
 
         for hwnd in desired
             this._SetChromiumMousePassthrough(hwnd, true)
