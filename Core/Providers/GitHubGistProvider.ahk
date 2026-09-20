@@ -95,7 +95,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         }
     }
 
-    Upload(packageText, fingerprint := "") {
+    Upload(packageText, fingerprint := "", expectedRevision := "") {
         token := CloudSyncCredentials.Get("gist", "token", "")
         if token == ""
             throw Error("GitHub Gist access token is not configured.")
