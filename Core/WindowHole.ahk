@@ -250,8 +250,6 @@ class WindowHole {
             if previousState == -1
                 return
 
-            targetName := this._GetWindowLabel(foregroundHwnd)
-
             ; Minimize instead of SW_HIDE. A minimized top-level window stays
             ; represented by its normal taskbar button, so the user can still
             ; restore it through the taskbar while Window Hole is active.
@@ -271,9 +269,6 @@ class WindowHole {
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
                 "Focused window temporarily minimized."
             )
-
-            if targetName != ""
-                message .= " — " targetName
 
             ShowToolTip(message, 1500)
         } catch {
