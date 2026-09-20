@@ -31,8 +31,8 @@ class WindowHole {
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
     static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
     static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
-    static TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL := 80
-    static TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE := 12
+    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80
+    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 12
     static TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH := 64
     static TASK_MANAGER_CHILD_SURFACE_MIN_HEIGHT := 64
 
@@ -406,7 +406,7 @@ class WindowHole {
         }
 
         if this._IsTaskManagerWindow(this.PrimaryHwnd)
-            this._UpdateTaskManagerCompanions(mx, my, mouseMoved)
+            this._UpdateTaskManagerSurfaces(mx, my, mouseMoved)
         else if this._IsChromiumWindow(this.PrimaryHwnd)
             this._UpdateChromiumRenderSurfaces(mx, my, mouseMoved)
 
@@ -814,9 +814,12 @@ class WindowHole {
             return false
         }
 
-        region := state.hadOriginalRegion
-            ? this._CloneRegion(state.originalRegion)
-            : 0
+        region := 0
+        if state.hadOriginalRegion {
+            region := this._CloneRegion(state.originalRegion)
+            if !region
+                return false
+        }
 
         restored := DllCall(
             "SetWindowRgn",
@@ -854,11 +857,11 @@ class WindowHole {
 
         if state.hasAppliedPosition
             && A_TickCount - state.lastRegionCommitTick
-                < this.TASK_MANAGER_COMPANION_MIN_REGION_COMMIT_INTERVAL
+                < this.RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL
             && Max(
                 Abs(mouseX - state.lastAppliedX),
                 Abs(mouseY - state.lastAppliedY)
-            ) < this.TASK_MANAGER_COMPANION_MIN_MOVE_DISTANCE
+            ) < this.RENDER_SURFACE_MIN_MOVE_DISTANCE
             return true
 
         relativeX := mouseX - state.windowX
@@ -1124,7 +1127,7 @@ class WindowHole {
         }
     }
 
-    static _UpdateTaskManagerCompanions(x, y, mouseMoved) {
+    static _UpdateTaskManagerSurfaces(x, y, mouseMoved) {
         primaryState := this.Targets.Has(this.PrimaryHwnd)
             ? this.Targets[this.PrimaryHwnd]
             : ""
