@@ -440,6 +440,8 @@ class Language {
             if !DirExist(cfgDir)
                 DirCreate(cfgDir)
             IniWrite(code, cfg, "General", "language")
+            if !AppState.CloudSyncApplying
+                CloudSyncCoordinator.MarkLocalChanged()
         } catch {
         }
     }
