@@ -113,7 +113,7 @@ class CloudSyncCoordinator {
             return false
         }
 
-        if Trim(AppState.CloudSyncProvider) == "" || Trim(AppState.CloudSyncTarget) == "" {
+        if !this._IsProviderConfigured() {
             this._SetState("not-configured")
             return false
         }
@@ -343,6 +343,32 @@ class CloudSyncCoordinator {
         )
 
         return this._HandleUploadSuccess(upload, mergedPackage)
+    }
+
+    static _IsProviderConfigured() {
+        switch StrLower(Trim(AppState.CloudSyncProvider)) {
+            case "gist":
+                return CloudSyncCredentials.Get("gist", "token", "") != ""
+
+            case "github":
+                return AppState.CloudSyncGitHubOwner != ""
+                    && AppState.CloudSyncGitHubRepository != ""
+                    && CloudSyncCredentials.Get("github", "token", "") != ""
+
+            case "google-drive":
+                return AppState.CloudSyncGoogleClientId != ""
+                    && CloudSyncCredentials.Get("google", "refreshToken", "") != ""
+
+            case "onedrive":
+                return AppState.CloudSyncOneDriveClientId != ""
+                    && CloudSyncCredentials.Get("onedrive", "refreshToken", "") != ""
+
+            case "webdav":
+                return AppState.CloudSyncWebDavUrl != ""
+
+            default:
+                return false
+        }
     }
 
     static _GetProvider() {
