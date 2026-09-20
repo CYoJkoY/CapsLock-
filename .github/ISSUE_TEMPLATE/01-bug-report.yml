@@ -1,0 +1,149 @@
+name: "Bug Report"
+description: Report incorrect, broken, or unexpected behavior in CapsLock Extended.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report a behavior that differs from the documented or previously working behavior.
+
+        **Privacy:** do not include clipboard contents, credentials, tokens, private file paths, or other sensitive data. Redact logs and screenshots when necessary.
+  - type: input
+    id: capslock-version
+    attributes:
+      label: CapsLock Extended version
+      description: Use the exact release tag or development build identifier.
+      placeholder: v0.9.6
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Include the Windows edition and version/build when known.
+      placeholder: Windows 11 24H2 (26100.x)
+    validations:
+      required: true
+  - type: input
+    id: ahk-version
+    attributes:
+      label: AutoHotkey version
+      description: Required when running from source; include it for compiled builds when known.
+      placeholder: v2.0.27
+    validations:
+      required: false
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation / runtime source
+      options:
+        - Release executable — x64
+        - Release executable — x86
+        - From source with AutoHotkey v2
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Navigation / selection
+        - Editing
+        - Clipboard & history
+        - Smart paste & file workflows
+        - Window management & transparency
+        - Tabs & taskbar switching
+        - Quick Phrase
+        - Documents / Pandoc conversion
+        - Tray menu & settings
+        - Auto-start
+        - Script startup / crashes
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: shortcut
+    attributes:
+      label: Affected shortcut or feature
+      placeholder: CapsLock + Shift + V
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Give the shortest deterministic sequence that reproduces the problem.
+      placeholder: |
+        1. Start CapsLock Extended.
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what happened and include the exact error text when applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression information
+      description: Was this working in an earlier version? Include the last known working version when known.
+      placeholder: Yes — worked in v0.9.5.
+    validations:
+      required: false
+  - type: dropdown
+    id: clean-config
+    attributes:
+      label: Clean configuration result
+      description: Retest after temporarily moving or resetting the configs directory when practical.
+      options:
+        - Reproduces with default configuration
+        - Only happens with my configuration
+        - Not tested
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error dialog / logs
+      description: Paste the complete relevant error output. Remove secrets and private paths.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings
+      description: Include only settings that affect the failing feature. Do not paste private data.
+      render: ini
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recording
+      description: Attach a screenshot or short recording when the problem is visual or interaction-related.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for a likely duplicate.
+          required: true
+        - label: I am using AutoHotkey v2, not AutoHotkey v1.
+          required: true
+        - label: I removed or redacted sensitive clipboard contents, credentials, and private paths.
+          required: true

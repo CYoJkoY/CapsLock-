@@ -1,0 +1,58 @@
+name: "Documentation / Localization"
+description: Report incorrect, missing, outdated, or inconsistent documentation and localization.
+title: "[Docs/Localization]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for README content, help/reference UI text, localization strings, terminology, and other user-facing project documentation.
+  - type: input
+    id: location
+    attributes:
+      label: Affected document / UI location
+      placeholder: README shortcut table / Tray > Window Hole
+    validations:
+      required: true
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue type
+      options:
+        - Missing information
+        - Incorrect information
+        - Outdated information
+        - Translation missing
+        - Translation incorrect
+        - Terminology inconsistency
+        - Formatting / rendering
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: English / Chinese
+    validations:
+      required: false
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text / behavior
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Expected text / meaning
+      description: Provide a replacement when you have one, or describe the intended meaning precisely.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Related feature / source
+      description: Link or identify the feature, issue, design, or terminology reference the documentation should match.
+    validations:
+      required: false

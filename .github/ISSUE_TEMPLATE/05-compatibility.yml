@@ -1,0 +1,99 @@
+name: "Compatibility Issue"
+description: Report behavior that differs across applications, window types, Windows builds, DPI, or desktop environments.
+title: "[Compatibility]: "
+labels: ["bug", "compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the issue depends on the target application, window implementation, desktop compositor, or Windows environment.
+  - type: input
+    id: capslock-version
+    attributes:
+      label: CapsLock Extended version
+      placeholder: v0.9.6
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version / build
+      placeholder: Windows 11 24H2 (26100.x)
+    validations:
+      required: true
+  - type: input
+    id: application
+    attributes:
+      label: Target application
+      placeholder: Google Chrome 153.x
+    validations:
+      required: true
+  - type: input
+    id: executable
+    attributes:
+      label: Executable name
+      placeholder: chrome.exe
+    validations:
+      required: false
+  - type: input
+    id: window-type
+    attributes:
+      label: Window / rendering context
+      description: Include window state, fullscreen/maximized status, hardware acceleration, DWM-related details, or other relevant context.
+      placeholder: Maximized Chromium window, hardware acceleration enabled
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected feature
+      options:
+        - Window Hole
+        - Window transparency
+        - Window positioning
+        - Tray / GUI
+        - Hotkeys / input
+        - Clipboard / paste
+        - Tabs / taskbar
+        - Quick Phrase
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope of compatibility problem
+      multiple: true
+      options:
+        - Only this application
+        - Multiple applications from the same family
+        - Multiple unrelated applications
+        - Only this Windows configuration
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots / recording / logs
+      description: Attach visual evidence or relevant logs. Redact private information.
+    validations:
+      required: false

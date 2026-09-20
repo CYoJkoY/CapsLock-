@@ -1,0 +1,84 @@
+name: "Build / Release Issue"
+description: Report CI, compiler, packaging, artifact, installer, or release-process problems.
+title: "[Build/Release]: "
+labels: ["enhancement", "build/release"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for development/release infrastructure rather than runtime feature behavior.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Build / release scope
+      options:
+        - GitHub Actions
+        - AutoHotkey compilation
+        - AHKCompiler
+        - x64 build
+        - x86 build
+        - Packaging / artifacts
+        - Release metadata / tags
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: workflow
+    attributes:
+      label: Workflow / job
+      description: Include the workflow file or job name when applicable.
+      placeholder: .github/workflows/release.yml
+    validations:
+      required: false
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler / tool version
+      placeholder: AutoHotkey v2.0.27 / AHKCompiler commit ...
+    validations:
+      required: false
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Target architecture
+      options:
+        - x64
+        - x86
+        - Both
+        - Not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include local reproduction steps when possible, or the CI trigger that reproduces the failure.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Build / CI output
+      description: Paste the relevant failure output. For large logs, include the failing section and link to the workflow run if public.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: artifact
+    attributes:
+      label: Artifact / release evidence
+      description: Link to the failed or incorrect artifact/release when available.
+    validations:
+      required: false
