@@ -1200,10 +1200,12 @@ class WindowHole {
         if !IsObject(state) || !WinExist("ahk_id " hwnd)
             return
 
-        if state.taskManagerSurface {
-            state.visualPrepared := false
-            return
-        }
+        ; Task Manager and its modern helper surfaces can retain DWM-
+        ; rendered backdrop/frame pixels when a custom window region is used.
+        ; Keep the same visual sanitization path as other Win11 windows and
+        ; restore every captured attribute when the Window Hole session ends.
+        ; This is intentionally done for Task Manager surfaces as a compatibility
+        ; requirement; bypassing this path leaves the carved area visually opaque.
 
         ; A window may already be partially transparent because of the
         ; CapsLock opacity controls. Window Hole needs an opaque source
