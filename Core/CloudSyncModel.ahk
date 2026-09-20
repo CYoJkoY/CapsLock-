@@ -41,14 +41,26 @@ class CloudSyncModel {
     }
 
     static FinalizePackage(package) {
-        content := this.CanonicalContent(package)
+        payloadContent := this.CanonicalPayload(package)
 
         integrity := Map()
         integrity["algorithm"] := "SHA-256"
-        integrity["contentHash"] := Sha256(content)
+        integrity["contentHash"] := Sha256(payloadContent)
         package["integrity"] := integrity
 
         return package
+    }
+
+    static CanonicalPayload(package) {
+        value := Map()
+        value["schemaVersion"] := package.Has("schemaVersion")
+            ? package["schemaVersion"]
+            : this.SchemaVersion
+        value["payload"] := package.Has("payload")
+            ? package["payload"]
+            : Map()
+
+        return Json.Stringify(value, false)
     }
 
     static VerifyPackage(package) {
@@ -82,7 +94,7 @@ class CloudSyncModel {
         if expected == ""
             return false
 
-        actual := Sha256(this.CanonicalContent(package))
+        actual := Sha256(this.CanonicalPayload(package))
         return StrLower(expected) == StrLower(actual)
     }
 
