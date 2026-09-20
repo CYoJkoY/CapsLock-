@@ -75,6 +75,18 @@ RunTests() {
         "Secondary penetration does not target and minimize the current foreground window."
     )
     Assert(
+        InStr(source, "static _GetTopLevelWindowAtPoint(x, y)") > 0
+            && InStr(source, '"WindowFromPoint"') > 0
+            && InStr(source, '"GetAncestor"') > 0,
+        "Fallback penetration does not resolve the actual top-level window under the cursor."
+    )
+    Assert(
+        InStr(source, "static _FocusNextWindowAtPoint(x, y)") > 0
+            && InStr(source, "static _FocusNextWindowUnderCursor()") > 0
+            && InStr(source, "this._FocusNextWindowAtPoint(mx, my)") > 0,
+        "Revealed layers are not explicitly focused after minimize."
+    )
+    Assert(
         InStr(source, 'static _RestoreSecondaryHiddenWindows()') > 0
             && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0
             && InStr(source, 'state.previousState') > 0,
@@ -95,6 +107,12 @@ RunTests() {
         InStr(source, 'WinMinimize("ahk_id " hwnd)') > 0
             && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0,
         "Task Manager minimize/restore API calls are missing."
+    )
+    Assert(
+        InStr(source, "; After minimizing it, continue the same layer traversal mode") > 0
+            && InStr(source, "if !this._SetSecondLevelHotkeyEnabled(true)") > 0
+            && InStr(source, "this._FocusNextWindowUnderCursor()") > 0,
+        "Task Manager fallback does not continue into and focus the revealed layer."
     )
     Assert(
         InStr(source, "_UpdateTaskManagerSurfaces") == 0
