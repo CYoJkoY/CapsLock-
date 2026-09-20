@@ -171,8 +171,6 @@ class WindowHole {
 
         this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreChromiumMousePassthrough()
-        this._RestoreTaskManagerWindow()
-        this._RestoreSecondaryHiddenWindows()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
