@@ -25,3 +25,27 @@ jobs:
       - name: Run regression tests
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+
+      - name: Run Cloud Sync regression tests
+        shell: pwsh
+        run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+
+      - name: Compile main AHK script (x64)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-._ci.exe
+          target: x64
+          compression: none
+          ahk-tag: v2.0.27
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile main AHK script (x86)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-_ci_x86.exe
+          target: x86
+          compression: none
+          ahk-tag: v2.0.27
+          github-token: ${{ secrets.GITHUB_TOKEN }}
