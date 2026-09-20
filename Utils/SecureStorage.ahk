@@ -7,11 +7,12 @@ class SecureStorage {
         data := Buffer(Max(bytes, 1), 0)
         StrPut(text, data, "UTF-8")
 
-        inputBlob := Buffer(4 + A_PtrSize, 0)
-        outputBlob := Buffer(4 + A_PtrSize, 0)
+        inputBlob := Buffer(8 + A_PtrSize, 0)
+        outputBlob := Buffer(8 + A_PtrSize, 0)
+        ptrOffset := A_PtrSize == 8 ? 8 : 4
 
         NumPut("UInt", bytes - 1, inputBlob, 0)
-        NumPut("Ptr", data.Ptr, inputBlob, 4)
+        NumPut("Ptr", data.Ptr, inputBlob, ptrOffset)
 
         ok := DllCall(
             "Crypt32\CryptProtectData",
@@ -29,7 +30,7 @@ class SecureStorage {
             throw OSError()
 
         size := NumGet(outputBlob, 0, "UInt")
-        ptr := NumGet(outputBlob, 4, "Ptr")
+        ptr := NumGet(outputBlob, ptrOffset, "Ptr")
 
         encrypted := Buffer(size, 0)
         DllCall(
@@ -77,11 +78,12 @@ class SecureStorage {
             return ""
         }
 
-        inputBlob := Buffer(4 + A_PtrSize, 0)
-        outputBlob := Buffer(4 + A_PtrSize, 0)
+        inputBlob := Buffer(8 + A_PtrSize, 0)
+        outputBlob := Buffer(8 + A_PtrSize, 0)
+        ptrOffset := A_PtrSize == 8 ? 8 : 4
 
         NumPut("UInt", size, inputBlob, 0)
-        NumPut("Ptr", encrypted.Ptr, inputBlob, 4)
+        NumPut("Ptr", encrypted.Ptr, inputBlob, ptrOffset)
 
         ok := DllCall(
             "Crypt32\CryptUnprotectData",
@@ -99,7 +101,7 @@ class SecureStorage {
             return ""
 
         plainSize := NumGet(outputBlob, 0, "UInt")
-        plainPtr := NumGet(outputBlob, 4, "Ptr")
+        plainPtr := NumGet(outputBlob, ptrOffset, "Ptr")
         text := StrGet(plainPtr, plainSize, "UTF-8")
 
         DllCall("Kernel32\LocalFree", "Ptr", plainPtr)
