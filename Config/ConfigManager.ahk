@@ -30,6 +30,39 @@ class ConfigManager {
             AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
 
+            ; ---- Cloud Sync ----
+            AppState.CloudSyncEnabled :=
+                IniRead(cfg, "CloudSync", "enabled", "0") == "1"
+
+            AppState.CloudSyncProvider :=
+                StrLower(
+                    Trim(
+                        IniRead(cfg, "CloudSync", "provider", "gist")
+                    )
+                )
+
+            AppState.CloudSyncTarget :=
+                Trim(
+                    IniRead(cfg, "CloudSync", "target", "")
+                )
+
+            AppState.CloudSyncAutoEnabled :=
+                IniRead(cfg, "CloudSync", "autoSync", "0") == "1"
+
+            intervalText := IniRead(cfg, "CloudSync", "interval", "30")
+            AppState.CloudSyncInterval :=
+                IsNumber(intervalText)
+                    ? Clamp(Integer(intervalText), 5, 1440)
+                    : 30
+
+            AppState.CloudSyncEncryptionEnabled :=
+                IniRead(cfg, "CloudSync", "encryption", "0") == "1"
+
+            AppState.CloudSyncDeviceName :=
+                Trim(
+                    IniRead(cfg, "CloudSync", "deviceName", "")
+                )
+
             ; ---- Window Hole ----
             windowHoleDiameter := IniRead(cfg, "WindowHole", "diameter", "360")
             AppState.WindowHoleDiameter := IsNumber(windowHoleDiameter)
@@ -63,14 +96,10 @@ class ConfigManager {
             AppState.WindowHoleAllowedClasses := allowedClasses ? StrSplit(allowedClasses, "|") : []
             AppState.WindowHoleExcludedClasses := excludedClasses ? StrSplit(excludedClasses, "|") : []
 
-            ; ---- Validate Pandoc output format ----
-            ; If the loaded format is not a valid string or not in the supported list,
-            ; reset to "docx" and update the config file immediately.
             if !_IsPandocFormatSupported(AppState.PandocOutputFormat) {
                 AppState.PandocOutputFormat := "docx"
                 IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
             }
-            ; -----------------------------------------
 
             langVal := IniRead(cfg, "General", "language", "")
             if langVal != "" && AppState.HasProp("CurrentLanguage")
@@ -111,14 +140,23 @@ class ConfigManager {
 
             ignoreStr := Join(AppState.IgnorePatterns, "|")
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
+
+            ; ---- Cloud Sync ----
+            IniWrite(AppState.CloudSyncEnabled ? "1" : "0", cfg, "CloudSync", "enabled")
+            IniWrite(AppState.CloudSyncProvider, cfg, "CloudSync", "provider")
+            IniWrite(AppState.CloudSyncTarget, cfg, "CloudSync", "target")
+            IniWrite(AppState.CloudSyncAutoEnabled ? "1" : "0", cfg, "CloudSync", "autoSync")
+            IniWrite(AppState.CloudSyncInterval, cfg, "CloudSync", "interval")
+            IniWrite(AppState.CloudSyncEncryptionEnabled ? "1" : "0", cfg, "CloudSync", "encryption")
+            IniWrite(AppState.CloudSyncDeviceName, cfg, "CloudSync", "deviceName")
         }
+
+        if !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
     }
 }
 
-; Helper function to check if a format is a valid string and exists in the supported list.
-; This function is defined here to avoid dependency on Pandoc.ahk.
 _IsPandocFormatSupported(format) {
-    ; Ensure format is a non-empty string
     if !(format is String) || format == ""
         return false
     for f in AppState.PandocOutputFormats {
