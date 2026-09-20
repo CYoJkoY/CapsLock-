@@ -23,16 +23,16 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_UPDATE_INTERVAL := 40
-    static CHROMIUM_MIN_MOVE_DISTANCE := 8
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 25
+    static CHROMIUM_MIN_MOVE_DISTANCE := 5
     ; Geometry is stable for normal cursor tracking; revalidate it periodically
     ; so window moves/resizes are detected without a GetWindowRect call on every
     ; Chromium region commit.
     static CHROMIUM_GEOMETRY_REFRESH_INTERVAL := 160
     static CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL := 400
     static TASK_MANAGER_COMPANION_SCAN_INTERVAL := 200
-    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 40
-    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 8
+    static RENDER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 25
+    static RENDER_SURFACE_MIN_MOVE_DISTANCE := 5
     static TASK_MANAGER_SURFACE_MIN_REGION_COMMIT_INTERVAL := 80
     static TASK_MANAGER_SURFACE_MIN_MOVE_DISTANCE := 12
     static TASK_MANAGER_CHILD_SURFACE_MIN_WIDTH := 64
@@ -49,6 +49,7 @@ class WindowHole {
     static LastMouseY := ""
     static LastTaskManagerCompanionScanTick := 0
     static LastChromiumRenderSurfaceScanTick := 0
+    static HiddenTaskManagerWindows := Map()
     static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
@@ -133,6 +134,18 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
 
+        ; Task Manager is intentionally handled through a hide strategy rather
+        ; than attempting to manipulate its WinUI/Composition rendering surfaces.
+        if this._IsTaskManagerWindow(hwnd) {
+            if !this._HideTaskManagerWindows() {
+                this._ResetState()
+                return
+            }
+
+            this._SetSecondLevelHotkeyEnabled(false)
+            return
+        }
+
         ; Keep the original foreground window above the revealed content.
         ; The previous topmost state is restored when the mode ends.
         if !this.OriginalTopmost {
@@ -174,6 +187,7 @@ class WindowHole {
         }
 
         this._SetSecondLevelHotkeyEnabled(false)
+        this._RestoreHiddenTaskManagerWindows()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -380,9 +394,7 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        if this._IsTaskManagerWindow(this.PrimaryHwnd)
-            this._EnsureTaskManagerCompanions()
-        else if this._IsChromiumWindow(this.PrimaryHwnd)
+        if this._IsChromiumWindow(this.PrimaryHwnd)
             this._EnsureChromiumRenderSurfaces()
 
         primaryState := this.Targets.Has(this.PrimaryHwnd) ? this.Targets[this.PrimaryHwnd] : ""
@@ -407,9 +419,7 @@ class WindowHole {
             }
         }
 
-        if this._IsTaskManagerWindow(this.PrimaryHwnd)
-            this._UpdateTaskManagerSurfaces(mx, my, mouseMoved)
-        else if this._IsChromiumWindow(this.PrimaryHwnd)
+        if this._IsChromiumWindow(this.PrimaryHwnd)
             this._UpdateChromiumRenderSurfaces(mx, my, mouseMoved)
 
         if !this.SecondLevelActive || !this.SecondaryHwnd
@@ -477,19 +487,9 @@ class WindowHole {
         x := 0
         y := 0
 
-        previousContext := 0
-        contextChanged := false
-
+        point := Buffer(8, 0)
         try {
-            previousContext := DllCall(
-                "SetThreadDpiAwarenessContext",
-                "Ptr", this.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
-                "Ptr"
-            )
-            contextChanged := previousContext != 0
-
-            point := Buffer(8, 0)
-            if !DllCall("GetCursorPos", "Ptr", point, "Int")
+            if !DllCall("GetPhysicalCursorPos", "Ptr", point, "Int")
                 return false
 
             x := NumGet(point, 0, "Int")
@@ -497,14 +497,6 @@ class WindowHole {
             return true
         } catch {
             return false
-        } finally {
-            if contextChanged {
-                try DllCall(
-                    "SetThreadDpiAwarenessContext",
-                    "Ptr", previousContext,
-                    "Ptr"
-                )
-            }
         }
     }
 
@@ -797,7 +789,12 @@ class WindowHole {
             baseRegion: 0,
             baseRegionWidth: 0,
             baseRegionHeight: 0,
-            hwnd: hwnd
+            hwnd: hwnd,
+            holeRegion: 0,
+            holeRegionX: 0,
+            holeRegionY: 0,
+            holeRegionDiameter: 0,
+            holeRegionShape: ""
         }
 
         tempRegion := DllCall(
@@ -1250,9 +1247,6 @@ class WindowHole {
         if state.regionActive
             this._RestoreSurfaceRegion(hwnd, state)
 
-        if state.HasProp("visualPrepared") && state.visualPrepared
-            this._RestoreWindowVisualState(hwnd, state)
-
         if state.originalRegion
             this._DiscardCapturedRegion(state)
 
@@ -1261,6 +1255,11 @@ class WindowHole {
             state.baseRegion := 0
             state.baseRegionWidth := 0
             state.baseRegionHeight := 0
+        }
+
+        if state.holeRegion {
+            try DllCall("DeleteObject", "Ptr", state.holeRegion)
+            state.holeRegion := 0
         }
     }
 
@@ -1424,7 +1423,8 @@ class WindowHole {
                 wh,
                 relativeX,
                 relativeY,
-                baseRegion
+                baseRegion,
+                state
             )
 
             if !region
@@ -1539,10 +1539,11 @@ class WindowHole {
         height,
         centerX,
         centerY,
-        baseRegion := 0
+        baseRegion := 0,
+        state := ""
     ) {
         diameter := Clamp(Integer(AppState.WindowHoleDiameter), 80, 1200)
-        radius := Floor(diameter / 2)
+        shape := StrLower(AppState.WindowHoleShape)
 
         source := baseRegion
         ownsSource := false
@@ -1563,44 +1564,83 @@ class WindowHole {
             ownsSource := true
         }
 
-        shape := StrLower(AppState.WindowHoleShape)
         hole := 0
+        ownsHole := false
 
         try {
-            if shape == "square" {
-                hole := DllCall(
-                    "CreateRectRgn",
-                    "Int", centerX - radius,
-                    "Int", centerY - radius,
-                    "Int", centerX + radius,
-                    "Int", centerY + radius,
-                    "Ptr"
-                )
-            } else if shape == "rounded" {
-                corner := Max(20, Floor(diameter / 4))
-                hole := DllCall(
-                    "CreateRoundRectRgn",
-                    "Int", centerX - radius,
-                    "Int", centerY - radius,
-                    "Int", centerX + radius,
-                    "Int", centerY + radius,
-                    "Int", corner,
-                    "Int", corner,
-                    "Ptr"
-                )
-            } else {
-                hole := DllCall(
-                    "CreateEllipticRgn",
-                    "Int", centerX - radius,
-                    "Int", centerY - radius,
-                    "Int", centerX + radius,
-                    "Int", centerY + radius,
-                    "Ptr"
-                )
+            if IsObject(state)
+                && state.holeRegion
+                && state.holeRegionDiameter == diameter
+                && state.holeRegionShape == shape {
+                offsetX := centerX - state.holeRegionX
+                offsetY := centerY - state.holeRegionY
+
+                if offsetX || offsetY
+                    DllCall(
+                        "OffsetRgn",
+                        "Ptr", state.holeRegion,
+                        "Int", offsetX,
+                        "Int", offsetY,
+                        "Int"
+                    )
+
+                state.holeRegionX := centerX
+                state.holeRegionY := centerY
+                hole := state.holeRegion
             }
 
-            if !hole
-                throw Error("Could not create hole region.")
+            if !hole {
+                radius := Floor(diameter / 2)
+
+                if shape == "square" {
+                    hole := DllCall(
+                        "CreateRectRgn",
+                        "Int", centerX - radius,
+                        "Int", centerY - radius,
+                        "Int", centerX + radius,
+                        "Int", centerY + radius,
+                        "Ptr"
+                    )
+                } else if shape == "rounded" {
+                    corner := Max(20, Floor(diameter / 4))
+                    hole := DllCall(
+                        "CreateRoundRectRgn",
+                        "Int", centerX - radius,
+                        "Int", centerY - radius,
+                        "Int", centerX + radius,
+                        "Int", centerY + radius,
+                        "Int", corner,
+                        "Int", corner,
+                        "Ptr"
+                    )
+                } else {
+                    hole := DllCall(
+                        "CreateEllipticRgn",
+                        "Int", centerX - radius,
+                        "Int", centerY - radius,
+                        "Int", centerX + radius,
+                        "Int", centerY + radius,
+                        "Ptr"
+                    )
+                }
+
+                if !hole
+                    throw Error("Could not create hole region.")
+
+                if IsObject(state) {
+                    if state.holeRegion {
+                        try DllCall("DeleteObject", "Ptr", state.holeRegion)
+                    }
+
+                    state.holeRegion := hole
+                    state.holeRegionX := centerX
+                    state.holeRegionY := centerY
+                    state.holeRegionDiameter := diameter
+                    state.holeRegionShape := shape
+                } else {
+                    ownsHole := true
+                }
+            }
 
             result := DllCall(
                 "CreateRectRgn",
@@ -1632,7 +1672,7 @@ class WindowHole {
         } catch {
             return 0
         } finally {
-            if hole
+            if ownsHole && hole
                 DllCall("DeleteObject", "Ptr", hole)
             if ownsSource && source
                 DllCall("DeleteObject", "Ptr", source)
@@ -1652,6 +1692,11 @@ class WindowHole {
             taskManagerCompanionLastRegionCommitTick: 0,
             lastAppliedX: 0,
             lastAppliedY: 0,
+            holeRegion: 0,
+            holeRegionX: 0,
+            holeRegionY: 0,
+            holeRegionDiameter: 0,
+            holeRegionShape: "",
             hasAppliedPosition: false,
             windowX: 0,
             windowY: 0,
@@ -2045,6 +2090,11 @@ class WindowHole {
             state.baseRegionHeight := 0
         }
 
+        if state.holeRegion {
+            try DllCall("DeleteObject", "Ptr", state.holeRegion)
+            state.holeRegion := 0
+        }
+
         state.fallback := false
     }
 
@@ -2085,7 +2135,53 @@ class WindowHole {
         this.LastMouseY := ""
         this.LastTaskManagerCompanionScanTick := 0
         this.LastChromiumRenderSurfaceScanTick := 0
+        this.HiddenTaskManagerWindows := Map()
         this.TimerCallback := ""
+    }
+
+    static _HideTaskManagerWindows() {
+        this.HiddenTaskManagerWindows := Map()
+
+        try {
+            hwnds := WinGetList("ahk_exe Taskmgr.exe")
+        } catch {
+            hwnds := []
+        }
+
+        for hwnd in hwnds {
+            try {
+                if !(WinGetStyle("ahk_id " hwnd) & 0x10000000)
+                    continue
+
+                this.HiddenTaskManagerWindows[hwnd] := true
+                WinHide("ahk_id " hwnd)
+            } catch {
+            }
+        }
+
+        if !this.HiddenTaskManagerWindows.Has(this.PrimaryHwnd) {
+            this.HiddenTaskManagerWindows := Map()
+            return false
+        }
+
+        return true
+    }
+
+    static _RestoreHiddenTaskManagerWindows() {
+        if this.HiddenTaskManagerWindows.Count == 0
+            return
+
+        for hwnd, wasVisible in this.HiddenTaskManagerWindows {
+            if !wasVisible
+                continue
+
+            if !WinExist("ahk_id " hwnd)
+                continue
+
+            try WinShow("ahk_id " hwnd)
+        }
+
+        this.HiddenTaskManagerWindows := Map()
     }
 
     static IsTopmost(hwnd) {
