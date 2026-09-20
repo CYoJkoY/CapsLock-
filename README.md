@@ -56,8 +56,7 @@ All bindings below use `CapsLock` as the modifier unless noted otherwise.
 | Category | Shortcut | Action |
 | :--- | :--- | :--- |
 | Native | `CapsLock ×2` | Toggle the native CapsLock state |
-| Navigation | `Left / Right` | Move by word |
-| Navigation | `Up / Down` | Jump to line start / end |
+| Navigation | `J` | Jump to a specified line |
 | Selection | `Shift + Left / Right` | Extend selection by word |
 | Selection | `Shift + Up / Down` | Extend selection to line start / end |
 | Selection | `Space` | Select the current word |
@@ -72,6 +71,8 @@ All bindings below use `CapsLock` as the modifier unless noted otherwise.
 | Documents | `P` | Convert clipboard file paths with Pandoc |
 | Files | `Alt + Q` | Open the temporary folder used by file workflows |
 | Window | `T` | Toggle always-on-top with OSD feedback |
+| Window | `K` | Terminate a process by PID after confirmation |
+| Window | `L` | Search and activate an open window |
 | Window | `W / 8 / Num8` | Maximize / restore |
 | Window | `S / 2 / Num2` | Minimize |
 | Window | `Left Button` | Increase active-window opacity |

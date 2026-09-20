@@ -159,6 +159,101 @@ RunTests() {
 
     rootSource := ReadSource("CapsLock-.ahk")
 
+    hotkeySource := ReadSource("Hotkeys\\HotkeyBindings.ahk")
+    referenceSource := ReadSource("Hotkeys\\HotkeyReference.ahk")
+    actionSource := ReadSource("Hotkeys\\HotkeyActions.ahk")
+    switcherSource := ReadSource("UI\\WindowSwitcherGui.ahk")
+    readmeSource := ReadSource("README.md")
+    langSource := ReadSource("lang.csv")
+
+    Assert(
+        InStr(hotkeySource, "    Left:: Send") == 0
+            && InStr(hotkeySource, "    Right:: Send") == 0
+            && InStr(hotkeySource, "    Up:: Send") == 0
+            && InStr(hotkeySource, "    Down:: Send") == 0,
+        "Legacy CapsLock arrow navigation bindings remain."
+    )
+
+    Assert(
+        InStr(hotkeySource, "    +Left:: Send") > 0
+            && InStr(hotkeySource, "    +Right:: Send") > 0
+            && InStr(hotkeySource, "    +Up:: Send") > 0
+            && InStr(hotkeySource, "    +Down:: Send") > 0,
+        "Shift-based CapsLock arrow selection bindings were removed."
+    )
+
+    Assert(
+        InStr(hotkeySource, "    j:: JumpToLine()") > 0
+            && InStr(hotkeySource, "    k:: TerminateProcessByPid()") > 0
+            && InStr(hotkeySource, "    l:: WindowSwitcherGui.Show()") > 0,
+        "J/K/L hotkeys are not registered in the canonical hotkey layer."
+    )
+
+    Assert(
+        InStr(referenceSource, "CapsLock + ← / →") == 0
+            && InStr(referenceSource, "CapsLock + ↑ / ↓") == 0
+            && InStr(referenceSource, "CapsLock + J") > 0
+            && InStr(referenceSource, "CapsLock + K") > 0
+            && InStr(referenceSource, "CapsLock + L") > 0,
+        "Hotkey reference still contains legacy navigation or misses J/K/L."
+    )
+
+    Assert(
+        InStr(actionSource, "JumpToLine()") > 0
+            && InStr(actionSource, 'Send("^g")') > 0
+            && InStr(actionSource, "ParsePositiveInteger") > 0,
+        "Line-jump workflow is missing or incomplete."
+    )
+
+    Assert(
+        InStr(actionSource, "TerminateProcessByPid()") > 0
+            && InStr(actionSource, "ProcessExist(pid)") > 0
+            && InStr(actionSource, "ProcessClose(pid)") > 0
+            && InStr(actionSource, "GetProcessIdentity(pid)") > 0,
+        "PID-based process termination workflow is missing or incomplete."
+    )
+
+    Assert(
+        InStr(switcherSource, "class WindowSwitcherGui") > 0
+            && InStr(switcherSource, "WinGetList()") > 0
+            && InStr(switcherSource, "WinGetPID") > 0
+            && InStr(switcherSource, "WinGetProcessName") > 0
+            && InStr(switcherSource, "IsWindowVisible") > 0
+            && InStr(switcherSource, "0x00000080") > 0
+            && InStr(switcherSource, "0x08000000") > 0
+            && InStr(switcherSource, "GetCurrentProcessId") > 0
+            && InStr(switcherSource, "WinActivate") > 0
+            && InStr(switcherSource, "Refresh(refreshWindows := true)") > 0
+            && InStr(switcherSource, "WindowSwitcherGui.Refresh(false)") > 0
+            && InStr(switcherSource, "myGui.AllWindows := []") > 0,
+
+        "Window switcher filtering or activation path is incomplete."
+    )
+
+    Assert(
+        InStr(rootSource, '#Include "UI\\WindowSwitcherGui.ahk"') > 0,
+        "Window switcher GUI is not included by the application entry point."
+    )
+
+    Assert(
+        InStr(readmeSource, "| Navigation | `Left / Right`") == 0
+            && InStr(readmeSource, "| Navigation | `Up / Down`") == 0
+            && InStr(readmeSource, "| Navigation | `J` |") > 0
+            && InStr(readmeSource, "| Window | `K` |") > 0
+            && InStr(readmeSource, "| Window | `L` |") > 0,
+        "README shortcut documentation is stale or missing J/K/L."
+    )
+
+    Assert(
+        InStr(langSource, "CHEAT_ACT_NAV_WORD,") == 0
+            && InStr(langSource, "CHEAT_ACT_NAV_LINE,") == 0
+            && InStr(langSource, "CHEAT_ACT_GOTO_LINE,") > 0
+            && InStr(langSource, "CHEAT_ACT_KILL_PROCESS,") > 0
+            && InStr(langSource, "CHEAT_ACT_WINDOW_SWITCH,") > 0
+            && InStr(langSource, "GUI_WINDOW_SWITCHER_TITLE,") > 0,
+        "Shortcut localization is stale or incomplete."
+    )
+
     Assert(
         InStr(rootSource, "WindowHole.Stop()") > 0
             && InStr(rootSource, "WindowHole.Stop(true)") == 0,

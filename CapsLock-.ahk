@@ -48,6 +48,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
+#Include "UI\WindowSwitcherGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
 
 Language.Load()
