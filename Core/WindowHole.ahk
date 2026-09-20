@@ -627,6 +627,8 @@ class WindowHole {
             if className == "GlassWindow"
                 || className == "FilterControlGlassWindow"
                 || className == "NativeHWNDHost"
+                || className == "Windows.UI.Composition.DesktopWindowContentBridge"
+                || className == "Microsoft.UI.Content.DesktopChildSiteBridge"
                 return true
 
             ; Newer Task Manager builds can introduce additional helper windows
