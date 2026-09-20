@@ -39,7 +39,7 @@ RunTests() {
     )
     Assert(
         InStr(source, "static _UpdateChromiumRenderSurfaces") > 0
-            && InStr(source, "static _EnsureChromiumRenderSurfaces(targetHwnd, targetState, force := false)") > 0,
+            && InStr(source, "static _EnsureChromiumRenderSurfaces(targetHwnd, targetState)") > 0,
         "Chromium render-surface target lifecycle is incomplete."
     )
     Assert(
@@ -64,12 +64,16 @@ RunTests() {
             && InStr(source, "this.HoleLayerOrder.Push(hwnd)") > 0,
         "Region-stack secondary penetration state is missing."
     )
+    secondaryStart := InStr(source, "static HandleSecondLevelPenetration(*)")
+    secondaryEnd := InStr(source, "static IsEligible(hwnd) {", secondaryStart)
+    secondarySource := SubStr(source, secondaryStart, secondaryEnd - secondaryStart)
+
     Assert(
-        InStr(source, 'foregroundHwnd := WinExist("A")') > 0
-            && InStr(source, 'foregroundHwnd,') > 0
-            && InStr(source, 'mx,') > 0
-            && InStr(source, 'my,') > 0
-            && InStr(source, 'false\n        )') > 0,
+        secondaryStart > 0
+            && secondaryEnd > secondaryStart
+            && InStr(secondarySource, 'foregroundHwnd := WinExist("A")') > 0
+            && InStr(secondarySource, "this._ApplyHole(") > 0
+            && InStr(secondarySource, "false") > 0,
         "Secondary penetration does not create a fixed region layer without fallback."
     )
     Assert(
@@ -92,8 +96,11 @@ RunTests() {
         "Primary compatibility minimize fallback is missing."
     )
     Assert(
-        InStr(source, 'WinMinimize("ahk_id " foregroundHwnd)') == 0,
-        "Secondary penetration still directly minimizes the foreground window."
+        InStr(secondarySource, "WinMinimize(") == 0
+            && InStr(secondarySource, "WinRestore(") == 0
+            && InStr(secondarySource, "WinMaximize(") == 0
+            && InStr(secondarySource, "_FocusNextWindowAtPoint") == 0,
+        "Secondary penetration still changes show state or forcibly activates the next layer."
     )
     Assert(
         InStr(source, "static _RestoreAll()") > 0
@@ -116,11 +123,10 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "static _IsTaskManagerWindow(hwnd)") == 0
-            && InStr(source, "static _HideTaskManagerWindows()") == 0
-            && InStr(source, "static _RestoreTaskManagerWindow()") == 0
-            && InStr(source, "TaskManagerPreviousState") == 0,
-        "Task Manager still has a separate minimize/restore state machine."
+        InStr(source, "static _MinimizeFallback(hwnd, state)") > 0
+            && InStr(source, "static _RestoreFallback(hwnd, previousState)") > 0
+            && InStr(source, "if allowFallback && AppState.WindowHoleFallbackToMinimize") > 0,
+        "Compatibility fallback for region-incompatible primary windows is missing."
     )
 
     rootSource := ReadSource("CapsLock-.ahk")
