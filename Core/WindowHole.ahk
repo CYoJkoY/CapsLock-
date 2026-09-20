@@ -35,14 +35,13 @@ class WindowHole {
 
     static Active := false
     static PrimaryHwnd := 0
-    static SecondaryHiddenWindows := Map()
     static OriginalForeground := 0
     static OriginalTopmost := false
     static Targets := Map()
+    static HoleLayerOrder := []
     static LastMouseX := ""
     static LastMouseY := ""
     static LastChromiumRenderSurfaceScanTick := 0
-    static TaskManagerPreviousState := -1
     static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
@@ -120,40 +119,23 @@ class WindowHole {
 
         this.Active := true
         this.PrimaryHwnd := hwnd
-        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
+        this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
 
-        ; Task Manager is intentionally handled through a taskbar-preserving
-        ; minimize strategy rather than manipulating its WinUI/Composition surfaces.
-        if this._IsTaskManagerWindow(hwnd) {
-            if !this._HideTaskManagerWindows() {
-                this._ResetState()
-                return
-            }
-
-            ; Task Manager has no reliable window-region hit-testing path.
-            ; After minimizing it, continue the same layer traversal mode so
-            ; the next window can be focused and then minimized with 1.
-            if !this._SetSecondLevelHotkeyEnabled(true) {
-                this._RestoreTaskManagerWindow()
-                this._ResetState()
-                return
-            }
-
-            return
-        }
-
+        ; The primary window remains above the revealed layers without being
+        ; activated. Region clipping makes the hole itself pass hit-testing
+        ; through to the next eligible top-level window.
         ; Keep the original foreground window above the revealed content.
         ; The previous topmost state is restored when the mode ends.
         if !this.OriginalTopmost {
             try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
         }
 
-        if !this._ApplyHole(hwnd, true) {
+        if !this._ApplyHole(hwnd) {
             this._RestoreAll()
             this._RestorePrimaryTopmost()
             this._ResetState()
@@ -222,10 +204,10 @@ class WindowHole {
         if !this.Active
             return
 
-        ; Secondary penetration is intentionally based on the window that is
-        ; focused when the key is pressed. Do not sample the mouse position:
-        ; the first Window Hole already lets the user click the window below,
-        ; making that window the new foreground window.
+        ; Secondary penetration never changes window visibility or activation
+        ; state. The currently focused window receives a fixed Window Hole at
+        ; the current cursor location and remains in the layer stack until the
+        ; session ends.
         foregroundHwnd := WinExist("A")
 
         if (
@@ -233,6 +215,7 @@ class WindowHole {
             || foregroundHwnd == this.PrimaryHwnd
             || this._IsOwnWindow(foregroundHwnd)
             || !this.IsEligible(foregroundHwnd)
+            || this.Targets.Has(foregroundHwnd)
         ) {
             ShowToolTip(
                 Lang(
@@ -244,7 +227,17 @@ class WindowHole {
             return
         }
 
-        if this.SecondaryHiddenWindows.Has(foregroundHwnd) {
+        if !this._GetPhysicalCursorPosition(&mx, &my)
+            return
+
+        result := this._ApplyHole(
+            foregroundHwnd,
+            mx,
+            my,
+            false
+        )
+
+        if result != true {
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -255,45 +248,13 @@ class WindowHole {
             return
         }
 
-        try {
-            previousState := WinGetMinMax("ahk_id " foregroundHwnd)
-            if previousState == -1
-                return
-
-            ; Minimize instead of SW_HIDE. A minimized top-level window stays
-            ; represented by its normal taskbar button, so the user can still
-            ; restore it through the taskbar while Window Hole is active.
-            this._GetPhysicalCursorPosition(&mx, &my)
-
-            WinMinimize("ahk_id " foregroundHwnd)
-            Sleep(10)
-
-            if WinGetMinMax("ahk_id " foregroundHwnd) != -1 {
-                throw Error("WinMinimize failed.")
-            }
-
-            this.SecondaryHiddenWindows[foregroundHwnd] := Map(
-                "previousState",
-                previousState
-            )
-
-            ; WinMinimize normally activates the next Z-order window, but the
-            ; Window Hole primary window can remain topmost. Resolve the actual
-            ; window under the hole point and hand it the foreground focus so
-            ; the revealed layer is immediately interactive.
-            if IsSet(mx) && IsSet(my)
-                this._FocusNextWindowAtPoint(mx, my)
-
-            message := Lang(
+        ShowToolTip(
+            Lang(
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
-                "Focused window temporarily minimized."
-            )
-
-            ShowToolTip(message, 1500)
-        } catch {
-            ; Do not alter visibility on failure. The minimize call is the only
-            ; state transition owned by this operation.
-        }
+                "Focused window now has a temporary hole."
+            ),
+            1500
+        )
     }
 
     static IsEligible(hwnd) {
@@ -382,7 +343,7 @@ class WindowHole {
                 primaryState
             ) {
                 if this._ShouldApplyPosition(primaryState, mx, my) {
-                    if !this._ApplyHole(this.PrimaryHwnd, true, mx, my) {
+                    if !this._ApplyHole(this.PrimaryHwnd, mx, my, true) {
                         this.Stop()
                         return
                     }
@@ -721,18 +682,6 @@ class WindowHole {
                 || processName == "vivaldi.exe"
                 || processName == "opera.exe"
                 || processName == "chromium.exe"
-        } catch {
-            return false
-        }
-    }
-
-    static _IsTaskManagerWindow(hwnd) {
-        if !hwnd || !WinExist("ahk_id " hwnd)
-            return false
-
-        try {
-            return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
-                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
         } catch {
             return false
         }
@@ -1265,7 +1214,9 @@ class WindowHole {
         }
     }
 
-    static _ApplyHole(hwnd, isPrimary, mouseX := "", mouseY := "") {
+    static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true) {
+        addedTarget := false
+
         if !this.Targets.Has(hwnd) {
             if !this.IsEligible(hwnd)
                 return false
@@ -1275,7 +1226,9 @@ class WindowHole {
                 return false
 
             this.Targets[hwnd] := state
+            this.HoleLayerOrder.Push(hwnd)
             this._PrepareWindowForHole(hwnd, state)
+            addedTarget := true
         }
 
         state := this.Targets[hwnd]
@@ -1367,7 +1320,7 @@ class WindowHole {
 
             return true
         } catch {
-            if AppState.WindowHoleFallbackToMinimize {
+            if allowFallback && AppState.WindowHoleFallbackToMinimize {
                 if state.regionActive
                     this._RestoreOriginalRegion(hwnd, state)
 
@@ -1386,7 +1339,21 @@ class WindowHole {
             }
 
             this.Targets.Delete(hwnd)
+            this._RemoveHoleLayer(hwnd, addedTarget)
             return false
+        }
+    }
+
+    static _RemoveHoleLayer(hwnd, addedTarget := true) {
+        if !addedTarget || !this.HoleLayerOrder.Length
+            return
+
+        for index, layerHwnd in this.HoleLayerOrder {
+            if layerHwnd != hwnd
+                continue
+
+            this.HoleLayerOrder.RemoveAt(index)
+            break
         }
     }
 
@@ -1606,7 +1573,8 @@ class WindowHole {
             hadOriginalCornerPreference: false,
             originalSystemBackdropType: 0,
             hadOriginalSystemBackdropType: false,
-            chromiumRenderSurfaces: Map()
+            chromiumRenderSurfaces: Map(),
+            lastRenderSurfaceScanTick: 0
         }
 
         tempRegion := DllCall(
@@ -1937,51 +1905,23 @@ class WindowHole {
         }
     }
 
-    static _RestoreSecondaryHiddenWindows() {
-        for hwnd, state in this.SecondaryHiddenWindows {
-            if !IsObject(state)
-                continue
-
-            try {
-                if !DllCall("IsWindow", "Ptr", hwnd, "Int")
-                    continue
-
-                ; Only restore a window that is still minimized. If the user
-                ; restored it from the taskbar while Window Hole was active,
-                ; leave that user action intact instead of changing its state
-                ; again during cleanup.
-                if WinGetMinMax("ahk_id " hwnd) != -1
-                    continue
-
-                WinRestore("ahk_id " hwnd)
-
-                if state.previousState == 1
-                    WinMaximize("ahk_id " hwnd)
-            } catch {
-            }
-        }
-
-        this.SecondaryHiddenWindows := Map()
-    }
-
     static _RestoreAll() {
-        secondaryHwnds := []
-        for hwnd, state in this.Targets {
-            if hwnd == this.PrimaryHwnd
-                continue
-            secondaryHwnds.Push(hwnd)
-        }
+        ; Restore the deepest layer first and the primary layer last. Region
+        ; restoration does not modify Z-order, but this order minimizes visual
+        ; churn while the stack is being torn down.
+        index := this.HoleLayerOrder.Length
 
-        ; Restore lower layers first, then the primary window.
-        for hwnd in secondaryHwnds {
+        while index > 0 {
+            hwnd := this.HoleLayerOrder[index]
+
             if this.Targets.Has(hwnd)
                 this._RestoreTarget(hwnd, this.Targets[hwnd])
+
+            index -= 1
         }
 
-        if this.PrimaryHwnd && this.Targets.Has(this.PrimaryHwnd)
-            this._RestoreTarget(this.PrimaryHwnd, this.Targets[this.PrimaryHwnd])
-
         this.Targets := Map()
+        this.HoleLayerOrder := []
     }
 
     static _RestoreTarget(hwnd, state) {
@@ -2027,76 +1967,15 @@ class WindowHole {
         this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
         this.PrimaryHwnd := 0
-        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
+        this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
         this.LastChromiumRenderSurfaceScanTick := 0
-        this.TaskManagerPreviousState := -1
         this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
-    }
-
-    static _HideTaskManagerWindows() {
-        hwnd := this.PrimaryHwnd
-        if !hwnd || !WinExist("ahk_id " hwnd)
-            return false
-
-        try {
-            previousState := WinGetMinMax("ahk_id " hwnd)
-            if previousState == -1
-                return false
-
-            this.TaskManagerPreviousState := previousState
-
-            ; Minimize instead of SW_HIDE. Windows keeps the normal taskbar
-            ; button for a minimized top-level window, so the user can restore
-            ; Task Manager directly from the taskbar instead of relying on a
-            ; taskbar context-menu command.
-            this._GetPhysicalCursorPosition(&mx, &my)
-
-            WinMinimize("ahk_id " hwnd)
-
-            Sleep(10)
-            if WinGetMinMax("ahk_id " hwnd) != -1
-                return false
-
-            ; Task Manager is a fallback-only primary window. Once minimized,
-            ; focus the actual window under the cursor so the user can interact
-            ; with the revealed layer immediately.
-            if IsSet(mx) && IsSet(my)
-                this._FocusNextWindowAtPoint(mx, my)
-
-            return true
-        } catch {
-            this.TaskManagerPreviousState := -1
-            return false
-        }
-    }
-
-    static _RestoreTaskManagerWindow() {
-        hwnd := this.PrimaryHwnd
-        previousState := this.TaskManagerPreviousState
-
-        if !hwnd || previousState == -1
-            return
-
-        if !WinExist("ahk_id " hwnd) {
-            this.TaskManagerPreviousState := -1
-            return
-        }
-
-        try {
-            WinRestore("ahk_id " hwnd)
-
-            if previousState == 1
-                WinMaximize("ahk_id " hwnd)
-        } catch {
-        }
-
-        this.TaskManagerPreviousState := -1
     }
 
     static IsTopmost(hwnd) {
