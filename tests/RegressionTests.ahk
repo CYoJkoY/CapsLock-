@@ -63,6 +63,29 @@ RunTests() {
             && InStr(source, "static _RestoreTaskManagerWindow()") > 0,
         "Task Manager minimize/restore strategy is missing."
     )
+
+    Assert(
+        InStr(source, "static SecondaryHiddenWindows := Map()") > 0
+            && InStr(source, "static HandleSecondLevelPenetration(*)") > 0,
+        "Focus-driven secondary penetration state is missing."
+    )
+    Assert(
+        InStr(source, 'foregroundHwnd := WinExist("A")') > 0
+            && InStr(source, 'WinHide("ahk_id " foregroundHwnd)') > 0,
+        "Secondary penetration does not target and hide the current foreground window."
+    )
+    Assert(
+        InStr(source, 'static _RestoreSecondaryHiddenWindows()') > 0
+            && InStr(source, 'WinShow("ahk_id " hwnd)') > 0,
+        "Temporarily hidden secondary windows are not restored on exit."
+    )
+    Assert(
+        InStr(source, "SecondLevelActive") == 0
+            && InStr(source, "SecondaryHwnd") == 0
+            && InStr(source, "static ToggleSecondLevel(*)") == 0
+            && InStr(source, "_GetRootWindowAtPoint(mouseHwnd)") == 0,
+        "Obsolete single-secondary-window toggle logic remains."
+    )
     Assert(
         InStr(source, 'WinMinimize("ahk_id " hwnd)') > 0
             && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0,
