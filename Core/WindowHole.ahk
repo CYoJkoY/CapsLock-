@@ -277,11 +277,8 @@ class WindowHole {
 
             ShowToolTip(message, 1500)
         } catch {
-            ; Never leave a window partially hidden when the operation fails.
-            try {
-                if DllCall("IsWindow", "Ptr", foregroundHwnd, "Int")
-                    WinShow("ahk_id " foregroundHwnd)
-            }
+            ; Do not alter visibility on failure. The minimize call is the only
+            ; state transition owned by this operation.
         }
     }
 
