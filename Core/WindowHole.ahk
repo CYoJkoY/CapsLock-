@@ -1300,20 +1300,20 @@ class WindowHole {
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            ; SetWindowRgn(..., FALSE) is intentionally the only operation in
-            ; the steady-state Chromium movement path. Chromium treats region
-            ; changes as paint-affecting operations already, so an additional
-            ; RedrawWindow here only adds more work to its compositor path.
-            ; Keep the explicit refresh for the first region application so
-            ; activation remains visually immediate.
+            ; SetWindowRgn(..., FALSE) avoids an immediate synchronous
+            ; repaint. Chromium render surfaces receive the same fixed hole,
+            ; while the first top-level application gets one explicit refresh.
             if state.isChromium {
-                this._EnsureChromiumRenderSurfaces(hwnd, state, true)
+                this._EnsureChromiumRenderSurfaces(hwnd, state)
                 this._UpdateChromiumRenderSurfaces(
                     state,
                     mx,
                     my,
                     true
                 )
+
+                if firstRegionApply
+                    this._RefreshWindow(hwnd, false, true)
             } else {
                 this._RefreshWindow(hwnd, false, false)
             }
