@@ -70,7 +70,7 @@ RunTests() {
         "Surface-region restore does not reset movement state."
     )
     Assert(
-        InStr(source, 'DllCall("SetWindowRgn",') > 0,
+        InStr(source, '"SetWindowRgn",') > 0,
         "Native region application is missing."
     )
     Assert(
