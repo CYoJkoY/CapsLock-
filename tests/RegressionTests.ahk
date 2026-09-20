@@ -77,6 +77,14 @@ RunTests() {
         "Task Manager child-surface detection helper is missing."
     )
     Assert(
+        InStr(source, '"GetWindow",') > 0 && InStr(source, '"UInt", 4') > 0,
+        "Task Manager owner-window filtering is missing."
+    )
+    Assert(
+        InStr(source, "overlapW >= Floor(helperW * 0.8)") > 0,
+        "Task Manager generic companion overlap guard is missing."
+    )
+    Assert(
         InStr(source, "taskManagerSurfaceTargets: Map()") > 0,
         "Task Manager child-surface state map is missing."
     )
