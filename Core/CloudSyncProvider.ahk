@@ -19,6 +19,19 @@ class CloudSyncProvider {
         throw Error("Provider does not implement Download().")
     }
 
+    CompareVersions(localMetadata := "", remoteMetadata := "") {
+        localValue := IsObject(localMetadata)
+            ? Json.Stringify(localMetadata, false)
+            : String(localMetadata)
+        remoteValue := IsObject(remoteMetadata)
+            ? Json.Stringify(remoteMetadata, false)
+            : String(remoteMetadata)
+
+        if localValue == remoteValue
+            return 0
+        return -1
+    }
+
     Upload(packageText, fingerprint := "", expectedRevision := "") {
         throw Error("Provider does not implement Upload().")
     }
