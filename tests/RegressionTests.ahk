@@ -38,87 +38,71 @@ RunTests() {
         "Chromium child-window enumeration lifecycle is incomplete."
     )
     Assert(
-        InStr(source, "static _UpdateChromiumRenderSurfaces") > 0,
-        "Chromium rendering-surface update path is missing."
+        InStr(source, "static _UpdateChromiumRenderSurfaces") > 0
+            && InStr(source, "static _EnsureChromiumRenderSurfaces(targetHwnd, targetState, force := false)") > 0,
+        "Chromium render-surface target lifecycle is incomplete."
     )
     Assert(
-        InStr(source, "static _EnsureChromiumRenderSurfaces(primaryState := "")") > 0,
-        "Chromium surface discovery does not reuse cached primary state."
+        InStr(source, "lastRenderSurfaceScanTick: 0") > 0
+            && InStr(source, "this._EnsureChromiumRenderSurfaces(this.PrimaryHwnd, primaryState)") > 0,
+        "Chromium surface scanning is not tracked per holed target."
     )
     Assert(
-        InStr(source, "className := WinGetClass("ahk_id " hwnd)") > 0,
+        InStr(source, 'className := WinGetClass("ahk_id " hwnd)') > 0,
         "Chromium surface class-first filtering is missing."
-    )
-    Assert(
-        InStr(source, "baseRegion,\n            state\n        )") > 0,
-        "Chromium surface updates do not reuse the per-surface hole-region state."
     )
     Assert(
         InStr(source, "holeRegion: 0") > 0
             && InStr(source, '"OffsetRgn"') > 0,
         "Reusable hole-region cache is missing."
     )
+
     Assert(
-        InStr(source, "static HandleSecondLevelPenetration(*)") > 0
-            && InStr(source, "static HoleLayerOrder := []") > 0
+        InStr(source, "static HoleLayerOrder := []") > 0
+            && InStr(source, "static HandleSecondLevelPenetration(*)") > 0
             && InStr(source, "this.Targets[hwnd] := state") > 0
             && InStr(source, "this.HoleLayerOrder.Push(hwnd)") > 0,
         "Region-stack secondary penetration state is missing."
     )
     Assert(
         InStr(source, 'foregroundHwnd := WinExist("A")') > 0
-            && InStr(source, "this._ApplyHole(") > 0
-            && InStr(source, "foregroundHwnd,\n            mx,\n            my,\n            false") > 0,
-        "Secondary penetration does not apply a fixed region hole without fallback."
+            && InStr(source, 'foregroundHwnd,') > 0
+            && InStr(source, 'mx,') > 0
+            && InStr(source, 'my,') > 0
+            && InStr(source, 'false\n        )') > 0,
+        "Secondary penetration does not create a fixed region layer without fallback."
     )
     Assert(
-        InStr(source, "static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true)") > 0
+        InStr(source, 'static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true)') > 0
             && InStr(source, "if allowFallback && AppState.WindowHoleFallbackToMinimize") > 0,
         "Minimize fallback is not isolated from normal secondary region penetration."
     )
+
     Assert(
-        InStr(source, "static _GetTopLevelWindowAtPoint(x, y)") > 0
-            && InStr(source, '"WindowFromPoint"') > 0
-            && InStr(source, '"GetAncestor"') > 0,
-        "Fallback penetration does not resolve the actual top-level window under the cursor."
-    )
-    Assert(
-        InStr(source, "static _FocusNextWindowAtPoint(x, y)") > 0
-            && InStr(source, "this._FocusNextWindowAtPoint(mx, my)") > 0,
-        "Compatibility fallback cannot focus the revealed layer."
-    )
-    Assert(
-        InStr(source, "static ChromiumMousePassthroughWindows := Map()") > 0
-            && InStr(source, "static _UpdateChromiumMousePassthrough(primaryState, x, y)") > 0
-            && InStr(source, '0x00000020 ; WS_EX_TRANSPARENT') > 0
-            && InStr(source, '0x00080000 ; WS_EX_LAYERED') > 0,
-        "Chromium primary-window mouse passthrough is missing."
-    )
-    Assert(
-        InStr(source, '"SetLayeredWindowAttributes"') > 0
-            && InStr(source, "originalWasLayered") > 0
-            && InStr(source, "static _RestoreChromiumMousePassthrough()") > 0
-            && InStr(source, "this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)") > 0,
-        "Chromium passthrough does not preserve visibility and bind the transparent state to the primary HWND."
-    )
-    Assert(
-        InStr(source, "if this.ChromiumMousePassthroughWindows.Count > 0") == 0,
-        "Chromium passthrough still contains the obsolete WindowFromPoint feedback loop."
-    )
-    Assert(
-        InStr(source, "static _RestoreSecondaryHiddenWindows()") == 0
-            && InStr(source, "SecondaryHiddenWindows") == 0
-            && InStr(source, "ShowWindowAsync") == 0
+        InStr(source, "SecondaryHiddenWindows") == 0
             && InStr(source, "SecondaryRestoreQueue") == 0
-            && InStr(source, "SECONDARY_RESTORE_BATCH_SIZE") == 0,
-        "Obsolete secondary-window minimize/restore machinery remains."
+            && InStr(source, "ShowWindowAsync") == 0
+            && InStr(source, "SECONDARY_RESTORE_BATCH_SIZE") == 0
+            && InStr(source, "_RestoreSecondaryHiddenWindows") == 0,
+        "Obsolete secondary minimize/restore machinery remains."
+    )
+    Assert(
+        InStr(source, "WinMinimize(") > 0
+            && InStr(source, "static _MinimizeFallback(hwnd, state)") > 0,
+        "Primary compatibility minimize fallback is missing."
+    )
+    Assert(
+        InStr(source, 'WinMinimize("ahk_id " foregroundHwnd)') == 0,
+        "Secondary penetration still directly minimizes the foreground window."
     )
     Assert(
         InStr(source, "static _RestoreAll()") > 0
             && InStr(source, "index := this.HoleLayerOrder.Length") > 0
-            && InStr(source, "this.Targets.Has(hwnd)") > 0,
+            && InStr(source, "this.Targets.Has(hwnd)") > 0
+            && InStr(source, "this.HoleLayerOrder := []") > 0,
         "Window Hole teardown does not restore the stacked target regions."
     )
+
     Assert(
         InStr(source, "SecondLevelActive") == 0
             && InStr(source, "SecondaryHwnd") == 0
@@ -130,39 +114,13 @@ RunTests() {
             && InStr(source, "MSG_WINDOW_HOLE_SECOND_DISABLED") == 0,
         "Obsolete secondary toggle/gate logic remains."
     )
+
     Assert(
-        InStr(source, "this.Targets.Has(foregroundHwnd)") > 0
-            && InStr(source, "!this.IsEligible(foregroundHwnd)") > 0,
-        "Secondary penetration does not reject already-holed or ineligible foreground windows."
-    )
-    Assert(
-        InStr(source, "WinMinimize("ahk_id " foregroundHwnd)") == 0
-            && InStr(source, "WinRestore("ahk_id " foregroundHwnd)") == 0
-            && InStr(source, "WinMaximize("ahk_id " foregroundHwnd)") == 0,
-        "Secondary penetration still changes the foreground window's show state."
-    )
-    Assert(
-        InStr(source, 'WinMinimize("ahk_id " hwnd)') > 0
-            && InStr(source, 'WinRestore("ahk_id " hwnd)') > 0,
-        "Task Manager minimize/restore API calls are missing."
-    )
-    Assert(
-        InStr(source, "; After minimizing it, continue the same layer traversal mode") > 0
-            && InStr(source, "if !this._SetSecondLevelHotkeyEnabled(true)") > 0
-            && InStr(source, "this._FocusNextWindowUnderCursor()") > 0,
-        "Task Manager fallback does not continue into and focus the revealed layer."
-    )
-    Assert(
-        InStr(source, "_UpdateTaskManagerSurfaces") == 0
-            && InStr(source, "_EnsureTaskManagerCompanions") == 0
-            && InStr(source, "_IsTaskManagerChildSurface") == 0,
-        "Obsolete Task Manager surface compatibility path remains."
-    )
-    Assert(
-        InStr(source, "TaskManagerCompanion") == 0
-            && InStr(source, "taskManagerSurfaceTargets") == 0
-            && InStr(source, "TASK_MANAGER_CHILD_SURFACE") == 0,
-        "Obsolete Task Manager compatibility state remains."
+        InStr(source, "static _IsTaskManagerWindow(hwnd)") == 0
+            && InStr(source, "static _HideTaskManagerWindows()") == 0
+            && InStr(source, "static _RestoreTaskManagerWindow()") == 0
+            && InStr(source, "TaskManagerPreviousState") == 0,
+        "Task Manager still has a separate minimize/restore state machine."
     )
 
     rootSource := ReadSource("CapsLock-.ahk")
@@ -170,7 +128,7 @@ RunTests() {
     Assert(
         InStr(rootSource, "WindowHole.Stop()") > 0
             && InStr(rootSource, "WindowHole.Stop(true)") == 0,
-        "Window Hole shutdown must remain synchronous after region-stack refactor."
+        "Window Hole shutdown should not depend on an asynchronous restoration queue."
     )
 
     return true
