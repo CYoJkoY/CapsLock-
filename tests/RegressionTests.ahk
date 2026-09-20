@@ -57,8 +57,16 @@ RunTests() {
         "Task Manager hide/restore API calls are missing."
     )
     Assert(
-        InStr(source, "_UpdateTaskManagerSurfaces") == 0,
-        "Obsolete Task Manager surface update path remains active."
+        InStr(source, "_UpdateTaskManagerSurfaces") == 0
+            && InStr(source, "_EnsureTaskManagerCompanions") == 0
+            && InStr(source, "_IsTaskManagerChildSurface") == 0,
+        "Obsolete Task Manager surface compatibility path remains."
+    )
+    Assert(
+        InStr(source, "TaskManagerCompanion") == 0
+            && InStr(source, "taskManagerSurfaceTargets") == 0
+            && InStr(source, "TASK_MANAGER_CHILD_SURFACE") == 0,
+        "Obsolete Task Manager compatibility state remains."
     )
 
     return true
