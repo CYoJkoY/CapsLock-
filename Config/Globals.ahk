@@ -125,6 +125,7 @@ class AppState {
     static CloudSyncConflict := false
     static CloudSyncApplying := false
     static CloudSyncLocalDirty := false
+    static CloudSyncLastError := ""
 
     static CloudSyncDir := A_ScriptDir "\configs\CloudSync"
     static CloudSyncStateFile := A_ScriptDir "\configs\CloudSync\state.ini"
