@@ -305,18 +305,6 @@ SetWindowHoleShape(shape, *) {
     )
 }
 
-ToggleWindowHoleSecondLevelEnabled(*) {
-    AppState.WindowHoleSecondLevelEnabled := !AppState.WindowHoleSecondLevelEnabled
-    ConfigManager.Save()
-
-    key := AppState.WindowHoleSecondLevelEnabled
-        ? "MSG_WINDOW_HOLE_SECOND_ENABLED"
-        : "MSG_WINDOW_HOLE_SECOND_DISABLED"
-    fallback := AppState.WindowHoleSecondLevelEnabled
-        ? "Second penetration enabled."
-        : "Second penetration disabled."
-    ShowToolTip(Lang(key, fallback), 1800)
-}
 
 SetWindowHoleActivation(mode, *) {
     mode := StrLower(mode)

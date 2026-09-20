@@ -34,9 +34,8 @@ class WindowHole {
     static RENDER_SURFACE_MIN_MOVE_DISTANCE := 3
 
     static Active := false
-    static SecondLevelActive := false
     static PrimaryHwnd := 0
-    static SecondaryHwnd := 0
+    static SecondaryHiddenWindows := Map()
     static OriginalForeground := 0
     static OriginalTopmost := false
     static Targets := Map()
@@ -49,6 +48,7 @@ class WindowHole {
     static SecondLevelHotkeyCallback := ""
     static SecondLevelHotkeyEnabled := false
     static SecondLevelHotkeyKeyDown := false
+    static ChromiumMousePassthroughWindows := Map()
 
     static IsActive() {
         return this.Active
@@ -119,9 +119,8 @@ class WindowHole {
             return
 
         this.Active := true
-        this.SecondLevelActive := false
         this.PrimaryHwnd := hwnd
-        this.SecondaryHwnd := 0
+        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := hwnd
         this.OriginalTopmost := this.IsTopmost(hwnd)
         this.Targets := Map()
@@ -136,7 +135,15 @@ class WindowHole {
                 return
             }
 
-            this._SetSecondLevelHotkeyEnabled(false)
+            ; Task Manager has no reliable window-region hit-testing path.
+            ; After minimizing it, continue the same layer traversal mode so
+            ; the next window can be focused and then minimized with 1.
+            if !this._SetSecondLevelHotkeyEnabled(true) {
+                this._RestoreTaskManagerWindow()
+                this._ResetState()
+                return
+            }
+
             return
         }
 
@@ -181,7 +188,9 @@ class WindowHole {
         }
 
         this._SetSecondLevelHotkeyEnabled(false)
+        this._RestoreChromiumMousePassthrough()
         this._RestoreTaskManagerWindow()
+        this._RestoreSecondaryHiddenWindows()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -199,7 +208,7 @@ class WindowHole {
 
         this.SecondLevelHotkeyKeyDown := true
         try {
-            this.ToggleSecondLevel()
+            this.HandleSecondLevelPenetration()
         } finally {
             try {
                 KeyWait("1")
@@ -209,76 +218,21 @@ class WindowHole {
         }
     }
 
-    static ToggleSecondLevel(*) {
+    static HandleSecondLevelPenetration(*) {
         if !this.Active
             return
 
-        if !AppState.WindowHoleSecondLevelEnabled {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1200
-            )
-            return
-        }
-
-        if !this.SecondLevelHotkeyEnabled {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                    "No eligible window is available for second penetration."
-                ),
-                1500
-            )
-            return
-        }
-
-        if this.SecondLevelActive {
-            this.SecondLevelActive := false
-            this.SecondaryHwnd := 0
-            this._RemoveSecondaryTargets()
-
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1200
-            )
-            return
-        }
-
-        try {
-            MouseGetPos(&mouseX, &mouseY, &mouseHwnd)
-            if !this._GetPhysicalCursorPosition(&mx, &my) {
-                ShowToolTip(
-                    Lang(
-                        "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                        "No eligible window is available for second penetration."
-                    ),
-                    1500
-                )
-                return
-            }
-
-            secondaryHwnd := this._GetRootWindowAtPoint(mouseHwnd)
-        } catch {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
-                    "No eligible window is available for second penetration."
-                ),
-                1500
-            )
-            return
-        }
+        ; Secondary penetration is intentionally based on the window that is
+        ; focused when the key is pressed. Do not sample the mouse position:
+        ; the first Window Hole already lets the user click the window below,
+        ; making that window the new foreground window.
+        foregroundHwnd := WinExist("A")
 
         if (
-            !secondaryHwnd
-            || secondaryHwnd == this.PrimaryHwnd
-            || !this.IsEligible(secondaryHwnd)
+            !foregroundHwnd
+            || foregroundHwnd == this.PrimaryHwnd
+            || this._IsOwnWindow(foregroundHwnd)
+            || !this.IsEligible(foregroundHwnd)
         ) {
             ShowToolTip(
                 Lang(
@@ -290,15 +244,7 @@ class WindowHole {
             return
         }
 
-        result := this._ApplyHole(
-            secondaryHwnd,
-            false,
-            mx,
-            my
-        )
-
-        if !result {
-            this.SecondaryHwnd := 0
+        if this.SecondaryHiddenWindows.Has(foregroundHwnd) {
             ShowToolTip(
                 Lang(
                     "MSG_WINDOW_HOLE_SECOND_UNAVAILABLE",
@@ -309,20 +255,45 @@ class WindowHole {
             return
         }
 
-        this.SecondaryHwnd := secondaryHwnd
-        this.SecondLevelActive := true
+        try {
+            previousState := WinGetMinMax("ahk_id " foregroundHwnd)
+            if previousState == -1
+                return
 
-        targetName := this._GetWindowLabel(secondaryHwnd)
+            ; Minimize instead of SW_HIDE. A minimized top-level window stays
+            ; represented by its normal taskbar button, so the user can still
+            ; restore it through the taskbar while Window Hole is active.
+            this._GetPhysicalCursorPosition(&mx, &my)
 
-        message := Lang(
-            "MSG_WINDOW_HOLE_SECOND_ENABLED",
-            "Second penetration enabled."
-        )
+            WinMinimize("ahk_id " foregroundHwnd)
+            Sleep(10)
 
-        if targetName != ""
-            message .= " — " targetName
+            if WinGetMinMax("ahk_id " foregroundHwnd) != -1 {
+                throw Error("WinMinimize failed.")
+            }
 
-        ShowToolTip(message, 1500)
+            this.SecondaryHiddenWindows[foregroundHwnd] := Map(
+                "previousState",
+                previousState
+            )
+
+            ; WinMinimize normally activates the next Z-order window, but the
+            ; Window Hole primary window can remain topmost. Resolve the actual
+            ; window under the hole point and hand it the foreground focus so
+            ; the revealed layer is immediately interactive.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
+            message := Lang(
+                "MSG_WINDOW_HOLE_SECOND_HIDDEN",
+                "Focused window temporarily minimized."
+            )
+
+            ShowToolTip(message, 1500)
+        } catch {
+            ; Do not alter visibility on failure. The minimize call is the only
+            ; state transition owned by this operation.
+        }
     }
 
     static IsEligible(hwnd) {
@@ -419,67 +390,11 @@ class WindowHole {
             }
         }
 
-        if isChromium
+        if isChromium {
             this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
-
-        if !this.SecondLevelActive || !this.SecondaryHwnd
-            return
-
-        ; Layer 2 is locked to the window selected when CapsLock + 1
-        ; was pressed. Do not discover deeper windows while moving.
-        if !WinExist("ahk_id " this.SecondaryHwnd) {
-            this.SecondLevelActive := false
-            this.SecondaryHwnd := 0
-            this._RemoveSecondaryTargets()
-
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1500
-            )
-            return
-        }
-
-        ; Apply the second-layer hole only while the cursor is inside that
-        ; target. Once the cursor penetrates beyond it, freeze the layer too.
-        secondaryState := this.Targets.Has(this.SecondaryHwnd)
-            ? this.Targets[this.SecondaryHwnd]
-            : ""
-
-        if !IsObject(secondaryState) || secondaryState.fallback
-            return
-
-        if !this._IsPointInsideWindow(
-            this.SecondaryHwnd,
-            mx,
-            my,
-            secondaryState
-        )
-            return
-
-        if mouseMoved && this._ShouldApplyPosition(secondaryState, mx, my) {
-            result := this._ApplyHole(
-                this.SecondaryHwnd,
-                false,
-                mx,
-                my
-            )
-
-            if !result {
-                this.SecondLevelActive := false
-                this.SecondaryHwnd := 0
-                this._RemoveSecondaryTargets()
-
-                ShowToolTip(
-                    Lang(
-                        "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                        "Second penetration disabled."
-                    ),
-                    1500
-                )
-            }
+            this._UpdateChromiumMousePassthrough(primaryState, mx, my)
+        } else {
+            this._RestoreChromiumMousePassthrough()
         }
     }
 
@@ -498,6 +413,252 @@ class WindowHole {
         } catch {
             return false
         }
+    }
+
+    static _IsPointInsideHole(state, x, y) {
+        if !IsObject(state) || !state.hasAppliedPosition || !state.holeRegion
+            return false
+
+        try {
+            relativeX := x - state.windowX
+            relativeY := y - state.windowY
+
+            return DllCall(
+                "PtInRegion",
+                "Ptr", state.holeRegion,
+                "Int", Floor(relativeX),
+                "Int", Floor(relativeY),
+                "Int"
+            ) != 0
+        } catch {
+            return false
+        }
+    }
+
+    static _SetChromiumMousePassthrough(hwnd, enabled) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        if !enabled {
+            if !this.ChromiumMousePassthroughWindows.Has(hwnd)
+                return true
+
+            originalExStyle := this.ChromiumMousePassthroughWindows[hwnd]["originalExStyle"]
+            originalWasLayered := this.ChromiumMousePassthroughWindows[hwnd]["originalWasLayered"]
+            this.ChromiumMousePassthroughWindows.Delete(hwnd)
+
+            if !WinExist("ahk_id " hwnd)
+                return true
+
+            try {
+                DllCall(
+                    "SetWindowLongPtrW",
+                    "Ptr", hwnd,
+                    "Int", -20 ; GWL_EXSTYLE
+                    ,
+                    "Ptr", originalExStyle,
+                    "Ptr"
+                )
+
+                DllCall(
+                    "SetWindowPos",
+                    "Ptr", hwnd,
+                    "Ptr", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "Int", 0,
+                    "UInt",
+                    0x0001 ; SWP_NOSIZE
+                    | 0x0002 ; SWP_NOMOVE
+                    | 0x0004 ; SWP_NOZORDER
+                    | 0x0010 ; SWP_NOACTIVATE
+                    | 0x0020 ; SWP_FRAMECHANGED
+                )
+
+                return true
+            } catch {
+                return false
+            }
+        }
+
+        if this.ChromiumMousePassthroughWindows.Has(hwnd)
+            return true
+
+        try {
+            originalExStyle := DllCall(
+                "GetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -20 ; GWL_EXSTYLE
+                ,
+                "Ptr"
+            )
+
+            targetExStyle := originalExStyle
+                | 0x00000020 ; WS_EX_TRANSPARENT
+                | 0x00080000 ; WS_EX_LAYERED
+
+            if targetExStyle == originalExStyle
+                return true
+
+            originalWasLayered := (originalExStyle & 0x00080000) != 0
+
+            if DllCall(
+                "SetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -20 ; GWL_EXSTYLE
+                ,
+                "Ptr", targetExStyle,
+                "Ptr"
+            ) == 0 {
+                return false
+            }
+
+            ; A runtime-added WS_EX_LAYERED window must have a layered
+            ; presentation initialized or Windows may stop displaying it.
+            ; Keep the source fully opaque; WS_EX_TRANSPARENT is responsible
+            ; for the mouse passthrough, not visual translucency.
+            if !originalWasLayered {
+                if !DllCall(
+                    "SetLayeredWindowAttributes",
+                    "Ptr", hwnd,
+                    "UInt", 0,
+                    "UChar", 255,
+                    "UInt", 0x00000002 ; LWA_ALPHA
+                ) {
+                    DllCall(
+                        "SetWindowLongPtrW",
+                        "Ptr", hwnd,
+                        "Int", -20 ; GWL_EXSTYLE
+                        ,
+                        "Ptr", originalExStyle,
+                        "Ptr"
+                    )
+                    return false
+                }
+            }
+
+            this.ChromiumMousePassthroughWindows[hwnd] := Map(
+                "originalExStyle",
+                originalExStyle,
+                "originalWasLayered",
+                originalWasLayered
+            )
+
+            DllCall(
+                "SetWindowPos",
+                "Ptr", hwnd,
+                "Ptr", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "UInt",
+                0x0001 ; SWP_NOSIZE
+                | 0x0002 ; SWP_NOMOVE
+                | 0x0004 ; SWP_NOZORDER
+                | 0x0010 ; SWP_NOACTIVATE
+                | 0x0020 ; SWP_FRAMECHANGED
+            )
+
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    static _RestoreChromiumMousePassthrough() {
+        hwnds := []
+
+        for hwnd in this.ChromiumMousePassthroughWindows
+            hwnds.Push(hwnd)
+
+        for hwnd in hwnds
+            this._SetChromiumMousePassthrough(hwnd, false)
+
+        this.ChromiumMousePassthroughWindows := Map()
+    }
+
+    static _UpdateChromiumMousePassthrough(primaryState, x, y) {
+        if !IsObject(primaryState) || !primaryState.isChromium {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        if primaryState.fallback
+            || !this._IsPointInsideWindow(
+                this.PrimaryHwnd,
+                x,
+                y,
+                primaryState
+            )
+            || !this._IsPointInsideHole(primaryState, x, y) {
+            this._RestoreChromiumMousePassthrough()
+            return
+        }
+
+        ; The top-level Chrome HWND is the only window that needs to become
+        ; mouse-transparent. Changing its hit-test behavior means Chromium
+        ; descendants are skipped as well, while avoiding layered-window
+        ; changes on the compositor child surfaces.
+        this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)
+    }
+
+    static _GetTopLevelWindowAtPoint(x, y) {
+        try {
+            ; POINT is passed by value to WindowFromPoint. Pack the two signed
+            ; 32-bit coordinates into the 64-bit argument used by Win32.
+            packedPoint := (Integer(y) << 32) | (Integer(x) & 0xFFFFFFFF)
+
+            hwnd := DllCall(
+                "WindowFromPoint",
+                "Int64", packedPoint,
+                "Ptr"
+            )
+
+            if !hwnd
+                return 0
+
+            rootHwnd := DllCall(
+                "GetAncestor",
+                "Ptr", hwnd,
+                "UInt", 2,
+                "Ptr"
+            )
+
+            return rootHwnd ? rootHwnd : hwnd
+        } catch {
+            return 0
+        }
+    }
+
+    static _FocusNextWindowAtPoint(x, y) {
+        hwnd := this._GetTopLevelWindowAtPoint(x, y)
+
+        if (
+            !hwnd
+            || hwnd == this.PrimaryHwnd
+            || this._IsOwnWindow(hwnd)
+            || this.SecondaryHiddenWindows.Has(hwnd)
+            || !this.IsEligible(hwnd)
+        )
+            return 0
+
+        try {
+            WinActivate("ahk_id " hwnd)
+            Sleep(10)
+            return WinExist("A") == hwnd ? hwnd : 0
+        } catch {
+            return 0
+        }
+    }
+
+    static _FocusNextWindowUnderCursor() {
+        if !this._GetPhysicalCursorPosition(&x, &y)
+            return 0
+
+        Sleep(10)
+        return this._FocusNextWindowAtPoint(x, y)
     }
 
     static _GetPhysicalWindowGeometry(hwnd, &x, &y, &width, &height) {
@@ -1090,20 +1251,17 @@ class WindowHole {
             return false
         }
     }
-    static _GetRootWindowAtPoint(hwnd) {
+    static _IsOwnWindow(hwnd) {
         if !hwnd
-            return 0
+            return false
 
         try {
-            root := DllCall(
-                "GetAncestor",
-                "Ptr", hwnd,
-                "UInt", 2,
-                "Ptr"
+            return WinGetPID("ahk_id " hwnd) == DllCall(
+                "GetCurrentProcessId",
+                "UInt"
             )
-            return root ? root : hwnd
         } catch {
-            return hwnd
+            return false
         }
     }
 
@@ -1738,6 +1896,8 @@ class WindowHole {
             if previousState == -1
                 return false
 
+            this._GetPhysicalCursorPosition(&mx, &my)
+
             WinMinimize("ahk_id " hwnd)
             Sleep(10)
 
@@ -1746,6 +1906,14 @@ class WindowHole {
 
             state.fallback := true
             state.fallbackPreviousState := previousState
+
+            ; A minimized fallback window is no longer a hit-test surface.
+            ; Resolve and focus the real layer underneath the cursor so the
+            ; fallback behaves like actual penetration rather than merely
+            ; making the top window disappear.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
             ShowToolTip(
                 Lang("MSG_WINDOW_HOLE_FALLBACK_USED", "Incompatible window temporarily minimized."),
                 1500
@@ -1767,6 +1935,33 @@ class WindowHole {
                 WinMaximize("ahk_id " hwnd)
         } catch {
         }
+    }
+
+    static _RestoreSecondaryHiddenWindows() {
+        for hwnd, state in this.SecondaryHiddenWindows {
+            if !IsObject(state)
+                continue
+
+            try {
+                if !DllCall("IsWindow", "Ptr", hwnd, "Int")
+                    continue
+
+                ; Only restore a window that is still minimized. If the user
+                ; restored it from the taskbar while Window Hole was active,
+                ; leave that user action intact instead of changing its state
+                ; again during cleanup.
+                if WinGetMinMax("ahk_id " hwnd) != -1
+                    continue
+
+                WinRestore("ahk_id " hwnd)
+
+                if state.previousState == 1
+                    WinMaximize("ahk_id " hwnd)
+            } catch {
+            }
+        }
+
+        this.SecondaryHiddenWindows := Map()
     }
 
     static _RestoreAll() {
@@ -1820,22 +2015,6 @@ class WindowHole {
         state.fallback := false
     }
 
-    static _RemoveSecondaryTargets() {
-        secondaryHwnds := []
-        for hwnd, state in this.Targets {
-            if hwnd != this.PrimaryHwnd
-                secondaryHwnds.Push(hwnd)
-        }
-
-        for hwnd in secondaryHwnds {
-            state := this.Targets[hwnd]
-            this._RestoreTarget(hwnd, state)
-            this.Targets.Delete(hwnd)
-        }
-
-        this.SecondaryHwnd := 0
-    }
-
     static _RestorePrimaryTopmost() {
         hwnd := this.PrimaryHwnd
         if !hwnd || !WinExist("ahk_id " hwnd)
@@ -1847,9 +2026,8 @@ class WindowHole {
     static _ResetState() {
         this._SetSecondLevelHotkeyEnabled(false)
         this.Active := false
-        this.SecondLevelActive := false
         this.PrimaryHwnd := 0
-        this.SecondaryHwnd := 0
+        this.SecondaryHiddenWindows := Map()
         this.OriginalForeground := 0
         this.OriginalTopmost := false
         this.Targets := Map()
@@ -1857,6 +2035,7 @@ class WindowHole {
         this.LastMouseY := ""
         this.LastChromiumRenderSurfaceScanTick := 0
         this.TaskManagerPreviousState := -1
+        this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
     }
 
@@ -1876,10 +2055,21 @@ class WindowHole {
             ; button for a minimized top-level window, so the user can restore
             ; Task Manager directly from the taskbar instead of relying on a
             ; taskbar context-menu command.
+            this._GetPhysicalCursorPosition(&mx, &my)
+
             WinMinimize("ahk_id " hwnd)
 
             Sleep(10)
-            return WinGetMinMax("ahk_id " hwnd) == -1
+            if WinGetMinMax("ahk_id " hwnd) != -1
+                return false
+
+            ; Task Manager is a fallback-only primary window. Once minimized,
+            ; focus the actual window under the cursor so the user can interact
+            ; with the revealed layer immediately.
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
+            return true
         } catch {
             this.TaskManagerPreviousState := -1
             return false

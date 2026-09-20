@@ -102,7 +102,6 @@ class AppState {
     ; --- Window Hole ---
     static WindowHoleDiameter := 360
     static WindowHoleShape := "circle"
-    static WindowHoleSecondLevelEnabled := true
     static WindowHoleActivation := "hold"
     static WindowHoleUpdateInterval := 30
     static WindowHoleFallbackToMinimize := true

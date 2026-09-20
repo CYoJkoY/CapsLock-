@@ -51,7 +51,6 @@ class ConfigManager {
                 ? Clamp(Integer(updateInterval), 15, 200)
                 : 30
 
-            AppState.WindowHoleSecondLevelEnabled := IniRead(cfg, "WindowHole", "secondLevel", "1") == "1"
             AppState.WindowHoleFallbackToMinimize := IniRead(cfg, "WindowHole", "fallbackToMinimize", "1") == "1"
 
             allowedExecutables := IniRead(cfg, "WindowHole", "allowedExecutables", "")
@@ -101,7 +100,6 @@ class ConfigManager {
             IniWrite(AppState.WindowHoleShape, cfg, "WindowHole", "shape")
             IniWrite(AppState.WindowHoleActivation, cfg, "WindowHole", "activation")
             IniWrite(AppState.WindowHoleUpdateInterval, cfg, "WindowHole", "updateInterval")
-            IniWrite(AppState.WindowHoleSecondLevelEnabled ? "1" : "0", cfg, "WindowHole", "secondLevel")
             IniWrite(AppState.WindowHoleFallbackToMinimize ? "1" : "0", cfg, "WindowHole", "fallbackToMinimize")
             IniWrite(Join(AppState.WindowHoleAllowedExecutables, "|"), cfg, "WindowHole", "allowedExecutables")
             IniWrite(Join(AppState.WindowHoleExcludedExecutables, "|"), cfg, "WindowHole", "excludedExecutables")

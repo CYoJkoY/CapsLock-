@@ -78,7 +78,7 @@ All bindings below use `CapsLock` as the modifier unless noted otherwise.
 | Window | `Right Button` | Decrease active-window opacity |
 | Window | `Middle Button` | Toggle 10% / 100% ghost mode |
 | Window Hole | `X` | Activate Window Hole according to the configured activation mode |
-| Window Hole | `X`, then `1` | Toggle second-level penetration while Window Hole is active |
+| Window Hole | `X`, then `1` | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
 | Browser tabs | `Q / E` | Previous / next browser tab |
 | Help | `H / F1` | Open the built-in hotkey reference |
 
@@ -141,7 +141,7 @@ The current implementation uses a native Win32 window region rather than a visua
 - the hole follows the pointer while the mode is active;
 - supported shapes are **circle**, **rounded rectangle**, and **square**;
 - activation can be **hold** or **toggle**;
-- second-level penetration can be enabled and toggled with `CapsLock + 1`;
+- while Window Hole is active, pressing `1` temporarily minimizes the current focused window, and repeated presses can traverse deeper window layers;
 - incompatible windows can optionally use a temporary minimize fallback;
 - executable and window-class allow/exclude rules can restrict eligible windows.
 
@@ -152,7 +152,6 @@ The default Window Hole settings are:
 | Diameter | `360 px` |
 | Shape | `circle` |
 | Activation | `hold` |
-| Second level | enabled |
 | Fallback minimize | enabled |
 | Update interval | `30 ms` |
 
@@ -248,7 +247,7 @@ Important configuration areas include:
 | `[General]` | Paste mode, auto-clean, language |
 | `[QuickPhrase]` | Quick Phrase enable/disable state |
 | `[Pandoc]` | Pandoc path and output format |
-| `[WindowHole]` | Diameter, shape, activation, update interval, second level, fallback, executable/class rules |
+| `[WindowHole]` | Diameter, shape, activation, update interval, fallback, executable/class rules |
 | `[Ignore]` | Gitignore-style path/file patterns |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
@@ -268,7 +267,6 @@ Quick Phrase              enabled
 Window Hole diameter      360 px
 Window Hole shape         circle
 Window Hole activation    hold
-Window Hole second level  enabled
 Window Hole fallback      enabled
 ```
 
