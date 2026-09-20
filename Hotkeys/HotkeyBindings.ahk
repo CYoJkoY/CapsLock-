@@ -13,10 +13,6 @@
 
 #HotIf GetKeyState( "CapsLock", "P" )
 
-    Left:: Send( "^{Left}" )
-    Right:: Send( "^{Right}" )
-    Up:: Send( "{Home}" )
-    Down:: Send( "{End}" )
 
     +Left:: Send( "^+{Left}" )
     +Right:: Send( "^+{Right}" )
@@ -92,6 +88,10 @@
     t:: ToggleAlwaysOnTopWithOSD()
 
     p:: ConvertWithPandoc()
+
+    j:: JumpToLine()
+    k:: TerminateProcessByPid()
+    l:: WindowSwitcherGui.Show()
 
     x:: WindowHole.HandleXDown()
 

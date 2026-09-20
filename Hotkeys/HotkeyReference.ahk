@@ -21,8 +21,7 @@ class HotkeyReference {
         return [
             { cat: "CHEAT_CAT_NATIVE", keys: "CapsLock ×2", desc: "CHEAT_ACT_CAPS_TOGGLE", action: "" },
 
-            { cat: "CHEAT_CAT_NAV", keys: "CapsLock + ← / →", desc: "CHEAT_ACT_NAV_WORD", action: "" },
-            { cat: "CHEAT_CAT_NAV", keys: "CapsLock + ↑ / ↓", desc: "CHEAT_ACT_NAV_LINE", action: "" },
+            { cat: "CHEAT_CAT_NAV", keys: "CapsLock + J", desc: "CHEAT_ACT_GOTO_LINE", action: ((*) => JumpToLine()) },
 
             { cat: "CHEAT_CAT_SELECTION", keys: "CapsLock + Shift + ← / →", desc: "CHEAT_ACT_SEL_WORD", action: "" },
             { cat: "CHEAT_CAT_SELECTION", keys: "CapsLock + Shift + ↑ / ↓", desc: "CHEAT_ACT_SEL_LINE", action: "" },
@@ -43,6 +42,8 @@ class HotkeyReference {
             { cat: "CHEAT_CAT_FILES", keys: "CapsLock + Alt + Q", desc: "CHEAT_ACT_TEMP", action: ((*) => OpenTempFolder()) },
 
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + T", desc: "CHEAT_ACT_TOPMOST", action: ((*) => ToggleAlwaysOnTopWithOSD()) },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + K", desc: "CHEAT_ACT_KILL_PROCESS", action: ((*) => TerminateProcessByPid()) },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + L", desc: "CHEAT_ACT_WINDOW_SWITCH", action: ((*) => WindowSwitcherGui.Show()) },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + W / 8", desc: "CHEAT_ACT_MAXIMIZE", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + S / 2", desc: "CHEAT_ACT_MINIMIZE", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Left / Right Button", desc: "CHEAT_ACT_OPACITY", action: "" },
