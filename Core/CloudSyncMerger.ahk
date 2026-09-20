@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 
 class CloudSyncMerger {
-    static Merge(base, local, remote) {
+    static Merge(base, localData, remoteData) {
         conflicts := []
         mergedConfig := this._MergeMap(
             IsObject(base) && base.Has("config") ? base["config"] : Map(),
@@ -39,7 +39,7 @@ class CloudSyncMerger {
         }
     }
 
-    static MergeQuickPhrases(base, local, remote, conflicts := "") {
+    static MergeQuickPhrases(base, localData, remoteData, conflicts := "") {
         if !IsObject(conflicts)
             conflicts := []
 
@@ -85,7 +85,7 @@ class CloudSyncMerger {
         return merged
     }
 
-    static _MergeMap(base, local, remote, path, conflicts) {
+    static _MergeMap(base, localData, remoteData, path, conflicts) {
         result := Map()
         keys := Map()
 
