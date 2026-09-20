@@ -37,6 +37,7 @@ class WindowHole {
     static PrimaryHwnd := 0
     static OriginalForeground := 0
     static OriginalTopmost := false
+    static TaskManagerPreviousState := -1
     static Targets := Map()
     static HoleLayerOrder := []
     static LastMouseX := ""
@@ -125,6 +126,23 @@ class WindowHole {
         this.LastMouseX := ""
         this.LastMouseY := ""
 
+        ; Task Manager remains a narrow primary-window compatibility case.
+        ; Secondary penetration never uses this minimize fallback.
+        if this._IsTaskManagerWindow(hwnd) {
+            if !this._HideTaskManagerWindows() {
+                this._ResetState()
+                return
+            }
+
+            if !this._SetSecondLevelHotkeyEnabled(true) {
+                this._RestoreTaskManagerWindow()
+                this._ResetState()
+                return
+            }
+
+            return
+        }
+
         ; The primary window remains above the revealed layers without being
         ; activated. Region clipping makes the hole itself pass hit-testing
         ; through to the next eligible top-level window.
@@ -170,6 +188,7 @@ class WindowHole {
 
         this._SetSecondLevelHotkeyEnabled(false)
         this._RestoreChromiumMousePassthrough()
+        this._RestoreTaskManagerWindow()
         this._RestoreAll()
         this._RestorePrimaryTopmost()
 
@@ -1973,8 +1992,73 @@ class WindowHole {
         this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
+        this.TaskManagerPreviousState := -1
         this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
+    }
+
+    static _IsTaskManagerWindow(hwnd) {
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
+                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
+        } catch {
+            return false
+        }
+    }
+
+    static _HideTaskManagerWindows() {
+        hwnd := this.PrimaryHwnd
+        if !hwnd || !WinExist("ahk_id " hwnd)
+            return false
+
+        try {
+            previousState := WinGetMinMax("ahk_id " hwnd)
+            if previousState == -1
+                return false
+
+            this.TaskManagerPreviousState := previousState
+
+            this._GetPhysicalCursorPosition(&mx, &my)
+            WinMinimize("ahk_id " hwnd)
+
+            Sleep(10)
+            if WinGetMinMax("ahk_id " hwnd) != -1
+                return false
+
+            if IsSet(mx) && IsSet(my)
+                this._FocusNextWindowAtPoint(mx, my)
+
+            return true
+        } catch {
+            this.TaskManagerPreviousState := -1
+            return false
+        }
+    }
+
+    static _RestoreTaskManagerWindow() {
+        hwnd := this.PrimaryHwnd
+        previousState := this.TaskManagerPreviousState
+
+        if !hwnd || previousState == -1
+            return
+
+        if !WinExist("ahk_id " hwnd) {
+            this.TaskManagerPreviousState := -1
+            return
+        }
+
+        try {
+            WinRestore("ahk_id " hwnd)
+
+            if previousState == 1
+                WinMaximize("ahk_id " hwnd)
+        } catch {
+        }
+
+        this.TaskManagerPreviousState := -1
     }
 
     static IsTopmost(hwnd) {
