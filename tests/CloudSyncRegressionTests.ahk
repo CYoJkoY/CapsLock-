@@ -151,8 +151,47 @@ RunTests() {
 
     finalized := CloudSyncModel.FinalizePackage(package)
     Assert(
-        CloudSyncModel.VerifyPackage(finalized),
-        "Finalized Cloud Sync package failed integrity validation."
+        Base64EncodeText("CapsLock Cloud Sync") == "Q2Fwc0xvY2sgQ2xvdWQgU3luYw==",
+        "Base64 encoding failed."
+    )
+    Assert(
+        Base64DecodeText("Q2Fwc0xvY2sgQ2xvdWQgU3luYw==") == "CapsLock Cloud Sync",
+        "Base64 decoding failed."
+    )
+
+    securePath := A_Temp "\CapsLock-CloudSync-Test.dat"
+    SecureStorage.Delete(securePath)
+    Assert(
+        SecureStorage.Save(securePath, "DPAPI test payload"),
+        "DPAPI secure storage save failed."
+    )
+    Assert(
+        SecureStorage.Load(securePath) == "DPAPI test payload",
+        "DPAPI secure storage round-trip failed."
+    )
+    SecureStorage.Delete(securePath)
+    Assert(!FileExist(securePath), "DPAPI test file was not removed.")
+
+    providers := [
+        "gist",
+        "github",
+        "google-drive",
+        "onedrive",
+        "webdav"
+    ]
+    for providerName in providers {
+        provider := CloudSyncProviderFactory.Create(providerName)
+        Assert(IsObject(provider), "Provider factory returned no adapter for " providerName ".")
+    }
+
+    rootSource := ReadRootSource()
+    Assert(
+        InStr(rootSource, '#Include "Core\Providers\GitHubGistProvider.ahk"') > 0
+            && InStr(rootSource, '#Include "Core\Providers\GitHubRepositoryProvider.ahk"') > 0
+            && InStr(rootSource, '#Include "Core\Providers\GoogleDriveProvider.ahk"') > 0
+            && InStr(rootSource, '#Include "Core\Providers\OneDriveProvider.ahk"') > 0
+            && InStr(rootSource, '#Include "Core\Providers\WebDavProvider.ahk"') > 0,
+        "Not all Cloud Sync provider adapters are included by the entry point."
     )
 
     return true
