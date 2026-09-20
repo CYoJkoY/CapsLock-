@@ -23,7 +23,7 @@ class WindowHole {
     ; Chromium uses a high-frequency compositor path. Avoid issuing native
     ; region changes for sub-pixel-looking mouse motion and cap the update
     ; frequency without changing the normal-window configuration default.
-    static CHROMIUM_MIN_REGION_COMMIT_INTERVAL := 80
+    static CHROMIUM_MIN_UPDATE_INTERVAL := 80
     static CHROMIUM_MIN_MOVE_DISTANCE := 12
     ; Geometry is stable for normal cursor tracking; revalidate it periodically
     ; so window moves/resizes are detected without a GetWindowRect call on every
@@ -151,6 +151,8 @@ class WindowHole {
 
         this.TimerCallback := (*) => this._Update()
         interval := Clamp(Integer(AppState.WindowHoleUpdateInterval), 15, 200)
+        if this._IsChromiumWindow(hwnd)
+            interval := Max(interval, this.CHROMIUM_MIN_UPDATE_INTERVAL)
         SetTimer(this.TimerCallback, interval)
         this._Update()
     }
@@ -708,22 +710,13 @@ class WindowHole {
     }
 
     static _ShouldApplyPosition(state, x, y) {
-        if !IsObject(state) || !state.hasAppliedPosition
+        if !IsObject(state) || !state.isChromium || !state.hasAppliedPosition
             return true
 
-        if state.isChromium
-            && A_TickCount - state.lastRegionCommitTick
-                < this.CHROMIUM_MIN_REGION_COMMIT_INTERVAL
-            return false
-
-        if state.isChromium {
-            return Max(
-                Abs(x - state.lastAppliedX),
-                Abs(y - state.lastAppliedY)
-            ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
-        }
-
-        return true
+        return Max(
+            Abs(x - state.lastAppliedX),
+            Abs(y - state.lastAppliedY)
+        ) >= this.CHROMIUM_MIN_MOVE_DISTANCE
     }
 
     static _EnsureWindowGeometry(hwnd, state, force := false) {
@@ -892,7 +885,6 @@ class WindowHole {
             state.lastAppliedX := mx
             state.lastAppliedY := my
             state.hasAppliedPosition := true
-            state.lastRegionCommitTick := A_TickCount
 
             if state.taskManagerCompanion
                 state.taskManagerCompanionLastRegionCommitTick := A_TickCount
@@ -1087,7 +1079,6 @@ class WindowHole {
             lastAppliedX: 0,
             lastAppliedY: 0,
             hasAppliedPosition: false,
-            lastRegionCommitTick: 0,
             windowX: 0,
             windowY: 0,
             windowWidth: 0,
