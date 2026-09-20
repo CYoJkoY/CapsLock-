@@ -222,7 +222,11 @@ RunTests() {
             && InStr(switcherSource, "0x00000080") > 0
             && InStr(switcherSource, "0x08000000") > 0
             && InStr(switcherSource, "GetCurrentProcessId") > 0
-            && InStr(switcherSource, "WinActivate") > 0,
+            && InStr(switcherSource, "WinActivate") > 0
+            && InStr(switcherSource, "Refresh(refreshWindows := true)") > 0
+            && InStr(switcherSource, "WindowSwitcherGui.Refresh(false)") > 0
+            && InStr(switcherSource, "myGui.AllWindows := []") > 0,
+
         "Window switcher filtering or activation path is incomplete."
     )
 

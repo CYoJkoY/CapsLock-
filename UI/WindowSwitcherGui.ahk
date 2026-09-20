@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 
 class WindowSwitcherGui {
-    static Gui := ""
+    static Instance := ""
 
     static Show() {
         this.Close()
@@ -74,10 +74,11 @@ class WindowSwitcherGui {
         myGui.ListView := list
         myGui.Status := status
         myGui.VisibleWindows := []
+        myGui.AllWindows := []
 
         search.OnEvent(
             "Change",
-            (*) => WindowSwitcherGui.Refresh()
+            (*) => WindowSwitcherGui.Refresh(false)
         )
 
         list.OnEvent(
@@ -105,21 +106,24 @@ class WindowSwitcherGui {
             (*) => WindowSwitcherGui.Close()
         )
 
-        this.Gui := myGui
+        this.Instance := myGui
 
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
         myGui.Show("w680 h520")
 
-        this.Refresh()
+        this.Refresh(true)
         search.Focus()
     }
 
-    static Refresh() {
-        myGui := this.Gui
+    static Refresh(refreshWindows := true) {
+        myGui := this.Instance
 
         if !IsObject(myGui) || !IsObject(myGui.ListView)
             return
+
+        if refreshWindows || !myGui.HasProp("AllWindows")
+            myGui.AllWindows := this.CollectWindows()
 
         filter := ""
 
@@ -128,7 +132,7 @@ class WindowSwitcherGui {
         catch
             filter := ""
 
-        windows := this.CollectWindows()
+        windows := myGui.AllWindows
         visible := []
 
         myGui.ListView.Delete()
@@ -288,7 +292,7 @@ class WindowSwitcherGui {
     }
 
     static ActivateSelected() {
-        myGui := this.Gui
+        myGui := this.Instance
 
         if !IsObject(myGui)
             return
@@ -308,7 +312,7 @@ class WindowSwitcherGui {
         hwnd := entry.hwnd
 
         if !WinExist("ahk_id " hwnd) {
-            this.Refresh()
+            this.Refresh(true)
             return
         }
 
@@ -342,11 +346,11 @@ class WindowSwitcherGui {
     }
 
     static Close() {
-        if IsObject(this.Gui) {
+        if IsObject(this.Instance) {
             try
-                this.Gui.Destroy()
+                this.Instance.Destroy()
         }
 
-        this.Gui := ""
+        this.Instance := ""
     }
 }
