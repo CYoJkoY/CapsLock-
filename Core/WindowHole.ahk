@@ -264,6 +264,8 @@ class WindowHole {
             return
         }
 
+        this._Update(true)
+
         ShowToolTip(
             Lang(
                 "MSG_WINDOW_HOLE_SECOND_HIDDEN",
@@ -336,66 +338,80 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        primaryState := this.Targets.Has(this.PrimaryHwnd)
-            ? this.Targets[this.PrimaryHwnd]
-            : ""
-        if !IsObject(primaryState)
-            return
+        ; Every Window Hole layer uses the same physical cursor position.
+        ; A layer follows the cursor while the cursor remains inside that
+        ; window's geometry. Once the cursor leaves the window, its last hole
+        ; position is preserved until the cursor re-enters its bounds.
+        for layerHwnd in this.HoleLayerOrder {
+            if !this.Targets.Has(layerHwnd)
+                continue
 
-        isChromium := primaryState.isChromium
-        if isChromium
-            this._EnsureChromiumRenderSurfaces(this.PrimaryHwnd, primaryState)
+            state := this.Targets[layerHwnd]
+            if !IsObject(state) || state.fallback
+                continue
 
-        if !primaryState.fallback {
-            ; The hole follows the cursor only while the cursor is still
-            ; geometrically inside the primary window. Once the cursor passes
-            ; through the hole into a lower window, freeze the hole in place.
-            ; This is essential for real drag/drop: the cursor must be able
-            ; to leave the hole and hit the primary window again.
-            if mouseMoved && this._IsPointInsideWindow(
-                this.PrimaryHwnd,
+            if !mouseMoved
+                continue
+
+            if !this._IsPointInsideWindow(
+                layerHwnd,
                 mx,
                 my,
-                primaryState
-            ) {
-                if this._ShouldApplyPosition(primaryState, mx, my) {
-                    if !this._ApplyHole(this.PrimaryHwnd, mx, my, true) {
-                        this.Stop()
-                        return
-                    }
-                }
+                state
+            )
+                continue
+
+            if !this._ShouldApplyPosition(state, mx, my)
+                continue
+
+            isPrimary := layerHwnd == this.PrimaryHwnd
+            result := this._ApplyHole(
+                layerHwnd,
+                mx,
+                my,
+                isPrimary
+            )
+
+            if result != true && isPrimary {
+                this.Stop()
+                return
             }
         }
 
-        if isChromium {
-            this._UpdateChromiumRenderSurfaces(primaryState, mx, my, mouseMoved)
-            this._UpdateChromiumMousePassthrough(primaryState, mx, my)
-        } else {
-            this._RestoreChromiumMousePassthrough()
-        }
-
-        ; Secondary Chromium layers keep a fixed hole position. Re-scan their
-        ; child surfaces only on the per-target cadence so newly created render
-        ; HWNDs inherit the same fixed hole regardless of which layer is primary.
+        ; Chromium render surfaces and hit-testing are maintained per layer.
+        ; This is important when a Chromium window is a secondary target:
+        ; visual clipping alone is insufficient because its compositor HWNDs
+        ; can remain the hit-test surface.
         for layerHwnd in this.HoleLayerOrder {
-            if layerHwnd == this.PrimaryHwnd
-                continue
-
             if !this.Targets.Has(layerHwnd)
                 continue
 
             layerState := this.Targets[layerHwnd]
-            if !layerState.isChromium
+            if !IsObject(layerState) || !layerState.isChromium
                 continue
 
-            if this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
+            this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
+
+            if layerState.hasAppliedPosition {
                 this._UpdateChromiumRenderSurfaces(
                     layerState,
                     layerState.lastAppliedX,
                     layerState.lastAppliedY,
-                    true
+                    mouseMoved || force
                 )
+            }
+
+            this._UpdateChromiumMousePassthrough(
+                layerHwnd,
+                layerState,
+                mx,
+                my
+            )
         }
+
+        ; Restore passthrough on Chromium layers that no longer qualify. The
+        ; helper above is called for every active Chromium target, so the map
+        ; is authoritative for the current hole session.
     }
 
     static _GetPhysicalCursorPosition(&x, &y) {
@@ -579,29 +595,30 @@ class WindowHole {
         this.ChromiumMousePassthroughWindows := Map()
     }
 
-    static _UpdateChromiumMousePassthrough(primaryState, x, y) {
-        if !IsObject(primaryState) || !primaryState.isChromium {
-            this._RestoreChromiumMousePassthrough()
+    static _UpdateChromiumMousePassthrough(targetHwnd, targetState, x, y) {
+        if !targetHwnd || !IsObject(targetState) || !targetState.isChromium {
+            if targetHwnd
+                this._SetChromiumMousePassthrough(targetHwnd, false)
             return
         }
 
-        if primaryState.fallback
+        if targetState.fallback
             || !this._IsPointInsideWindow(
-                this.PrimaryHwnd,
+                targetHwnd,
                 x,
                 y,
-                primaryState
+                targetState
             )
-            || !this._IsPointInsideHole(primaryState, x, y) {
-            this._RestoreChromiumMousePassthrough()
+            || !this._IsPointInsideHole(targetState, x, y) {
+            this._SetChromiumMousePassthrough(targetHwnd, false)
             return
         }
 
-        ; The top-level Chrome HWND is the only window that needs to become
-        ; mouse-transparent. Changing its hit-test behavior means Chromium
-        ; descendants are skipped as well, while avoiding layered-window
-        ; changes on the compositor child surfaces.
-        this._SetChromiumMousePassthrough(this.PrimaryHwnd, true)
+        ; Keep only the Chromium layer whose hole currently contains the
+        ; pointer mouse-transparent. Other Chromium layers remain interactive
+        ; outside their own hole and are restored immediately when the cursor
+        ; leaves that layer's hole.
+        this._SetChromiumMousePassthrough(targetHwnd, true)
     }
 
     static _GetTopLevelWindowAtPoint(x, y) {
@@ -1288,8 +1305,6 @@ class WindowHole {
                 my := mouseY
             }
 
-            firstRegionApply := !state.hasAppliedPosition
-
             relativeX := mx - wx
             relativeY := my - wy
             baseRegion := state.hadOriginalRegion
@@ -1341,30 +1356,22 @@ class WindowHole {
             state.lastAppliedY := my
             state.hasAppliedPosition := true
 
-            ; SetWindowRgn(..., FALSE) avoids an immediate synchronous
-            ; repaint. Chromium render surfaces receive the same fixed hole,
-            ; while the first top-level application gets one explicit refresh.
-            if state.isChromium {
-                this._EnsureChromiumRenderSurfaces(hwnd, state)
-                this._UpdateChromiumRenderSurfaces(
-                    state,
-                    mx,
-                    my,
-                    true
+            ; Keep top-level region application separate from Chromium
+            ; child-surface synchronization. _Update() handles the latter for
+            ; every active HoleTarget, not only the primary window.
+            if !state.isChromium || !state.hasAppliedPosition
+                this._RefreshWindow(
+                    hwnd,
+                    false,
+                    state.isChromium
                 )
-
-                if firstRegionApply
-                    this._RefreshWindow(hwnd, false, true)
-            } else {
-                this._RefreshWindow(hwnd, false, false)
-            }
 
             return true
         } catch {
-            if allowFallback && AppState.WindowHoleFallbackToMinimize {
-                if state.regionActive
-                    this._RestoreOriginalRegion(hwnd, state)
+            if state.regionActive
+                this._RestoreOriginalRegion(hwnd, state)
 
+            if allowFallback && AppState.WindowHoleFallbackToMinimize {
                 if this._MinimizeFallback(hwnd, state)
                     return "minimized"
             }
@@ -1380,7 +1387,8 @@ class WindowHole {
             }
 
             this.Targets.Delete(hwnd)
-            this._RemoveHoleLayer(hwnd, addedTarget)
+            this._RemoveHoleLayer(hwnd, true)
+            this._SetChromiumMousePassthrough(hwnd, false)
             return false
         }
     }
