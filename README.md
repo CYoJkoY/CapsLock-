@@ -141,7 +141,7 @@ The current implementation uses a native Win32 window region rather than a visua
 - the hole follows the pointer while the mode is active;
 - supported shapes are **circle**, **rounded rectangle**, and **square**;
 - activation can be **hold** or **toggle**;
-- second-level penetration can be enabled; while Window Hole is active, pressing `1` temporarily hides the current focused window, and repeated presses can traverse deeper window layers;
+- while Window Hole is active, pressing `1` temporarily hides the current focused window, and repeated presses can traverse deeper window layers;
 - incompatible windows can optionally use a temporary minimize fallback;
 - executable and window-class allow/exclude rules can restrict eligible windows.
 
