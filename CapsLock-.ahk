@@ -11,11 +11,23 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
 #Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\Json.ahk"
+#Include "Utils\Hash.ahk"
+#Include "Utils\HttpClient.ahk"
 
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 #Include "Core\QuickPhraseStore.ahk"
+#Include "Core\CloudSyncIdentity.ahk"
+#Include "Core\CloudSyncState.ahk"
+#Include "Core\CloudSyncModel.ahk"
+#Include "Core\CloudSyncSerializer.ahk"
+#Include "Core\CloudSyncMerger.ahk"
+#Include "Core\CloudSyncStorage.ahk"
+#Include "Core\CloudSyncProvider.ahk"
+#Include "Core\CloudSyncProviderFactory.ahk"
+#Include "Core\CloudSyncCoordinator.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
@@ -49,6 +61,8 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
 #Include "UI\WindowSwitcherGui.ahk"
+#Include "UI\CloudSyncGui.ahk"
+#Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
 
 Language.Load()
@@ -64,6 +78,7 @@ TraySetup()
 OnClipboardChange(ClipboardChanged)
 
 OnExit((*) => (
+    CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()
