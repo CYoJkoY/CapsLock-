@@ -275,8 +275,10 @@ class CloudSyncCoordinator {
             case "conflict":
                 return Lang("MSG_CLOUD_SYNC_CONFLICT", "Cloud Sync conflict requires attention.")
             case "error":
-                return Lang("MSG_CLOUD_SYNC_FAILED", "The last synchronization failed.")
-                    " " AppState.CloudSyncLastError
+                errorText := Lang("MSG_CLOUD_SYNC_FAILED", "The last synchronization failed.")
+                if AppState.CloudSyncLastError != ""
+                    errorText .= " " AppState.CloudSyncLastError
+                return errorText
             default:
                 return Lang("MSG_CLOUD_SYNC_IDLE", "Cloud Sync is ready.")
         }
