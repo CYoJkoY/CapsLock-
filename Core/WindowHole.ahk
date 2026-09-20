@@ -41,7 +41,6 @@ class WindowHole {
     static HoleLayerOrder := []
     static LastMouseX := ""
     static LastMouseY := ""
-    static LastChromiumRenderSurfaceScanTick := 0
     static EnumeratedChildWindows := []
     static TimerCallback := ""
     static SecondLevelHotkeyCallback := ""
@@ -326,7 +325,7 @@ class WindowHole {
 
         isChromium := primaryState.isChromium
         if isChromium
-            this._EnsureChromiumRenderSurfaces(primaryState)
+            this._EnsureChromiumRenderSurfaces(this.PrimaryHwnd, primaryState)
 
         if !primaryState.fallback {
             ; The hole follows the cursor only while the cursor is still
@@ -610,14 +609,6 @@ class WindowHole {
         } catch {
             return 0
         }
-    }
-
-    static _FocusNextWindowUnderCursor() {
-        if !this._GetPhysicalCursorPosition(&x, &y)
-            return 0
-
-        Sleep(10)
-        return this._FocusNextWindowAtPoint(x, y)
     }
 
     static _GetPhysicalWindowGeometry(hwnd, &x, &y, &width, &height) {
@@ -1031,21 +1022,22 @@ class WindowHole {
         return region
     }
 
-    static _EnsureChromiumRenderSurfaces(primaryState := "") {
-        if !IsObject(primaryState)
-            return
+    static _EnsureChromiumRenderSurfaces(targetHwnd, targetState, force := false) {
+        if !targetHwnd || !IsObject(targetState)
+            return false
 
-        if !primaryState.isChromium
-            return
+        if !targetState.isChromium
+            return false
 
         now := A_TickCount
-        if now - this.LastChromiumRenderSurfaceScanTick
-            < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
-            return
+        if !force
+            && now - targetState.lastRenderSurfaceScanTick
+                < this.CHROMIUM_RENDER_SURFACE_SCAN_INTERVAL
+            return false
 
-        this.LastChromiumRenderSurfaceScanTick := now
+        targetState.lastRenderSurfaceScanTick := now
         seen := Map()
-        childHwnds := this._EnumerateChildWindows(this.PrimaryHwnd)
+        childHwnds := this._EnumerateChildWindows(targetHwnd)
 
         for hwnd in childHwnds {
             if !this._IsChromiumRenderingSurface(hwnd)
@@ -1053,18 +1045,18 @@ class WindowHole {
 
             seen[hwnd] := true
 
-            if primaryState.chromiumRenderSurfaces.Has(hwnd)
+            if targetState.chromiumRenderSurfaces.Has(hwnd)
                 continue
 
             state := this._CaptureSurfaceState(hwnd)
             if !IsObject(state)
                 continue
 
-            primaryState.chromiumRenderSurfaces[hwnd] := state
+            targetState.chromiumRenderSurfaces[hwnd] := state
         }
 
         stale := []
-        for hwnd, state in primaryState.chromiumRenderSurfaces {
+        for hwnd, state in targetState.chromiumRenderSurfaces {
             if seen.Has(hwnd)
                 continue
 
@@ -1072,19 +1064,20 @@ class WindowHole {
             stale.Push(hwnd)
         }
 
-        for hwnd in stale {
-            primaryState.chromiumRenderSurfaces.Delete(hwnd)
-        }
+        for hwnd in stale
+            targetState.chromiumRenderSurfaces.Delete(hwnd)
+
+        return true
     }
 
-    static _UpdateChromiumRenderSurfaces(primaryState, x, y, mouseMoved) {
-        if !IsObject(primaryState)
+    static _UpdateChromiumRenderSurfaces(targetState, x, y, mouseMoved) {
+        if !IsObject(targetState)
             return
 
-        if primaryState.chromiumRenderSurfaces.Count == 0
+        if targetState.chromiumRenderSurfaces.Count == 0
             return
 
-        for hwnd, state in primaryState.chromiumRenderSurfaces {
+        for hwnd, state in targetState.chromiumRenderSurfaces {
             if mouseMoved || state.regionActive {
                 result := this._ApplySurfaceHole(hwnd, state, x, y)
                 if !result
@@ -1313,8 +1306,17 @@ class WindowHole {
             ; RedrawWindow here only adds more work to its compositor path.
             ; Keep the explicit refresh for the first region application so
             ; activation remains visually immediate.
-            if !state.isChromium || firstRegionApply
-                this._RefreshWindow(hwnd, false, state.isChromium)
+            if state.isChromium {
+                this._EnsureChromiumRenderSurfaces(hwnd, state, true)
+                this._UpdateChromiumRenderSurfaces(
+                    state,
+                    mx,
+                    my,
+                    true
+                )
+            } else {
+                this._RefreshWindow(hwnd, false, false)
+            }
 
             return true
         } catch {
@@ -1971,7 +1973,6 @@ class WindowHole {
         this.HoleLayerOrder := []
         this.LastMouseX := ""
         this.LastMouseY := ""
-        this.LastChromiumRenderSurfaceScanTick := 0
         this.ChromiumMousePassthroughWindows := Map()
         this.TimerCallback := ""
     }
