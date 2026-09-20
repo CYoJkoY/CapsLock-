@@ -128,6 +128,13 @@ RunTests() {
             && InStr(source, "if allowFallback && AppState.WindowHoleFallbackToMinimize") > 0,
         "Compatibility fallback for region-incompatible primary windows is missing."
     )
+    Assert(
+        InStr(source, "static _IsTaskManagerWindow(hwnd)") > 0
+            && InStr(source, "static _HideTaskManagerWindows()") > 0
+            && InStr(source, "static _RestoreTaskManagerWindow()") > 0
+            && InStr(source, "TaskManagerPreviousState") > 0,
+        "Task Manager primary-window compatibility path is missing."
+    )
 
     rootSource := ReadSource("CapsLock-.ahk")
 
