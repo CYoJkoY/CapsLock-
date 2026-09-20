@@ -212,17 +212,6 @@ class WindowHole {
         if !this.Active
             return
 
-        if !AppState.WindowHoleSecondLevelEnabled {
-            ShowToolTip(
-                Lang(
-                    "MSG_WINDOW_HOLE_SECOND_DISABLED",
-                    "Second penetration disabled."
-                ),
-                1200
-            )
-            return
-        }
-
         ; Secondary penetration is intentionally based on the window that is
         ; focused when the key is pressed. Do not sample the mouse position:
         ; the first Window Hole already lets the user click the window below,
