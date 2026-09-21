@@ -27,7 +27,11 @@ ShowQuickPhraseSelector(captureTarget := true) {
         }
     }
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"))
+    guiOptions := "+AlwaysOnTop -MaximizeBox -MinimizeBox"
+    if AppState.QuickPhraseTargetWindow
+        guiOptions .= " +Owner" AppState.QuickPhraseTargetWindow
+
+    myGui := Gui(guiOptions, Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "💬 " Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"), 640)
     ThemeHelper.AddSubtitle(
@@ -174,7 +178,14 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    ShowQuickPhraseSelector(true)
+    ; Capture the destination before Quick Phrase activates any GUI. This
+    ; value is authoritative for the entire Quick Phrase session.
+    target := WinExist("A")
+    if !target
+        return
+
+    AppState.QuickPhraseTargetWindow := target
+    ShowQuickPhraseSelector(false)
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -203,8 +214,9 @@ QuickPhraseUseSelected(selectorGui) {
 
     ; Finish the selector's GUI event before creating the variable-input GUI.
     ; The selector is destroyed immediately, then execution is deferred to a
-    ; fresh script thread so the new GUI cannot inherit the selector's event
-    ; context or GUI identity.
+    ; fresh script thread. Both Quick Phrase GUIs are owned by the original
+    ; target window, so Windows never needs to infer the previous window from
+    ; the selector.
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
@@ -228,7 +240,11 @@ QuickPhraseExecutePhrase(phrase, target) {
         if variables.Length == 0 {
             ok := QuickPhrasePasteText(phrase.content, target)
         } else {
-            result := ShowQuickPhraseVariableDialog(phrase, variables)
+            result := ShowQuickPhraseVariableDialog(
+                phrase,
+                variables,
+                target
+            )
             if !result.ok
                 return
 
@@ -295,7 +311,7 @@ QuickPhraseApplyVariables(template, values) {
     return result . SubStr(template, pos)
 }
 
-ShowQuickPhraseVariableDialog(phrase, variables) {
+ShowQuickPhraseVariableDialog(phrase, variables, targetHwnd := 0) {
     result := {ok: false, text: ""}
 
     ; etxt is the reserved free-form multiline variable. Keep ordinary
@@ -332,8 +348,12 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         previewY := 102 + normalRows * normalRowH
     }
 
+    guiOptions := "+AlwaysOnTop -MaximizeBox -MinimizeBox"
+    if targetHwnd && WinExist("ahk_id " targetHwnd)
+        guiOptions .= " +Owner" targetHwnd
+
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        guiOptions,
         Lang(
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
