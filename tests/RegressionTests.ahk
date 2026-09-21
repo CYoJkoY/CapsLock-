@@ -82,9 +82,11 @@ RunTests() {
         "Secondary penetration does not create a cursor-positioned region layer without fallback."
     )
     Assert(
-        InStr(source, 'static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true)') > 0
+        InStr(source, "static _ApplyHole(") > 0
+            && InStr(source, "allowFallback := true") > 0
+            && InStr(source, "deferRefresh := false") > 0
             && InStr(source, "if allowFallback && AppState.WindowHoleFallbackToMinimize") > 0,
-        "Minimize fallback is not isolated from normal secondary region penetration."
+        "Minimize fallback or batched region-refresh controls are incomplete."
     )
 
     Assert(
@@ -174,13 +176,33 @@ RunTests() {
             && InStr(quickPhraseSource, "SetTimer(") > 0,
         "Quick Phrase transaction lifecycle is incomplete."
     )
+    selectorCloseStart := InStr(
+        quickPhraseSource,
+        "CloseQuickPhraseSelector(myGui) {"
+    )
+    selectorCloseEnd := InStr(
+        quickPhraseSource,
+        "QuickPhraseOpenManager(",
+        selectorCloseStart
+    )
+    selectorCloseSource := (
+        selectorCloseStart > 0
+        && selectorCloseEnd > selectorCloseStart
+    )
+        ? SubStr(
+            quickPhraseSource,
+            selectorCloseStart,
+            selectorCloseEnd - selectorCloseStart
+        )
+        : ""
     Assert(
-        InStr(quickPhraseSource, "QuickPhraseTransactionActive := false") == 0
-            || InStr(
-                quickPhraseSource,
-                "CloseQuickPhraseSelector(myGui)"
+        selectorCloseStart > 0
+            && selectorCloseEnd > selectorCloseStart
+            && InStr(
+                selectorCloseSource,
+                "QuickPhraseTransactionActive := false"
             ) == 0,
-        "Quick Phrase selector close lifecycle check failed."
+        "Quick Phrase selector close must not terminate the active transaction."
     )
     Assert(
         InStr(quickPhraseSource, "pasteTarget.control") == 0,
