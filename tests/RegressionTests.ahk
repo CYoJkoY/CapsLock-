@@ -351,9 +351,7 @@ RunTests() {
     )
 
     selectorStart := InStr(quickPhraseSource, "ShowQuickPhraseSelector(captureTarget := true)")
-    selectorEnd := InStr(quickPhraseSource, "\n}
-
-CloseQuickPhraseSelector(myGui)", selectorStart)
+    selectorEnd := InStr(quickPhraseSource, "CloseQuickPhraseSelector(myGui) {", selectorStart)
     selectorSource := SubStr(quickPhraseSource, selectorStart, selectorEnd - selectorStart)
     Assert(
         selectorStart > 0
