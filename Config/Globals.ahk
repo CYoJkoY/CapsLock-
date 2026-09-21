@@ -86,8 +86,6 @@ class AppState {
     ]
 
     ; --- Paste heuristics ---
-    ; Controls that can only receive text. A CF_HDROP (file) paste is
-    ; silently dropped by these, so file mode falls back to text for them.
     static TextInputControls := [
         "Edit", "RichEdit", "RichEdit20A", "RichEdit20W", "RICHEDIT50W",
         "Scintilla", "TMemo", "TSyntaxMemo", "AkelEditA", "AkelEditW",
@@ -114,6 +112,30 @@ class AppState {
     static PandocExe := ""
     static PandocOutputFormat := "docx"
 
+    ; --- Cloud Sync ---
+    static CloudSyncEnabled := false
+    static CloudSyncProvider := "gist"
+    static CloudSyncTarget := ""
+    static CloudSyncAutoEnabled := false
+    static CloudSyncInterval := 30
+    static CloudSyncEncryptionEnabled := false
+    static CloudSyncDeviceName := ""
+    static CloudSyncState := "disabled"
+    static CloudSyncLastSuccess := ""
+    static CloudSyncConflict := false
+    static CloudSyncApplying := false
+    static CloudSyncLocalDirty := false
+    static CloudSyncLastError := ""
+
+    static CloudSyncDir := A_ScriptDir "\configs\CloudSync"
+    static CloudSyncStateFile := A_ScriptDir "\configs\CloudSync\state.ini"
+    static CloudSyncBaseFile := A_ScriptDir "\configs\CloudSync\base.json"
+    static CloudSyncCredentialFile := A_ScriptDir "\configs\CloudSync\credentials.dat"
+    static CloudSyncBackupDir := A_ScriptDir "\configs\CloudSync\backups"
+    static CloudSyncConflictDir := A_ScriptDir "\configs\CloudSync\conflicts"
+    static CloudSyncStagingDir := A_ScriptDir "\configs\CloudSync\staging"
+
+    ; --- Pandoc format lists ---
     static PandocInputFormats := [
         "asciidoc", "biblatex", "bibtex", "bits", "commonmark", "commonmark_x",
         "creole", "csljson", "csv", "djot", "docbook", "docx", "dokuwiki",
@@ -134,10 +156,9 @@ class AppState {
         "epub3", "fb2", "gfm", "haddock", "html", "html4", "html5", "icml",
         "ipynb", "jats", "jats_archiving", "jats_articleauthoring",
         "jats_publishing", "jira", "json", "latex", "man", "markdown",
-        "markdown_mmd", "markdown_phpextra",
-        "markdown_strict", "markua", "mediawiki", "ms", "muse", "native", "odt",
-        "opendocument", "opml", "org", "pdf", "plain", "pptx", "revealjs", "rst",
-        "rtf", "s5", "slideous", "slidy", "t2t", "tei", "texinfo", "textile",
-        "typst", "vimdoc", "xml", "xwiki", "zimwiki"
+        "markdown_mmd", "markdown_phpextra", "markdown_strict", "markua", "mediawiki",
+        "ms", "muse", "native", "odt", "opendocument", "opml", "org", "pdf", "plain",
+        "pptx", "revealjs", "rst", "rtf", "s5", "slideous", "slidy", "t2t", "tei",
+        "texinfo", "textile", "typst", "vimdoc", "xml", "xwiki", "zimwiki"
     ]
 }

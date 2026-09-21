@@ -15,7 +15,7 @@ class QuickPhraseStore {
         catch
             return
 
-        for section in StrSplit(sections, "`n", "`r") {
+        for section in StrSplit(sections, Chr(10), Chr(13)) {
             section := Trim(section)
             if SubStr(section, 1, StrLen(this.SectionPrefix)) != this.SectionPrefix
                 continue
@@ -93,6 +93,8 @@ class QuickPhraseStore {
         }
 
         this._phrases.Push(phrase)
+        if !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
         return true
     }
 
@@ -127,6 +129,8 @@ class QuickPhraseStore {
             return false
         }
 
+        if !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
         return true
     }
 
@@ -146,6 +150,8 @@ class QuickPhraseStore {
 
         this._phrases.RemoveAt(index)
         this._NormalizeOrders()
+        if !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
         return true
     }
 
@@ -167,6 +173,8 @@ class QuickPhraseStore {
 
         this._Sort()
         this._PersistMetadata()
+        if !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
         return true
     }
 

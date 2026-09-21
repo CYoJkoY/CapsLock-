@@ -11,11 +11,34 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\ResourceSound.ahk"
 #Include "Utils\MethodsUtils.ahk"
 #Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\Json.ahk"
+#Include "Utils\Hash.ahk"
+#Include "Utils\Base64.ahk"
+#Include "Utils\Random.ahk"
+#Include "Utils\HttpClient.ahk"
+#Include "Utils\SecureStorage.ahk"
 
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 #Include "Core\QuickPhraseStore.ahk"
+#Include "Core\CloudSyncIdentity.ahk"
+#Include "Core\CloudSyncCredentials.ahk"
+#Include "Core\CloudSyncState.ahk"
+#Include "Core\CloudSyncModel.ahk"
+#Include "Core\CloudSyncSerializer.ahk"
+#Include "Core\CloudSyncMerger.ahk"
+#Include "Core\CloudSyncStorage.ahk"
+#Include "Core\CloudSyncProvider.ahk"
+#Include "Core\CloudSyncProviderFactory.ahk"
+#Include "Core\CloudSyncCoordinator.ahk"
+#Include "Core\Providers\GitHubGistProvider.ahk"
+#Include "Core\Providers\GitHubRepositoryProvider.ahk"
+#Include "Core\Providers\GoogleOAuth.ahk"
+#Include "Core\Providers\GoogleDriveProvider.ahk"
+#Include "Core\Providers\OneDriveOAuth.ahk"
+#Include "Core\Providers\OneDriveProvider.ahk"
+#Include "Core\Providers\WebDavProvider.ahk"
 
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
@@ -49,12 +72,19 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
 #Include "UI\WindowSwitcherGui.ahk"
+#Include "UI\CloudSyncGui.ahk"
+#Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
+
+Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
 
 Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()
 QuickPhraseStore.Load()
+CloudSyncIdentity.Initialize()
+CloudSyncState.Initialize()
+CloudSyncCoordinator.Initialize()
 FileHelper.BuildIgnoreRegexes()
 
 if AppState.AutoCleanEnabled
@@ -64,6 +94,7 @@ TraySetup()
 OnClipboardChange(ClipboardChanged)
 
 OnExit((*) => (
+    CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()

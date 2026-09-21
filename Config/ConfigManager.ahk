@@ -30,6 +30,63 @@ class ConfigManager {
             AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
 
+            ; ---- Cloud Sync ----
+            AppState.CloudSyncEnabled :=
+                IniRead(cfg, "CloudSync", "enabled", "0") == "1"
+
+            AppState.CloudSyncProvider :=
+                StrLower(
+                    Trim(
+                        IniRead(cfg, "CloudSync", "provider", "gist")
+                    )
+                )
+
+            AppState.CloudSyncTarget :=
+                Trim(
+                    IniRead(cfg, "CloudSync", "target", "")
+                )
+
+            AppState.CloudSyncAutoEnabled :=
+                IniRead(cfg, "CloudSync", "autoSync", "0") == "1"
+
+            intervalText := IniRead(cfg, "CloudSync", "interval", "30")
+            AppState.CloudSyncInterval :=
+                IsNumber(intervalText)
+                    ? Clamp(Integer(intervalText), 5, 1440)
+                    : 30
+
+            AppState.CloudSyncEncryptionEnabled :=
+                IniRead(cfg, "CloudSync", "encryption", "0") == "1"
+
+            AppState.CloudSyncDeviceName :=
+                Trim(
+                    IniRead(cfg, "CloudSync", "deviceName", "")
+                )
+
+            AppState.CloudSyncGitHubOwner :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "owner", ""))
+            AppState.CloudSyncGitHubRepository :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "repository", ""))
+            AppState.CloudSyncGitHubBranch :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "branch", "main"))
+            AppState.CloudSyncGitHubPath :=
+                Trim(IniRead(cfg, "CloudSyncGitHub", "path", "CapsLockSync/capslock-sync.json"))
+
+            AppState.CloudSyncWebDavUrl :=
+                Trim(IniRead(cfg, "CloudSyncWebDAV", "url", ""))
+            AppState.CloudSyncWebDavPath :=
+                Trim(IniRead(cfg, "CloudSyncWebDAV", "path", "capslock-sync.json"))
+
+            AppState.CloudSyncGoogleClientId :=
+                Trim(IniRead(cfg, "CloudSyncGoogle", "clientId", ""))
+
+            AppState.CloudSyncOneDriveClientId :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "clientId", ""))
+            AppState.CloudSyncOneDriveTenant :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "tenant", "common"))
+            AppState.CloudSyncOneDrivePath :=
+                Trim(IniRead(cfg, "CloudSyncOneDrive", "path", "CapsLock-/capslock-sync.json"))
+
             ; ---- Window Hole ----
             windowHoleDiameter := IniRead(cfg, "WindowHole", "diameter", "360")
             AppState.WindowHoleDiameter := IsNumber(windowHoleDiameter)
@@ -63,14 +120,10 @@ class ConfigManager {
             AppState.WindowHoleAllowedClasses := allowedClasses ? StrSplit(allowedClasses, "|") : []
             AppState.WindowHoleExcludedClasses := excludedClasses ? StrSplit(excludedClasses, "|") : []
 
-            ; ---- Validate Pandoc output format ----
-            ; If the loaded format is not a valid string or not in the supported list,
-            ; reset to "docx" and update the config file immediately.
             if !_IsPandocFormatSupported(AppState.PandocOutputFormat) {
                 AppState.PandocOutputFormat := "docx"
                 IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
             }
-            ; -----------------------------------------
 
             langVal := IniRead(cfg, "General", "language", "")
             if langVal != "" && AppState.HasProp("CurrentLanguage")
@@ -81,7 +134,7 @@ class ConfigManager {
         }
     }
 
-    static Save() {
+    static Save(markCloudSyncDirty := true) {
         cfg := AppState.ConfigFile
         try {
             IniWrite(AppState.DeleteMode,         cfg, "Cleanup",   "deleteMode")
@@ -111,14 +164,37 @@ class ConfigManager {
 
             ignoreStr := Join(AppState.IgnorePatterns, "|")
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
+
+            ; ---- Cloud Sync ----
+            IniWrite(AppState.CloudSyncEnabled ? "1" : "0", cfg, "CloudSync", "enabled")
+            IniWrite(AppState.CloudSyncProvider, cfg, "CloudSync", "provider")
+            IniWrite(AppState.CloudSyncTarget, cfg, "CloudSync", "target")
+            IniWrite(AppState.CloudSyncAutoEnabled ? "1" : "0", cfg, "CloudSync", "autoSync")
+            IniWrite(AppState.CloudSyncInterval, cfg, "CloudSync", "interval")
+            IniWrite(AppState.CloudSyncEncryptionEnabled ? "1" : "0", cfg, "CloudSync", "encryption")
+            IniWrite(AppState.CloudSyncDeviceName, cfg, "CloudSync", "deviceName")
+
+            IniWrite(AppState.CloudSyncGitHubOwner, cfg, "CloudSyncGitHub", "owner")
+            IniWrite(AppState.CloudSyncGitHubRepository, cfg, "CloudSyncGitHub", "repository")
+            IniWrite(AppState.CloudSyncGitHubBranch, cfg, "CloudSyncGitHub", "branch")
+            IniWrite(AppState.CloudSyncGitHubPath, cfg, "CloudSyncGitHub", "path")
+
+            IniWrite(AppState.CloudSyncWebDavUrl, cfg, "CloudSyncWebDAV", "url")
+            IniWrite(AppState.CloudSyncWebDavPath, cfg, "CloudSyncWebDAV", "path")
+
+            IniWrite(AppState.CloudSyncGoogleClientId, cfg, "CloudSyncGoogle", "clientId")
+
+            IniWrite(AppState.CloudSyncOneDriveClientId, cfg, "CloudSyncOneDrive", "clientId")
+            IniWrite(AppState.CloudSyncOneDriveTenant, cfg, "CloudSyncOneDrive", "tenant")
+            IniWrite(AppState.CloudSyncOneDrivePath, cfg, "CloudSyncOneDrive", "path")
         }
+
+        if markCloudSyncDirty && !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
     }
 }
 
-; Helper function to check if a format is a valid string and exists in the supported list.
-; This function is defined here to avoid dependency on Pandoc.ahk.
 _IsPandocFormatSupported(format) {
-    ; Ensure format is a non-empty string
     if !(format is String) || format == ""
         return false
     for f in AppState.PandocOutputFormats {

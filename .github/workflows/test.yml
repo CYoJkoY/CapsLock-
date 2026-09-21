@@ -6,11 +6,16 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: capslock-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   regression:
+    name: Regression Tests
     runs-on: windows-latest
 
     steps:
@@ -20,8 +25,12 @@ jobs:
       - name: Install AutoHotkey
         uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:
-          version: '2.0.27'
+          version: '2.0.28'
 
       - name: Run regression tests
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+
+      - name: Run Cloud Sync regression tests
+        shell: pwsh
+        run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
