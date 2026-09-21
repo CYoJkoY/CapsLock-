@@ -279,15 +279,17 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
         errorMessage := err.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
-        AppState.QuickPhrasePasteTarget := ""
 
-        ; Only an explicit user cancellation is allowed
-        ; to reopen the selector.
+        ; Preserve the captured destination until a cancelled workflow has
+        ; reopened the selector. The selector is then allowed to reuse the
+        ; same target without recapturing its own window.
         if reopenSelector {
             SetTimer(
                 () => ShowQuickPhraseSelector(false),
                 -1
             )
+        } else {
+            AppState.QuickPhrasePasteTarget := ""
         }
     }
 
