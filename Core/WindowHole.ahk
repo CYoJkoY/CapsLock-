@@ -1452,7 +1452,7 @@ class WindowHole {
                 hwnd,
                 false,
                 state.isChromium,
-                layerHwnds.Length > 1 && state.isChromium
+                state.isChromium
             )
         }
     }
