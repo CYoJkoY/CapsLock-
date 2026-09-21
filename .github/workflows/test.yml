@@ -35,53 +35,66 @@ jobs:
         run: |
           $root = (Get-Location).Path
           $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
-
-          $dependencyFiles = @(
-            "Utils\\Language.ahk",
-            "Utils\\Json.ahk",
-            "Utils\\HttpClient.ahk",
-            "Config\\Globals.ahk",
-            "Core\\CloudSyncCredentials.ahk",
-            "Core\\CloudSyncState.ahk"
+          $main = Join-Path $root "CapsLock-.ahk"
+          $mainLines = Get-Content -LiteralPath $main
+          $providers = @(
+            "Core\\Providers\\GitHubGistProvider.ahk",
+            "Core\\Providers\\GitHubRepositoryProvider.ahk",
+            "Core\\Providers\\GoogleOAuth.ahk",
+            "Core\\Providers\\GoogleDriveProvider.ahk",
+            "Core\\Providers\\OneDriveOAuth.ahk",
+            "Core\\Providers\\OneDriveProvider.ahk",
+            "Core\\Providers\\WebDavProvider.ahk"
           )
-          $sourcePath = Join-Path $root "Core\\Providers\\OneDriveOAuth.ahk"
-          $sourceLines = Get-Content -LiteralPath $sourcePath
-          $header = $sourceLines[0..8]
-          $methodRanges = @{
-            "onedrive-authorize" = @(9, 68)
-            "onedrive-access-token" = @(70, 87)
-            "onedrive-refresh-token" = @(89, 140)
-            "onedrive-poll" = @(142, 221)
-            "onedrive-finish" = @(223, 241)
-            "onedrive-disconnect" = @(243, 248)
+
+          $baseLines = @()
+          foreach ($line in $mainLines) {
+            $isProviderInclude = $false
+            foreach ($provider in $providers) {
+              if ($line.Trim() -eq ('#Include "' + $provider + '"')) {
+                $isProviderInclude = $true
+                break
+              }
+            }
+            if (-not $isProviderInclude) {
+              $baseLines += $line
+            }
           }
 
-          foreach ($name in $methodRanges.Keys) {
-            $range = $methodRanges[$name]
-            $lines = @("#Requires AutoHotkey v2.0")
-            foreach ($dependency in $dependencyFiles) {
-              $full = Join-Path $root $dependency
-              if (-not (Test-Path -LiteralPath $full)) { throw "Probe dependency missing: $dependency" }
-              $lines += '#Include "' + $full + '"'
+          function Test-MainVariant($name, $provider) {
+            $lines = @($baseLines)
+            if ($provider) {
+              $insertAt = -1
+              for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i].Trim() -eq '#Include "Core\\CloudSyncCoordinator.ahk"') {
+                  $insertAt = $i + 1
+                  break
+                }
+              }
+              if ($insertAt -lt 0) { throw "Could not locate CloudSyncCoordinator include." }
+              $lines = @($lines[0..($insertAt-1)] + ('#Include "' + $provider + '"') + $lines[$insertAt..($lines.Count-1)])
             }
-            $lines += ""
-            $lines += "class OneDriveOAuth {"
-            $lines += $sourceLines[$range[0]..$range[1]]
-            $lines += "}"
-            $probe = Join-Path $env:RUNNER_TEMP ("cloudsync-validate-" + $name + ".ahk")
+
+            $probe = Join-Path $env:RUNNER_TEMP ("cloudsync-main-" + $name + ".ahk")
+            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-main-" + $name + ".stderr")
             Set-Content -LiteralPath $probe -Value $lines -Encoding utf8
 
-            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-validate-" + $name + ".stderr")
             $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $probe) -PassThru -RedirectStandardError $stderr
             if (-not $process.WaitForExit(15000)) {
               try { $process.Kill() } catch {}
-              throw "Cloud Sync load validation timed out: $name"
+              throw "Full-context load validation timed out: $name"
             }
             if ($process.ExitCode -ne 0) {
               $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
-              throw "Cloud Sync load validation failed: $name (exit code $($process.ExitCode)) $detail"
+              throw "Full-context load validation failed: $name (exit code $($process.ExitCode)) $detail"
             }
-            Write-Host "Cloud Sync load validation passed: $name"
+            Write-Host "Full-context load validation passed: $name"
+          }
+
+          Test-MainVariant "no-providers" ""
+          foreach ($provider in $providers) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($provider)
+            Test-MainVariant $name $provider
           }
 
       - name: Compile main AHK script (x64)
