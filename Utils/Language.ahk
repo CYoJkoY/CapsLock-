@@ -4,7 +4,7 @@ class LanguagePack {
     static CSVPath   := A_ScriptDir "\lang.csv"
     static CacheDir  := A_ScriptDir "\langs"
     static CacheExt  := ".lang"
-    static CacheStampVersion := "1"
+    static CacheStampVersion := "2"
     static CacheStampFile := A_ScriptDir "\langs\_source.lang"
 
     static _translations := Map()
@@ -67,24 +67,13 @@ class LanguagePack {
     }
 
     static _GetCSVFingerprint() {
+        ; File metadata is sufficient for generated-cache invalidation and avoids
+        ; re-reading/parsing the entire CSV during every startup.
         try {
-            raw := FileRead(this.CSVPath, "UTF-8")
-            if SubStr(raw, 1, 1) == Chr(0xFEFF)
-                raw := SubStr(raw, 2)
-            return this._Fingerprint(raw)
+            return FileGetTime(this.CSVPath, "M") "|" FileGetSize(this.CSVPath)
         } catch {
             return ""
         }
-    }
-
-    static _Fingerprint(text) {
-        ; Stable lightweight source fingerprint for cache invalidation.
-        ; This is not intended as a cryptographic hash.
-        hash := 2166136261
-        Loop Parse, text {
-            hash := Mod((hash ^ Ord(A_LoopField)) * 16777619, 4294967296)
-        }
-        return Format("{:08X}", hash)
     }
 
     static _ScanCache() {
@@ -188,7 +177,7 @@ class LanguagePack {
             ; discovery cannot mistake it for a locale code.
             if (csvPath == this.CSVPath) {
                 stamp := this.CacheStampVersion "`n"
-                    . this._Fingerprint(raw) "`n"
+                    . this._GetCSVFingerprint() "`n"
                     . Join(langCodes, "|")
                 try FileDelete(this.CacheStampFile)
                 try FileAppend(stamp, this.CacheStampFile, "UTF-8")
