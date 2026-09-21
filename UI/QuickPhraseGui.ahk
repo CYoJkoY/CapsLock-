@@ -2,9 +2,18 @@
 
 ShowQuickPhraseSelector(captureTarget := true) {
     if captureTarget {
+        ; A Quick Phrase workflow owns its original destination for the entire
+        ; selection/input/paste transaction. Do not let a second selector
+        ; invocation recapture the currently focused GUI as the target.
+        if AppState.QuickPhraseWorkflowActive
+            return
+
         target := WinExist("A")
-        if target
-            AppState.TargetWindow := target
+        if !target
+            return
+
+        AppState.QuickPhraseTargetWindow := target
+        AppState.QuickPhraseWorkflowActive := true
     }
 
     if IsObject(AppState.QuickPhraseGui) {
@@ -69,6 +78,8 @@ ShowQuickPhraseSelector(captureTarget := true) {
 CloseQuickPhraseSelector(myGui) {
     try myGui.Destroy()
     AppState.QuickPhraseGui := ""
+    AppState.QuickPhraseWorkflowActive := false
+    AppState.QuickPhraseTargetWindow := 0
     if !IsObject(AppState.QuickPhraseManagerGui)
         AppState.TargetWindow := 0
 }
@@ -101,6 +112,13 @@ QuickPhraseRefreshSelector(myGui) {
         myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", count)
 }
 
+QuickPhraseHandleHotkey(*) {
+    if AppState.QuickPhraseWorkflowActive
+        return
+
+    ShowQuickPhraseSelector(true)
+}
+
 QuickPhraseUseSelected(myGui) {
     row := myGui.ListView.GetNext(0, "Focused")
     if !row
@@ -116,7 +134,7 @@ QuickPhraseUseSelected(myGui) {
         return
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    target := AppState.TargetWindow
+    target := AppState.QuickPhraseTargetWindow
     if !IsObject(phrase) || !target || !WinExist("ahk_id " target) {
         ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
         return
