@@ -78,6 +78,11 @@ QuickPhraseDestroySelector(myGui) {
     try myGui.Destroy()
 }
 
+QuickPhraseDestroyVariableDialog(myGui) {
+    AppState.QuickPhraseVariableGui := ""
+    try myGui.Destroy()
+}
+
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
     AppState.QuickPhraseTargetWindow := 0
@@ -172,36 +177,48 @@ QuickPhraseHandleHotkey(*) {
     ShowQuickPhraseSelector(true)
 }
 
-QuickPhraseUseSelected(myGui) {
+QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
-        return
+        return true
 
-    row := myGui.ListView.GetNext(0, "Focused")
+    row := selectorGui.ListView.GetNext(0, "Focused")
     if !row
-        row := myGui.ListView.GetNext(0)
+        row := selectorGui.ListView.GetNext(0)
 
     if !row {
         ShowToolTip(Lang("MSG_QUICK_PHRASE_SELECT", "Please select a quick phrase."), 1500)
-        return
+        return true
     }
 
-    idText := myGui.ListView.GetText(row, 1)
+    idText := selectorGui.ListView.GetText(row, 1)
     if !(idText ~= "^\d+$")
-        return
+        return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
     target := AppState.QuickPhraseTargetWindow
     if !IsObject(phrase) || !target || !WinExist("ahk_id " target) {
         ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
-        return
+        return true
     }
 
-    ; Enter the protected transaction only after the user actually selected a
-    ; phrase. The selector is destroyed before the variable dialog is shown.
-    ; The dedicated target state remains alive for the protected transaction.
+    ; Finish the selector's GUI event before creating the variable-input GUI.
+    ; The selector is destroyed immediately, then execution is deferred to a
+    ; fresh script thread so the new GUI cannot inherit the selector's event
+    ; context or GUI identity.
     AppState.QuickPhraseTransactionActive := true
-    QuickPhraseDestroySelector(myGui)
+    QuickPhraseDestroySelector(selectorGui)
 
+    SetTimer(
+        () => QuickPhraseExecutePhrase(phrase, target),
+        -1
+    )
+
+    ; The source GUI was destroyed from its ListView callback. Returning a
+    ; non-empty value prevents additional callbacks for the destroyed GUI.
+    return true
+}
+
+QuickPhraseExecutePhrase(phrase, target) {
     finished := false
     ok := false
 
@@ -220,17 +237,19 @@ QuickPhraseUseSelected(myGui) {
 
         finished := true
     } finally {
+        AppState.QuickPhraseTransactionActive := false
+
         if !finished {
-            ; The original selector was destroyed at transaction start. If the
-            ; variable dialog is canceled or fails, recreate the selector from
-            ; the preserved QuickPhraseTargetWindow instead of reviving the
-            ; old GUI object.
-            AppState.QuickPhraseTransactionActive := false
-            ShowQuickPhraseSelector(false)
+            ; The selector no longer exists. Recreate a fresh selector while
+            ; retaining the original Quick Phrase target for this session.
+            if target && WinExist("ahk_id " target)
+                ShowQuickPhraseSelector(false)
+            else
+                AppState.QuickPhraseTargetWindow := 0
+        } else {
+            AppState.QuickPhraseTargetWindow := 0
         }
     }
-
-    CloseQuickPhraseSelector(myGui)
 
     if !ok
         ShowToolTip(Lang("MSG_QUICK_PHRASE_PASTE_FAILED", "Could not insert the quick phrase."), 2200)
@@ -495,11 +514,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             values
         )
 
-        myGui.Destroy()
+        QuickPhraseDestroyVariableDialog(myGui)
     }
 
     Cancel(*) {
-        myGui.Destroy()
+        QuickPhraseDestroyVariableDialog(myGui)
     }
 
     for item in controls
@@ -529,6 +548,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     )
 
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    AppState.QuickPhraseVariableGui := myGui
 
     ; Gui.Show() displays and activates the variable-input window.
     ; Do not issue a second WinActivate() against its HWND here: the GUI
