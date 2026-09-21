@@ -30,61 +30,93 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Diagnose Cloud Sync dependency load
+      - name: Diagnose Cloud Sync include set
         shell: pwsh
         run: |
           $root = (Get-Location).Path
           $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
           $main = Join-Path $root "CapsLock-.ahk"
+          $mainLines = Get-Content -LiteralPath $main
 
-          function Test-Main($label) {
-            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-deps-" + $label + ".stderr")
-            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $main) -PassThru -RedirectStandardError $stderr
-            if (-not $process.WaitForExit(15000)) {
+          $includeLines = @()
+          foreach ($line in $mainLines) {
+            $trimmed = $line.Trim()
+            if ($trimmed.StartsWith("#Include ")) {
+              $includeLines += $trimmed
+            }
+          }
+
+          function Test-IncludeSet($items, $label) {
+            $probe = Join-Path $root ".cloudsync-ddmin.ahk"
+            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-ddmin-" + $label + ".stderr")
+            Set-Content -LiteralPath $probe -Value (@("#Requires AutoHotkey v2.0") + $items) -Encoding utf8
+            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $probe) -PassThru -RedirectStandardError $stderr
+            if (-not $process.WaitForExit(7000)) {
               try { $process.Kill() } catch {}
+              Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
               Write-Host "TIMEOUT $label"
-              return $false
+              return $true
             }
             $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+            Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
             if ($process.ExitCode -ne 0) {
-              Write-Host "FAIL $label exit=$($process.ExitCode) $detail"
-              return $false
+              Write-Host "EXIT $label code=$($process.ExitCode) $detail"
+            } else {
+              Write-Host "PASS $label"
             }
-            Write-Host "PASS $label"
-            return $true
+            return $false
           }
 
-          if (Test-Main "baseline") {
-            throw "Unexpectedly no full-load timeout remains; inspect standard compile instead."
+          function Split-Items($items, $parts) {
+            $chunks = @()
+            $size = [math]::Max(1, [math]::Ceiling($items.Count / $parts))
+            for ($i = 0; $i -lt $items.Count; $i += $size) {
+              $end = [math]::Min($i + $size - 1, $items.Count - 1)
+              $chunks += ,@($items[$i..$end])
+            }
+            return $chunks
           }
 
-          $candidates = @(
-            @{ name = "ConfigManager"; path = "Config\\ConfigManager.ahk"; token = "CloudSyncCoordinator.MarkLocalChanged()" },
-            @{ name = "QuickPhraseStore"; path = "Core\\QuickPhraseStore.ahk"; token = "CloudSyncCoordinator.MarkLocalChanged()" }
-          )
-          $resolved = @()
+          if (-not (Test-IncludeSet $includeLines "baseline")) {
+            throw "Current Include set does not reproduce the known load timeout."
+          }
 
-          foreach ($candidate in $candidates) {
-            $path = Join-Path $root $candidate.path
-            $original = Get-Content -LiteralPath $path -Raw
-            $count = ([regex]::Matches($original, [regex]::Escape($candidate.token))).Count
-            if ($count -eq 0) { throw "Diagnostic token not found: $($candidate.path)" }
-            $neutralized = $original.Replace($candidate.token, "Sleep(0)")
-            Set-Content -LiteralPath $path -Value $neutralized -Encoding utf8
-            try {
-              if (Test-Main ("without-" + $candidate.name)) {
-                $resolved += $candidate.name
+          $bad = @($includeLines)
+          $n = 2
+          while ($bad.Count -gt 1) {
+            $chunks = Split-Items $bad $n
+            $reduced = $false
+
+            foreach ($chunk in $chunks) {
+              if (Test-IncludeSet $chunk ("chunk-" + $chunk.Count)) {
+                $bad = @($chunk)
+                $n = [math]::Max(2, $n - 1)
+                $reduced = $true
+                break
               }
-            } finally {
-              Set-Content -LiteralPath $path -Value $original -Encoding utf8
             }
+            if ($reduced) { continue }
+
+            foreach ($chunk in $chunks) {
+              $chunkSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$chunk)
+              $complement = @($bad | Where-Object { -not $chunkSet.Contains($_) })
+              if ($complement.Count -eq 0) { continue }
+              if (Test-IncludeSet $complement ("complement-" + $complement.Count)) {
+                $bad = @($complement)
+                $n = [math]::Max(2, $n - 1)
+                $reduced = $true
+                break
+              }
+            }
+            if ($reduced) { continue }
+
+            if ($n -ge $bad.Count) { break }
+            $n = [math]::Min($bad.Count, $n * 2)
           }
 
-          Write-Host "Dependencies whose neutralization removes the full-load timeout: $($resolved -join ', ')"
-          if ($resolved.Count -eq 0) {
-            throw "Neither known direct Cloud Sync Coordinator dependency reproduces the load timeout in isolation."
-          }
-          throw "Dependency isolation completed; use the successful neutralization result above to implement the next targeted fix."
+          Write-Host "Minimal failing Include set size: $($bad.Count)"
+          foreach ($item in $bad) { Write-Host "FAIL-SET $item" }
+          throw "Include minimization found a reproducible load-time failure set; inspect FAIL-SET entries."
 
       - name: Compile main AHK script (x64)
         uses: benmusson/ahk2exe-action@v1
