@@ -188,6 +188,29 @@ QuickPhraseHandleHotkey(*) {
     ShowQuickPhraseSelector(false)
 }
 
+QuickPhraseActivateTarget(targetHwnd) {
+    if !targetHwnd || !WinExist("ahk_id " targetHwnd)
+        return false
+
+    try {
+        ; When a variable phrase needs a second GUI stage, explicitly restore
+        ; the original destination to the foreground before creating that
+        ; second GUI. This makes the OS activation predecessor deterministic:
+        ; target -> variable dialog, never selector -> variable dialog.
+        WinActivate("ahk_id " targetHwnd)
+
+        if !WinWaitActive("ahk_id " targetHwnd, , 1)
+            return false
+
+        ; Allow the foreground transition to settle before the variable GUI
+        ; is created and activated.
+        Sleep(30)
+        return true
+    } catch {
+        return false
+    }
+}
+
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -240,6 +263,14 @@ QuickPhraseExecutePhrase(phrase, target) {
         if variables.Length == 0 {
             ok := QuickPhrasePasteText(phrase.content, target)
         } else {
+            ; The selector has already been destroyed, but Windows can still
+            ; retain it as the previous foreground window until another real
+            ; activation occurs. Restore the original destination explicitly
+            ; before showing the variable dialog so its activation predecessor
+            ; is always the destination captured at Quick Phrase entry.
+            if !QuickPhraseActivateTarget(target)
+                return
+
             result := ShowQuickPhraseVariableDialog(
                 phrase,
                 variables,
