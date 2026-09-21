@@ -189,8 +189,6 @@ class ConfigManager {
             IniWrite(AppState.CloudSyncOneDrivePath, cfg, "CloudSyncOneDrive", "path")
         }
 
-        if !AppState.CloudSyncApplying
-            CloudSyncCoordinator.MarkLocalChanged()
     }
 }
 

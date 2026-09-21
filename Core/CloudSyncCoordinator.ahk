@@ -45,7 +45,7 @@ class CloudSyncCoordinator {
         if !AppState.CloudSyncEnabled || !AppState.CloudSyncAutoEnabled
             return
 
-        SetTimer(CloudSyncAutoSyncTimer, -5000)
+        SetTimer(CloudSyncDebounceTimer, -5000)
     }
 
     static StartAutoSync() {
@@ -57,6 +57,8 @@ class CloudSyncCoordinator {
 
     static StopAutoSync() {
         try SetTimer(CloudSyncAutoSyncTimer, 0)
+        try SetTimer(CloudSyncDebounceTimer, 0)
+        this.PendingAutoSync := false
     }
 
     static _AutoSyncTick(*) {
@@ -66,7 +68,18 @@ class CloudSyncCoordinator {
         if !AppState.CloudSyncLocalDirty
             return
 
+        this.SyncNow()
+    }
+
+    static _DebounceTick(*) {
+        if !AppState.CloudSyncEnabled || !AppState.CloudSyncAutoEnabled
+            return
+
         this.PendingAutoSync := false
+
+        if !AppState.CloudSyncLocalDirty
+            return
+
         this.SyncNow()
     }
 
@@ -159,6 +172,21 @@ class CloudSyncCoordinator {
             remotePackage := CloudSyncModel.Deserialize(response.Get("text", ""))
             if !CloudSyncModel.VerifyPackage(remotePackage)
                 throw Error("Remote Cloud Sync package failed integrity validation.")
+
+            ; Recover a previous upload whose remote write succeeded but whose
+            ; local baseline could not be persisted.
+            if localHash == remotePackage["integrity"]["contentHash"] {
+                if !this._SaveBase(remotePackage)
+                    throw Error("Remote package matches local data, but the local synchronization baseline could not be restored.")
+
+                this._SetSuccessfulSync(
+                    remotePackage["revision"]["id"],
+                    response.Get("fingerprint", localHash),
+                    localHash,
+                    response.Get("providerRevision", "")
+                )
+                return true
+            }
 
             remoteFingerprint := response.Get(
                 "fingerprint",
@@ -292,6 +320,7 @@ class CloudSyncCoordinator {
         }
 
         this.Provider := ""
+        this.PendingAutoSync := false
         this.StopAutoSync()
         AppState.CloudSyncConflict := false
         AppState.CloudSyncLocalDirty := false
@@ -370,52 +399,54 @@ class CloudSyncCoordinator {
         if !AppState.CloudSyncConflict
             return false
 
-        conflictPackage := this._LoadLatestConflictPackage()
-        basePackage := this._LoadBasePackage()
-        if !IsObject(conflictPackage) || !IsObject(basePackage)
-            return false
+        try {
+            conflictPackage := this._LoadLatestConflictPackage()
+            basePackage := this._LoadBasePackage()
+            if !IsObject(conflictPackage) || !IsObject(basePackage)
+                return false
 
-        localPackage := CloudSyncModel.FinalizePackage(CloudSyncModel.BuildPackage())
+            localPackage := CloudSyncModel.FinalizePackage(CloudSyncModel.BuildPackage())
 
-        merge := CloudSyncMerger.Merge(
-            basePackage["payload"],
-            localPackage["payload"],
-            conflictPackage["payload"]
-        )
+            merge := CloudSyncMerger.Merge(
+                basePackage["payload"],
+                localPackage["payload"],
+                conflictPackage["payload"]
+            )
 
-        if !merge.ok
-            return false
+            if !merge.ok
+                return false
 
-        mergedPackage := this._BuildPackageFromPayload(merge.value)
-        if !CloudSyncStorage.ApplyPackage(mergedPackage)
-            return false
+            mergedPackage := this._BuildPackageFromPayload(merge.value)
+            if !CloudSyncStorage.ApplyPackage(mergedPackage)
+                return false
 
-        AppState.CloudSyncConflict := false
+            provider := this._GetProvider()
+            provider.Connect()
 
-        provider := this._GetProvider()
-        provider.Connect()
+            currentRemote := provider.Download()
+            expectedFingerprint :=
+                CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
 
-        currentRemote := provider.Download()
-        expectedFingerprint :=
-            CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
+            if !IsObject(currentRemote)
+                || !currentRemote.Get("exists", false)
+                || expectedFingerprint == ""
+                || currentRemote.Get("fingerprint", "") != expectedFingerprint
+            {
+                this._SetState("conflict")
+                return false
+            }
 
-        if !IsObject(currentRemote)
-            || !currentRemote.Get("exists", false)
-            || expectedFingerprint == ""
-            || currentRemote.Get("fingerprint", "") != expectedFingerprint
-        {
-            AppState.CloudSyncConflict := true
-            this._SetState("conflict")
+            upload := provider.Upload(
+                CloudSyncModel.Serialize(mergedPackage),
+                mergedPackage["integrity"]["contentHash"],
+                currentRemote.Get("providerRevision", "")
+            )
+
+            return this._HandleUploadSuccess(upload, mergedPackage)
+        } catch as err {
+            this._HandleFailure(err)
             return false
         }
-
-        upload := provider.Upload(
-            CloudSyncModel.Serialize(mergedPackage),
-            mergedPackage["integrity"]["contentHash"],
-            currentRemote.Get("providerRevision", "")
-        )
-
-        return this._HandleUploadSuccess(upload, mergedPackage)
     }
 
     static _IsProviderConfigured() {
@@ -445,12 +476,28 @@ class CloudSyncCoordinator {
     }
 
     static _GetProvider() {
-        if IsObject(this.Provider)
-            return this.Provider
+        desired := StrLower(Trim(AppState.CloudSyncProvider))
+        if desired == ""
+            desired := "gist"
 
-        this.Provider := CloudSyncProviderFactory.Create(
-            AppState.CloudSyncProvider
-        )
+        if IsObject(this.Provider) {
+            current := StrLower(
+                this.Provider.HasProp("Name")
+                    ? String(this.Provider.Name)
+                    : ""
+            )
+
+            if current == desired
+                return this.Provider
+
+            try this.Provider.Disconnect()
+            catch {
+            }
+
+            this.Provider := ""
+        }
+
+        this.Provider := CloudSyncProviderFactory.Create(desired)
         return this.Provider
     }
 
@@ -475,7 +522,14 @@ class CloudSyncCoordinator {
         providerRevision := response.Get("providerRevision", "")
         localHash := package["integrity"]["contentHash"]
 
-        this._SaveBase(package)
+        if !this._SaveBase(package) {
+            AppState.CloudSyncLastError :=
+                "Remote upload succeeded, but the local synchronization baseline could not be stored."
+            CloudSyncState.Set("Sync", "lastError", AppState.CloudSyncLastError)
+            this._SetState("error")
+            return false
+        }
+
         this._SetSuccessfulSync(revision, fingerprint, localHash, providerRevision)
         return true
     }
@@ -620,6 +674,10 @@ class CloudSyncCoordinator {
 
 CloudSyncAutoSyncTimer(*) {
     CloudSyncCoordinator._AutoSyncTick()
+}
+
+CloudSyncDebounceTimer(*) {
+    CloudSyncCoordinator._DebounceTick()
 }
 
 CloudSyncRetryTimer(*) {

@@ -82,6 +82,9 @@ Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()
 QuickPhraseStore.Load()
+CloudSyncIdentity.Initialize()
+CloudSyncState.Initialize()
+CloudSyncCoordinator.Initialize()
 FileHelper.BuildIgnoreRegexes()
 
 if AppState.AutoCleanEnabled

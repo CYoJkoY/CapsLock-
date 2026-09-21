@@ -4,11 +4,15 @@ class CloudSyncState {
     static Initialize() {
         this._EnsureDirectories()
 
+        state := this.Get("Sync", "state", "")
+
         ; A previous crash during a multi-file replacement must never leave
         ; the local configuration in an untracked partial state.
         if this.Get("Sync", "applyInProgress", "0") == "1" {
             if !CloudSyncStorage.RecoverInterruptedApply()
-                this.Set("Sync", "state", "recovery-error")
+                state := "recovery-error"
+            else
+                state := this.Get("Sync", "state", "")
         }
 
         id := CloudSyncIdentity.GetId()
@@ -16,8 +20,18 @@ class CloudSyncState {
 
         this.Set("Device", "id", id)
         this.Set("Device", "name", name)
-        if this.Get("Sync", "state", "") != "recovery-error"
-            this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
+
+        if state == "recovery-error" {
+            this.Set("Sync", "state", "recovery-error")
+        } else if !AppState.CloudSyncEnabled {
+            state := "disabled"
+            this.Set("Sync", "state", state)
+        } else if state == "" || state == "disabled" {
+            state := "idle"
+            this.Set("Sync", "state", state)
+        } else {
+            this.Set("Sync", "state", state)
+        }
 
         AppState.CloudSyncLastSuccess :=
             this.Get("Sync", "lastSuccessfulSync", "")
@@ -60,6 +74,7 @@ class CloudSyncState {
         this.Set("Sync", "lastSuccessfulSync", "")
         this.Set("Sync", "state", AppState.CloudSyncEnabled ? "idle" : "disabled")
         this.Set("Sync", "conflict", "0")
+        this.Set("Sync", "localDirty", "0")
         this.Set("Sync", "conflictRemoteFingerprint", "")
         this.Set("Sync", "conflictReason", "")
         this.Set("Sync", "lastError", "")
