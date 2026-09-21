@@ -42,7 +42,7 @@ jobs:
           $exitCode = $LASTEXITCODE
           if (Test-Path -LiteralPath $stderr) {
             $detail = Get-Content -LiteralPath $stderr -Raw
-            if ($detail.Trim() != "") {
+            if ($detail.Trim() -ne "") {
               Write-Host $detail
             }
           }
