@@ -12,6 +12,8 @@ class AppState {
     static QuickPhraseContentDir := A_ScriptDir "\configs\QuickPhrases"
     static QuickPhraseGui := ""
     static QuickPhraseManagerGui := ""
+    static QuickPhraseWorkflowActive := false
+    static QuickPhraseTargetWindow := 0
 
     ; Runtime state for the Quick Phrase clipboard transaction. The original
     ; clipboard is restored asynchronously only when no newer clipboard
