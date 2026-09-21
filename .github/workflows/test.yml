@@ -107,7 +107,7 @@ jobs:
             $stderr = Join-Path $diagDir "$safe.err.log"
             $processes += [pscustomobject]@{
               Target = $target
-              Process = Start-Process -FilePath $validator -ArgumentList @("/validate", $path) -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+              Process = Start-Process -FilePath $validator -ArgumentList @("/validate", "/ErrorStdOut", $path) -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
               StdOut = $stdout
               StdErr = $stderr
             }
