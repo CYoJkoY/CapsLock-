@@ -67,6 +67,87 @@ jobs:
           version: '2.0.27'
           destination: 'compiler-validator'
 
+      - name: Diagnose AHK parser hangs
+        if: matrix.target == 'x64'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\autohotkey\AutoHotkey64.exe"
+          $targets = @(
+            "CapsLock-.ahk",
+            "Core\CloudSyncCoordinator.ahk",
+            "Core\CloudSyncCredentials.ahk",
+            "Core\CloudSyncIdentity.ahk",
+            "Core\CloudSyncMerger.ahk",
+            "Core\CloudSyncModel.ahk",
+            "Core\CloudSyncProvider.ahk",
+            "Core\CloudSyncProviderFactory.ahk",
+            "Core\CloudSyncSerializer.ahk",
+            "Core\CloudSyncState.ahk",
+            "Core\CloudSyncStorage.ahk",
+            "Core\Providers\GitHubGistProvider.ahk",
+            "Core\Providers\GitHubRepositoryProvider.ahk",
+            "Core\Providers\GoogleDriveProvider.ahk",
+            "Core\Providers\GoogleOAuth.ahk",
+            "Core\Providers\OneDriveOAuth.ahk",
+            "Core\Providers\OneDriveProvider.ahk",
+            "Core\Providers\WebDavProvider.ahk",
+            "UI\CloudSyncGui.ahk",
+            "UI\CloudSyncConflictGui.ahk"
+          )
+
+          $diagDir = Join-Path $env:RUNNER_TEMP "ahk-validate"
+          New-Item -ItemType Directory -Path $diagDir -Force | Out-Null
+
+          $processes = @()
+          foreach ($target in $targets) {
+            $path = Join-Path $env:GITHUB_WORKSPACE $target
+            $safe = $target -replace "[\\/]", "_"
+            $stdout = Join-Path $diagDir "$safe.out.log"
+            $stderr = Join-Path $diagDir "$safe.err.log"
+            $processes += [pscustomobject]@{
+              Target = $target
+              Process = Start-Process -FilePath $validator -ArgumentList @("/validate", $path) -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+              StdOut = $stdout
+              StdErr = $stderr
+            }
+          }
+
+          $deadline = (Get-Date).AddSeconds(8)
+          do {
+            $running = @($processes | Where-Object { -not $_.Process.HasExited })
+            if ($running.Count -eq 0) { break }
+            Start-Sleep -Milliseconds 100
+          } while ((Get-Date) -lt $deadline)
+
+          $failed = @()
+          foreach ($item in $processes) {
+            if (-not $item.Process.HasExited) {
+              Stop-Process -Id $item.Process.Id -Force -ErrorAction SilentlyContinue
+              $failed += "$($item.Target): TIMEOUT (>8s)"
+              continue
+            }
+
+            $exitCode = $item.Process.ExitCode
+            if ($exitCode -ne 0) {
+              $errorText = (Get-Content -LiteralPath $item.StdErr -Raw -ErrorAction SilentlyContinue)
+              if ([string]::IsNullOrWhiteSpace($errorText)) {
+                $errorText = (Get-Content -LiteralPath $item.StdOut -Raw -ErrorAction SilentlyContinue)
+              }
+              $detail = ($errorText -replace "\s+", " ").Trim()
+              if ($detail.Length -gt 240) { $detail = $detail.Substring(0, 240) + "..." }
+              $failed += "$($item.Target): exit $exitCode $detail"
+            } else {
+              Write-Host "Validated: $($item.Target)"
+            }
+          }
+
+          if ($failed.Count -gt 0) {
+            Write-Host "AHK parser diagnostics detected problems:"
+            $failed | ForEach-Object { Write-Host " - $_" }
+            throw "AHK parser diagnostic failed."
+          }
+
       - name: Compile main AHK script
         shell: pwsh
         run: |
