@@ -203,7 +203,7 @@ class CloudSyncMerger {
     static _Equals(valueA, valueB) {
         if IsObject(valueA) || IsObject(valueB)
             return Json.Stringify(valueA, false) == Json.Stringify(valueB, false)
-        return valueA === valueB
+        return valueA == valueB
     }
 
     static _IndexPhrases(phrases) {
