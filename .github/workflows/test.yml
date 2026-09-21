@@ -75,7 +75,7 @@ jobs:
           $output = Join-Path $env:GITHUB_WORKSPACE "build\${{ matrix.output }}"
           $base = Join-Path $env:GITHUB_WORKSPACE "autohotkey\${{ matrix.base }}"
           $compiler = "${{ steps.install-ahk.outputs.ahk2Exe }}"
-          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\AutoHotkey64.exe"
+          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\autohotkey\AutoHotkey64.exe"
 
           if (-not (Test-Path -LiteralPath $input)) {
             throw "Input script not found: $input"
