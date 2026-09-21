@@ -205,7 +205,9 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     if normalVariables.Length > 0
         normalRows := Integer((normalVariables.Length + 1) / 2)
 
-    normalBottomY := 96 + normalRows * 52
+    normalRowH := 78
+    normalEditOptions := "Multi WantReturn " ThemeHelper.GetEditOptions()
+    normalBottomY := 96 + normalRows * normalRowH
 
     if etxtName != "" {
         etxtLabelY := normalBottomY + 8
@@ -256,7 +258,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         row := column ? index - normalRows : index
 
         x := 16 + column * 320
-        y := 96 + (row - 1) * 52
+        y := 96 + (row - 1) * normalRowH
 
         myGui.SetFont(
             "s9 c" AppState.THEME_FG_DIM,
@@ -279,8 +281,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "x" x
             " y" (y + 18)
             " w300"
-            " r1 "
-            ThemeHelper.GetEditOptions(),
+            " r3 "
+            normalEditOptions,
             ""
         )
 
@@ -516,8 +518,10 @@ QuickPhrasePasteText(text, targetHwnd) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Paste while the destination is active and before restoring the
-        ; original clipboard.
+        ; Give Windows and the target application one stable message turn
+        ; after activation before dispatching Ctrl+V. This matches the existing
+        ; paste path used elsewhere in the application.
+        Sleep(100)
         Send("^v")
 
         ; Do not restore the original clipboard synchronously. Some
