@@ -6,12 +6,12 @@ ShowQuickPhraseSelector(captureTarget := true) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    if captureTarget && !AppState.QuickPhraseTargetWindow {
-        target := WinExist("A")
-        if !target
+    if captureTarget {
+        pasteTarget := QuickPhraseCaptureFocusTarget()
+        if !IsObject(pasteTarget)
             return
 
-        AppState.QuickPhraseTargetWindow := target
+        AppState.QuickPhrasePasteTarget := pasteTarget
     }
 
     if IsObject(AppState.QuickPhraseGui) {
@@ -27,11 +27,10 @@ ShowQuickPhraseSelector(captureTarget := true) {
         }
     }
 
-    guiOptions := "+AlwaysOnTop -MaximizeBox -MinimizeBox"
-    if AppState.QuickPhraseTargetWindow
-        guiOptions .= " +Owner" AppState.QuickPhraseTargetWindow
-
-    myGui := Gui(guiOptions, Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"))
+    myGui := Gui(
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
+    )
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "💬 " Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"), 640)
     ThemeHelper.AddSubtitle(
@@ -178,36 +177,30 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    ; Capture the destination before Quick Phrase activates any GUI. This
-    ; value is authoritative for the entire Quick Phrase session.
-    target := WinExist("A")
-    if !target
+    ; Capture the exact focus destination before Quick Phrase opens any GUI.
+    ; The workflow never activates this window again.
+    pasteTarget := QuickPhraseCaptureFocusTarget()
+    if !IsObject(pasteTarget)
         return
 
-    AppState.QuickPhraseTargetWindow := target
+    AppState.QuickPhrasePasteTarget := pasteTarget
     ShowQuickPhraseSelector(false)
 }
 
-QuickPhraseActivateTarget(targetHwnd) {
-    if !targetHwnd || !WinExist("ahk_id " targetHwnd)
-        return false
+QuickPhraseCaptureFocusTarget() {
+    windowHwnd := WinExist("A")
+    if !windowHwnd
+        return ""
 
-    try {
-        ; When a variable phrase needs a second GUI stage, explicitly restore
-        ; the original destination to the foreground before creating that
-        ; second GUI. This makes the OS activation predecessor deterministic:
-        ; target -> variable dialog, never selector -> variable dialog.
-        WinActivate("ahk_id " targetHwnd)
+    controlHwnd := 0
+    try
+        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
+    catch
+        controlHwnd := 0
 
-        if !WinWaitActive("ahk_id " targetHwnd, , 1)
-            return false
-
-        ; Allow the foreground transition to settle before the variable GUI
-        ; is created and activated.
-        Sleep(30)
-        return true
-    } catch {
-        return false
+    return {
+        window: windowHwnd,
+        control: controlHwnd
     }
 }
 
@@ -229,8 +222,11 @@ QuickPhraseUseSelected(selectorGui) {
         return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    target := AppState.QuickPhraseTargetWindow
-    if !IsObject(phrase) || !target || !WinExist("ahk_id " target) {
+    pasteTarget := AppState.QuickPhrasePasteTarget
+    if !IsObject(phrase)
+        return true
+
+    if !IsObject(pasteTarget) || !pasteTarget.window || !WinExist("ahk_id " pasteTarget.window) {
         ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
         return true
     }
@@ -244,7 +240,7 @@ QuickPhraseUseSelected(selectorGui) {
     QuickPhraseDestroySelector(selectorGui)
 
     SetTimer(
-        () => QuickPhraseExecutePhrase(phrase, target),
+        () => QuickPhraseExecutePhrase(phrase, pasteTarget),
         -1
     )
 
@@ -253,7 +249,7 @@ QuickPhraseUseSelected(selectorGui) {
     return true
 }
 
-QuickPhraseExecutePhrase(phrase, target) {
+QuickPhraseExecutePhrase(phrase, pasteTarget) {
     finished := false
     ok := false
 
@@ -261,25 +257,18 @@ QuickPhraseExecutePhrase(phrase, target) {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(phrase.content, target)
+            ok := QuickPhrasePasteText(phrase.content, pasteTarget)
         } else {
-            ; The selector has already been destroyed, but Windows can still
-            ; retain it as the previous foreground window until another real
-            ; activation occurs. Restore the original destination explicitly
-            ; before showing the variable dialog so its activation predecessor
-            ; is always the destination captured at Quick Phrase entry.
-            if !QuickPhraseActivateTarget(target)
-                return
-
+            ; The variable dialog is an input stage only. The original focus
+            ; destination remains captured separately and is never activated.
             result := ShowQuickPhraseVariableDialog(
                 phrase,
-                variables,
-                target
+                variables
             )
             if !result.ok
                 return
 
-            ok := QuickPhrasePasteText(result.text, target)
+            ok := QuickPhrasePasteText(result.text, pasteTarget)
         }
 
         finished := true
@@ -287,14 +276,12 @@ QuickPhraseExecutePhrase(phrase, target) {
         AppState.QuickPhraseTransactionActive := false
 
         if !finished {
-            ; The selector no longer exists. Recreate a fresh selector while
-            ; retaining the original Quick Phrase target for this session.
-            if target && WinExist("ahk_id " target)
+            if IsObject(pasteTarget)
                 ShowQuickPhraseSelector(false)
             else
-                AppState.QuickPhraseTargetWindow := 0
+                AppState.QuickPhrasePasteTarget := ""
         } else {
-            AppState.QuickPhraseTargetWindow := 0
+            AppState.QuickPhrasePasteTarget := ""
         }
     }
 
@@ -342,7 +329,7 @@ QuickPhraseApplyVariables(template, values) {
     return result . SubStr(template, pos)
 }
 
-ShowQuickPhraseVariableDialog(phrase, variables, targetHwnd := 0) {
+ShowQuickPhraseVariableDialog(phrase, variables) {
     result := {ok: false, text: ""}
 
     ; etxt is the reserved free-form multiline variable. Keep ordinary
@@ -379,12 +366,8 @@ ShowQuickPhraseVariableDialog(phrase, variables, targetHwnd := 0) {
         previewY := 102 + normalRows * normalRowH
     }
 
-    guiOptions := "+AlwaysOnTop -MaximizeBox -MinimizeBox"
-    if targetHwnd && WinExist("ahk_id " targetHwnd)
-        guiOptions .= " +Owner" targetHwnd
-
     myGui := Gui(
-        guiOptions,
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
         Lang(
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
@@ -628,22 +611,22 @@ ShowQuickPhraseVariableDialog(phrase, variables, targetHwnd := 0) {
     return result
 }
 
-QuickPhrasePasteText(text, targetHwnd) {
+QuickPhrasePasteText(text, pasteTarget) {
+    if !IsObject(pasteTarget)
+        return false
+
+    targetHwnd := pasteTarget.window
+    controlHwnd := pasteTarget.control
+
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
 
     backup := ""
 
     try {
-        ; Activate the destination before replacing the clipboard.
-        WinActivate("ahk_id " targetHwnd)
-
-        if !WinWaitActive(
-            "ahk_id " targetHwnd,
-            ,
-            1
-        )
-            return false
+        ; Never reactivate the original window. The captured focus control
+        ; receives Ctrl+V directly, leaving the user's current foreground
+        ; window unchanged.
 
         ; Preserve the original clipboard across overlapping Quick Phrase
         ; transactions. If a previous transaction is still pending and its
@@ -687,11 +670,16 @@ QuickPhrasePasteText(text, targetHwnd) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Give Windows and the target application one stable message turn
-        ; after activation before dispatching Ctrl+V. This matches the existing
-        ; paste path used elsewhere in the application.
-        Sleep(100)
-        Send("^v")
+        ; Send Ctrl+V to the control which had focus when Quick Phrase started.
+        ; ControlSend posts keyboard messages without activating the target.
+        try {
+            if controlHwnd
+                ControlSend("^v", controlHwnd, "ahk_id " targetHwnd)
+            else
+                ControlSend("^v",, "ahk_id " targetHwnd)
+        } catch {
+            throw Error("Quick Phrase focus target could not receive paste.")
+        }
 
         ; Do not restore the original clipboard synchronously. Some
         ; applications read clipboard data asynchronously after Ctrl+V.
