@@ -18,7 +18,7 @@ class CloudSyncMerger {
             ? localData["quickPhrases"]
             : []
         remotePhrases := IsObject(remoteData) && remoteData.Has("quickPhrases")
-            ? remote["quickPhrases"]
+            ? remoteData["quickPhrases"]
             : []
 
         mergedPhrases := this.MergeQuickPhrases(
@@ -96,7 +96,7 @@ class CloudSyncMerger {
             for key in localData
                 keys[key] := true
         if IsObject(remoteData) && remoteData is Map
-            for key in remote
+            for key in remoteData
                 keys[key] := true
 
         keyList := []
