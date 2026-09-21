@@ -13,6 +13,7 @@ class AppState {
     static QuickPhraseGui := ""
     static QuickPhraseManagerGui := ""
     static QuickPhraseTargetWindow := 0
+    static QuickPhraseVariableGui := ""
     static QuickPhraseTransactionActive := false
 
     ; Runtime state for the Quick Phrase clipboard transaction. The original
