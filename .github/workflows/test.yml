@@ -36,17 +36,17 @@ jobs:
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
   compile:
-    name: Compile (${{ matrix.target }})
+    name: Compile Cloud Sync (${{ matrix.target }})
     runs-on: windows-latest
-    timeout-minutes: 8
+    timeout-minutes: 3
     strategy:
       fail-fast: true
       matrix:
         include:
           - target: x64
-            output: build\CapsLock-._ci.exe
+            output: build\CloudSyncRegressionTests_ci.exe
           - target: x86
-            output: build\CapsLock-_ci_x86.exe
+            output: build\CloudSyncRegressionTests_ci_x86.exe
 
     steps:
       - name: Checkout
@@ -55,7 +55,7 @@ jobs:
       - name: Compile AutoHotkey script
         uses: benmusson/ahk2exe-action@v1
         with:
-          in: .\CapsLock-.ahk
+          in: .\tests\CloudSyncRegressionTests.ahk
           out: .\${{ matrix.output }}
           target: ${{ matrix.target }}
           compression: none
