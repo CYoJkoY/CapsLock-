@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: capslock-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -30,67 +34,73 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Download Ahk2Exe
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $url = "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip"
-          $archive = Join-Path $env:RUNNER_TEMP "Ahk2Exe.zip"
-          $dir = Join-Path $env:RUNNER_TEMP "Ahk2Exe"
-          Invoke-WebRequest -Uri $url -OutFile $archive
-          Expand-Archive -Path $archive -DestinationPath $dir -Force
-          $compiler = Get-ChildItem -Path $dir -Recurse -Filter "Ahk2Exe.exe" | Select-Object -First 1
-          if (-not $compiler) { throw "Ahk2Exe.exe was not found after extraction." }
-          "AHK2EXE_PATH=$($compiler.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Using Ahk2Exe: $($compiler.FullName)"
+  compile:
+    name: Compile (${{ matrix.target }})
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x64
+            base: AutoHotkey64.exe
+            output: CapsLock-._ci.exe
+          - target: x86
+            base: AutoHotkey32.exe
+            output: CapsLock-_ci_x86.exe
 
-      - name: Compile main AHK script (x64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install AutoHotkey and Ahk2Exe
+        id: install-ahk
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.28'
+          compiler: 'Ahk2Exe1.1.37.02a2'
+
+      - name: Compile main AHK script
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $output = Join-Path $env:GITHUB_WORKSPACE "build\CapsLock-._ci.exe"
+
+          $input = (Resolve-Path ".\CapsLock-.ahk").Path
+          $output = Join-Path $env:GITHUB_WORKSPACE "build\${{ matrix.output }}"
+          $base = Join-Path $env:GITHUB_WORKSPACE "autohotkey\${{ matrix.base }}"
+          $compiler = "${{ steps.install-ahk.outputs.ahk2Exe }}"
+
+          if (-not (Test-Path -LiteralPath $input)) {
+            throw "Input script not found: $input"
+          }
+          if (-not (Test-Path -LiteralPath $base)) {
+            throw "${{ matrix.target }} base runtime not found: $base"
+          }
+          if (-not (Test-Path -LiteralPath $compiler)) {
+            throw "Ahk2Exe compiler not found: $compiler"
+          }
+
           New-Item -ItemType Directory -Path (Split-Path $output -Parent) -Force | Out-Null
 
-          $base = (Resolve-Path ".\autohotkey\AutoHotkey64.exe").Path
-          $compiler = $env:AHK2EXE_PATH
           $args = @(
             "/silent", "verbose",
-            "/in", (Resolve-Path ".\CapsLock-.ahk").Path,
+            "/in", $input,
             "/out", $output,
             "/base", $base,
             "/compress", "0"
           )
 
-          $process = Start-Process -FilePath $compiler -ArgumentList $args -PassThru -Wait -NoNewWindow
-          if ($process.ExitCode -ne 0) {
-            throw "x64 compilation failed with exit code $($process.ExitCode)."
-          }
-          if (-not (Test-Path -LiteralPath $output)) {
-            throw "x64 compilation completed without producing $output."
-          }
-          Write-Host "x64 compilation succeeded: $output ($((Get-Item $output).Length) bytes)"
-
-      - name: Compile main AHK script (x86)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $output = Join-Path $env:GITHUB_WORKSPACE "build\CapsLock-_ci_x86.exe"
-
-          $base = (Resolve-Path ".\autohotkey\AutoHotkey32.exe").Path
-          $compiler = $env:AHK2EXE_PATH
-          $args = @(
-            "/silent", "verbose",
-            "/in", (Resolve-Path ".\CapsLock-.ahk").Path,
-            "/out", $output,
-            "/base", $base,
-            "/compress", "0"
-          )
+          Write-Host "Compiling $input -> $output"
+          Write-Host "Base runtime: $base"
+          Write-Host "Compiler: $compiler"
 
           $process = Start-Process -FilePath $compiler -ArgumentList $args -PassThru -Wait -NoNewWindow
           if ($process.ExitCode -ne 0) {
-            throw "x86 compilation failed with exit code $($process.ExitCode)."
+            throw "${{ matrix.target }} compilation failed with exit code $($process.ExitCode)."
           }
           if (-not (Test-Path -LiteralPath $output)) {
-            throw "x86 compilation completed without producing $output."
+            throw "${{ matrix.target }} compilation completed without producing $output."
           }
-          Write-Host "x86 compilation succeeded: $output ($((Get-Item $output).Length) bytes)"
+
+          $sizeKb = [math]::Round((Get-Item -LiteralPath $output).Length / 1KB, 1)
+          Write-Host "${{ matrix.target }} compilation succeeded: $output ($sizeKb KB)"
