@@ -216,7 +216,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     } else {
         etxtLabelY := 0
         etxtEditY := 0
-        previewY := 102 + normalRows * 52
+        previewY := 102 + normalRows * normalRowH
     }
 
     myGui := Gui(
@@ -252,7 +252,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     controls := []
     etxtControl := ""
 
-    ; Ordinary variables stay as compact single-line controls.
+    ; Ordinary variables stay compact while supporting multiline input.
     for index, name in normalVariables {
         column := index <= normalRows ? 0 : 1
         row := column ? index - normalRows : index
