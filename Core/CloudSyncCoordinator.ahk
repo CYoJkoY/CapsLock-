@@ -95,7 +95,6 @@ class CloudSyncCoordinator {
 
         try {
             provider := this._GetProvider()
-            provider.Connect()
             if provider.ValidateConnection() != true
                 throw Error("Cloud Sync provider validation failed.")
             this._SetState("connected")
@@ -206,7 +205,11 @@ class CloudSyncCoordinator {
 
             if remoteFingerprint == lastRemote {
                 if localHash == CloudSyncState.Get("Sync", "lastLocalHash", "") {
+                    try SetTimer(CloudSyncRetryTimer, 0)
+                    catch {
+                    }
                     this._SetState("idle")
+                    this.RetryCount := 0
                     return true
                 }
 
@@ -281,7 +284,9 @@ class CloudSyncCoordinator {
             ? response.Get("providerRevision", "")
             : ""
 
-        this._SaveBase(remotePackage)
+        if !this._SaveBase(remotePackage)
+            throw Error("Remote package was applied, but the local synchronization baseline could not be stored.")
+
         this._SetSuccessfulSync(
             remotePackage["revision"]["id"],
             fingerprint,
