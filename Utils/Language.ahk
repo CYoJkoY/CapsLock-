@@ -11,6 +11,7 @@ class LanguagePack {
     static _loadedCode  := ""
     static _available   := []
     static _defaultLang := "en"
+    static CloudSyncDirtyCallback := ""
 
     static Init() {
         if !DirExist(this.CacheDir)
@@ -388,6 +389,10 @@ class Language {
         this.current := target
     }
 
+    static SetCloudSyncDirtyCallback(callback) {
+        this.CloudSyncDirtyCallback := IsObject(callback) ? callback : ""
+    }
+
     static SetLanguage(code) {
         if code == this.current
             return true
@@ -440,8 +445,8 @@ class Language {
             if !DirExist(cfgDir)
                 DirCreate(cfgDir)
             IniWrite(code, cfg, "General", "language")
-            if !AppState.CloudSyncApplying
-                CloudSyncCoordinator.MarkLocalChanged()
+            if !AppState.CloudSyncApplying && IsObject(this.CloudSyncDirtyCallback)
+                this.CloudSyncDirtyCallback.Call()
         } catch {
         }
     }
