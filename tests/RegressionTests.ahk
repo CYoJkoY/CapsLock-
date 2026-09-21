@@ -346,12 +346,14 @@ RunTests() {
     )
 
     Assert(
-        InStr(quickPhraseSource, 'InStr(quickPhraseSource, "AppState.TargetWindow := 0")') == 0,
+        InStr(quickPhraseSource, "AppState.TargetWindow := 0") == 0,
         "Quick Phrase selector must not clear the global paste target."
     )
 
     selectorStart := InStr(quickPhraseSource, "ShowQuickPhraseSelector(captureTarget := true)")
-    selectorEnd := InStr(quickPhraseSource, "CloseQuickPhraseSelector(myGui)", selectorStart)
+    selectorEnd := InStr(quickPhraseSource, "\n}
+
+CloseQuickPhraseSelector(myGui)", selectorStart)
     selectorSource := SubStr(quickPhraseSource, selectorStart, selectorEnd - selectorStart)
     Assert(
         selectorStart > 0
