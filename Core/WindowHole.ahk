@@ -352,10 +352,13 @@ class WindowHole {
         ; observes the same physical cursor position.
         layerHwnds := this.HoleLayerOrder.Clone()
         refreshedLayers := []
+        batchRefresh := layerHwnds.Length > 1
 
-        ; Multiple active layers are committed as one logical update. Region
-        ; installation is decoupled from repaint so one layer cannot visibly
-        ; advance ahead of another.
+        ; Only defer repaint when more than one Window Hole layer participates
+        ; in the session. A single layer keeps the original immediate region
+        ; and repaint path, which avoids regressing normal Window Hole behavior.
+        ; Multiple layers still install all regions before the shared repaint
+        ; phase so their visual updates remain synchronized.
         for layerHwnd in layerHwnds {
             if !this.Targets.Has(layerHwnd)
                 continue
@@ -385,7 +388,7 @@ class WindowHole {
                 mx,
                 my,
                 isPrimary,
-                true
+                batchRefresh
             )
 
             if result == true
@@ -430,9 +433,11 @@ class WindowHole {
             )
         }
 
-        ; Only now repaint the layers whose regions changed. The native region
-        ; commits above have already completed for the entire update cycle.
-        this._RefreshWindowHoleBatch(refreshedLayers)
+        ; Only batch-refresh when multiple active layers are using the
+        ; deferred path. Single-layer updates already refreshed synchronously
+        ; inside _ApplyHole.
+        if batchRefresh
+            this._RefreshWindowHoleBatch(refreshedLayers)
     }
 
     static _GetPhysicalCursorPosition(&x, &y) {
