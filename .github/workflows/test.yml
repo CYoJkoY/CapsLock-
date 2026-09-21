@@ -36,6 +36,14 @@ jobs:
           $root = (Get-Location).Path
           $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
 
+          $dependencyFiles = @(
+            "Utils\\Language.ahk",
+            "Utils\\Json.ahk",
+            "Utils\\HttpClient.ahk",
+            "Config\\Globals.ahk",
+            "Core\\CloudSyncCredentials.ahk",
+            "Core\\CloudSyncState.ahk"
+          )
           $sourcePath = Join-Path $root "Core\\Providers\\OneDriveOAuth.ahk"
           $sourceLines = Get-Content -LiteralPath $sourcePath
           $header = $sourceLines[0..8]
@@ -50,8 +58,14 @@ jobs:
 
           foreach ($name in $methodRanges.Keys) {
             $range = $methodRanges[$name]
-            $lines = @()
-            $lines += $header
+            $lines = @("#Requires AutoHotkey v2.0")
+            foreach ($dependency in $dependencyFiles) {
+              $full = Join-Path $root $dependency
+              if (-not (Test-Path -LiteralPath $full)) { throw "Probe dependency missing: $dependency" }
+              $lines += '#Include "' + $full + '"'
+            }
+            $lines += ""
+            $lines += "class OneDriveOAuth {"
             $lines += $sourceLines[$range[0]..$range[1]]
             $lines += "}"
             $probe = Join-Path $env:RUNNER_TEMP ("cloudsync-validate-" + $name + ".ahk")
