@@ -86,10 +86,10 @@ RunTests() {
     remotePhrase := MakePhrase(1, "Greeting", "Updated", 1, "Hi")
 
     base := MakePayload("1", [basePhrase])
-    local := MakePayload("2", [localPhrase])
+    localPayload := MakePayload("2", [localPhrase])
     remote := MakePayload("1", [remotePhrase])
 
-    merge := CloudSyncMerger.Merge(base, local, remote)
+    merge := CloudSyncMerger.Merge(base, localPayload, remote)
 
     Assert(merge.ok, "Independent config and phrase changes should merge.")
     Assert(
