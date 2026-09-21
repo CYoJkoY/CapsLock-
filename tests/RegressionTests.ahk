@@ -340,6 +340,7 @@ RunTests() {
     Assert(
         InStr(hotkeySource, "CapsLockHotkeysAvailable()") > 0
             && InStr(hotkeySource, "!AppState.QuickPhraseWorkflowActive") > 0
+            && InStr(hotkeySource, '#HotIf GetKeyState( "CapsLock", "P" )') == 0
             && InStr(hotkeySource, "+p:: QuickPhraseHandleHotkey()") > 0
             && InStr(hotkeySource, "+p:: ShowQuickPhraseSelector()") == 0,
         "All CapsLock hotkeys must be suspended while a Quick Phrase workflow owns the active GUI."
