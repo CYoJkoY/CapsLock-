@@ -294,6 +294,19 @@ RunTests() {
     quickPhraseSource := ReadSource("UI\\QuickPhraseGui.ahk")
     quickPhraseGlobalsSource := ReadSource("Config\\Globals.ahk")
 
+    variableStart := InStr(quickPhraseSource, "ShowQuickPhraseVariableDialog(phrase, variables)")
+    variableEnd := InStr(quickPhraseSource, "QuickPhrasePasteText(text, targetHwnd)", variableStart)
+    variableDialogSource := SubStr(quickPhraseSource, variableStart, variableEnd - variableStart)
+
+    Assert(
+        variableStart > 0
+            && variableEnd > variableStart
+            && InStr(variableDialogSource, 'myGui.Show(
+        "w680 h"') > 0
+            && InStr(variableDialogSource, 'WinActivate("ahk_id " myGui.Hwnd)') == 0,
+        "Quick Phrase variable dialog must rely on Gui.Show activation instead of a second HWND activation."
+    )
+
     Assert(
         InStr(quickPhraseSource, "GetClipboardSequenceNumber") > 0
             && InStr(quickPhraseSource, "QuickPhraseRestoreClipboard(generation)") > 0
