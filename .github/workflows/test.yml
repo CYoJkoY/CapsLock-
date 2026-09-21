@@ -30,93 +30,25 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Diagnose Cloud Sync include set
+      - name: Validate main AHK script
         shell: pwsh
         run: |
           $root = (Get-Location).Path
           $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
           $main = Join-Path $root "CapsLock-.ahk"
-          $mainLines = Get-Content -LiteralPath $main
+          $stderr = Join-Path $env:RUNNER_TEMP "capslock-validate.stderr"
 
-          $includeLines = @()
-          foreach ($line in $mainLines) {
-            $trimmed = $line.Trim()
-            if ($trimmed.StartsWith("#Include ")) {
-              $includeLines += $trimmed
+          & $ahk /validate /ErrorStdOut=UTF-8 $main 2> $stderr
+          $exitCode = $LASTEXITCODE
+          if (Test-Path -LiteralPath $stderr) {
+            $detail = Get-Content -LiteralPath $stderr -Raw
+            if ($detail.Trim() != "") {
+              Write-Host $detail
             }
           }
-
-          function Test-IncludeSet($items, $label) {
-            $probe = Join-Path $root ".cloudsync-ddmin.ahk"
-            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-ddmin-" + $label + ".stderr")
-            Set-Content -LiteralPath $probe -Value (@("#Requires AutoHotkey v2.0") + $items) -Encoding utf8
-            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $probe) -PassThru -RedirectStandardError $stderr
-            if (-not $process.WaitForExit(7000)) {
-              try { $process.Kill() } catch {}
-              Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
-              Write-Host "TIMEOUT $label"
-              return $true
-            }
-            $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
-            Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
-            if ($process.ExitCode -ne 0) {
-              Write-Host "EXIT $label code=$($process.ExitCode) $detail"
-            } else {
-              Write-Host "PASS $label"
-            }
-            return $false
+          if ($exitCode -ne 0) {
+            throw "AutoHotkey validation failed with exit code $exitCode."
           }
-
-          function Split-Items($items, $parts) {
-            $chunks = @()
-            $size = [math]::Max(1, [math]::Ceiling($items.Count / $parts))
-            for ($i = 0; $i -lt $items.Count; $i += $size) {
-              $end = [math]::Min($i + $size - 1, $items.Count - 1)
-              $chunks += ,@($items[$i..$end])
-            }
-            return $chunks
-          }
-
-          if (-not (Test-IncludeSet $includeLines "baseline")) {
-            throw "Current Include set does not reproduce the known load timeout."
-          }
-
-          $bad = @($includeLines)
-          $n = 2
-          while ($bad.Count -gt 1) {
-            $chunks = Split-Items $bad $n
-            $reduced = $false
-
-            foreach ($chunk in $chunks) {
-              if (Test-IncludeSet $chunk ("chunk-" + $chunk.Count)) {
-                $bad = @($chunk)
-                $n = [math]::Max(2, $n - 1)
-                $reduced = $true
-                break
-              }
-            }
-            if ($reduced) { continue }
-
-            foreach ($chunk in $chunks) {
-              $chunkSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$chunk)
-              $complement = @($bad | Where-Object { -not $chunkSet.Contains($_) })
-              if ($complement.Count -eq 0) { continue }
-              if (Test-IncludeSet $complement ("complement-" + $complement.Count)) {
-                $bad = @($complement)
-                $n = [math]::Max(2, $n - 1)
-                $reduced = $true
-                break
-              }
-            }
-            if ($reduced) { continue }
-
-            if ($n -ge $bad.Count) { break }
-            $n = [math]::Min($bad.Count, $n * 2)
-          }
-
-          Write-Host "Minimal failing Include set size: $($bad.Count)"
-          foreach ($item in $bad) { Write-Host "FAIL-SET $item" }
-          throw "Include minimization found a reproducible load-time failure set; inspect FAIL-SET entries."
 
       - name: Compile main AHK script (x64)
         uses: benmusson/ahk2exe-action@v1
