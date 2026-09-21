@@ -25,25 +25,25 @@ GetCloudSyncProviderKey() {
 
     switch provider {
         case "gist":
-            return provider "|" Trim(AppState.CloudSyncTarget)
+            return provider "|" . Trim(AppState.CloudSyncTarget)
 
         case "github":
             return provider "|"
-                Trim(AppState.CloudSyncGitHubOwner) "|"
-                Trim(AppState.CloudSyncGitHubRepository) "|"
-                Trim(AppState.CloudSyncGitHubBranch) "|"
-                Trim(AppState.CloudSyncGitHubPath)
+                . Trim(AppState.CloudSyncGitHubOwner) "|"
+                . Trim(AppState.CloudSyncGitHubRepository) "|"
+                . Trim(AppState.CloudSyncGitHubBranch) "|"
+                . Trim(AppState.CloudSyncGitHubPath)
 
         case "google-drive":
-            return provider "|" Trim(AppState.CloudSyncTarget)
+            return provider "|" . Trim(AppState.CloudSyncTarget)
 
         case "onedrive":
-            return provider "|" Trim(AppState.CloudSyncOneDrivePath)
+            return provider "|" . Trim(AppState.CloudSyncOneDrivePath)
 
         case "webdav":
             return provider "|"
-                Trim(AppState.CloudSyncWebDavUrl) "|"
-                Trim(AppState.CloudSyncWebDavPath)
+                . Trim(AppState.CloudSyncWebDavUrl) "|"
+                . Trim(AppState.CloudSyncWebDavPath)
 
         default:
             return provider
