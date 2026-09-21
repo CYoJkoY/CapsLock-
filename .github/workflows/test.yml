@@ -30,83 +30,48 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Diagnose AHK validation hang
+      - name: Diagnose AHK validation source
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          git fetch origin main --depth=1
           $ahk = (Resolve-Path ".\autohotkey\AutoHotkey64.exe").Path
-          $source = Get-Content ".\CapsLock-.ahk" -Raw
 
-          $newIncludes = @(
-            "Utils\Json.ahk", "Utils\Hash.ahk", "Utils\Base64.ahk",
-            "Utils\Random.ahk", "Utils\HttpClient.ahk", "Utils\SecureStorage.ahk",
-            "Core\CloudSyncIdentity.ahk", "Core\CloudSyncCredentials.ahk",
-            "Core\CloudSyncState.ahk", "Core\CloudSyncModel.ahk",
-            "Core\CloudSyncSerializer.ahk", "Core\CloudSyncMerger.ahk",
-            "Core\CloudSyncStorage.ahk", "Core\CloudSyncProvider.ahk",
-            "Core\CloudSyncProviderFactory.ahk", "Core\CloudSyncCoordinator.ahk",
-            "Core\Providers\GitHubGistProvider.ahk",
-            "Core\Providers\GitHubRepositoryProvider.ahk",
-            "Core\Providers\GoogleOAuth.ahk",
-            "Core\Providers\GoogleDriveProvider.ahk",
-            "Core\Providers\OneDriveOAuth.ahk",
-            "Core\Providers\OneDriveProvider.ahk",
-            "Core\Providers\WebDavProvider.ahk",
-            "UI\CloudSyncGui.ahk", "UI\CloudSyncConflictGui.ahk"
-          )
-
-          function Test-Source([string]$name, [string[]]$includes) {
-            $candidate = $source
-            $selected = [System.Collections.Generic.HashSet[string]]::new()
-            foreach ($item in $includes) { [void]$selected.Add($item) }
-            foreach ($item in $newIncludes) {
-              if (-not $selected.Contains($item)) {
-                $pattern = "(?m)^\s*#Include ""{0}""\s*\r?\n" -f [regex]::Escape($item)
-                $candidate = [regex]::Replace($candidate, $pattern, "")
-              }
-            }
-
-            $probe = Join-Path (Get-Location) ".capslock-validation-$name.ahk"
+          function Test-Ahk([string]$name, [string]$path) {
             $stdout = Join-Path $env:RUNNER_TEMP "$name.stdout"
             $stderr = Join-Path $env:RUNNER_TEMP "$name.stderr"
-            Set-Content -LiteralPath $probe -Value $candidate -Encoding UTF8
             Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
-
-            $process = Start-Process -FilePath $ahk `
-              -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $probe) `
-              -PassThru `
-              -RedirectStandardOutput $stdout `
-              -RedirectStandardError $stderr
-
-            if (-not $process.WaitForExit(15000)) {
-              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            $p = Start-Process -FilePath $ahk -ArgumentList @("/validate","/ErrorStdOut=UTF-8",(Resolve-Path $path).Path) -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            if (-not $p.WaitForExit(15000)) {
+              Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
               return "TIMEOUT"
             }
-
-            [string]$err = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
-            [string]$out = if (Test-Path -LiteralPath $stdout) { Get-Content -LiteralPath $stdout -Raw } else { "" }
-            if ($err.Trim() -ne "") { Write-Host "stderr: $err" }
-            if ($out.Trim() -ne "") { Write-Host "stdout: $out" }
-            if ($process.ExitCode -eq 0) { return "PASS" }
-            return "FAIL:$($process.ExitCode)"
+            [string]$err = if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+            if ($err.Trim() -ne "") { Write-Host "$name stderr: $err" }
+            return "EXIT:$($p.ExitCode)"
           }
 
-          $baseline = Test-Source "baseline" @()
-          Write-Host "Baseline: $baseline"
-          if ($baseline -ne "PASS") { throw "Baseline source does not pass AHK /validate." }
+          git show origin/main:CapsLock-.ahk | Set-Content -LiteralPath ".\.ci-main-CapsLock-.ahk" -Encoding UTF8
+          $mainResult = Test-Ahk "main" ".\.ci-main-CapsLock-.ahk"
+          $prResult = Test-Ahk "pr" ".\CapsLock-.ahk"
+          Write-Host "Main branch script: $mainResult"
+          Write-Host "PR script: $prResult"
 
-          foreach ($item in $newIncludes) {
-            $result = Test-Source ("single-" + ($item -replace "[^A-Za-z0-9]", "_")) @($item)
-            Write-Host "Single include [$item]: $result"
-            if ($result -eq "TIMEOUT") {
-              throw "Single include reproduces AHK /validate hang: $item"
-            }
+          $languagePath = ".\Utils\Language.ahk"
+          $prLanguage = Get-Content -LiteralPath $languagePath -Raw
+          git show origin/main:Utils/Language.ahk | Set-Content -LiteralPath $languagePath -Encoding UTF8
+          try {
+            $languageBaseResult = Test-Ahk "pr-with-main-language" ".\CapsLock-.ahk"
+          } finally {
+            Set-Content -LiteralPath $languagePath -Value $prLanguage -Encoding UTF8
           }
+          Write-Host "PR script with main Language.ahk: $languageBaseResult"
 
-          $full = Test-Source "full" $newIncludes
-          Write-Host "Full Cloud Sync Include set: $full"
-          if ($full -ne "TIMEOUT") {
-            throw "Expected the full Cloud Sync Include set to reproduce the validation hang; got $full"
+          if ($mainResult -ne "EXIT:0") { throw "Main branch script did not validate successfully: $mainResult" }
+          if ($prResult -eq "TIMEOUT" -and $languageBaseResult -eq "EXIT:0") {
+            throw "Confirmed Utils/Language.ahk change reproduces the validation hang."
           }
-          Write-Host "Full set hangs, but no single new Include hangs. A combination is responsible."
-
+          if ($prResult -eq "TIMEOUT") {
+            throw "PR script still times out, but swapping Language.ahk did not prove it; inspect remaining modified includes."
+          }
+          Write-Host "PR validation did not reproduce the reported hang."
