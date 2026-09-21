@@ -30,22 +30,98 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Compile main AHK script (x64)
-        uses: benmusson/ahk2exe-action@v1
-        with:
-          in: .\CapsLock-.ahk
-          out: .\build\CapsLock-._ci.exe
-          target: x64
-          compression: none
-          ahk-tag: v2.0.27
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Diagnose AHK library auto-inclusion
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
 
-      - name: Compile main AHK script (x86)
-        uses: benmusson/ahk2exe-action@v1
-        with:
-          in: .\CapsLock-.ahk
-          out: .\build\CapsLock-_ci_x86.exe
-          target: x86
-          compression: none
-          ahk-tag: v2.0.27
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          $ahk = (Resolve-Path ".\autohotkey\AutoHotkey64.exe").Path
+          $source = Get-Content ".\CapsLock-.ahk" -Raw
+
+          $newIncludes = @(
+            "Utils\Json.ahk",
+            "Utils\Hash.ahk",
+            "Utils\Base64.ahk",
+            "Utils\Random.ahk",
+            "Utils\HttpClient.ahk",
+            "Utils\SecureStorage.ahk",
+            "Core\CloudSyncIdentity.ahk",
+            "Core\CloudSyncCredentials.ahk",
+            "Core\CloudSyncState.ahk",
+            "Core\CloudSyncModel.ahk",
+            "Core\CloudSyncSerializer.ahk",
+            "Core\CloudSyncMerger.ahk",
+            "Core\CloudSyncStorage.ahk",
+            "Core\CloudSyncProvider.ahk",
+            "Core\CloudSyncProviderFactory.ahk",
+            "Core\CloudSyncCoordinator.ahk",
+            "Core\Providers\GitHubGistProvider.ahk",
+            "Core\Providers\GitHubRepositoryProvider.ahk",
+            "Core\Providers\GoogleOAuth.ahk",
+            "Core\Providers\GoogleDriveProvider.ahk",
+            "Core\Providers\OneDriveOAuth.ahk",
+            "Core\Providers\OneDriveProvider.ahk",
+            "Core\Providers\WebDavProvider.ahk",
+            "UI\CloudSyncGui.ahk",
+            "UI\CloudSyncConflictGui.ahk"
+          )
+
+          $probeRoot = Join-Path $env:RUNNER_TEMP "capslock-ilib-diagnosis"
+          New-Item -ItemType Directory -Path $probeRoot -Force | Out-Null
+
+          function Test-Includes([string]$name, [string[]]$includes) {
+            $candidate = $source
+            $selected = @{}
+            foreach ($item in $includes) { $selected[$item] = $true }
+
+            foreach ($item in $newIncludes) {
+              if (-not $selected.ContainsKey($item)) {
+                $pattern = "(?m)^\s*#Include ""{0}""\s*\r?$" -f [regex]::Escape($item)
+                $candidate = [regex]::Replace($candidate, $pattern, "")
+              }
+            }
+
+            $probe = Join-Path $probeRoot "$name.ahk"
+            $log = Join-Path $probeRoot "$name.log"
+            $out = Join-Path $probeRoot "$name.ilib"
+            Set-Content -LiteralPath $probe -Value $candidate -Encoding UTF8
+            Remove-Item -LiteralPath $log,$out -Force -ErrorAction SilentlyContinue
+
+            $process = Start-Process -FilePath $ahk -ArgumentList @("/iLib", $out, "/ErrorStdOut", $probe) -PassThru -RedirectStandardOutput $log
+            if (-not $process.WaitForExit(15000)) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              return "TIMEOUT"
+            }
+
+            if ($process.ExitCode -eq 0) { return "PASS" }
+            if (Test-Path -LiteralPath $log) {
+              $detail = Get-Content -LiteralPath $log -Raw
+              if ($null -ne $detail -and $detail.Trim() -ne "") { Write-Host $detail }
+            }
+            return "FAIL:$($process.ExitCode)"
+          }
+
+          $baseline = Test-Includes "baseline" @()
+          Write-Host "Baseline without PR #72 Cloud Sync includes: $baseline"
+          if ($baseline -ne "PASS") { throw "Baseline main script failed /iLib analysis." }
+
+          function Find-HangingSubset([string[]]$items, [string]$label) {
+            if ($items.Count -eq 0) { return @() }
+            $result = Test-Includes ("probe-" + [Math]::Abs($label.GetHashCode())) $items
+            Write-Host "Probe [$label] ($($items.Count) includes): $result"
+            if ($result -eq "PASS") { return @() }
+            if ($items.Count -eq 1) {
+              Write-Host "Hanging include: $($items[0])"
+              return @($items[0])
+            }
+            $mid = [Math]::Floor($items.Count / 2)
+            $left = [string[]]$items[0..($mid - 1)]
+            $right = [string[]]$items[$mid..($items.Count - 1)]
+            $leftHit = Find-HangingSubset $left ($label + "-L")
+            $rightHit = Find-HangingSubset $right ($label + "-R")
+            return @($leftHit + $rightHit)
+          }
+
+          $hits = Find-HangingSubset $newIncludes "all-new-includes"
+          if ($hits.Count -gt 0) { throw "AHK /iLib hangs with: $($hits -join ", ")" }
+          Write-Host "No individual Cloud Sync Include or Include subset reproduced the /iLib hang."
