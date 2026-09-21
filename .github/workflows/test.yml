@@ -30,6 +30,76 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
+      - name: Diagnose Cloud Sync load
+        shell: pwsh
+        run: |
+          $root = (Get-Location).Path
+          $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
+
+          $groups = @{
+            "utils" = @(
+              "Utils\\Json.ahk", "Utils\\Hash.ahk", "Utils\\Base64.ahk",
+              "Utils\\Random.ahk", "Utils\\HttpClient.ahk", "Utils\\SecureStorage.ahk"
+            )
+            "core" = @(
+              "Core\\CloudSyncIdentity.ahk", "Core\\CloudSyncCredentials.ahk",
+              "Core\\CloudSyncState.ahk", "Core\\CloudSyncModel.ahk",
+              "Core\\CloudSyncSerializer.ahk", "Core\\CloudSyncMerger.ahk",
+              "Core\\CloudSyncStorage.ahk", "Core\\CloudSyncProvider.ahk",
+              "Core\\CloudSyncProviderFactory.ahk", "Core\\CloudSyncCoordinator.ahk"
+            )
+            "providers" = @(
+              "Core\\Providers\\GitHubGistProvider.ahk",
+              "Core\\Providers\\GitHubRepositoryProvider.ahk",
+              "Core\\Providers\\GoogleOAuth.ahk",
+              "Core\\Providers\\GoogleDriveProvider.ahk",
+              "Core\\Providers\\OneDriveOAuth.ahk",
+              "Core\\Providers\\OneDriveProvider.ahk",
+              "Core\\Providers\\WebDavProvider.ahk"
+            )
+            "ui" = @(
+              "UI\\CloudSyncGui.ahk", "UI\\CloudSyncConflictGui.ahk"
+            )
+            "cloud-all" = @(
+              "Utils\\Json.ahk", "Utils\\Hash.ahk", "Utils\\Base64.ahk",
+              "Utils\\Random.ahk", "Utils\\HttpClient.ahk", "Utils\\SecureStorage.ahk",
+              "Core\\CloudSyncIdentity.ahk", "Core\\CloudSyncCredentials.ahk",
+              "Core\\CloudSyncState.ahk", "Core\\CloudSyncModel.ahk",
+              "Core\\CloudSyncSerializer.ahk", "Core\\CloudSyncMerger.ahk",
+              "Core\\CloudSyncStorage.ahk", "Core\\CloudSyncProvider.ahk",
+              "Core\\CloudSyncProviderFactory.ahk", "Core\\CloudSyncCoordinator.ahk",
+              "Core\\Providers\\GitHubGistProvider.ahk",
+              "Core\\Providers\\GitHubRepositoryProvider.ahk",
+              "Core\\Providers\\GoogleOAuth.ahk",
+              "Core\\Providers\\GoogleDriveProvider.ahk",
+              "Core\\Providers\\OneDriveOAuth.ahk",
+              "Core\\Providers\\OneDriveProvider.ahk",
+              "Core\\Providers\\WebDavProvider.ahk",
+              "UI\\CloudSyncGui.ahk", "UI\\CloudSyncConflictGui.ahk"
+            )
+          }
+
+          foreach ($name in $groups.Keys) {
+            $probe = Join-Path $env:RUNNER_TEMP ("cloudsync-validate-" + $name + ".ahk")
+            $lines = @("#Requires AutoHotkey v2.0")
+            foreach ($path in $groups[$name]) {
+              $full = Join-Path $root $path
+              if (-not (Test-Path -LiteralPath $full)) { throw "Probe file missing: $path" }
+              $lines += '#Include "' + $full + '"'
+            }
+            Set-Content -LiteralPath $probe -Value $lines -Encoding utf8
+
+            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", $probe) -PassThru
+            if (-not $process.WaitForExit(15000)) {
+              try { $process.Kill() } catch {}
+              throw "Cloud Sync load validation timed out: $name"
+            }
+            if ($process.ExitCode -ne 0) {
+              throw "Cloud Sync load validation failed: $name (exit code $($process.ExitCode))"
+            }
+            Write-Host "Cloud Sync load validation passed: $name"
+          }
+
       - name: Compile main AHK script (x64)
         uses: benmusson/ahk2exe-action@v1
         with:
