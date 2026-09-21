@@ -30,6 +30,62 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
+      - name: Diagnose Cloud Sync dependency load
+        shell: pwsh
+        run: |
+          $root = (Get-Location).Path
+          $ahk = Join-Path $root "autohotkey\\AutoHotkey64.exe"
+          $main = Join-Path $root "CapsLock-.ahk"
+
+          function Test-Main($label) {
+            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-deps-" + $label + ".stderr")
+            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $main) -PassThru -RedirectStandardError $stderr
+            if (-not $process.WaitForExit(15000)) {
+              try { $process.Kill() } catch {}
+              Write-Host "TIMEOUT $label"
+              return $false
+            }
+            $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+            if ($process.ExitCode -ne 0) {
+              Write-Host "FAIL $label exit=$($process.ExitCode) $detail"
+              return $false
+            }
+            Write-Host "PASS $label"
+            return $true
+          }
+
+          if (Test-Main "baseline") {
+            throw "Unexpectedly no full-load timeout remains; inspect standard compile instead."
+          }
+
+          $candidates = @(
+            @{ name = "ConfigManager"; path = "Config\\ConfigManager.ahk"; token = "CloudSyncCoordinator.MarkLocalChanged()" },
+            @{ name = "QuickPhraseStore"; path = "Core\\QuickPhraseStore.ahk"; token = "CloudSyncCoordinator.MarkLocalChanged()" }
+          )
+          $resolved = @()
+
+          foreach ($candidate in $candidates) {
+            $path = Join-Path $root $candidate.path
+            $original = Get-Content -LiteralPath $path -Raw
+            $count = ([regex]::Matches($original, [regex]::Escape($candidate.token))).Count
+            if ($count -eq 0) { throw "Diagnostic token not found: $($candidate.path)" }
+            $neutralized = $original.Replace($candidate.token, "0 ; DIAGNOSTIC_NEUTRALIZED")
+            Set-Content -LiteralPath $path -Value $neutralized -Encoding utf8
+            try {
+              if (Test-Main ("without-" + $candidate.name)) {
+                $resolved += $candidate.name
+              }
+            } finally {
+              Set-Content -LiteralPath $path -Value $original -Encoding utf8
+            }
+          }
+
+          Write-Host "Dependencies whose neutralization removes the full-load timeout: $($resolved -join ', ')"
+          if ($resolved.Count -eq 0) {
+            throw "Neither known direct Cloud Sync Coordinator dependency reproduces the load timeout in isolation."
+          }
+          throw "Dependency isolation completed; use the successful neutralization result above to implement the next targeted fix."
+
       - name: Compile main AHK script (x64)
         uses: benmusson/ahk2exe-action@v1
         with:
