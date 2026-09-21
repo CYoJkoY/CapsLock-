@@ -69,7 +69,7 @@ jobs:
             $original = Get-Content -LiteralPath $path -Raw
             $count = ([regex]::Matches($original, [regex]::Escape($candidate.token))).Count
             if ($count -eq 0) { throw "Diagnostic token not found: $($candidate.path)" }
-            $neutralized = $original.Replace($candidate.token, "; DIAGNOSTIC_NEUTRALIZED")
+            $neutralized = $original.Replace($candidate.token, "Sleep(0)")
             Set-Content -LiteralPath $path -Value $neutralized -Encoding utf8
             try {
               if (Test-Main ("without-" + $candidate.name)) {
