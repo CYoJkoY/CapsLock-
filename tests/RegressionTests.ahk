@@ -274,6 +274,11 @@ RunTests() {
     )
 
     Assert(
+        InStr(source, "batchRefresh := layerHwnds.Length > 1") > 0,
+        "Window Hole single-layer updates must retain the immediate refresh path."
+    )
+
+    Assert(
         InStr(source, "static _RefreshWindow(") > 0
             && InStr(source, "forceNow := false") > 0
             && InStr(source, "redrawFlags |= 0x0080 | 0x0100") > 0,
@@ -309,6 +314,33 @@ RunTests() {
             && InStr(quickPhraseSource, "WantReturn") > 0
             && InStr(quickPhraseSource, "etxtEdit := myGui.Add") > 0,
         "The {{etxt}} variable is not configured as a multiline Edit control."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, 'normalEditOptions := "Multi WantReturn "') > 0
+            && InStr(quickPhraseSource, "normalEditOptions") > 0
+            && InStr(quickPhraseSource, '" r3"') > 0,
+        "Quick Phrase variable fields must accept multiline input."
+    )
+
+    pasteStart := InStr(quickPhraseSource, "QuickPhrasePasteText(")
+    pasteSource := pasteStart ? SubStr(quickPhraseSource, pasteStart) : ""
+    waitPos := InStr(pasteSource, "WinWaitActive")
+    sleepPos := InStr(pasteSource, "Sleep(100)")
+    sendPos := InStr(pasteSource, 'Send("^v")')
+    Assert(
+        waitPos > 0
+            && sleepPos > waitPos
+            && sendPos > sleepPos,
+        "Quick Phrase must allow the activated target to settle before Ctrl+V."
+    )
+
+    cloudSyncGuiSource := ReadSource("UI\\CloudSyncGui.ahk")
+    Assert(
+        InStr(cloudSyncGuiSource, 'myGui.OnEvent("Destroy"') == 0
+            && InStr(cloudSyncGuiSource, "CloseSettings(*)") > 0
+            && InStr(cloudSyncGuiSource, 'myGui.OnEvent("Close", CloseSettings)') > 0,
+        "Cloud Sync Settings must use valid GUI close events and centralized cleanup."
     )
 
     return true
