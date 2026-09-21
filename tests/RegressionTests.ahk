@@ -323,6 +323,26 @@ RunTests() {
         "Quick Phrase variable fields must accept multiline input."
     )
 
+    Assert(
+        InStr(quickPhraseSource, "QuickPhraseHandleHotkey(*)") > 0
+            && InStr(quickPhraseSource, "AppState.QuickPhraseWorkflowActive") > 0
+            && InStr(quickPhraseSource, "ShowQuickPhraseSelector(true)") > 0,
+        "Quick Phrase hotkey re-entry guard is missing."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, "QuickPhraseTargetWindow := target") > 0
+            && InStr(quickPhraseSource, "target := AppState.QuickPhraseTargetWindow") > 0,
+        "Quick Phrase workflow does not preserve a dedicated destination window."
+    )
+
+    hotkeySource := ReadSource("Hotkeys\\HotkeyBindings.ahk")
+    Assert(
+        InStr(hotkeySource, "+p:: QuickPhraseHandleHotkey()") > 0
+            && InStr(hotkeySource, "+p:: ShowQuickPhraseSelector()") == 0,
+        "CapsLock + Shift + P must use the guarded Quick Phrase entry point."
+    )
+
     pasteStart := InStr(quickPhraseSource, "QuickPhrasePasteText(")
     pasteSource := pasteStart ? SubStr(quickPhraseSource, pasteStart) : ""
     waitPos := InStr(pasteSource, "WinWaitActive")
