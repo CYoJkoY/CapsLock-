@@ -1,19 +1,17 @@
 #Requires AutoHotkey v2.0
 
 ShowQuickPhraseSelector(captureTarget := true) {
-    if captureTarget {
-        ; A Quick Phrase workflow owns its original destination for the entire
-        ; selection/input/paste transaction. Do not let a second selector
-        ; invocation recapture the currently focused GUI as the target.
-        if AppState.QuickPhraseWorkflowActive
-            return
+    ; The selector is only the browsing stage. A target is captured once for
+    ; the current selector session and is never replaced by another GUI.
+    if AppState.QuickPhraseTransactionActive
+        return
 
+    if captureTarget && !AppState.QuickPhraseTargetWindow {
         target := WinExist("A")
         if !target
             return
 
         AppState.QuickPhraseTargetWindow := target
-        AppState.QuickPhraseWorkflowActive := true
     }
 
     if IsObject(AppState.QuickPhraseGui) {
@@ -78,10 +76,8 @@ ShowQuickPhraseSelector(captureTarget := true) {
 CloseQuickPhraseSelector(myGui) {
     try myGui.Destroy()
     AppState.QuickPhraseGui := ""
-    AppState.QuickPhraseWorkflowActive := false
     AppState.QuickPhraseTargetWindow := 0
-    if !IsObject(AppState.QuickPhraseManagerGui)
-        AppState.TargetWindow := 0
+    AppState.QuickPhraseTransactionActive := false
 }
 
 QuickPhraseOpenManager(selectorGui) {
@@ -97,10 +93,17 @@ QuickPhraseRefreshSelector(myGui) {
     filter := StrLower(Trim(myGui.SearchBox.Text))
     list.Delete()
     count := 0
+    phrases := []
 
     for phrase in QuickPhraseStore.GetAll() {
-        if filter != "" && !InStr(StrLower(phrase.name " " phrase.content), filter)
+        if filter != "" && !InStr(StrLower(phrase.name " " phrase.category " " phrase.content), filter)
             continue
+        phrases.Push(phrase)
+    }
+
+    QuickPhraseSortSelectorPhrases(phrases)
+
+    for phrase in phrases {
         list.Add(, phrase.id, phrase.name, phrase.category, QuickPhrasePreview(phrase.content, 100))
         count += 1
     }
@@ -112,14 +115,63 @@ QuickPhraseRefreshSelector(myGui) {
         myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", count)
 }
 
+QuickPhraseSortSelectorPhrases(phrases) {
+    n := phrases.Length
+    if n <= 1
+        return
+
+    Loop n - 1 {
+        limit := n - A_Index
+        Loop limit {
+            index := A_Index
+            left := phrases[index]
+            right := phrases[index + 1]
+
+            if QuickPhraseCompareSelectorPhrases(left, right) > 0 {
+                phrases[index] := right
+                phrases[index + 1] := left
+            }
+        }
+    }
+}
+
+QuickPhraseCompareSelectorPhrases(left, right) {
+    leftCategory := Trim(left.category)
+    rightCategory := Trim(right.category)
+
+    if leftCategory == "" && rightCategory != ""
+        return 1
+    if leftCategory != "" && rightCategory == ""
+        return -1
+
+    categoryCompare := StrCompare(leftCategory, rightCategory, false)
+    if categoryCompare != 0
+        return categoryCompare
+
+    if left.order != right.order
+        return left.order < right.order ? -1 : 1
+
+    nameCompare := StrCompare(left.name, right.name, false)
+    if nameCompare != 0
+        return nameCompare
+
+    if left.id == right.id
+        return 0
+
+    return left.id < right.id ? -1 : 1
+}
+
 QuickPhraseHandleHotkey(*) {
-    if AppState.QuickPhraseWorkflowActive
+    if AppState.QuickPhraseTransactionActive
         return
 
     ShowQuickPhraseSelector(true)
 }
 
 QuickPhraseUseSelected(myGui) {
+    if AppState.QuickPhraseTransactionActive
+        return
+
     row := myGui.ListView.GetNext(0, "Focused")
     if !row
         row := myGui.ListView.GetNext(0)
@@ -140,22 +192,42 @@ QuickPhraseUseSelected(myGui) {
         return
     }
 
+    ; Enter the protected transaction only after the user actually selected a
+    ; phrase. The selector is hidden before the variable dialog is shown.
+    AppState.QuickPhraseTransactionActive := true
     myGui.Hide()
-    variables := QuickPhraseExtractVariables(phrase.content)
-    if variables.Length == 0 {
-        ok := QuickPhrasePasteText(phrase.content, target)
-    } else {
-        result := ShowQuickPhraseVariableDialog(phrase, variables)
-        if !result.ok {
-            myGui.Show()
-            WinActivate("ahk_id " myGui.Hwnd)
-            myGui.SearchBox.Focus()
-            return
+
+    finished := false
+    ok := false
+
+    try {
+        variables := QuickPhraseExtractVariables(phrase.content)
+
+        if variables.Length == 0 {
+            ok := QuickPhrasePasteText(phrase.content, target)
+        } else {
+            result := ShowQuickPhraseVariableDialog(phrase, variables)
+            if !result.ok
+                return
+
+            ok := QuickPhrasePasteText(result.text, target)
         }
-        ok := QuickPhrasePasteText(result.text, target)
+
+        finished := true
+    } finally {
+        if !finished {
+            AppState.QuickPhraseTransactionActive := false
+
+            try {
+                myGui.Show()
+                WinActivate("ahk_id " myGui.Hwnd)
+                myGui.SearchBox.Focus()
+            }
+        }
     }
 
     CloseQuickPhraseSelector(myGui)
+
     if !ok
         ShowToolTip(Lang("MSG_QUICK_PHRASE_PASTE_FAILED", "Could not insert the quick phrase."), 2200)
 }
@@ -457,6 +529,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     myGui.Show(
         "w680 h" (previewY + 185)
     )
+    WinActivate("ahk_id " myGui.Hwnd)
 
     if (
         variables.Length > 0
@@ -619,8 +692,13 @@ ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
     ConfigManager.Save()
 
-    if !AppState.QuickPhraseEnabled && IsObject(AppState.QuickPhraseGui)
+    if (
+        !AppState.QuickPhraseEnabled
+        && IsObject(AppState.QuickPhraseGui)
+        && !AppState.QuickPhraseTransactionActive
+    ) {
         CloseQuickPhraseSelector(AppState.QuickPhraseGui)
+    }
 
     key := AppState.QuickPhraseEnabled ? "MSG_QUICK_PHRASE_ENABLED" : "MSG_QUICK_PHRASE_DISABLED"
     ShowToolTip(Lang(key), 1800)
