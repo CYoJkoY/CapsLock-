@@ -66,11 +66,9 @@ jobs:
               }
             }
 
-            $dir = Join-Path $env:RUNNER_TEMP "capslock-validation"
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
-            $probe = Join-Path $dir "$name.ahk"
-            $stdout = Join-Path $dir "$name.stdout"
-            $stderr = Join-Path $dir "$name.stderr"
+            $probe = Join-Path (Get-Location) ".capslock-validation-$name.ahk"
+            $stdout = Join-Path $env:RUNNER_TEMP "$name.stdout"
+            $stderr = Join-Path $env:RUNNER_TEMP "$name.stderr"
             Set-Content -LiteralPath $probe -Value $candidate -Encoding UTF8
             Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
 
@@ -85,8 +83,8 @@ jobs:
               return "TIMEOUT"
             }
 
-            $err = if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
-            $out = if (Test-Path $stdout) { Get-Content -LiteralPath $stdout -Raw } else { "" }
+            [string]$err = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+            [string]$out = if (Test-Path -LiteralPath $stdout) { Get-Content -LiteralPath $stdout -Raw } else { "" }
             if ($err.Trim() -ne "") { Write-Host "stderr: $err" }
             if ($out.Trim() -ne "") { Write-Host "stdout: $out" }
             if ($process.ExitCode -eq 0) { return "PASS" }
@@ -111,3 +109,4 @@ jobs:
             throw "Expected the full Cloud Sync Include set to reproduce the validation hang; got $full"
           }
           Write-Host "Full set hangs, but no single new Include hangs. A combination is responsible."
+
