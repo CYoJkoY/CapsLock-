@@ -75,7 +75,7 @@ jobs:
               $lines = @($lines[0..($insertAt-1)] + ('#Include "' + $provider + '"') + $lines[$insertAt..($lines.Count-1)])
             }
 
-            $probe = Join-Path $env:RUNNER_TEMP ("cloudsync-main-" + $name + ".ahk")
+            $probe = Join-Path $root (".cloudsync-main-" + $name + ".ahk")
             $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-main-" + $name + ".stderr")
             Set-Content -LiteralPath $probe -Value $lines -Encoding utf8
 
@@ -86,8 +86,10 @@ jobs:
             }
             if ($process.ExitCode -ne 0) {
               $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+              Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
               throw "Full-context load validation failed: $name (exit code $($process.ExitCode)) $detail"
             }
+            Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
             Write-Host "Full-context load validation passed: $name"
           }
 
