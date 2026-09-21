@@ -73,9 +73,13 @@ ShowQuickPhraseSelector(captureTarget := true) {
     QuickPhraseRefreshSelector(myGui)
 }
 
-CloseQuickPhraseSelector(myGui) {
-    try myGui.Destroy()
+QuickPhraseDestroySelector(myGui) {
     AppState.QuickPhraseGui := ""
+    try myGui.Destroy()
+}
+
+CloseQuickPhraseSelector(myGui) {
+    QuickPhraseDestroySelector(myGui)
     AppState.QuickPhraseTargetWindow := 0
     AppState.QuickPhraseTransactionActive := false
 }
@@ -193,9 +197,10 @@ QuickPhraseUseSelected(myGui) {
     }
 
     ; Enter the protected transaction only after the user actually selected a
-    ; phrase. The selector is hidden before the variable dialog is shown.
+    ; phrase. The selector is destroyed before the variable dialog is shown.
+    ; The dedicated target state remains alive for the protected transaction.
     AppState.QuickPhraseTransactionActive := true
-    myGui.Hide()
+    QuickPhraseDestroySelector(myGui)
 
     finished := false
     ok := false
@@ -216,13 +221,12 @@ QuickPhraseUseSelected(myGui) {
         finished := true
     } finally {
         if !finished {
+            ; The original selector was destroyed at transaction start. If the
+            ; variable dialog is canceled or fails, recreate the selector from
+            ; the preserved QuickPhraseTargetWindow instead of reviving the
+            ; old GUI object.
             AppState.QuickPhraseTransactionActive := false
-
-            try {
-                myGui.Show()
-                WinActivate("ahk_id " myGui.Hwnd)
-                myGui.SearchBox.Focus()
-            }
+            ShowQuickPhraseSelector(false)
         }
     }
 

@@ -350,12 +350,20 @@ RunTests() {
         "Quick Phrase session does not preserve a dedicated destination window."
     )
 
+    useStart := InStr(quickPhraseSource, "QuickPhraseUseSelected(myGui)")
+    useEnd := InStr(quickPhraseSource, "QuickPhrasePreview(text, maxChars := 80)", useStart)
+    useSource := SubStr(quickPhraseSource, useStart, useEnd - useStart)
+
     Assert(
-        InStr(quickPhraseSource, "AppState.QuickPhraseTransactionActive := true") > 0
-            && InStr(quickPhraseSource, "myGui.Hide()") > 0
-            && InStr(quickPhraseSource, "ShowQuickPhraseVariableDialog(phrase, variables)") > 0
-            && InStr(quickPhraseSource, "AppState.QuickPhraseTransactionActive := false") > 0,
-        "Quick Phrase does not transition cleanly from selector to protected execution."
+        useStart > 0
+            && useEnd > useStart
+            && InStr(useSource, "AppState.QuickPhraseTransactionActive := true") > 0
+            && InStr(useSource, "QuickPhraseDestroySelector(myGui)") > 0
+            && InStr(useSource, "myGui.Hide()") == 0
+            && InStr(useSource, "ShowQuickPhraseVariableDialog(phrase, variables)") > 0
+            && InStr(useSource, "AppState.QuickPhraseTransactionActive := false") > 0
+            && InStr(useSource, "ShowQuickPhraseSelector(false)") > 0,
+        "Quick Phrase must destroy the selector at transaction start and recreate it only after cancellation/failure."
     )
 
     Assert(
@@ -370,8 +378,9 @@ RunTests() {
         selectorStart > 0
             && selectorEnd > selectorStart
             && InStr(selectorSource, "if captureTarget && !AppState.QuickPhraseTargetWindow") > 0
-            && InStr(selectorSource, "AppState.QuickPhraseTransactionActive") > 0,
-        "Quick Phrase selector must capture the destination only once and refuse execution-state re-entry."
+            && InStr(selectorSource, "AppState.QuickPhraseTransactionActive") > 0
+            && InStr(quickPhraseSource, "QuickPhraseDestroySelector(myGui)") > 0,
+        "Quick Phrase selector must capture the destination only once and support explicit destruction during execution."
     )
 
     hotkeySource := ReadSource("Hotkeys\\HotkeyBindings.ahk")
