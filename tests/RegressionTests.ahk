@@ -280,6 +280,31 @@ RunTests() {
         "Window Hole Chromium batch refresh support is missing."
     )
 
+    quickPhraseSource := ReadSource("UI\\QuickPhraseGui.ahk")
+    quickPhraseGlobalsSource := ReadSource("Config\\Globals.ahk")
+
+    Assert(
+        InStr(quickPhraseSource, "GetClipboardSequenceNumber") > 0
+            && InStr(quickPhraseSource, "QuickPhraseRestoreClipboard(generation)") > 0
+            && InStr(quickPhraseSource, "QuickPhraseClipboardRestoreGeneration") > 0,
+        "Quick Phrase clipboard restoration is not protected against stale asynchronous paste timing."
+    )
+
+    Assert(
+        InStr(quickPhraseGlobalsSource, "QuickPhraseClipboardRestorePending") > 0
+            && InStr(quickPhraseGlobalsSource, "QuickPhraseClipboardBackup") > 0
+            && InStr(quickPhraseGlobalsSource, "QuickPhraseClipboardRestoreDelay := 1000") > 0,
+        "Quick Phrase clipboard transaction state is missing."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, 'StrLower(Trim(name)) == "etxt"') > 0
+            && InStr(quickPhraseSource, '" r5"') > 0
+            && InStr(quickPhraseSource, "WantReturn") > 0
+            && InStr(quickPhraseSource, "etxtEdit := myGui.Add") > 0,
+        "The {{etxt}} variable is not configured as a multiline Edit control."
+    )
+
     return true
 }
 

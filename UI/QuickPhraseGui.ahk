@@ -184,59 +184,221 @@ QuickPhraseApplyVariables(template, values) {
 
 ShowQuickPhraseVariableDialog(phrase, variables) {
     result := {ok: false, text: ""}
-    rows := Integer((variables.Length + 1) / 2)
-    previewY := 102 + rows * 52
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_QUICK_PHRASE_VARIABLE_TITLE", "Fill phrase variables"))
+    ; etxt is the reserved free-form multiline variable. Keep ordinary
+    ; variables compact and place the multiline field on its own row.
+    normalVariables := []
+    etxtName := ""
+
+    for name in variables {
+        if (
+            StrLower(Trim(name)) == "etxt"
+            && etxtName == ""
+        ) {
+            etxtName := name
+        } else {
+            normalVariables.Push(name)
+        }
+    }
+
+    normalRows := 0
+    if normalVariables.Length > 0
+        normalRows := Integer((normalVariables.Length + 1) / 2)
+
+    normalBottomY := 96 + normalRows * 52
+
+    if etxtName != "" {
+        etxtLabelY := normalBottomY + 8
+        etxtEditY := etxtLabelY + 18
+        previewY := etxtEditY + 96 + 10
+    } else {
+        etxtLabelY := 0
+        etxtEditY := 0
+        previewY := 102 + normalRows * 52
+    }
+
+    myGui := Gui(
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_TITLE",
+            "Fill phrase variables"
+        )
+    )
+
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "✎ " Lang("GUI_QUICK_PHRASE_VARIABLE_TITLE", "Fill phrase variables"), 640)
-    ThemeHelper.AddSubtitle(
+
+    ThemeHelper.AddTitle(
         myGui,
-        Lang("GUI_QUICK_PHRASE_VARIABLE_HINT", "Fields follow first appearance order; repeated names are requested once."),
+        "✎ " Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_TITLE",
+            "Fill phrase variables"
+        ),
         640
     )
+
+    ThemeHelper.AddSubtitle(
+        myGui,
+        Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_HINT",
+            "Fields follow first appearance order; repeated names are requested once."
+        ),
+        640
+    )
+
     ThemeHelper.AddSeparator(myGui, 640)
 
     controls := []
-    for index, name in variables {
-        column := index <= rows ? 0 : 1
-        row := column ? index - rows : index
+    etxtControl := ""
+
+    ; Ordinary variables stay as compact single-line controls.
+    for index, name in normalVariables {
+        column := index <= normalRows ? 0 : 1
+        row := column ? index - normalRows : index
+
         x := 16 + column * 320
         y := 96 + (row - 1) * 52
 
-        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        myGui.Add("Text", "x" x " y" y " w300", name)
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        edit := myGui.Add("Edit", "x" x " y" (y + 18) " w300 r1 " ThemeHelper.GetEditOptions(), "")
+        myGui.SetFont(
+            "s9 c" AppState.THEME_FG_DIM,
+            AppState.THEME_FONT
+        )
+
+        myGui.Add(
+            "Text",
+            "x" x " y" y " w300",
+            name
+        )
+
+        myGui.SetFont(
+            "s10 c" AppState.THEME_FG,
+            AppState.THEME_FONT
+        )
+
+        edit := myGui.Add(
+            "Edit",
+            "x" x
+            " y" (y + 18)
+            " w300"
+            " r1 "
+            ThemeHelper.GetEditOptions(),
+            ""
+        )
+
         ThemeHelper.StyleEdit(edit)
-        controls.Push({name: name, edit: edit})
+
+        controls.Push({
+            name: name,
+            edit: edit
+        })
     }
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-    myGui.Add("Text", "x16 y" previewY, Lang("GUI_QUICK_PHRASE_PREVIEW", "Preview"))
+    ; etxt is intentionally multiline and full width so Enter inserts
+    ; real line breaks instead of accepting the dialog.
+    if etxtName != "" {
+        myGui.SetFont(
+            "s9 c" AppState.THEME_FG_DIM,
+            AppState.THEME_FONT
+        )
+
+        myGui.Add(
+            "Text",
+            "x16 y" etxtLabelY " w640",
+            etxtName
+        )
+
+        myGui.SetFont(
+            "s10 c" AppState.THEME_FG,
+            AppState.THEME_FONT
+        )
+
+        etxtEdit := myGui.Add(
+            "Edit",
+            "x16"
+            " y" etxtEditY
+            " w640"
+            " r5"
+            " VScroll"
+            " WantReturn "
+            ThemeHelper.GetEditOptions(),
+            ""
+        )
+
+        ThemeHelper.StyleEdit(etxtEdit)
+
+        etxtControl := {
+            name: etxtName,
+            edit: etxtEdit
+        }
+
+        controls.Push(etxtControl)
+    }
+
+    myGui.SetFont(
+        "s9 c" AppState.THEME_FG_DIM,
+        AppState.THEME_FONT
+    )
+
+    myGui.Add(
+        "Text",
+        "x16 y" previewY,
+        Lang(
+            "GUI_QUICK_PHRASE_PREVIEW",
+            "Preview"
+        )
+    )
+
     preview := myGui.Add(
         "Edit",
-        "x16 y" (previewY + 20) " w640 h120 ReadOnly VScroll Wrap " ThemeHelper.GetEditOptions(),
+        "x16"
+        " y" (previewY + 20)
+        " w640"
+        " h120"
+        " ReadOnly"
+        " VScroll"
+        " Wrap "
+        ThemeHelper.GetEditOptions(),
         phrase.content
     )
+
     ThemeHelper.StyleEdit(preview)
 
-    okBtn := ThemeHelper.AddButton(myGui, "Default w90 x456 y+12", "✓ " Lang("GUI_OK", "OK"), "primary")
-    cancelBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", "✕ " Lang("GUI_CANCEL", "Cancel"))
+    okBtn := ThemeHelper.AddButton(
+        myGui,
+        "Default w90 x456 y+12",
+        "✓ " Lang("GUI_OK", "OK"),
+        "primary"
+    )
+
+    cancelBtn := ThemeHelper.AddButton(
+        myGui,
+        "x+8 yp w90",
+        "✕ " Lang("GUI_CANCEL", "Cancel")
+    )
 
     RefreshPreview(*) {
         values := Map()
+
         for item in controls
             values[item.name] := item.edit.Text
-        preview.Value := QuickPhraseApplyVariables(phrase.content, values)
+
+        preview.Value := QuickPhraseApplyVariables(
+            phrase.content,
+            values
+        )
     }
 
     Accept(*) {
         values := Map()
+
         for item in controls
             values[item.name] := item.edit.Text
+
         result.ok := true
-        result.text := QuickPhraseApplyVariables(phrase.content, values)
+        result.text := QuickPhraseApplyVariables(
+            phrase.content,
+            values
+        )
+
         myGui.Destroy()
     }
 
@@ -245,17 +407,53 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     for item in controls
-        item.edit.OnEvent("Change", RefreshPreview)
-    okBtn.OnEvent("Click", Accept)
-    cancelBtn.OnEvent("Click", Cancel)
-    myGui.OnEvent("Escape", Cancel)
-    myGui.OnEvent("Close", Cancel)
+        item.edit.OnEvent(
+            "Change",
+            RefreshPreview
+        )
+
+    okBtn.OnEvent(
+        "Click",
+        Accept
+    )
+
+    cancelBtn.OnEvent(
+        "Click",
+        Cancel
+    )
+
+    myGui.OnEvent(
+        "Escape",
+        Cancel
+    )
+
+    myGui.OnEvent(
+        "Close",
+        Cancel
+    )
 
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
-    myGui.Show("w680 h" (previewY + 185))
-    controls[1].edit.Focus()
+
+    myGui.Show(
+        "w680 h" (previewY + 185)
+    )
+
+    if (
+        variables.Length > 0
+        && StrLower(Trim(variables[1])) == "etxt"
+        && IsObject(etxtControl)
+    ) {
+        etxtControl.edit.Focus()
+    } else if controls.Length > 0 {
+        controls[1].edit.Focus()
+    }
+
     RefreshPreview()
-    WinWaitClose("ahk_id " myGui.Hwnd)
+
+    WinWaitClose(
+        "ahk_id " myGui.Hwnd
+    )
+
     return result
 }
 
@@ -263,25 +461,134 @@ QuickPhrasePasteText(text, targetHwnd) {
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
 
-    savedClipboard := ClipboardAll()
+    backup := ""
+
     try {
+        ; Activate the destination before replacing the clipboard.
+        WinActivate("ahk_id " targetHwnd)
+
+        if !WinWaitActive(
+            "ahk_id " targetHwnd,
+            ,
+            1
+        )
+            return false
+
+        ; Preserve the original clipboard across overlapping Quick Phrase
+        ; transactions. If a previous transaction is still pending and its
+        ; clipboard has not changed, keep its original backup.
+        currentSequence := DllCall(
+            "GetClipboardSequenceNumber",
+            "UInt"
+        )
+
+        if (
+            AppState.QuickPhraseClipboardRestorePending
+            && currentSequence == AppState.QuickPhraseClipboardSequence
+            && IsObject(AppState.QuickPhraseClipboardBackup)
+        ) {
+            backup := AppState.QuickPhraseClipboardBackup
+        } else {
+            backup := ClipboardAll()
+        }
+
         AppState.IgnoreNextClipChange := true
         A_Clipboard := text
+
+        ; Clipboard assignment is synchronous, but ClipWait also protects
+        ; against a transient clipboard-provider delay on Windows.
         if !ClipWait(1)
             return false
-        WinActivate("ahk_id " targetHwnd)
-        if !WinWaitActive("ahk_id " targetHwnd, , 1)
-            return false
-        Sleep(80)
+
+        expected := A_Clipboard
+        sequence := DllCall(
+            "GetClipboardSequenceNumber",
+            "UInt"
+        )
+
+        AppState.QuickPhraseClipboardBackup := backup
+        AppState.QuickPhraseClipboardExpected := expected
+        AppState.QuickPhraseClipboardSequence := sequence
+
+        AppState.QuickPhraseClipboardRestoreGeneration += 1
+        generation := AppState.QuickPhraseClipboardRestoreGeneration
+        AppState.QuickPhraseClipboardRestorePending := true
+
+        ; Paste while the destination is active and before restoring the
+        ; original clipboard.
         Send("^v")
-        Sleep(120)
+
+        ; Do not restore the original clipboard synchronously. Some
+        ; applications read clipboard data asynchronously after Ctrl+V.
+        SetTimer(
+            () => QuickPhraseRestoreClipboard(generation),
+            -AppState.QuickPhraseClipboardRestoreDelay
+        )
+
         return true
     } catch {
+        if IsObject(backup) {
+            AppState.IgnoreNextClipChange := true
+            try A_Clipboard := backup
+        }
+
+        AppState.QuickPhraseClipboardRestorePending := false
+        AppState.QuickPhraseClipboardBackup := ""
+        AppState.QuickPhraseClipboardExpected := ""
+        AppState.QuickPhraseClipboardSequence := 0
+
         return false
-    } finally {
-        AppState.IgnoreNextClipChange := true
-        try A_Clipboard := savedClipboard
     }
+}
+
+QuickPhraseRestoreClipboard(generation) {
+    if !AppState.QuickPhraseClipboardRestorePending
+        return
+
+    if generation != AppState.QuickPhraseClipboardRestoreGeneration
+        return
+
+    currentSequence := DllCall(
+        "GetClipboardSequenceNumber",
+        "UInt"
+    )
+
+    ; A newer clipboard mutation belongs to the user or another application.
+    ; Never overwrite it with the old pre-Quick-Phrase clipboard.
+    if currentSequence != AppState.QuickPhraseClipboardSequence {
+        AppState.QuickPhraseClipboardRestorePending := false
+        AppState.QuickPhraseClipboardBackup := ""
+        AppState.QuickPhraseClipboardExpected := ""
+        AppState.QuickPhraseClipboardSequence := 0
+        return
+    }
+
+    if A_Clipboard != AppState.QuickPhraseClipboardExpected {
+        AppState.QuickPhraseClipboardRestorePending := false
+        AppState.QuickPhraseClipboardBackup := ""
+        AppState.QuickPhraseClipboardExpected := ""
+        AppState.QuickPhraseClipboardSequence := 0
+        return
+    }
+
+    backup := AppState.QuickPhraseClipboardBackup
+
+    AppState.IgnoreNextClipChange := true
+
+    try {
+        A_Clipboard := backup
+    } catch {
+        SetTimer(
+            () => QuickPhraseRestoreClipboard(generation),
+            -250
+        )
+        return
+    }
+
+    AppState.QuickPhraseClipboardRestorePending := false
+    AppState.QuickPhraseClipboardBackup := ""
+    AppState.QuickPhraseClipboardExpected := ""
+    AppState.QuickPhraseClipboardSequence := 0
 }
 
 ToggleQuickPhraseEnabled(*) {
