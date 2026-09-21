@@ -495,10 +495,12 @@ QuickPhrasePasteText(text, targetHwnd) {
         AppState.IgnoreNextClipChange := true
         A_Clipboard := text
 
-        ; Clipboard assignment is synchronous, but ClipWait also protects
-        ; against a transient clipboard-provider delay on Windows.
+        ; Clipboard assignment is normally synchronous, but ClipWait
+        ; protects against a transient clipboard-provider delay on Windows.
+        ; Throw here so the catch block restores the pre-Quick-Phrase
+        ; clipboard instead of returning with temporary text still installed.
         if !ClipWait(1)
-            return false
+            throw Error("Quick Phrase clipboard was not ready.")
 
         expected := A_Clipboard
         sequence := DllCall(
