@@ -15,7 +15,7 @@ class CloudSyncMerger {
             ? base["quickPhrases"]
             : []
         localPhrases := IsObject(localData) && localData.Has("quickPhrases")
-            ? local["quickPhrases"]
+            ? localData["quickPhrases"]
             : []
         remotePhrases := IsObject(remoteData) && remoteData.Has("quickPhrases")
             ? remote["quickPhrases"]
@@ -93,7 +93,7 @@ class CloudSyncMerger {
             for key in base
                 keys[key] := true
         if IsObject(localData) && localData is Map
-            for key in local
+            for key in localData
                 keys[key] := true
         if IsObject(remoteData) && remoteData is Map
             for key in remote
@@ -110,8 +110,8 @@ class CloudSyncMerger {
             hasRemote := IsObject(remoteData) && remoteData is Map && remoteData.Has(key)
 
             baseValue := hasBase ? base[key] : ""
-            localValue := hasLocal ? local[key] : ""
-            remoteValue := hasRemote ? remote[key] : ""
+            localValue := hasLocal ? localData[key] : ""
+            remoteValue := hasRemote ? remoteData[key] : ""
 
             mergedItem := this._MergeValue(
                 hasBase,
