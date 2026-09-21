@@ -20,7 +20,7 @@ jobs:
       - name: Install AutoHotkey
         uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:
-          version: '2.0.27'
+          version: '2.0.28'
 
       - name: Run regression tests
         shell: pwsh
@@ -30,48 +30,22 @@ jobs:
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
 
-      - name: Diagnose AHK validation source
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          git fetch origin main --depth=1
-          $ahk = (Resolve-Path ".\autohotkey\AutoHotkey64.exe").Path
+      - name: Compile main AHK script (x64)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-._ci.exe
+          target: x64
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-          function Test-Ahk([string]$name, [string]$path) {
-            $stdout = Join-Path $env:RUNNER_TEMP "$name.stdout"
-            $stderr = Join-Path $env:RUNNER_TEMP "$name.stderr"
-            Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
-            $p = Start-Process -FilePath $ahk -ArgumentList @("/validate","/ErrorStdOut=UTF-8",(Resolve-Path $path).Path) -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-            if (-not $p.WaitForExit(15000)) {
-              Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-              return "TIMEOUT"
-            }
-            [string]$err = if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
-            if ($err.Trim() -ne "") { Write-Host "$name stderr: $err" }
-            return "EXIT:$($p.ExitCode)"
-          }
-
-          git show origin/main:CapsLock-.ahk | Set-Content -LiteralPath ".\.ci-main-CapsLock-.ahk" -Encoding UTF8
-          $mainResult = Test-Ahk "main" ".\.ci-main-CapsLock-.ahk"
-          $prResult = Test-Ahk "pr" ".\CapsLock-.ahk"
-          Write-Host "Main branch script: $mainResult"
-          Write-Host "PR script: $prResult"
-
-          $languagePath = ".\Utils\Language.ahk"
-          $prLanguage = Get-Content -LiteralPath $languagePath -Raw
-          git show origin/main:Utils/Language.ahk | Set-Content -LiteralPath $languagePath -Encoding UTF8
-          try {
-            $languageBaseResult = Test-Ahk "pr-with-main-language" ".\CapsLock-.ahk"
-          } finally {
-            Set-Content -LiteralPath $languagePath -Value $prLanguage -Encoding UTF8
-          }
-          Write-Host "PR script with main Language.ahk: $languageBaseResult"
-
-          if ($mainResult -ne "EXIT:0") { throw "Main branch script did not validate successfully: $mainResult" }
-          if ($prResult -eq "TIMEOUT" -and $languageBaseResult -eq "EXIT:0") {
-            throw "Confirmed Utils/Language.ahk change reproduces the validation hang."
-          }
-          if ($prResult -eq "TIMEOUT") {
-            throw "PR script still times out, but swapping Language.ahk did not prove it; inspect remaining modified includes."
-          }
-          Write-Host "PR validation did not reproduce the reported hang."
+      - name: Compile main AHK script (x86)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-_ci_x86.exe
+          target: x86
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
