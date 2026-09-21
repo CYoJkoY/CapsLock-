@@ -45,10 +45,10 @@ class GoogleDriveProvider extends CloudSyncProvider {
             this._PersistTarget()
         }
 
+        url := "https://www.googleapis.com/drive/v3/files/" fileId "?alt=media"
         response := HttpClient.Request(
             "GET",
-            "https://www.googleapis.com/drive/v3/files/"
-                fileId "?alt=media",
+            url,
             Map(
                 "Authorization", "Bearer " GoogleOAuth.GetAccessToken()
             ),
@@ -111,10 +111,10 @@ class GoogleDriveProvider extends CloudSyncProvider {
             this._PersistTarget()
         }
 
+        url := "https://www.googleapis.com/upload/drive/v3/files/" fileId "?uploadType=media"
         response := HttpClient.Request(
             "PATCH",
-            "https://www.googleapis.com/upload/drive/v3/files/"
-                fileId "?uploadType=media",
+            url,
             Map(
                 "Authorization", "Bearer " GoogleOAuth.GetAccessToken(),
                 "Content-Type", "application/json"
@@ -147,13 +147,10 @@ class GoogleDriveProvider extends CloudSyncProvider {
 
     _FindFileId() {
         query := UriEncode("name='" this.FileName "' and trashed=false")
+        url := "https://www.googleapis.com/drive/v3/files?q=" query "&spaces=drive&pageSize=1&fields=files(id,name)"
         response := HttpClient.Request(
             "GET",
-            "https://www.googleapis.com/drive/v3/files"
-                "?q=" query
-                "&spaces=drive"
-                "&pageSize=1"
-                "&fields=files(id,name)",
+            url,
             Map(
                 "Authorization", "Bearer " GoogleOAuth.GetAccessToken()
             ),
@@ -176,10 +173,10 @@ class GoogleDriveProvider extends CloudSyncProvider {
     }
 
     _GetMetadata(fileId) {
+        url := "https://www.googleapis.com/drive/v3/files/" fileId "?fields=id,name,version,modifiedTime"
         response := HttpClient.Request(
             "GET",
-            "https://www.googleapis.com/drive/v3/files/"
-                fileId "?fields=id,name,version,modifiedTime",
+            url,
             Map(
                 "Authorization", "Bearer " GoogleOAuth.GetAccessToken()
             ),
@@ -190,8 +187,11 @@ class GoogleDriveProvider extends CloudSyncProvider {
         if !HttpClient.IsSuccess(response)
             return ""
 
-        try return Json.Parse(response.body)
-        catch return ""
+        try {
+            return Json.Parse(response.body)
+        } catch {
+            return ""
+        }
     }
 
     _PersistTarget() {
