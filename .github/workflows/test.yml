@@ -48,13 +48,13 @@ jobs:
               "Core\\CloudSyncStorage.ahk", "Core\\CloudSyncProvider.ahk",
               "Core\\CloudSyncProviderFactory.ahk", "Core\\CloudSyncCoordinator.ahk"
             )
-            "provider-gist" = @("Core\\Providers\\GitHubGistProvider.ahk")
-            "provider-github" = @("Core\\Providers\\GitHubRepositoryProvider.ahk")
-            "provider-google-oauth" = @("Core\\Providers\\GoogleOAuth.ahk")
-            "provider-google-drive" = @("Core\\Providers\\GoogleDriveProvider.ahk")
-            "provider-onedrive-oauth" = @("Core\\Providers\\OneDriveOAuth.ahk")
-            "provider-onedrive" = @("Core\\Providers\\OneDriveProvider.ahk")
-            "provider-webdav" = @("Core\\Providers\\WebDavProvider.ahk")
+            "provider-gist" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\GitHubGistProvider.ahk")
+            "provider-github" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\GitHubRepositoryProvider.ahk")
+            "provider-google-oauth" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\GoogleOAuth.ahk")
+            "provider-google-drive" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\GoogleDriveProvider.ahk")
+            "provider-onedrive-oauth" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\OneDriveOAuth.ahk")
+            "provider-onedrive" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\OneDriveProvider.ahk")
+            "provider-webdav" = @("Core\\CloudSyncProvider.ahk", "Core\\Providers\\WebDavProvider.ahk")
             "ui" = @(
               "UI\\CloudSyncGui.ahk", "UI\\CloudSyncConflictGui.ahk"
             )
@@ -87,13 +87,15 @@ jobs:
             }
             Set-Content -LiteralPath $probe -Value $lines -Encoding utf8
 
-            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", $probe) -PassThru
+            $stderr = Join-Path $env:RUNNER_TEMP ("cloudsync-validate-" + $name + ".stderr")
+            $process = Start-Process -FilePath $ahk -ArgumentList @("/validate", "/ErrorStdOut=UTF-8", $probe) -PassThru -RedirectStandardError $stderr
             if (-not $process.WaitForExit(15000)) {
               try { $process.Kill() } catch {}
               throw "Cloud Sync load validation timed out: $name"
             }
             if ($process.ExitCode -ne 0) {
-              throw "Cloud Sync load validation failed: $name (exit code $($process.ExitCode))"
+              $detail = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { "" }
+              throw "Cloud Sync load validation failed: $name (exit code $($process.ExitCode)) $detail"
             }
             Write-Host "Cloud Sync load validation passed: $name"
           }
