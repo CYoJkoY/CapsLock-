@@ -25,7 +25,7 @@ jobs:
       - name: Install AutoHotkey
         uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:
-          version: '2.0.27'
+          version: '2.0.28'
 
       - name: Run regression tests
         shell: pwsh
@@ -59,7 +59,7 @@ jobs:
           out: .\${{ matrix.output }}
           target: ${{ matrix.target }}
           compression: none
-          ahk-tag: v2.0.27
+          ahk-tag: v2.0.28
           ahk2exe-tag: Ahk2Exe1.1.37.02a2
           build-assets-folder: .\.ahk2exe-v2-action
           github-token: ${{ secrets.GITHUB_TOKEN }}
