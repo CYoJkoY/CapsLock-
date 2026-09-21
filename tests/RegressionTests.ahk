@@ -338,9 +338,11 @@ RunTests() {
 
     hotkeySource := ReadSource("Hotkeys\\HotkeyBindings.ahk")
     Assert(
-        InStr(hotkeySource, "+p:: QuickPhraseHandleHotkey()") > 0
+        InStr(hotkeySource, "CapsLockHotkeysAvailable()") > 0
+            && InStr(hotkeySource, "!AppState.QuickPhraseWorkflowActive") > 0
+            && InStr(hotkeySource, "+p:: QuickPhraseHandleHotkey()") > 0
             && InStr(hotkeySource, "+p:: ShowQuickPhraseSelector()") == 0,
-        "CapsLock + Shift + P must use the guarded Quick Phrase entry point."
+        "All CapsLock hotkeys must be suspended while a Quick Phrase workflow owns the active GUI."
     )
 
     pasteStart := InStr(quickPhraseSource, "QuickPhrasePasteText(")
