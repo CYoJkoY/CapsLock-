@@ -35,8 +35,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
     }
 
     GetTarget() {
-        return AppState.CloudSyncGitHubOwner "/" AppState.CloudSyncGitHubRepository
-            "/" AppState.CloudSyncGitHubPath "@" AppState.CloudSyncGitHubBranch
+        return AppState.CloudSyncGitHubOwner "/" AppState.CloudSyncGitHubRepository "/" AppState.CloudSyncGitHubPath "@" AppState.CloudSyncGitHubBranch
     }
 
     Download() {
