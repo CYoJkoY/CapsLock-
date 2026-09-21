@@ -109,7 +109,7 @@
 ~x up:: WindowHole.HandleXUp()
 
 #HotIf GetKeyState( "CapsLock", "P" ) && AppState.QuickPhraseEnabled
-    +p:: ShowQuickPhraseSelector()
+    +p:: QuickPhraseHandleHotkey()
 #HotIf
 
 
