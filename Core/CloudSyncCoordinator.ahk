@@ -563,14 +563,42 @@ class CloudSyncCoordinator {
             return false
         }
 
-        this._SetSuccessfulSync(revision, fingerprint, localHash, providerRevision)
+        ; A local edit may arrive while the provider upload is in flight.
+        ; Preserve dirty state when the current synchronized payload no longer
+        ; matches the payload that was uploaded.
+        localChangedDuringSync := true
+        try {
+            currentPackage := CloudSyncModel.FinalizePackage(
+                CloudSyncModel.BuildPackage()
+            )
+            localChangedDuringSync :=
+                currentPackage["integrity"]["contentHash"] != localHash
+        } catch {
+            ; Fail closed: if we cannot verify the current local payload,
+            ; retain dirty state so a later sync retries it.
+            localChangedDuringSync := true
+        }
+
+        this._SetSuccessfulSync(
+            revision,
+            fingerprint,
+            localHash,
+            providerRevision,
+            localChangedDuringSync
+        )
         return true
     }
 
-    static _SetSuccessfulSync(revision, fingerprint, localHash, providerRevision := "") {
+    static _SetSuccessfulSync(
+        revision,
+        fingerprint,
+        localHash,
+        providerRevision := "",
+        preserveDirty := false
+    ) {
         AppState.CloudSyncLastSuccess :=
             FormatTime(, "yyyy-MM-dd HH:mm:ss")
-        AppState.CloudSyncLocalDirty := false
+        AppState.CloudSyncLocalDirty := preserveDirty
         AppState.CloudSyncConflict := false
         AppState.CloudSyncLastError := ""
 
@@ -580,7 +608,11 @@ class CloudSyncCoordinator {
         CloudSyncState.Set("Sync", "lastLocalHash", localHash)
         CloudSyncState.Set("Sync", "lastSuccessfulSync", AppState.CloudSyncLastSuccess)
         CloudSyncState.Set("Sync", "lastProviderKey", this.GetProviderConfigKey())
-        CloudSyncState.Set("Sync", "localDirty", "0")
+        CloudSyncState.Set(
+            "Sync",
+            "localDirty",
+            preserveDirty ? "1" : "0"
+        )
         CloudSyncState.Set("Sync", "conflict", "0")
         CloudSyncState.Set("Sync", "lastError", "")
         try SetTimer(CloudSyncRetryTimer, 0)
