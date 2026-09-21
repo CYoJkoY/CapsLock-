@@ -12,7 +12,7 @@
 }
 
 CapsLockHotkeysAvailable() {
-    return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseWorkflowActive
+    return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
 }
 
 #HotIf CapsLockHotkeysAvailable()
