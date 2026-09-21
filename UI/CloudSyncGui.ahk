@@ -501,10 +501,15 @@ ShowCloudSyncSettings(*) {
         lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
             ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     ))
-    closeBtn.OnEvent("Click", (*) => myGui.Destroy())
-    myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    myGui.OnEvent("Close", (*) => myGui.Destroy())
-    myGui.OnEvent("Destroy", (*) => currentGui := "")
+    CloseSettings(*) {
+        currentGui := ""
+        myGui.Destroy()
+        return true
+    }
+
+    closeBtn.OnEvent("Click", CloseSettings)
+    myGui.OnEvent("Escape", CloseSettings)
+    myGui.OnEvent("Close", CloseSettings)
 
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
