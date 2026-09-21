@@ -526,10 +526,13 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
+    ; Gui.Show() displays and activates the variable-input window.
+    ; Do not issue a second WinActivate() against its HWND here: the GUI
+    ; manager may still be transitioning the window, and the extra activation
+    ; can raise "Target window not found" for an otherwise valid Gui object.
     myGui.Show(
         "w680 h" (previewY + 185)
     )
-    WinActivate("ahk_id " myGui.Hwnd)
 
     if (
         variables.Length > 0
