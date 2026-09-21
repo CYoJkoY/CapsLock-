@@ -40,7 +40,7 @@ class OneDriveProvider extends CloudSyncProvider {
         metadataResponse := HttpClient.Request(
             "GET",
             "https://graph.microsoft.com/v1.0/me/drive/root:/"
-                path
+                UriEncodePath(path)
                 "?$select=id,name,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl",
             Map(
                 "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
@@ -92,17 +92,28 @@ class OneDriveProvider extends CloudSyncProvider {
         if path == ""
             path := "CapsLock-/capslock-sync.json"
 
-        url := "https://graph.microsoft.com/v1.0/me/drive/root:/" path ":/content"
+        url := "https://graph.microsoft.com/v1.0/me/drive/root:/"
+            UriEncodePath(path)
+            ":/content"
+
+        headers := Map(
+            "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
+            "Content-Type", "application/json"
+        )
+
+        if expectedRevision != ""
+            headers["If-Match"] := expectedRevision
+
         response := HttpClient.Request(
             "PUT",
             url,
-            Map(
-                "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
-                "Content-Type", "application/json"
-            ),
+            headers,
             packageText,
             15000
         )
+
+        if response.status == 412
+            throw Error("The OneDrive sync file changed concurrently.")
 
         if !HttpClient.IsSuccess(response)
             throw Error("OneDrive upload failed. HTTP " response.status)

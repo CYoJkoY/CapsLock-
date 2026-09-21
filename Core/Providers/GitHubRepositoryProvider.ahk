@@ -46,7 +46,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         owner := AppState.CloudSyncGitHubOwner
         repo := AppState.CloudSyncGitHubRepository
 
-        url := this.ApiBase "/repos/" owner "/" repo "/contents/" path "?ref=" UriEncode(branch)
+        url := this.ApiBase "/repos/" owner "/" repo "/contents/" UriEncodePath(path) "?ref=" UriEncode(branch)
 
         response := HttpClient.Request(
             "GET",
@@ -114,7 +114,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
 
         response := HttpClient.Request(
             "PUT",
-            this.ApiBase "/repos/" owner "/" repo "/contents/" path,
+            this.ApiBase "/repos/" owner "/" repo "/contents/" UriEncodePath(path),
             this._Headers(token),
             Json.Stringify(body, false),
             15000
@@ -166,6 +166,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         headers["User-Agent"] := "CapsLock-CloudSync"
         headers["X-GitHub-Api-Version"] := "2026-03-10"
         headers["Authorization"] := "Bearer " token
+        headers["Content-Type"] := "application/json"
         return headers
     }
 

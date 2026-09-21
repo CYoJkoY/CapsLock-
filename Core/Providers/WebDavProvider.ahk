@@ -10,7 +10,7 @@ class WebDavProvider extends CloudSyncProvider {
 
         response := HttpClient.Request(
             "PROPFIND",
-            url,
+            this._BaseUrl(),
             this._Headers(),
             "",
             10000
@@ -64,13 +64,20 @@ class WebDavProvider extends CloudSyncProvider {
     Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
+        headers := this._Headers()
+        if expectedRevision != ""
+            headers["If-Match"] := expectedRevision
+
         response := HttpClient.Request(
             "PUT",
             this._Url(),
-            this._Headers(),
+            headers,
             packageText,
             15000
         )
+
+        if response.status == 412
+            throw Error("The WebDAV sync target changed concurrently.")
 
         if !HttpClient.IsSuccess(response)
             throw Error("WebDAV upload failed. HTTP " response.status)
@@ -90,12 +97,21 @@ class WebDavProvider extends CloudSyncProvider {
         return true
     }
 
+    _BaseUrl() {
+        return RTrim(Trim(AppState.CloudSyncWebDavUrl), "/")
+    }
+
     _Url() {
-        base := RTrim(Trim(AppState.CloudSyncWebDavUrl), "/")
+        base := this._BaseUrl()
         path := Trim(AppState.CloudSyncWebDavPath, "/")
         if base == ""
             return ""
-        return path == "" ? base "/capslock-sync.json" : base "/" path
+
+        encodedPath := path == ""
+            ? "capslock-sync.json"
+            : UriEncodePath(path)
+
+        return base "/" encodedPath
     }
 
     _Headers() {

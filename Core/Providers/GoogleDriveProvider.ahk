@@ -111,6 +111,19 @@ class GoogleDriveProvider extends CloudSyncProvider {
             this._PersistTarget()
         }
 
+        ; Drive v3 exposes a monotonically increasing file version, but the
+        ; upload API does not document an equivalent atomic compare-and-write
+        ; parameter. Re-check the version immediately before the upload.
+        if expectedRevision != "" {
+            currentMetadata := this._GetMetadata(fileId)
+            if !IsObject(currentMetadata)
+                throw Error("Could not revalidate the Google Drive sync file before upload.")
+
+            currentVersion := currentMetadata.Get("version", "")
+            if currentVersion == "" || currentVersion != expectedRevision
+                throw Error("The Google Drive sync file changed concurrently.")
+        }
+
         url := "https://www.googleapis.com/upload/drive/v3/files/" fileId "?uploadType=media"
         response := HttpClient.Request(
             "PATCH",

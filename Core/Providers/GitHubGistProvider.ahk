@@ -91,7 +91,8 @@ class GitHubGistProvider extends CloudSyncProvider {
             exists: true,
             text: content,
             fingerprint: fingerprint,
-            revision: revision
+            revision: revision,
+            providerRevision: this._Header(response.headers, "ETag")
         }
     }
 
@@ -129,6 +130,19 @@ class GitHubGistProvider extends CloudSyncProvider {
             AppState.CloudSyncTarget := String(gist["id"])
             this._PersistTarget()
         } else {
+            ; GitHub Gist update has no documented server-side SHA compare-and-write
+            ; parameter. Revalidate the resource immediately before PATCH when the
+            ; last observed HTTP ETag is available.
+            if expectedRevision != "" {
+                current := this._GetGist(AppState.CloudSyncTarget)
+                if !HttpClient.IsSuccess(current)
+                    throw Error("Could not revalidate the configured GitHub Gist before upload.")
+
+                currentRevision := this._Header(current.headers, "ETag")
+                if currentRevision == "" || currentRevision != expectedRevision
+                    throw Error("The GitHub Gist changed concurrently.")
+            }
+
             response := HttpClient.Request(
                 "PATCH",
                 this.ApiBase "/gists/" AppState.CloudSyncTarget,
@@ -149,6 +163,16 @@ class GitHubGistProvider extends CloudSyncProvider {
             ? package["revision"]["id"]
             : ""
 
+        providerRevision := this._Header(response.headers, "ETag")
+        if providerRevision == "" && AppState.CloudSyncTarget != "" {
+            try {
+                refreshed := this._GetGist(AppState.CloudSyncTarget)
+                if HttpClient.IsSuccess(refreshed)
+                    providerRevision := this._Header(refreshed.headers, "ETag")
+            } catch {
+            }
+        }
+
         return {
             ok: true,
             fingerprint: fingerprint != "" ? fingerprint : (
@@ -156,7 +180,8 @@ class GitHubGistProvider extends CloudSyncProvider {
                     ? package["integrity"]["contentHash"]
                     : ""
             ),
-            revision: revision
+            revision: revision,
+            providerRevision: providerRevision
         }
     }
 
@@ -192,6 +217,13 @@ class GitHubGistProvider extends CloudSyncProvider {
             return Json.Parse(text)
         catch
             return ""
+    }
+
+    _Header(headersText, name) {
+        pattern := "im)^\s*" RegExEscape(name) "\s*:\s*(.*?)\s*$"
+        if RegExMatch(headersText, pattern, &match)
+            return Trim(match[1])
+        return ""
     }
 
     _ErrorMessage(response, fallback) {

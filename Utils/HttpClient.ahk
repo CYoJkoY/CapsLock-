@@ -65,3 +65,16 @@ UriEncode(text) {
 
     return result
 }
+
+UriEncodePath(text) {
+    segments := StrSplit(String(text), "/")
+    encoded := ""
+
+    for segment in segments {
+        if encoded != ""
+            encoded .= "/"
+        encoded .= UriEncode(segment)
+    }
+
+    return encoded
+}
