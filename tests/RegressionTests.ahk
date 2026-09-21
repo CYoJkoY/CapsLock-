@@ -325,25 +325,49 @@ RunTests() {
 
     Assert(
         InStr(quickPhraseSource, "QuickPhraseHandleHotkey(*)") > 0
-            && InStr(quickPhraseSource, "AppState.QuickPhraseWorkflowActive") > 0
+            && InStr(quickPhraseSource, "AppState.QuickPhraseTransactionActive") > 0
             && InStr(quickPhraseSource, "ShowQuickPhraseSelector(true)") > 0,
-        "Quick Phrase hotkey re-entry guard is missing."
+        "Quick Phrase transaction guard is missing."
     )
 
     Assert(
         InStr(quickPhraseSource, "QuickPhraseTargetWindow := target") > 0
-            && InStr(quickPhraseSource, "target := AppState.QuickPhraseTargetWindow") > 0,
-        "Quick Phrase workflow does not preserve a dedicated destination window."
+            && InStr(quickPhraseSource, "target := AppState.QuickPhraseTargetWindow") > 0
+            && InStr(quickPhraseSource, "!AppState.QuickPhraseTargetWindow") > 0,
+        "Quick Phrase session does not preserve a dedicated destination window."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, "AppState.QuickPhraseTransactionActive := true") > 0
+            && InStr(quickPhraseSource, "myGui.Hide()") > 0
+            && InStr(quickPhraseSource, "ShowQuickPhraseVariableDialog(phrase, variables)") > 0
+            && InStr(quickPhraseSource, "AppState.QuickPhraseTransactionActive := false") > 0,
+        "Quick Phrase does not transition cleanly from selector to protected execution."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, 'InStr(quickPhraseSource, "AppState.TargetWindow := 0")') == 0,
+        "Quick Phrase selector must not clear the global paste target."
+    )
+
+    selectorStart := InStr(quickPhraseSource, "ShowQuickPhraseSelector(captureTarget := true)")
+    selectorEnd := InStr(quickPhraseSource, "CloseQuickPhraseSelector(myGui)", selectorStart)
+    selectorSource := SubStr(quickPhraseSource, selectorStart, selectorEnd - selectorStart)
+    Assert(
+        selectorStart > 0
+            && selectorEnd > selectorStart
+            && InStr(selectorSource, "if captureTarget && !AppState.QuickPhraseTargetWindow") > 0
+            && InStr(selectorSource, "AppState.QuickPhraseTransactionActive") > 0,
+        "Quick Phrase selector must capture the destination only once and refuse execution-state re-entry."
     )
 
     hotkeySource := ReadSource("Hotkeys\\HotkeyBindings.ahk")
     Assert(
         InStr(hotkeySource, "CapsLockHotkeysAvailable()") > 0
-            && InStr(hotkeySource, "!AppState.QuickPhraseWorkflowActive") > 0
-            && InStr(hotkeySource, '#HotIf GetKeyState( "CapsLock", "P" )') == 0
+            && InStr(hotkeySource, "!AppState.QuickPhraseTransactionActive") > 0
             && InStr(hotkeySource, "+p:: QuickPhraseHandleHotkey()") > 0
             && InStr(hotkeySource, "+p:: ShowQuickPhraseSelector()") == 0,
-        "All CapsLock hotkeys must be suspended while a Quick Phrase workflow owns the active GUI."
+        "CapsLock shortcuts must be suspended only during the protected Quick Phrase transaction."
     )
 
     pasteStart := InStr(quickPhraseSource, "QuickPhrasePasteText(")
@@ -356,6 +380,22 @@ RunTests() {
             && sleepPos > waitPos
             && sendPos > sleepPos,
         "Quick Phrase must allow the activated target to settle before Ctrl+V."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, "QuickPhraseSortSelectorPhrases(phrases)") > 0
+            && InStr(quickPhraseSource, "QuickPhraseCompareSelectorPhrases(left, right)") > 0
+            && InStr(quickPhraseSource, "leftCategory := Trim(left.category)") > 0
+            && InStr(quickPhraseSource, "rightCategory := Trim(right.category)") > 0
+            && InStr(quickPhraseSource, "left.order") > 0,
+        "Quick Phrase selector does not use category-first default sorting."
+    )
+
+    Assert(
+        InStr(quickPhraseSource, 'if leftCategory == "" && rightCategory != ""') > 0
+            && InStr(quickPhraseSource, 'if leftCategory != "" && rightCategory == ""') > 0
+            && InStr(quickPhraseSource, "StrCompare(leftCategory, rightCategory, false)") > 0,
+        "Quick Phrase selector category sorting must place empty categories last and compare categories case-insensitively."
     )
 
     cloudSyncGuiSource := ReadSource("UI\\CloudSyncGui.ahk")
