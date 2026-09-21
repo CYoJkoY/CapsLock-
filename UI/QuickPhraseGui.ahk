@@ -92,7 +92,7 @@ CloseQuickPhraseSelector(myGui) {
     if !AppState.QuickPhraseTransactionActive
         AppState.QuickPhrasePasteTarget := ""
 
-    AppState.QuickPhraseTransactionActive := false
+    return true
 }
 
 QuickPhraseOpenManager(selectorGui) {
@@ -192,18 +192,12 @@ QuickPhraseHandleHotkey(*) {
 
 QuickPhraseCaptureFocusTarget() {
     windowHwnd := WinExist("A")
+
     if !windowHwnd
         return ""
 
-    controlHwnd := 0
-    try
-        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
-    catch
-        controlHwnd := 0
-
     return {
-        window: windowHwnd,
-        control: controlHwnd
+        window: windowHwnd
     }
 }
 
@@ -253,43 +247,67 @@ QuickPhraseUseSelected(selectorGui) {
 }
 
 QuickPhraseExecutePhrase(phrase, pasteTarget) {
-    finished := false
     ok := false
+    reopenSelector := false
+    errorMessage := ""
 
     try {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(phrase.content, pasteTarget)
+            ok := QuickPhrasePasteText(
+                phrase.content,
+                pasteTarget
+            )
         } else {
-            ; The variable dialog is an input stage only. The original focus
-            ; destination remains captured separately and is never activated.
             result := ShowQuickPhraseVariableDialog(
                 phrase,
                 variables
             )
-            if !result.ok
+
+            if !result.ok {
+                reopenSelector := result.cancelled
                 return
+            }
 
-            ok := QuickPhrasePasteText(result.text, pasteTarget)
+            ok := QuickPhrasePasteText(
+                result.text,
+                pasteTarget
+            )
         }
-
-        finished := true
+    } catch as err {
+        errorMessage := err.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhrasePasteTarget := ""
 
-        if !finished {
-            if IsObject(pasteTarget)
-                ShowQuickPhraseSelector(false)
-            else
-                AppState.QuickPhrasePasteTarget := ""
-        } else {
-            AppState.QuickPhrasePasteTarget := ""
+        ; Only an explicit user cancellation is allowed
+        ; to reopen the selector.
+        if reopenSelector {
+            SetTimer(
+                () => ShowQuickPhraseSelector(false),
+                -1
+            )
         }
     }
 
-    if !ok
-        ShowToolTip(Lang("MSG_QUICK_PHRASE_PASTE_FAILED", "Could not insert the quick phrase."), 2200)
+    if errorMessage != "" {
+        ShowToolTip(
+            errorMessage,
+            2200
+        )
+        return
+    }
+
+    if !ok {
+        ShowToolTip(
+            Lang(
+                "MSG_QUICK_PHRASE_PASTE_FAILED",
+                "Could not insert the quick phrase."
+            ),
+            2200
+        )
+    }
 }
 
 QuickPhrasePreview(text, maxChars := 80) {
@@ -333,7 +351,11 @@ QuickPhraseApplyVariables(template, values) {
 }
 
 ShowQuickPhraseVariableDialog(phrase, variables) {
-    result := {ok: false, text: ""}
+    result := {
+        ok: false,
+        cancelled: false,
+        text: ""
+    }
 
     ; etxt is the reserved free-form multiline variable. Keep ordinary
     ; variables compact and place the multiline field on its own row.
@@ -540,22 +562,32 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     Accept(*) {
+        if result.ok
+            return true
+
         values := Map()
 
         for item in controls
             values[item.name] := item.edit.Text
 
         result.ok := true
+        result.cancelled := false
         result.text := QuickPhraseApplyVariables(
             phrase.content,
             values
         )
 
         QuickPhraseDestroyVariableDialog(myGui)
+
+        return true
     }
 
     Cancel(*) {
+        result.cancelled := true
+
         QuickPhraseDestroyVariableDialog(myGui)
+
+        return true
     }
 
     for item in controls
@@ -619,7 +651,6 @@ QuickPhrasePasteText(text, pasteTarget) {
         return false
 
     targetHwnd := pasteTarget.window
-    controlHwnd := pasteTarget.control
 
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
@@ -627,9 +658,8 @@ QuickPhrasePasteText(text, pasteTarget) {
     backup := ""
 
     try {
-        ; Never reactivate the original window. The captured focus control
-        ; receives Ctrl+V directly, leaving the user's current foreground
-        ; window unchanged.
+        ; The selector and variable dialog are temporary UI stages. Restore
+        ; the original destination only when the completed phrase is ready.
 
         ; Preserve the original clipboard across overlapping Quick Phrase
         ; transactions. If a previous transaction is still pending and its
@@ -659,6 +689,11 @@ QuickPhrasePasteText(text, pasteTarget) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
+        if A_Clipboard != text
+            throw Error(
+                "Quick Phrase clipboard content did not match the requested text."
+            )
+
         expected := A_Clipboard
         sequence := DllCall(
             "GetClipboardSequenceNumber",
@@ -673,15 +708,28 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Send Ctrl+V to the control which had focus when Quick Phrase started.
-        ; ControlSend posts keyboard messages without activating the target.
+        ; Re-activate the original destination only at the final insertion
+        ; stage. The current foreground state then supplies the real focus
+        ; after all temporary Quick Phrase windows have been destroyed.
         try {
-            if controlHwnd
-                ControlSend("^v", controlHwnd, "ahk_id " targetHwnd)
-            else
-                ControlSend("^v",, "ahk_id " targetHwnd)
+            WinActivate("ahk_id " targetHwnd)
+
+            if !WinWaitActive(
+                "ahk_id " targetHwnd,
+                ,
+                0.5
+            ) {
+                throw Error(
+                    "Quick Phrase target window could not be activated."
+                )
+            }
+
+            Sleep(30)
+            Send("^v")
         } catch {
-            throw Error("Quick Phrase focus target could not receive paste.")
+            throw Error(
+                "Quick Phrase target window could not receive paste."
+            )
         }
 
         ; Do not restore the original clipboard synchronously. Some
