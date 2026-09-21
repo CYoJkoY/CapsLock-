@@ -58,6 +58,7 @@ class CloudSyncCoordinator {
     static StopAutoSync() {
         try SetTimer(CloudSyncAutoSyncTimer, 0)
         try SetTimer(CloudSyncDebounceTimer, 0)
+        try SetTimer(CloudSyncRetryTimer, 0)
         this.PendingAutoSync := false
     }
 
@@ -549,6 +550,9 @@ class CloudSyncCoordinator {
         CloudSyncState.Set("Sync", "localDirty", "0")
         CloudSyncState.Set("Sync", "conflict", "0")
         CloudSyncState.Set("Sync", "lastError", "")
+        try SetTimer(CloudSyncRetryTimer, 0)
+        catch {
+        }
         this._SetState("idle")
         this.RetryCount := 0
     }

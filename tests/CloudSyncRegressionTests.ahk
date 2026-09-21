@@ -3,9 +3,25 @@
 #Include "..\Config\Globals.ahk"
 #Include "..\Utils\Json.ahk"
 #Include "..\Utils\Hash.ahk"
+#Include "..\Utils\Base64.ahk"
+#Include "..\Utils\HttpClient.ahk"
+#Include "..\Utils\SecureStorage.ahk"
 #Include "..\Core\CloudSyncIdentity.ahk"
+#Include "..\Core\CloudSyncCredentials.ahk"
+#Include "..\Core\CloudSyncState.ahk"
 #Include "..\Core\CloudSyncModel.ahk"
 #Include "..\Core\CloudSyncMerger.ahk"
+#Include "..\Core\CloudSyncProvider.ahk"
+#Include "..\Core\CloudSyncProviderFactory.ahk"
+#Include "..\Core\Providers\GitHubGistProvider.ahk"
+#Include "..\Core\Providers\GitHubRepositoryProvider.ahk"
+#Include "..\Core\Providers\GoogleOAuth.ahk"
+#Include "..\Core\Providers\GoogleDriveProvider.ahk"
+#Include "..\Core\Providers\OneDriveOAuth.ahk"
+#Include "..\Core\Providers\OneDriveProvider.ahk"
+#Include "..\Core\Providers\WebDavProvider.ahk"
+#Include "..\Core\CloudSyncStorage.ahk"
+#Include "..\Core\CloudSyncCoordinator.ahk"
 
 Assert(condition, message) {
     if !condition
@@ -181,6 +197,75 @@ RunTests() {
         provider := CloudSyncProviderFactory.Create(providerName)
         Assert(IsObject(provider), "Provider factory returned no adapter for " providerName ".")
     }
+
+    Assert(
+        UriEncodePath("folder/my file.json") == "folder/my%20file.json"
+            && UriEncodePath("同步/配置#.json") == "%E5%90%8C%E6%AD%A5/%E9%85%8D%E7%BD%AE%23.json",
+        "Path URL encoding failed."
+    )
+
+    testProvider := {
+        Name: "gist",
+        Disconnected: false
+    }
+    testProvider.Disconnect := (*) => testProvider.Disconnected := true
+    CloudSyncCoordinator.Provider := testProvider
+    AppState.CloudSyncProvider := "webdav"
+    switched := CloudSyncCoordinator._GetProvider()
+    Assert(
+        switched.Name == "webdav"
+            && testProvider.Disconnected,
+        "Cached Cloud Sync provider was not invalidated when the provider changed."
+    )
+    CloudSyncCoordinator.Provider := ""
+
+    stateSource := FileRead(A_ScriptDir "\..\Core\CloudSyncState.ahk", "UTF-8")
+    configSource := FileRead(A_ScriptDir "\..\Config\ConfigManager.ahk", "UTF-8")
+    coordinatorSource := FileRead(A_ScriptDir "\..\Core\CloudSyncCoordinator.ahk", "UTF-8")
+    gistSource := FileRead(A_ScriptDir "\..\Core\Providers\GitHubGistProvider.ahk", "UTF-8")
+    driveSource := FileRead(A_ScriptDir "\..\Core\Providers\GoogleDriveProvider.ahk", "UTF-8")
+    oneDriveSource := FileRead(A_ScriptDir "\..\Core\Providers\OneDriveProvider.ahk", "UTF-8")
+    webDavSource := FileRead(A_ScriptDir "\..\Core\Providers\WebDavProvider.ahk", "UTF-8")
+    rootSource := ReadRootSource()
+
+    Assert(
+        InStr(rootSource, "CloudSyncIdentity.Initialize()") > 0
+            && InStr(rootSource, "CloudSyncState.Initialize()") > 0
+            && InStr(rootSource, "CloudSyncCoordinator.Initialize()") > 0,
+        "Cloud Sync startup initialization is not wired into the application entry point."
+    )
+    Assert(
+        InStr(configSource, "CloudSyncCoordinator.MarkLocalChanged()") == 0,
+        "ConfigManager.Load must not mark local data dirty."
+    )
+    Assert(
+        InStr(stateSource, 'this.Set("Sync", "localDirty", "0")') > 0,
+        "Cloud Sync metadata reset does not clear the persistent localDirty flag."
+    )
+    Assert(
+        InStr(coordinatorSource, "CloudSyncDebounceTimer") > 0
+            && InStr(coordinatorSource, "SetTimer(CloudSyncAutoSyncTimer, intervalMs)") > 0,
+        "Automatic sync debounce and periodic timers are not separated."
+    )
+    Assert(
+        InStr(gistSource, "expectedRevision") > 0
+            && InStr(gistSource, 'providerRevision: this._Header(response.headers, "ETag")') > 0,
+        "GitHub Gist provider does not preserve and revalidate its provider revision."
+    )
+    Assert(
+        InStr(driveSource, "currentVersion != expectedRevision") > 0,
+        "Google Drive provider does not revalidate its version before upload."
+    )
+    Assert(
+        InStr(oneDriveSource, 'headers["If-Match"] := expectedRevision') > 0
+            && InStr(oneDriveSource, "response.status == 412") > 0,
+        "OneDrive provider does not enforce eTag compare-and-write."
+    )
+    Assert(
+        InStr(webDavSource, "this._BaseUrl()") > 0
+            && InStr(webDavSource, 'headers["If-Match"] := expectedRevision') > 0,
+        "WebDAV provider is missing base-target validation or conditional writes."
+    )
 
     rootSource := ReadRootSource()
     Assert(
