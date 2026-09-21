@@ -92,11 +92,10 @@ class OneDriveProvider extends CloudSyncProvider {
         if path == ""
             path := "CapsLock-/capslock-sync.json"
 
+        url := "https://graph.microsoft.com/v1.0/me/drive/root:/" path ":/content"
         response := HttpClient.Request(
             "PUT",
-            "https://graph.microsoft.com/v1.0/me/drive/root:/"
-                path
-                ":/content",
+            url,
             Map(
                 "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
                 "Content-Type", "application/json"
