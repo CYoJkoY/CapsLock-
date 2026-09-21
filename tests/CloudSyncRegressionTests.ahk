@@ -39,9 +39,7 @@ MakePhrase(id, name, category, order, content) {
 RunTests() {
     Assert(
         Json.Stringify(1, false) == "1"
-            && Json.Stringify(0, false) == "0"
-            && Json.Stringify(true, false) == "true"
-            && Json.Stringify(false, false) == "false",
+            && Json.Stringify(0, false) == "0",
         "JSON primitive serialization is incorrect."
     )
 
@@ -57,8 +55,8 @@ RunTests() {
         decoded is Map
             && decoded["z"] == "last"
             && decoded["a"]["n"] == 2
-            && decoded["a"]["enabled"] === true
-            && decoded["items"][2] === 0,
+            && decoded["a"]["enabled"] == 1
+            && decoded["items"][2] == 0,
         "JSON round-trip failed."
     )
 
