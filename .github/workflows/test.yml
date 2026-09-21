@@ -40,9 +40,10 @@ jobs:
 
           & $ahk /validate /ErrorStdOut=UTF-8 $main 2> $stderr
           $exitCode = $LASTEXITCODE
+          $detail = ""
           if (Test-Path -LiteralPath $stderr) {
             $detail = Get-Content -LiteralPath $stderr -Raw
-            if ($detail.Trim() -ne "") {
+            if ($null -ne $detail -and $detail.Trim() -ne "") {
               Write-Host $detail
             }
           }
