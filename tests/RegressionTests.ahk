@@ -280,6 +280,12 @@ RunTests() {
         "Window Hole Chromium batch refresh support is missing."
     )
 
+    Assert(
+        InStr(oneDriveOAuthSource, 'DllCall("GetTickCount64", "UInt64")') > 0
+            && InStr(oneDriveOAuthSource, "A_TickCount64") == 0,
+        "OneDrive OAuth expiration tracking must use a supported monotonic tick API."
+    )
+
     quickPhraseSource := ReadSource("UI\\QuickPhraseGui.ahk")
     quickPhraseGlobalsSource := ReadSource("Config\\Globals.ahk")
 
