@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   regression:
+    name: Regression Tests
     runs-on: windows-latest
 
     steps:
@@ -24,7 +25,7 @@ jobs:
       - name: Install AutoHotkey
         uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:
-          version: '2.0.28'
+          version: '2.0.27'
 
       - name: Run regression tests
         shell: pwsh
@@ -37,121 +38,28 @@ jobs:
   compile:
     name: Compile (${{ matrix.target }})
     runs-on: windows-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     strategy:
       fail-fast: true
       matrix:
         include:
           - target: x64
-            base: AutoHotkey64.exe
-            output: CapsLock-._ci.exe
+            output: build\CapsLock-._ci.exe
           - target: x86
-            base: AutoHotkey32.exe
-            output: CapsLock-_ci_x86.exe
+            output: build\CapsLock-_ci_x86.exe
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install AutoHotkey and Ahk2Exe
-        id: install-ahk
-        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+      - name: Compile AutoHotkey script
+        uses: benmusson/ahk2exe-action@v1
         with:
-          version: '2.0.28'
-          compiler: 'Ahk2Exe1.1.37.02a2'
-
-      - name: Install AutoHotkey 2.0.27 validation runtime
-        id: install-validator
-        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
-        with:
-          version: '2.0.27'
-          destination: 'compiler-validator'
-
-      - name: Diagnose AutoHotkey validation path
-        if: matrix.target == 'x64'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\autohotkey\AutoHotkey64.exe"
-          $root = Join-Path $env:GITHUB_WORKSPACE "CapsLock-.ahk"
-          $probe = Join-Path $env:RUNNER_TEMP "ahk-validate-probe.ahk"
-          $ilib = Join-Path $env:RUNNER_TEMP "ahk-validate-probe.ilb"
-
-          Set-Content -LiteralPath $probe -Value ("#Requires AutoHotkey v2.0" + [Environment]::NewLine + "ExitApp 0") -Encoding UTF8
-          $cases = @(
-            @{ Name = "minimal"; Args = @("/validate", "/ErrorStdOut", $probe) },
-            @{ Name = "minimal-ilib"; Args = @("/iLib", $ilib, "/ErrorStdOut", $probe) },
-            @{ Name = "root-validate"; Args = @("/validate", "/ErrorStdOut", $root) },
-            @{ Name = "root-ilib"; Args = @("/iLib", $ilib, "/ErrorStdOut", $root) }
-          )
-
-          foreach ($case in $cases) {
-            Write-Host "=== $($case.Name) ==="
-            $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            $process = Start-Process -FilePath $validator -ArgumentList $case.Args -PassThru
-            if (-not ($process | Wait-Process -Timeout 20 -ErrorAction SilentlyContinue)) {
-              try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch {}
-              throw "$($case.Name) exceeded the 20-second timeout."
-            }
-            $sw.Stop()
-            Write-Host "$($case.Name) exit=$($process.ExitCode) duration=$([math]::Round($sw.Elapsed.TotalSeconds, 2))s"
-            if ($process.ExitCode -eq 2) {
-              throw "$($case.Name) reported a syntax error."
-            }
-          }
-
-      - name: Compile main AHK script
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $input = (Resolve-Path ".\CapsLock-.ahk").Path
-          $output = Join-Path $env:GITHUB_WORKSPACE "build\${{ matrix.output }}"
-          $base = Join-Path $env:GITHUB_WORKSPACE "autohotkey\${{ matrix.base }}"
-          $compiler = "${{ steps.install-ahk.outputs.ahk2Exe }}"
-          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\autohotkey\AutoHotkey64.exe"
-
-          if (-not (Test-Path -LiteralPath $input)) {
-            throw "Input script not found: $input"
-          }
-          if (-not (Test-Path -LiteralPath $base)) {
-            throw "${{ matrix.target }} base runtime not found: $base"
-          }
-          if (-not (Test-Path -LiteralPath $compiler)) {
-            throw "Ahk2Exe compiler not found: $compiler"
-          }
-          if (-not (Test-Path -LiteralPath $validator)) {
-            throw "AutoHotkey 2.0.27 validation runtime not found: $validator"
-          }
-
-          New-Item -ItemType Directory -Path (Split-Path $output -Parent) -Force | Out-Null
-
-          $args = @(
-            "/silent", "verbose",
-            "/in", $input,
-            "/out", $output,
-            "/base", $base,
-            "/ahk", $validator,
-            "/compress", "0"
-          )
-
-          Write-Host "Compiling $input -> $output"
-          Write-Host "Base runtime: $base"
-          Write-Host "Validation runtime: $validator"
-          Write-Host "Compiler: $compiler"
-
-          $process = Start-Process -FilePath $compiler -ArgumentList $args -PassThru -NoNewWindow
-          if (-not ($process | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue)) {
-            try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch {}
-            throw "${{ matrix.target }} compilation exceeded the 120-second compiler timeout."
-          }
-
-          if ($process.ExitCode -ne 0) {
-            throw "${{ matrix.target }} compilation failed with exit code $($process.ExitCode)."
-          }
-          if (-not (Test-Path -LiteralPath $output)) {
-            throw "${{ matrix.target }} compilation completed without producing $output."
-          }
-
-          $sizeKb = [math]::Round((Get-Item -LiteralPath $output).Length / 1KB, 1)
-          Write-Host "${{ matrix.target }} compilation succeeded: $output ($sizeKb KB)"
+          in: .\CapsLock-.ahk
+          out: .\${{ matrix.output }}
+          target: ${{ matrix.target }}
+          compression: none
+          ahk-tag: v2.0.27
+          ahk2exe-tag: Ahk2Exe1.1.37.02a2
+          build-assets-folder: .\.ahk2exe-v2-action
+          github-token: ${{ secrets.GITHUB_TOKEN }}
