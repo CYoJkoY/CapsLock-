@@ -37,7 +37,7 @@ jobs:
   compile:
     name: Compile (${{ matrix.target }})
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     strategy:
       fail-fast: true
       matrix:
@@ -60,15 +60,22 @@ jobs:
           version: '2.0.28'
           compiler: 'Ahk2Exe1.1.37.02a2'
 
+      - name: Install AutoHotkey 2.0.27 validation runtime
+        id: install-validator
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.27'
+          destination: 'compiler-validator'
+
       - name: Compile main AHK script
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-
           $input = (Resolve-Path ".\CapsLock-.ahk").Path
           $output = Join-Path $env:GITHUB_WORKSPACE "build\${{ matrix.output }}"
           $base = Join-Path $env:GITHUB_WORKSPACE "autohotkey\${{ matrix.base }}"
           $compiler = "${{ steps.install-ahk.outputs.ahk2Exe }}"
+          $validator = Join-Path $env:GITHUB_WORKSPACE "compiler-validator\AutoHotkey64.exe"
 
           if (-not (Test-Path -LiteralPath $input)) {
             throw "Input script not found: $input"
@@ -79,6 +86,9 @@ jobs:
           if (-not (Test-Path -LiteralPath $compiler)) {
             throw "Ahk2Exe compiler not found: $compiler"
           }
+          if (-not (Test-Path -LiteralPath $validator)) {
+            throw "AutoHotkey 2.0.27 validation runtime not found: $validator"
+          }
 
           New-Item -ItemType Directory -Path (Split-Path $output -Parent) -Force | Out-Null
 
@@ -87,14 +97,21 @@ jobs:
             "/in", $input,
             "/out", $output,
             "/base", $base,
+            "/ahk", $validator,
             "/compress", "0"
           )
 
           Write-Host "Compiling $input -> $output"
           Write-Host "Base runtime: $base"
+          Write-Host "Validation runtime: $validator"
           Write-Host "Compiler: $compiler"
 
-          $process = Start-Process -FilePath $compiler -ArgumentList $args -PassThru -Wait -NoNewWindow
+          $process = Start-Process -FilePath $compiler -ArgumentList $args -PassThru -NoNewWindow
+          if (-not ($process | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue)) {
+            try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch {}
+            throw "${{ matrix.target }} compilation exceeded the 120-second compiler timeout."
+          }
+
           if ($process.ExitCode -ne 0) {
             throw "${{ matrix.target }} compilation failed with exit code $($process.ExitCode)."
           }
