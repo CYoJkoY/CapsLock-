@@ -348,13 +348,14 @@ class WindowHole {
         this.LastMouseX := mx
         this.LastMouseY := my
 
-        ; Every Window Hole layer uses the same physical cursor position.
-        ; A layer follows the cursor while the cursor remains inside that
-        ; window's geometry. Once the cursor leaves the window, its last hole
-        ; position is preserved until the cursor re-enters its bounds.
-        ; Clone the layer order because a failed region update can remove its
-        ; target while this pass is iterating.
+        ; Snapshot the current layer order so every layer in this update cycle
+        ; observes the same physical cursor position.
         layerHwnds := this.HoleLayerOrder.Clone()
+        refreshedLayers := []
+
+        ; Multiple active layers are committed as one logical update. Region
+        ; installation is decoupled from repaint so one layer cannot visibly
+        ; advance ahead of another.
         for layerHwnd in layerHwnds {
             if !this.Targets.Has(layerHwnd)
                 continue
@@ -378,12 +379,17 @@ class WindowHole {
                 continue
 
             isPrimary := layerHwnd == this.PrimaryHwnd
+
             result := this._ApplyHole(
                 layerHwnd,
                 mx,
                 my,
-                isPrimary
+                isPrimary,
+                true
             )
+
+            if result == true
+                refreshedLayers.Push(layerHwnd)
 
             if result != true && isPrimary {
                 this.Stop()
@@ -391,10 +397,9 @@ class WindowHole {
             }
         }
 
-        ; Chromium render surfaces and hit-testing are maintained per layer.
-        ; This is important when a Chromium window is a secondary target:
-        ; visual clipping alone is insufficient because its compositor HWNDs
-        ; can remain the hit-test surface.
+        ; Chromium render surfaces are updated after all top-level targets have
+        ; received the same cursor coordinate. This keeps compositor surfaces
+        ; on the same logical frame as their parent Window Hole layer.
         for layerHwnd in layerHwnds {
             if !this.Targets.Has(layerHwnd)
                 continue
@@ -403,7 +408,10 @@ class WindowHole {
             if !IsObject(layerState) || !layerState.isChromium
                 continue
 
-            this._EnsureChromiumRenderSurfaces(layerHwnd, layerState)
+            this._EnsureChromiumRenderSurfaces(
+                layerHwnd,
+                layerState
+            )
 
             if layerState.hasAppliedPosition {
                 this._UpdateChromiumRenderSurfaces(
@@ -422,9 +430,9 @@ class WindowHole {
             )
         }
 
-        ; Restore passthrough on Chromium layers that no longer qualify. The
-        ; helper above is called for every active Chromium target, so the map
-        ; is authoritative for the current hole session.
+        ; Only now repaint the layers whose regions changed. The native region
+        ; commits above have already completed for the entire update cycle.
+        this._RefreshWindowHoleBatch(refreshedLayers)
     }
 
     static _GetPhysicalCursorPosition(&x, &y) {
@@ -1276,7 +1284,13 @@ class WindowHole {
         }
     }
 
-    static _ApplyHole(hwnd, mouseX := "", mouseY := "", allowFallback := true) {
+    static _ApplyHole(
+        hwnd,
+        mouseX := "",
+        mouseY := "",
+        allowFallback := true,
+        deferRefresh := false
+    ) {
         addedTarget := false
 
         if !this.Targets.Has(hwnd) {
@@ -1352,11 +1366,15 @@ class WindowHole {
             ; For ordinary Win32 windows, the window region is the
             ; actual window shape used by Windows for drawing/hit-testing. No
             ; synthetic click forwarding is needed for the secondary layer.
+            redraw := deferRefresh
+                ? 0
+                : (state.isChromium ? 0 : 1)
+
             applied := DllCall(
                 "SetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", region,
-                "Int", state.isChromium ? 0 : 1,
+                "Int", redraw,
                 "Int"
             )
 
@@ -1376,7 +1394,7 @@ class WindowHole {
             ; Keep top-level region application separate from Chromium
             ; child-surface synchronization. _Update() handles the latter for
             ; every active HoleTarget, not only the primary window.
-            if !state.isChromium || firstRegionApply
+            if !deferRefresh && (!state.isChromium || firstRegionApply)
                 this._RefreshWindow(
                     hwnd,
                     false,
@@ -1407,6 +1425,30 @@ class WindowHole {
             this._RemoveHoleLayer(hwnd)
             this._SetChromiumMousePassthrough(hwnd, false)
             return false
+        }
+    }
+
+    static _RefreshWindowHoleBatch(layerHwnds) {
+        if !IsObject(layerHwnds) || layerHwnds.Length == 0
+            return
+
+        ; Refresh in the same stable layer order used for region commits.
+        ; SetWindowRgn(..., FALSE) has already installed every new region.
+        for hwnd in layerHwnds {
+            if !this.Targets.Has(hwnd)
+                continue
+
+            state := this.Targets[hwnd]
+
+            if !IsObject(state) || !state.regionActive
+                continue
+
+            this._RefreshWindow(
+                hwnd,
+                false,
+                state.isChromium,
+                layerHwnds.Length > 1 && state.isChromium
+            )
         }
     }
 
@@ -1827,13 +1869,16 @@ class WindowHole {
         state.visualPrepared := false
     }
 
-    static _RefreshWindow(hwnd, frameChanged := false, chromium := false) {
+    static _RefreshWindow(
+        hwnd,
+        frameChanged := false,
+        chromium := false,
+        forceNow := false
+    ) {
         if !hwnd || !WinExist("ahk_id " hwnd)
             return
 
         ; DWM-backed/custom-framed windows may cache their non-client metrics.
-        ; SWP_FRAMECHANGED forces Windows to recalculate the frame after a
-        ; temporary DWM non-client rendering policy change.
         if frameChanged {
             try DllCall(
                 "SetWindowPos",
@@ -1852,9 +1897,21 @@ class WindowHole {
             )
         }
 
-        redrawFlags := chromium
-            ? 0x0001 | 0x0020
-            : 0x0001 | 0x0004 | 0x0080 | 0x0100 | 0x0200 | 0x0400
+        if chromium {
+            redrawFlags := 0x0001 | 0x0020
+
+            ; When several Window Hole layers participate in the same update,
+            ; repaint the browser child tree only after all regions are ready.
+            if forceNow
+                redrawFlags |= 0x0080 | 0x0100
+        } else {
+            redrawFlags := 0x0001
+                | 0x0004
+                | 0x0080
+                | 0x0100
+                | 0x0200
+                | 0x0400
+        }
 
         try DllCall(
             "RedrawWindow",
@@ -1866,8 +1923,6 @@ class WindowHole {
 
         if !chromium
             try DllCall("UpdateWindow", "Ptr", hwnd)
-
-
     }
 
     static _RestoreOriginalRegion(hwnd, state) {

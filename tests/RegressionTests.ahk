@@ -266,6 +266,20 @@ RunTests() {
         "Task Manager compatibility mode must keep secondary layer tracking active."
     )
 
+    Assert(
+        InStr(source, "deferRefresh := false") > 0
+            && InStr(source, "redraw := deferRefresh") > 0
+            && InStr(source, "static _RefreshWindowHoleBatch(layerHwnds)") > 0,
+        "Window Hole updates are not using deferred batched refresh."
+    )
+
+    Assert(
+        InStr(source, "static _RefreshWindow(") > 0
+            && InStr(source, "forceNow := false") > 0
+            && InStr(source, "redrawFlags |= 0x0080 | 0x0100") > 0,
+        "Window Hole Chromium batch refresh support is missing."
+    )
+
     return true
 }
 
