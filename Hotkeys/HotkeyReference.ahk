@@ -37,7 +37,7 @@ class HotkeyReference {
             { cat: "CHEAT_CAT_CLIPBOARD", keys: "CapsLock + F", desc: "CHEAT_ACT_CASE", action: ((*) => ChangeCaseOfLastCopy()) },
 
             { cat: "CHEAT_CAT_DOCUMENTS", keys: "CapsLock + P", desc: "CHEAT_ACT_PANDOC", action: ((*) => ConvertWithPandoc()) },
-            { cat: "CHEAT_CAT_CLIPBOARD", keys: "CapsLock + Shift + P", desc: "CHEAT_ACT_QUICK_PHRASE", descDefault: "Open the Quick Phrase selector", action: ((*) => ShowQuickPhraseSelector()) },
+            { cat: "CHEAT_CAT_CLIPBOARD", keys: "CapsLock + Shift + P", desc: "CHEAT_ACT_QUICK_PHRASE", descDefault: "Open the Quick Phrase selector", action: ((*) => QuickPhraseHandleHotkey()) },
 
             { cat: "CHEAT_CAT_FILES", keys: "CapsLock + Alt + Q", desc: "CHEAT_ACT_TEMP", action: ((*) => OpenTempFolder()) },
 
