@@ -66,7 +66,7 @@ CapsLockHotkeysAvailable() {
             WinSetTransparent( 255, hwnd )
     }
 
-#HotIf GetKeyState( "CapsLock", "P" )
+#HotIf CapsLockHotkeysAvailable()
 
     w::
     8::
