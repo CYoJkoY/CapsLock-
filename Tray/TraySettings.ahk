@@ -98,13 +98,13 @@ SetImPath(*) {
         MsgBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
         return
     }
+    AppState.ImageMagickExe := SelectedFile
     try {
-        IniWrite(SelectedFile, AppState.ConfigFile, "ImageMagick", "Path")
+        ConfigManager.Save()
     } catch {
         MsgBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-    AppState.ImageMagickExe := SelectedFile
     MsgBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
