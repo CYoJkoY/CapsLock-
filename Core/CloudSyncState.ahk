@@ -23,7 +23,10 @@ class CloudSyncState {
 
         providerKey := GetCloudSyncProviderKey()
         previousProviderKey := this.Get("Sync", "lastProviderKey", "")
-        if previousProviderKey != "" && previousProviderKey != providerKey {
+        if state != "recovery-error"
+            && previousProviderKey != ""
+            && previousProviderKey != providerKey
+        {
             this.ClearSyncMetadata()
             state := AppState.CloudSyncEnabled ? "idle" : "disabled"
             if AppState.CloudSyncEnabled {

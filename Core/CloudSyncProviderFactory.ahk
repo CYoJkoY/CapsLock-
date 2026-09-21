@@ -38,7 +38,9 @@ GetCloudSyncProviderKey() {
             return provider "|" . Trim(AppState.CloudSyncTarget)
 
         case "onedrive":
-            return provider "|" . Trim(AppState.CloudSyncOneDrivePath)
+            return provider "|"
+                . Trim(AppState.CloudSyncOneDriveTenant) "|"
+                . Trim(AppState.CloudSyncOneDrivePath)
 
         case "webdav":
             return provider "|"

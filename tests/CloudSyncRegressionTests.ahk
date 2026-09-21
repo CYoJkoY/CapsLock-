@@ -236,8 +236,13 @@ RunTests() {
             && InStr(rootSource, "CloudSyncCoordinator.Initialize()") > 0,
         "Cloud Sync startup initialization is not wired into the application entry point."
     )
+    loadSource := SubStr(
+        configSource,
+        1,
+        InStr(configSource, "static Save(markCloudSyncDirty := true)") - 1
+    )
     Assert(
-        InStr(configSource, "CloudSyncCoordinator.MarkLocalChanged()") == 0,
+        InStr(loadSource, "CloudSyncCoordinator.MarkLocalChanged()") == 0,
         "ConfigManager.Load must not mark local data dirty."
     )
     Assert(
