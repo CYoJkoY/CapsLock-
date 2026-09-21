@@ -134,7 +134,7 @@ class ConfigManager {
         }
     }
 
-    static Save() {
+    static Save(markCloudSyncDirty := true) {
         cfg := AppState.ConfigFile
         try {
             IniWrite(AppState.DeleteMode,         cfg, "Cleanup",   "deleteMode")
@@ -189,6 +189,8 @@ class ConfigManager {
             IniWrite(AppState.CloudSyncOneDrivePath, cfg, "CloudSyncOneDrive", "path")
         }
 
+        if markCloudSyncDirty && !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
     }
 }
 

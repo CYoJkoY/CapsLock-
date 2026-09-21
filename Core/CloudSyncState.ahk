@@ -21,6 +21,17 @@ class CloudSyncState {
         this.Set("Device", "id", id)
         this.Set("Device", "name", name)
 
+        providerKey := GetCloudSyncProviderKey()
+        previousProviderKey := this.Get("Sync", "lastProviderKey", "")
+        if previousProviderKey != "" && previousProviderKey != providerKey {
+            this.ClearSyncMetadata()
+            state := AppState.CloudSyncEnabled ? "idle" : "disabled"
+            if AppState.CloudSyncEnabled {
+                this.Set("Sync", "localDirty", "1")
+                AppState.CloudSyncLocalDirty := true
+            }
+        }
+
         if state == "recovery-error" {
             this.Set("Sync", "state", "recovery-error")
         } else if !AppState.CloudSyncEnabled {
@@ -78,6 +89,7 @@ class CloudSyncState {
         this.Set("Sync", "conflictRemoteFingerprint", "")
         this.Set("Sync", "conflictReason", "")
         this.Set("Sync", "lastError", "")
+        this.Set("Sync", "lastProviderKey", "")
     }
 
     static _EnsureDirectories() {

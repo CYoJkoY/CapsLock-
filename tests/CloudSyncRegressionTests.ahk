@@ -221,7 +221,9 @@ RunTests() {
 
     stateSource := FileRead(A_ScriptDir "\..\Core\CloudSyncState.ahk", "UTF-8")
     configSource := FileRead(A_ScriptDir "\..\Config\ConfigManager.ahk", "UTF-8")
+    configManagerSource := configSource
     coordinatorSource := FileRead(A_ScriptDir "\..\Core\CloudSyncCoordinator.ahk", "UTF-8")
+    providerFactorySource := FileRead(A_ScriptDir "\..\Core\CloudSyncProviderFactory.ahk", "UTF-8")
     gistSource := FileRead(A_ScriptDir "\..\Core\Providers\GitHubGistProvider.ahk", "UTF-8")
     driveSource := FileRead(A_ScriptDir "\..\Core\Providers\GoogleDriveProvider.ahk", "UTF-8")
     oneDriveSource := FileRead(A_ScriptDir "\..\Core\Providers\OneDriveProvider.ahk", "UTF-8")
@@ -265,6 +267,21 @@ RunTests() {
         InStr(webDavSource, "this._BaseUrl()") > 0
             && InStr(webDavSource, 'headers["If-Match"] := expectedRevision') > 0,
         "WebDAV provider is missing base-target validation or conditional writes."
+    )
+
+    Assert(
+        InStr(configManagerSource, "static Save(markCloudSyncDirty := true)") > 0
+            && InStr(configManagerSource, "markCloudSyncDirty && !AppState.CloudSyncApplying") > 0,
+        "ConfigManager must support saves that do not dirty the synchronized payload."
+    )
+    Assert(
+        InStr(providerFactorySource, "GetCloudSyncProviderKey()") > 0,
+        "Cloud Sync provider configuration key helper is missing."
+    )
+    Assert(
+        InStr(stateSource, "lastProviderKey") > 0
+            && InStr(coordinatorSource, "InvalidateBaseline()") > 0,
+        "Provider changes are not isolated from the previous synchronization baseline."
     )
 
     rootSource := ReadRootSource()

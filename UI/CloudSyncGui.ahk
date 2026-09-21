@@ -317,6 +317,8 @@ ShowCloudSyncSettings(*) {
     }
 
     SaveSettings(*) {
+        previousProviderKey := CloudSyncCoordinator.GetProviderConfigKey()
+
         switch provider.Text {
             case "GitHub Gist":
                 AppState.CloudSyncProvider := "gist"
@@ -386,8 +388,11 @@ ShowCloudSyncSettings(*) {
         if IsNumber(interval.Text)
             AppState.CloudSyncInterval := Clamp(Integer(interval.Text), 5, 1440)
 
-        ConfigManager.Save()
+        ConfigManager.Save(false)
         CloudSyncIdentity.Initialize()
+
+        if previousProviderKey != CloudSyncCoordinator.GetProviderConfigKey()
+            CloudSyncCoordinator.InvalidateBaseline()
 
         if AppState.CloudSyncEnabled && AppState.CloudSyncAutoEnabled
             CloudSyncCoordinator.StartAutoSync()

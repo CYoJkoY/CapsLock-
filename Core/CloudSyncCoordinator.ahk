@@ -27,6 +27,32 @@ class CloudSyncCoordinator {
         this.Provider := ""
     }
 
+    static GetProviderConfigKey() {
+        return GetCloudSyncProviderKey()
+    }
+
+    static InvalidateBaseline() {
+        try {
+            if IsObject(this.Provider)
+                this.Provider.Disconnect()
+        } catch {
+        }
+
+        this.Provider := ""
+        CloudSyncState.ClearSyncMetadata()
+        AppState.CloudSyncConflict := false
+        AppState.CloudSyncLastError := ""
+        AppState.CloudSyncLocalDirty := AppState.CloudSyncEnabled
+
+        CloudSyncState.Set(
+            "Sync",
+            "localDirty",
+            AppState.CloudSyncEnabled ? "1" : "0"
+        )
+        this._SetState(AppState.CloudSyncEnabled ? "idle" : "disabled")
+        return true
+    }
+
     static MarkLocalChanged() {
         if AppState.CloudSyncApplying
             return
@@ -501,6 +527,7 @@ class CloudSyncCoordinator {
             }
 
             this.Provider := ""
+            this.InvalidateBaseline()
         }
 
         this.Provider := CloudSyncProviderFactory.Create(desired)
@@ -552,6 +579,7 @@ class CloudSyncCoordinator {
         CloudSyncState.Set("Sync", "lastRemoteProviderRevision", providerRevision)
         CloudSyncState.Set("Sync", "lastLocalHash", localHash)
         CloudSyncState.Set("Sync", "lastSuccessfulSync", AppState.CloudSyncLastSuccess)
+        CloudSyncState.Set("Sync", "lastProviderKey", this.GetProviderConfigKey())
         CloudSyncState.Set("Sync", "localDirty", "0")
         CloudSyncState.Set("Sync", "conflict", "0")
         CloudSyncState.Set("Sync", "lastError", "")
