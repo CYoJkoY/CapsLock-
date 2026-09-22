@@ -242,18 +242,19 @@ QuickPhraseUseSelected(selectorGui) {
 }
 
 QuickPhraseExecutePhrase(phrase, target) {
-    ok := false
     reopenSelector := false
+    deferredPaste := false
     errorMessage := ""
 
     try {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(
+            QuickPhraseScheduleFinalPaste(
                 phrase.content,
                 target
             )
+            deferredPaste := true
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -265,24 +266,62 @@ QuickPhraseExecutePhrase(phrase, target) {
                 return
             }
 
-            ok := QuickPhrasePasteText(
+            ; The current call stack still belongs to the selector's
+            ; DoubleClick handler. Schedule the final paste for a new
+            ; script thread so the selector/variable GUI event has fully
+            ; returned before the original target is activated.
+            QuickPhraseScheduleFinalPaste(
                 result.text,
                 target
             )
+            deferredPaste := true
         }
     } catch as err {
         errorMessage := err.Message
     } finally {
-        AppState.QuickPhraseTransactionActive := false
+        if !deferredPaste {
+            AppState.QuickPhraseTransactionActive := false
 
-        if reopenSelector {
-            SetTimer(
-                () => ShowQuickPhraseSelector(false),
-                -1
-            )
-        } else {
-            AppState.QuickPhrasePasteTarget := ""
+            if reopenSelector {
+                SetTimer(
+                    () => ShowQuickPhraseSelector(false),
+                    -1
+                )
+            } else {
+                AppState.QuickPhrasePasteTarget := ""
+            }
         }
+    }
+
+    if errorMessage != "" {
+        ShowToolTip(
+            errorMessage,
+            2200
+        )
+    }
+}
+
+QuickPhraseScheduleFinalPaste(text, target) {
+    SetTimer(
+        () => QuickPhraseFinalizePaste(text, target),
+        -1
+    )
+}
+
+QuickPhraseFinalizePaste(text, target) {
+    ok := false
+    errorMessage := ""
+
+    try {
+        ok := QuickPhrasePasteText(
+            text,
+            target
+        )
+    } catch as err {
+        errorMessage := err.Message
+    } finally {
+        AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhrasePasteTarget := ""
     }
 
     if errorMessage != "" {
