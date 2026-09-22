@@ -14,6 +14,7 @@ class AppState {
     static QuickPhraseManagerGui := ""
     static QuickPhraseVariableGui := ""
     static QuickPhraseTransactionActive := false
+    static QuickPhraseTarget := ""
 
     ; --- Settings ---
     static PasteMode := 1
