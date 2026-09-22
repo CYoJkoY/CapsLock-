@@ -208,40 +208,6 @@ QuickPhraseCaptureFocusTarget() {
     }
 }
 
-QuickPhraseRestorePasteFocus(pasteTarget, targetHwnd) {
-    if !IsObject(pasteTarget)
-        return false
-
-    if !pasteTarget.HasOwnProp("control")
-        return false
-
-    controlHwnd := pasteTarget.control
-    if !controlHwnd || !WinExist("ahk_id " controlHwnd)
-        return false
-
-    rootHwnd := DllCall(
-        "GetAncestor",
-        "Ptr",
-        controlHwnd,
-        "UInt",
-        2,
-        "Ptr"
-    )
-
-    if rootHwnd != targetHwnd
-        return false
-
-    try {
-        ControlFocus(
-            controlHwnd,
-            "ahk_id " targetHwnd
-        )
-        return true
-    } catch {
-        return false
-    }
-}
-
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -751,34 +717,20 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Reactivate the original destination only after all temporary
-        ; Quick Phrase windows have been destroyed. Restore the exact
-        ; control which had focus when Quick Phrase started when that
-        ; HWND is still valid; custom applications may reject ControlFocus,
-        ; so the window-level focus path remains the compatibility fallback.
+        ; Send directly to the control which had focus when Quick Phrase
+        ; started. The Quick Phrase dialog owns foreground focus while the
+        ; user fills variables, so reactivating the target window here would
+        ; only introduce an unnecessary focus race.
         try {
-            WinActivate("ahk_id " targetHwnd)
+            controlHwnd := pasteTarget.control
 
-            if !WinWaitActive(
-                "ahk_id " targetHwnd,
-                ,
-                0.5
-            ) {
-                throw Error(
-                    "Quick Phrase target window could not be activated."
-                )
-            }
-
-            QuickPhraseRestorePasteFocus(
-                pasteTarget,
-                targetHwnd
-            )
-
-            Sleep(30)
-            Send("^v")
+            if controlHwnd && WinExist("ahk_id " controlHwnd)
+                ControlSend("^v", controlHwnd, "ahk_id " targetHwnd)
+            else
+                ControlSend("^v",, "ahk_id " targetHwnd)
         } catch {
             throw Error(
-                "Quick Phrase target window could not receive paste."
+                "Quick Phrase focus target could not receive paste."
             )
         }
 
