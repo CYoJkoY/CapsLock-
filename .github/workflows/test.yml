@@ -30,23 +30,27 @@ jobs:
       - name: Run regression tests
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath ".\autohotkey\AutoHotkey64.exe" -ArgumentList @(".\tests\RegressionTests.ahk") -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "RegressionTests.ahk exited with code $($process.ExitCode)." }
+          & .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) { throw "RegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Cloud Sync regression tests
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath ".\autohotkey\AutoHotkey64.exe" -ArgumentList @(".\tests\CloudSyncRegressionTests.ahk") -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "CloudSyncRegressionTests.ahk exited with code $($process.ExitCode)." }
+          & .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) { throw "CloudSyncRegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Quick Phrase regression tests
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath ".\autohotkey\AutoHotkey64.exe" -ArgumentList @(".\tests\QuickPhraseRegressionTests.ahk") -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "QuickPhraseRegressionTests.ahk exited with code $($process.ExitCode)." }
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) { throw "QuickPhraseRegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Quick Phrase target regression tests
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath ".\autohotkey\AutoHotkey64.exe" -ArgumentList @(".\tests\QuickPhraseTargetRegressionTests.ahk") -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "QuickPhraseTargetRegressionTests.ahk exited with code $($process.ExitCode)." }
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseTargetRegressionTests.ahk
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) { throw "QuickPhraseTargetRegressionTests.ahk exited with code $exitCode." }
