@@ -16,6 +16,10 @@ class AppState {
     static QuickPhraseTransactionActive := false
     static QuickPhraseExternalTarget := ""
     static QuickPhraseTargetTracking := false
+    static QuickPhraseClipboardRestorePending := false
+    static QuickPhraseClipboardBackup := ""
+    static QuickPhraseClipboardExpected := ""
+    static QuickPhraseClipboardSequence := 0
 
     ; --- Settings ---
     static PasteMode := 1
