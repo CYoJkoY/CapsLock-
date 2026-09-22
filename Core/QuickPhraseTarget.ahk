@@ -90,20 +90,54 @@ class QuickPhraseTarget {
         if !this.IsControlValid(target)
             return false
 
-        try
-            ControlFocus(
-                target.control,
-                "ahk_id " target.window
-            )
-        catch
+        currentThreadId := DllCall(
+            "GetCurrentThreadId",
+            "UInt"
+        )
+
+        targetThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr", target.window,
+            "UInt", 0
+        )
+
+        if !targetThreadId
             return false
 
-        try
-            return ControlGetFocus(
-                "ahk_id " target.window
-            ) == target.control
-        catch
+        attached := false
+
+        try {
+            if targetThreadId != currentThreadId {
+                if !DllCall(
+                    "AttachThreadInput",
+                    "UInt", currentThreadId,
+                    "UInt", targetThreadId,
+                    "Int", true
+                )
+                    return false
+
+                attached := true
+            }
+
+            DllCall(
+                "SetFocus",
+                "Ptr", target.control,
+                "Ptr"
+            )
+
+            return this._IsFocusedControl(target)
+        } catch {
             return false
+        } finally {
+            if attached {
+                DllCall(
+                    "AttachThreadInput",
+                    "UInt", currentThreadId,
+                    "UInt", targetThreadId,
+                    "Int", false
+                )
+            }
+        }
     }
 
     static DeliverPaste(target) {
@@ -113,10 +147,40 @@ class QuickPhraseTarget {
                 controlRestored: false
             }
 
-        ; Native text controls can accept WM_PASTE directly. This is more
-        ; deterministic than restoring keyboard focus after a Quick Phrase GUI
-        ; has taken focus, and it preserves the control's existing caret/selection.
-        if this.IsControlValid(target) && this._SupportsDirectPaste(target.control) {
+        if !this.Activate(target)
+            return {
+                ok: false,
+                controlRestored: false
+            }
+
+        controlRestored := false
+
+        if this.IsControlValid(target)
+            controlRestored := this.RestoreControlFocus(target)
+
+        ; The original destination is now the actual keyboard focus target,
+        ; not merely a stored HWND. Send Ctrl+V through the normal foreground
+        ; input path so native controls and Chromium/Electron render surfaces
+        ; receive the same user-level paste gesture.
+        try {
+            Send("^v")
+        } catch {
+            return {
+                ok: false,
+                controlRestored: controlRestored
+            }
+        }
+
+        ; Some native controls can reject a synthetic foreground key sequence
+        ; while still accepting a direct WM_PASTE. Keep that as a narrow
+        ; compatibility fallback after the real focus has been restored.
+        if !controlRestored
+            controlRestored := this.RestoreControlFocus(target)
+
+        if (
+            controlRestored
+            && this._SupportsDirectPaste(target.control)
+        ) {
             try {
                 SendMessage(
                     0x0302,
@@ -126,43 +190,53 @@ class QuickPhraseTarget {
                     "ahk_id " target.control
                 )
             } catch {
-                return {
-                    ok: false,
-                    controlRestored: false
-                }
-            }
-
-            return {
-                ok: true,
-                controlRestored: true
-            }
-        }
-
-        ; Custom editors (notably Chromium/Electron/WebView controls) do not
-        ; expose their logical text input as a native Edit control. Do not force
-        ; focus onto an internal child HWND here; let the application restore
-        ; its own logical input focus when the original top-level window returns.
-        if !this.Activate(target)
-            return {
-                ok: false,
-                controlRestored: false
-            }
-
-        Sleep(100)
-
-        try {
-            Send("^v")
-        } catch {
-            return {
-                ok: false,
-                controlRestored: false
             }
         }
 
         return {
             ok: true,
-            controlRestored: false
+            controlRestored: controlRestored
         }
+    }
+
+    static _IsFocusedControl(target) {
+        if !this.IsControlValid(target)
+            return false
+
+        threadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr", target.window,
+            "UInt", 0
+        )
+
+        if !threadId
+            return false
+
+        info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
+
+        NumPut(
+            "UInt",
+            info.Size,
+            info,
+            0
+        )
+
+        if !DllCall(
+            "GetGUIThreadInfo",
+            "UInt", threadId,
+            "Ptr", info.Ptr,
+            "Int"
+        )
+            return false
+
+        focusOffset := A_PtrSize == 8 ? 16 : 12
+        focusedHwnd := NumGet(
+            info,
+            focusOffset,
+            "Ptr"
+        )
+
+        return focusedHwnd == target.control
     }
 
     static _SupportsDirectPaste(hwnd) {
