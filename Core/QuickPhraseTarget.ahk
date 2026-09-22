@@ -13,6 +13,11 @@ class QuickPhraseTarget {
         "EditControl"
     ]
 
+    ; Match the settling delay used by the existing ActivateAndPaste() path.
+    ; Generic/custom editors may need time to restore their application-level
+    ; caret after their top-level window becomes active.
+    static ForegroundSettleDelay := 100
+
     static Capture() {
         windowHwnd := WinExist("A")
 
@@ -152,8 +157,7 @@ class QuickPhraseTarget {
 
         ; Native Edit-like controls can accept the completed phrase directly.
         ; This path does not depend on foreground focus and does not change
-        ; the clipboard, which is useful when the application exposes a real
-        ; Windows edit control.
+        ; the clipboard.
         if text != "" && this.IsEditLikeControl(target) {
             try {
                 EditPaste(
@@ -167,19 +171,12 @@ class QuickPhraseTarget {
             }
         }
 
-        ; The generic Quick Phrase path intentionally uses a real foreground
-        ; Ctrl+V after restoring the captured control. Many applications use
-        ; custom/virtualized editors where ControlSend can return without the
-        ; application actually processing the keystroke.
-        if this.RestoreControlFocus(target) {
-            try {
-                Send("^v")
-                return "foreground-control"
-            } catch {
-                return false
-            }
-        }
-
+        ; Do not call ControlFocus for custom/non-edit controls. Chromium,
+        ; Electron and other virtualized editors often represent their editing
+        ; surface with an implementation detail HWND which is not the actual
+        ; application-level caret target. Re-focusing that child can destroy
+        ; the internal caret/selection state that the restored top-level window
+        ; would otherwise preserve.
         return false
     }
 
@@ -215,16 +212,14 @@ class QuickPhraseTarget {
             return {
                 ok: true,
                 mode: controlMode,
-                controlRestored: controlMode == "foreground-control",
+                controlRestored: false,
                 error: ""
             }
 
-        ; At this point the captured child HWND was either unavailable or not
-        ; focusable. Do not treat ControlSend-to-window as proof of delivery:
-        ; custom Chromium/Electron editors may silently ignore it while AHK
-        ; still reports success. The target top-level window is already active,
-        ; so preserve the original application's foreground Ctrl+V behavior.
-        Sleep(30)
+        ; Generic/custom controls receive the same foreground Ctrl+V path used
+        ; by the established history/file paste workflow. Keep the full
+        ; settling delay rather than attempting to force a child focus.
+        Sleep(this.ForegroundSettleDelay)
 
         if this.SendForegroundPaste()
             return {
