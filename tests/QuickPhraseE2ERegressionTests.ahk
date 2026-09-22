@@ -177,6 +177,16 @@ RunFixedPhraseEndToEndTest() {
 }
 
 RunSelectorFixedPhraseEndToEndTest() {
+    phraseText := "Selector fixed phrase result"
+    phrase := {
+        id: 1,
+        name: "Selector fixed phrase",
+        category: "",
+        order: 1,
+        contentFile: "phrase-1.txt",
+        content: phraseText
+    }
+
     targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Fixed E2E Target")
     targetEdit := targetGui.Add("Edit", "w420 h100", "")
     targetGui.Show("w480 h170")
@@ -186,42 +196,26 @@ RunSelectorFixedPhraseEndToEndTest() {
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
         throw Error("Selector fixed E2E target window did not become active.")
 
-    AppState.TargetWindow := targetGui.Hwnd
-
     originalPhrases := QuickPhraseStore._phrases
     originalTarget := AppState.TargetWindow
     originalTransaction := AppState.QuickPhraseTransactionActive
 
-    phrase := {
-        id: 1,
-        name: "Selector fixed phrase",
-        category: "",
-        order: 1,
-        contentFile: "phrase-1.txt",
-        content: "Selector fixed phrase result"
-    }
-
-    AppState.TargetWindow := targetGui.Hwnd
-    AppState.QuickPhraseTransactionActive := false
-    QuickPhraseStore._phrases := [phrase]
-
-    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Fixed E2E")
-    list := selectorGui.Add(
-        "ListView",
-        "w420 r3 -Multi",
-        ["ID", "Name", "Category", "Preview"]
-    )
-    list.Add(, phrase.id, phrase.name, phrase.category, phrase.content)
-    list.Modify(1, "Select")
-    list.Modify(1, "Focus")
-    selectorGui.ListView := list
-    selectorGui.Show("w460 h180")
-    WinActivate("ahk_id " selectorGui.Hwnd)
-
-    if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
-        throw Error("Selector fixed E2E selector window did not become active.")
-
     try {
+        AppState.TargetWindow := 0
+        AppState.QuickPhraseTransactionActive := false
+        QuickPhraseStore._phrases := [phrase]
+
+        ; Enter through the same handler used by CapsLock + Shift + P.
+        QuickPhraseHandleHotkey()
+
+        selectorGui := AppState.QuickPhraseGui
+        if !IsObject(selectorGui)
+            throw Error("Quick Phrase selector was not created by the hotkey handler.")
+
+        if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
+            throw Error("Selector fixed E2E selector window did not become active.")
+
+        ; Exercise the actual ListView DoubleClick event used by the GUI.
         ControlClick(
             "X20 Y10",
             "ahk_id " selectorGui.Hwnd,
@@ -231,21 +225,21 @@ RunSelectorFixedPhraseEndToEndTest() {
             "Pos"
         )
 
-        timeoutAt := A_TickCount + 2000
-        while targetEdit.Text != phrase.content {
+        timeoutAt := A_TickCount + 3000
+        while targetEdit.Text != phraseText {
             if A_TickCount >= timeoutAt
                 break
             Sleep(20)
         }
 
         Assert(
-            targetEdit.Text == phrase.content,
-            "Selecting a normal fixed Quick Phrase from the selector did not paste into the original target. Actual: ["
+            targetEdit.Text == phraseText,
+            "Selector fixed Quick Phrase did not paste into the target captured by the hotkey entry. Actual: ["
                 targetEdit.Text "]"
         )
     } finally {
-        if IsObject(selectorGui) {
-            try selectorGui.Destroy()
+        if IsObject(AppState.QuickPhraseGui) {
+            try AppState.QuickPhraseGui.Destroy()
         }
 
         QuickPhraseStore._phrases := originalPhrases
@@ -260,22 +254,6 @@ RunSelectorVariablePhraseEndToEndTest() {
     global AutomationError
     global AutomationValue
 
-    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E Target")
-    targetEdit := targetGui.Add("Edit", "w420 h100", "")
-    targetGui.Show("w480 h170")
-    targetEdit.Focus()
-    WinActivate("ahk_id " targetGui.Hwnd)
-
-    if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
-        throw Error("Selector variable E2E target window did not become active.")
-
-    AppState.TargetWindow := targetGui.Hwnd
-
-    originalPhrases := QuickPhraseStore._phrases
-    originalTarget := AppState.TargetWindow
-    originalTransaction := AppState.QuickPhraseTransactionActive
-    originalVariableGui := AppState.QuickPhraseVariableGui
-
     phrase := {
         id: 1,
         name: "Selector multiline YAML phrase",
@@ -287,39 +265,47 @@ RunSelectorVariablePhraseEndToEndTest() {
 
     expectedText := "你将接收一份 YAML 格式的“上下文交接包”，用于恢复此前会话的工作状态。`r`n`r`n现在准备接收 YAML，这是你的YAML信息：`r`n`r`ntitle: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
 
-    AppState.TargetWindow := targetGui.Hwnd
-    AppState.QuickPhraseTransactionActive := false
-    AppState.QuickPhraseVariableGui := ""
-    QuickPhraseStore._phrases := [phrase]
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E Target")
+    targetEdit := targetGui.Add("Edit", "w420 h100", "")
+    targetGui.Show("w480 h170")
+    targetEdit.Focus()
+    WinActivate("ahk_id " targetGui.Hwnd)
 
-    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E")
-    list := selectorGui.Add(
-        "ListView",
-        "w420 r3 -Multi",
-        ["ID", "Name", "Category", "Preview"]
-    )
-    list.Add(, phrase.id, phrase.name, phrase.category, phrase.content)
-    list.Modify(1, "Select")
-    list.Modify(1, "Focus")
-    selectorGui.ListView := list
-    selectorGui.Show("w460 h180")
-    WinActivate("ahk_id " selectorGui.Hwnd)
+    if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
+        throw Error("Selector variable E2E target window did not become active.")
 
-    if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
-        throw Error("Selector variable E2E selector window did not become active.")
-
-    AutomationDone := false
-    AutomationError := ""
-    AutomationValue := "title: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
-
-    SetTimer(
-        AutomateVariableDialog,
-        20
-    )
+    originalPhrases := QuickPhraseStore._phrases
+    originalTarget := AppState.TargetWindow
+    originalTransaction := AppState.QuickPhraseTransactionActive
+    originalVariableGui := AppState.QuickPhraseVariableGui
 
     try {
-        ; Exercise the actual ListView DoubleClick event used by the GUI,
-        ; rather than calling QuickPhraseUseSelected() directly.
+        AppState.TargetWindow := 0
+        AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhraseVariableGui := ""
+        QuickPhraseStore._phrases := [phrase]
+
+        ; Enter through the real CapsLock + Shift + P handler so the test proves
+        ; the destination is captured before the selector appears.
+        QuickPhraseHandleHotkey()
+
+        selectorGui := AppState.QuickPhraseGui
+        if !IsObject(selectorGui)
+            throw Error("Quick Phrase selector was not created by the hotkey handler.")
+
+        if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
+            throw Error("Selector variable E2E selector window did not become active.")
+
+        AutomationDone := false
+        AutomationError := ""
+        AutomationValue := "title: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
+
+        SetTimer(
+            AutomateVariableDialog,
+            20
+        )
+
+        ; Exercise the actual ListView DoubleClick event used by the GUI.
         ControlClick(
             "X20 Y10",
             "ahk_id " selectorGui.Hwnd,
@@ -348,7 +334,7 @@ RunSelectorVariablePhraseEndToEndTest() {
 
         Assert(
             targetEdit.Text == expectedText,
-            "Selector multiline YAML Quick Phrase did not paste the assembled value into the original target. Actual: ["
+            "Selector multiline YAML Quick Phrase did not paste the assembled value into the target captured by the hotkey entry. Actual: ["
                 targetEdit.Text "]"
         )
     } finally {
@@ -358,8 +344,8 @@ RunSelectorVariablePhraseEndToEndTest() {
             try AppState.QuickPhraseVariableGui.Destroy()
         }
 
-        if IsObject(selectorGui) {
-            try selectorGui.Destroy()
+        if IsObject(AppState.QuickPhraseGui) {
+            try AppState.QuickPhraseGui.Destroy()
         }
 
         QuickPhraseStore._phrases := originalPhrases
@@ -369,6 +355,7 @@ RunSelectorVariablePhraseEndToEndTest() {
         targetGui.Destroy()
     }
 }
+
 
 try {
     RunVariableEndToEndTest()
