@@ -31,10 +31,12 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
-            && InStr(source, "AppState.TargetWindow :=") == 0
+        InStr(source, "QuickPhrasePasteText(") > 0
+            && InStr(source, "ActivateAndPaste()") > 0
+            && InStr(source, "AppState.TargetWindow := targetHwnd") > 0
+            && InStr(source, "AppState.TargetWindow := previousTarget") > 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase must deliver through the dedicated target component without mutating the global paste target."
+        "Quick Phrase must use the application's shared foreground paste path and restore the previous TargetWindow."
     )
 
     Assert(
@@ -45,11 +47,9 @@ RunTests() {
     Assert(
         InStr(targetSource, "static Capture()") > 0
             && InStr(targetSource, "static IsWindowValid(") > 0
-            && InStr(targetSource, "static Activate(") > 0
-            && InStr(targetSource, "static SendForegroundPaste(") > 0
-            && InStr(targetSource, "static DeliverPaste(") > 0
+            && InStr(targetSource, "ControlFocus(") == 0
             && InStr(targetSource, "ControlSend(") == 0,
-        "Quick Phrase target capture module must remain available without introducing a ControlSend delivery path."
+        "Quick Phrase target module must remain a window-only capture/validation component."
     )
 
     Assert(
@@ -68,13 +68,10 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseClipboardRestorePending") > 0
-            && InStr(source, "QuickPhraseNormalizeClipboardText(text)") > 0
+        InStr(source, "QuickPhraseNormalizeClipboardText(text)") > 0
             && InStr(source, "Sleep(120)") > 0
-            && InStr(source, "QuickPhraseRestoreClipboard(generation)") > 0
-            && InStr(source, "QuickPhraseClipboardRestoreDelay") > 0
-            && InStr(source, "savedClipboard := ClipboardAll()") == 0,
-        "Quick Phrase must not restore the previous clipboard synchronously after paste."
+            && InStr(source, "ClipboardAll()") > 0,
+        "Quick Phrase must normalize multiline clipboard text and keep the clipboard stable during the established paste delay."
     )
 
     Assert(
