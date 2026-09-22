@@ -10,11 +10,7 @@ class QuickPhraseTarget {
         if this._IsInternalWindow(windowHwnd)
             return ""
 
-        controlHwnd := 0
-        try
-            controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
-        catch
-            controlHwnd := 0
+        controlHwnd := this._GetKeyboardFocus(windowHwnd)
 
         return {
             window: windowHwnd,
@@ -90,42 +86,43 @@ class QuickPhraseTarget {
         if !this.IsControlValid(target)
             return false
 
+        controlThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr", target.control,
+            "UInt", 0
+        )
+
         currentThreadId := DllCall(
             "GetCurrentThreadId",
             "UInt"
         )
 
-        targetThreadId := DllCall(
-            "GetWindowThreadProcessId",
-            "Ptr", target.window,
-            "UInt", 0
-        )
-
-        if !targetThreadId
+        if !controlThreadId
             return false
+
+        if controlThreadId == currentThreadId
+            return this._SetAndVerifyFocus(
+                target.control,
+                controlThreadId
+            )
 
         attached := false
 
         try {
-            if targetThreadId != currentThreadId {
-                if !DllCall(
-                    "AttachThreadInput",
-                    "UInt", currentThreadId,
-                    "UInt", targetThreadId,
-                    "Int", true
-                )
-                    return false
-
-                attached := true
-            }
-
-            DllCall(
-                "SetFocus",
-                "Ptr", target.control,
-                "Ptr"
+            if !DllCall(
+                "AttachThreadInput",
+                "UInt", currentThreadId,
+                "UInt", controlThreadId,
+                "Int", true
             )
+                return false
 
-            return this._IsFocusedControl(target)
+            attached := true
+
+            return this._SetAndVerifyFocus(
+                target.control,
+                controlThreadId
+            )
         } catch {
             return false
         } finally {
@@ -133,7 +130,7 @@ class QuickPhraseTarget {
                 DllCall(
                     "AttachThreadInput",
                     "UInt", currentThreadId,
-                    "UInt", targetThreadId,
+                    "UInt", controlThreadId,
                     "Int", false
                 )
             }
@@ -153,34 +150,34 @@ class QuickPhraseTarget {
                 controlRestored: false
             }
 
+        controlValid := this.IsControlValid(target)
         controlRestored := false
 
-        if this.IsControlValid(target)
+        if controlValid
             controlRestored := this.RestoreControlFocus(target)
 
-        ; The original destination is now the actual keyboard focus target,
-        ; not merely a stored HWND. Send Ctrl+V through the normal foreground
-        ; input path so native controls and Chromium/Electron render surfaces
-        ; receive the same user-level paste gesture.
-        try {
-            Send("^v")
-        } catch {
+        ; Never send Ctrl+V until the captured keyboard focus has been restored.
+        ; Sending while the Quick Phrase GUI still owns focus is the failure mode
+        ; this target abstraction is intended to eliminate.
+        if controlRestored {
+            try {
+                Send("^v")
+            } catch {
+                return {
+                    ok: false,
+                    controlRestored: true
+                }
+
             return {
-                ok: false,
-                controlRestored: controlRestored
+                ok: true,
+                controlRestored: true
             }
         }
 
-        ; Some native controls can reject a synthetic foreground key sequence
-        ; while still accepting a direct WM_PASTE. Keep that as a narrow
-        ; compatibility fallback after the real focus has been restored.
-        if !controlRestored
-            controlRestored := this.RestoreControlFocus(target)
-
-        if (
-            controlRestored
-            && this._SupportsDirectPaste(target.control)
-        ) {
+        ; A native text control can still receive WM_PASTE directly when focus
+        ; restoration is unavailable. This keeps the paste tied to the original
+        ; control rather than falling through to whichever window is active.
+        if controlValid && this._SupportsDirectPaste(target.control) {
             try {
                 SendMessage(
                     0x0302,
@@ -189,28 +186,85 @@ class QuickPhraseTarget {
                     ,
                     "ahk_id " target.control
                 )
+
+                return {
+                    ok: true,
+                    controlRestored: false
+                }
             } catch {
+                return {
+                    ok: false,
+                    controlRestored: false
+                }
+            }
+        }
+
+        ; Some applications do not expose a controllable child HWND. For those
+        ; targets, the top-level window is the only reliable destination. This
+        ; fallback is allowed only when no usable captured control exists.
+        if !controlValid {
+            try {
+                Send("^v")
+                return {
+                    ok: true,
+                    controlRestored: false
+                }
+            } catch {
+                return {
+                    ok: false,
+                    controlRestored: false
+                }
             }
         }
 
         return {
-            ok: true,
-            controlRestored: controlRestored
+            ok: false,
+            controlRestored: false
         }
     }
 
-    static _IsFocusedControl(target) {
-        if !this.IsControlValid(target)
-            return false
-
+    static _GetKeyboardFocus(windowHwnd) {
         threadId := DllCall(
             "GetWindowThreadProcessId",
-            "Ptr", target.window,
+            "Ptr", windowHwnd,
             "UInt", 0
         )
 
         if !threadId
-            return false
+            return 0
+
+        info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
+
+        NumPut(
+            "UInt",
+            info.Size,
+            info,
+            0
+        )
+
+        if !DllCall(
+            "GetGUIThreadInfo",
+            "UInt", threadId,
+            "Ptr", info.Ptr,
+            "Int"
+        )
+            return 0
+
+        focusOffset := A_PtrSize == 8 ? 16 : 12
+
+        return NumGet(
+            info,
+            focusOffset,
+            "Ptr"
+        )
+    }
+
+    static _SetAndVerifyFocus(controlHwnd, threadId) {
+        DllCall(
+            "SetFocus",
+            "Ptr", controlHwnd,
+            "Ptr"
+        )
 
         info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
 
@@ -230,13 +284,12 @@ class QuickPhraseTarget {
             return false
 
         focusOffset := A_PtrSize == 8 ? 16 : 12
-        focusedHwnd := NumGet(
+
+        return NumGet(
             info,
             focusOffset,
             "Ptr"
-        )
-
-        return focusedHwnd == target.control
+        ) == controlHwnd
     }
 
     static _SupportsDirectPaste(hwnd) {
