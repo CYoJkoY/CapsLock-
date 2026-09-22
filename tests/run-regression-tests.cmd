@@ -24,7 +24,7 @@ exit /b 0
 
 :run
 echo Running %~1
-"%AHK%" "%~dp0..\%~1"
+start "" /wait "%AHK%" "%~dp0..\%~1"
 set "code=%errorlevel%"
 echo Exit code: %code%
 exit /b %code%
