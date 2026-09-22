@@ -27,10 +27,12 @@ class DarkInputDialog {
             resultValue := editCtrl.Value
             resultAction := "OK"
             myGui.Destroy()
+            return true
         }
         OnCancel(*) {
             resultAction := "Cancel"
             myGui.Destroy()
+            return true
         }
         btnOK.OnEvent("Click", OnOK)
         btnCancel.OnEvent("Click", OnCancel)
