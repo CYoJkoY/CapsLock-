@@ -58,7 +58,7 @@ RunTargetDeliveryTest() {
         if !ClipWait(1)
             throw Error("Test clipboard did not become ready.")
 
-        delivery := QuickPhraseTarget.DeliverPaste(target, payload)
+        delivery := QuickPhraseTarget.DeliverPaste(target)
 
         Assert(
             delivery.ok && delivery.mode == "foreground-control" && delivery.controlRestored,
