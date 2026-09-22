@@ -21,18 +21,18 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "ControlGetFocus(") > 0
-            && InStr(source, "control: controlHwnd") > 0,
-        "Quick Phrase does not capture the initial focused control."
+        InStr(source, "QuickPhraseCaptureFocusTarget()") > 0
+            && InStr(source, "return {") > 0
+            && InStr(source, "window: windowHwnd") > 0
+            && InStr(source, "control: controlHwnd") == 0,
+        "Quick Phrase must capture the original foreground window without retaining an unused control target."
     )
 
     Assert(
-        InStr(source, "ControlGetFocus(") > 0
-            && InStr(source, "ControlSend(") > 0
-            && InStr(source, 'ControlSend("^v", controlHwnd, "ahk_id " targetHwnd)') > 0
-            && InStr(source, 'ControlSend("^v",, "ahk_id " targetHwnd)') > 0
-            && InStr(source, 'WinActivate("ahk_id " targetHwnd)') == 0,
-        "Quick Phrase final insertion must send directly to the captured focus target without reactivating it."
+        InStr(source, "AppState.TargetWindow := targetHwnd") > 0
+            && InStr(source, "ActivateAndPaste()") > 0
+            && InStr(source, "ControlSend(") == 0,
+        "Quick Phrase final insertion must reuse the same activate-and-paste path as clipboard history."
     )
 
     Assert(

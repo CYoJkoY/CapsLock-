@@ -180,8 +180,9 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    ; Capture the exact focus destination before Quick Phrase opens any GUI.
-    ; The workflow never activates this window again.
+    ; Capture the original foreground window before Quick Phrase opens any GUI.
+    ; The final insertion deliberately follows the same activation-and-paste
+    ; path used by CapsLock + Shift + V history pasting.
     pasteTarget := QuickPhraseCaptureFocusTarget()
     if !IsObject(pasteTarget)
         return
@@ -196,15 +197,8 @@ QuickPhraseCaptureFocusTarget() {
     if !windowHwnd
         return ""
 
-    controlHwnd := 0
-    try
-        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
-    catch
-        controlHwnd := 0
-
     return {
-        window: windowHwnd,
-        control: controlHwnd
+        window: windowHwnd
     }
 }
 
