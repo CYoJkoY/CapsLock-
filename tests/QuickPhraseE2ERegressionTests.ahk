@@ -182,6 +182,87 @@ RunFixedPhraseEndToEndTest() {
     }
 }
 
+RunSelectorFixedPhraseEndToEndTest() {
+    global AutomationDone
+    global AutomationError
+
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector E2E Target")
+    targetEdit := targetGui.Add("Edit", "w420 h100", "")
+    targetGui.Show("w480 h170")
+    targetEdit.Focus()
+    WinActivate("ahk_id " targetGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
+        throw Error("Selector E2E target window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+
+    Assert(
+        target.window == targetGui.Hwnd
+            && target.control == targetEdit.Hwnd,
+        "Selector E2E target capture did not preserve the original Edit control."
+    )
+
+    originalPhrases := QuickPhraseStore._phrases
+    originalTarget := AppState.QuickPhrasePasteTarget
+    originalTransaction := AppState.QuickPhraseTransactionActive
+
+    phrase := {
+        id: 1,
+        name: "Selector fixed phrase",
+        category: "",
+        order: 1,
+        contentFile: "phrase-1.txt",
+        content: "Selector fixed phrase result"
+    }
+
+    AppState.QuickPhrasePasteTarget := target
+    AppState.QuickPhraseTransactionActive := false
+    QuickPhraseStore._phrases := [phrase]
+
+    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector E2E")
+    list := selectorGui.Add(
+        "ListView",
+        "w420 r3 -Multi",
+        ["ID", "Name", "Category", "Preview"]
+    )
+    list.Add(, phrase.id, phrase.name, phrase.category, phrase.content)
+    list.Modify(1, "Select")
+    list.Modify(1, "Focus")
+    selectorGui.ListView := list
+    selectorGui.Show("w460 h180")
+    WinActivate("ahk_id " selectorGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
+        throw Error("Selector E2E selector window did not become active.")
+
+    try {
+        QuickPhraseUseSelected(selectorGui)
+
+        timeoutAt := A_TickCount + 2000
+        while targetEdit.Text != phrase.content {
+            if A_TickCount >= timeoutAt
+                break
+            Sleep(20)
+        }
+
+        Assert(
+            targetEdit.Text == phrase.content,
+            "Selecting a normal fixed Quick Phrase from the selector did not paste into the original target. Actual: ["
+                targetEdit.Text "]"
+        )
+    } finally {
+        if IsObject(selectorGui) {
+            try selectorGui.Destroy()
+        }
+
+        QuickPhraseStore._phrases := originalPhrases
+        AppState.QuickPhrasePasteTarget := originalTarget
+        AppState.QuickPhraseTransactionActive := originalTransaction
+        targetGui.Destroy()
+    }
+}
+
 try {
     RunVariableEndToEndTest()
     RunFixedPhraseEndToEndTest()
