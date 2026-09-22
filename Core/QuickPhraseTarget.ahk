@@ -90,18 +90,9 @@ class QuickPhraseTarget {
         return WinExist("A") == target.window
     }
 
-    static RestoreControlFocus(target) {
+    static IsCapturedControlFocused(target) {
         if !this.IsControlValid(target)
             return false
-
-        try {
-            ControlFocus(
-                "ahk_id " target.control,
-                "ahk_id " target.window
-            )
-        } catch {
-            return false
-        }
 
         try {
             return ControlGetFocus("ahk_id " target.window) == target.control
@@ -136,16 +127,17 @@ class QuickPhraseTarget {
                 error: "Quick Phrase target window could not be activated."
             }
 
-        ; Restore the exact control which had keyboard focus before Quick Phrase
-        ; opened. This is important for browsers and custom editors: activating
-        ; the top-level window alone may leave focus on a non-editing child or on
-        ; no child at all. ControlFocus is only an attempt; invalid/unsupported
-        ; controls fall back to the window's current logical focus.
-        controlRestored := this.RestoreControlFocus(target)
+        ; Do not force ControlFocus here. Chromium, VS Code, Electron and other
+        ; custom editor surfaces can expose implementation-specific child HWNDs;
+        ; forcing one can move keyboard focus away from the editor/caret that
+        ; the application itself restores when its top-level window activates.
+        ; We only inspect whether the originally focused child has naturally
+        ; been restored, then use the established foreground Ctrl+V path.
+        controlRestored := this.IsCapturedControlFocused(target)
 
         ; Keep the same settling interval as the established history paste
-        ; workflow. The delay gives the application time to restore its editor
-        ; surface/caret after cross-window activation and ControlFocus.
+        ; workflow so the target application can restore its editor surface
+        ; and caret after cross-window activation.
         Sleep(this.ForegroundSettleDelay)
 
         if this.SendForegroundPaste()
