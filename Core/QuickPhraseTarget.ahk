@@ -107,27 +107,75 @@ class QuickPhraseTarget {
     }
 
     static DeliverPaste(target) {
+        if !this.IsWindowValid(target)
+            return {
+                ok: false,
+                controlRestored: false
+            }
+
+        ; Native text controls can accept WM_PASTE directly. This is more
+        ; deterministic than restoring keyboard focus after a Quick Phrase GUI
+        ; has taken focus, and it preserves the control's existing caret/selection.
+        if this.IsControlValid(target) && this._SupportsDirectPaste(target.control) {
+            try {
+                SendMessage(
+                    0x0302,
+                    0,
+                    0,
+                    ,
+                    "ahk_id " target.control
+                )
+            } catch {
+                return {
+                    ok: false,
+                    controlRestored: false
+                }
+
+            return {
+                ok: true,
+                controlRestored: true
+            }
+        }
+
+        ; Custom editors (notably Chromium/Electron/WebView controls) do not
+        ; expose their logical text input as a native Edit control. Do not force
+        ; focus onto an internal child HWND here; let the application restore
+        ; its own logical input focus when the original top-level window returns.
         if !this.Activate(target)
             return {
                 ok: false,
                 controlRestored: false
             }
 
-        controlRestored := this.RestoreControlFocus(target)
+        Sleep(100)
 
         try {
             Send("^v")
         } catch {
             return {
                 ok: false,
-                controlRestored: controlRestored
+                controlRestored: false
             }
-        }
 
         return {
             ok: true,
-            controlRestored: controlRestored
+            controlRestored: false
         }
+    }
+
+    static _SupportsDirectPaste(hwnd) {
+        try
+            className := StrUpper(WinGetClass("ahk_id " hwnd))
+        catch
+            return false
+
+        return (
+            InStr(className, "EDIT")
+            || InStr(className, "RICHEDIT")
+            || InStr(className, "SCINTILLA")
+            || InStr(className, "TMEMO")
+            || InStr(className, "TEDIT")
+        )
     }
 
     static _IsInternalWindow(hwnd) {
