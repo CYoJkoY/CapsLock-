@@ -1,12 +1,14 @@
 #Requires AutoHotkey v2.0
 
+#Include "..\Core\QuickPhraseTarget.ahk"
+
 Assert(condition, message) {
     if !condition
         throw Error(message)
 }
 
 ReadSource(path) {
-    return FileRead(A_WorkingDir "\\" path, "UTF-8")
+    return FileRead(A_WorkingDir "\" path, "UTF-8")
 }
 
 RunTargetDeliveryTest() {
