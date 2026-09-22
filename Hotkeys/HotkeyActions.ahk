@@ -1,5 +1,9 @@
 #Requires AutoHotkey v2.0
 
+; These symbols are provided by the root script's includes.
+IsSet(AppState)
+IsSet(DarkInputDialog)
+
 CopyAsPlainTextAndAddToHistory() {
     AppState.IgnoreNextClipChange := true
     text := ClipboardHelper.CopyAsPlainText()
