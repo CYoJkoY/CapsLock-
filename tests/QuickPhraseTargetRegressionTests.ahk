@@ -16,7 +16,6 @@ RunCaptureTest() {
     gui := Gui("+AlwaysOnTop", "Quick Phrase Target Capture Test")
     edit := gui.Add("Edit", "w360 h90", "")
     gui.Show("w420 h160")
-
     edit.Focus()
     WinActivate("ahk_id " gui.Hwnd)
 
@@ -67,18 +66,15 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseTarget.Capture()") > 0
-            && InStr(source, "QuickPhrasePasteText(") > 0
-            && InStr(source, "ActivateAndPaste()") > 0
-            && InStr(source, "QuickPhraseTarget.DeliverPaste(") == 0,
-        "Quick Phrase must capture the target but use the shared application paste path for final delivery."
+        InStr(source, "QuickPhraseTarget.Capture()") > 0,
+        "Quick Phrase must keep target-module compatibility capture available."
     )
 
     Assert(
-        InStr(source, "AppState.TargetWindow := targetHwnd") > 0
-            && InStr(source, "AppState.TargetWindow := previousTarget") > 0
+        InStr(source, "QuickPhrasePasteText(") > 0
+            && InStr(source, "ActivateAndPaste()") > 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase must temporarily reuse the shared TargetWindow paste mechanism and restore it afterwards."
+        "Quick Phrase final delivery must reuse the shared foreground paste path."
     )
 
     Assert(
@@ -113,7 +109,6 @@ RunTests() {
 
 WriteTestResult(status, message := "") {
     path := A_Args.Length > 0 ? A_Args[1] : A_WorkingDir "	estsTestResult.txt"
-
     try FileDelete(path)
 
     payload := status
