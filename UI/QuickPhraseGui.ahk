@@ -227,9 +227,8 @@ QuickPhraseUseSelected(selectorGui) {
     }
 
     ; Keep the transaction locked while the selector is removed, variables are
-    ; collected, and the final paste is performed. This is the same synchronous
-    ; structure as the original Quick Phrase flow, without an extra timer-thread
-    ; handoff between selector -> variable dialog.
+    ; collected, and the final paste is scheduled. The actual paste runs in a
+    ; fresh script thread after the selector/variable GUI event has returned.
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
