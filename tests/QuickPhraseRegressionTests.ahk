@@ -77,6 +77,13 @@ RunTests() {
         "Quick Phrase must not restore the previous clipboard synchronously after paste."
     )
 
+    Assert(
+        InStr(source, "normalEditOptions := ThemeHelper.GetEditOptions()") > 0
+            && InStr(source, '" r1 " normalEditOptions') > 0
+            && InStr(source, '" WantReturn " ThemeHelper.GetEditOptions()') > 0,
+        "Ordinary variables must remain single-line while only {{etxt}} uses multiline WantReturn input."
+    )
+
     return true
 }
 
