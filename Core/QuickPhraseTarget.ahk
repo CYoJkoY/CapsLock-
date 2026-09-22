@@ -130,6 +130,7 @@ class QuickPhraseTarget {
                     ok: false,
                     controlRestored: false
                 }
+            }
 
             return {
                 ok: true,
@@ -156,6 +157,7 @@ class QuickPhraseTarget {
                 ok: false,
                 controlRestored: false
             }
+        }
 
         return {
             ok: true,
