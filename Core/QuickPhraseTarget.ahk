@@ -1,6 +1,17 @@
 #Requires AutoHotkey v2.0
 
 class QuickPhraseTarget {
+    static EditControlClassPrefixes := [
+        "Edit",
+        "RichEdit",
+        "Scintilla",
+        "TMemo",
+        "TSyntaxMemo",
+        "AkelEdit",
+        "TJvRichEdit",
+        "TEdit",
+        "EditControl"
+    ]
     static Capture() {
         windowHwnd := WinExist("A")
 
@@ -120,7 +131,7 @@ class QuickPhraseTarget {
 
         classNameLower := StrLower(className)
 
-        for knownClass in AppState.TextInputControls {
+        for knownClass in this.EditControlClassPrefixes {
             knownClassLower := StrLower(knownClass)
 
             if (
