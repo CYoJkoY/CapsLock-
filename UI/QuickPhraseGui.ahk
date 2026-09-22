@@ -241,16 +241,18 @@ QuickPhraseUseSelected(selectorGui) {
 }
 
 QuickPhraseExecutePhrase(phrase, pasteTarget) {
+    ok := false
     reopenSelector := false
-    pasteQueued := false
     errorMessage := ""
-    finalText := ""
 
     try {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            finalText := phrase.content
+            ok := QuickPhrasePasteText(
+                phrase.content,
+                pasteTarget
+            )
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -262,62 +264,35 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
                 return
             }
 
-            finalText := result.text
+            ; The variable dialog is fully closed by the time
+            ; ShowQuickPhraseVariableDialog() returns. Paste immediately through
+            ; the same ActivateAndPaste() path used by History/normal paste.
+            ok := QuickPhrasePasteText(
+                result.text,
+                pasteTarget
+            )
         }
-
-        ; The variable-dialog/OK callback has just destroyed the GUI. Queue
-        ; the actual clipboard + paste work onto a fresh thread so Windows has
-        ; completed the GUI teardown/focus transition before Ctrl+V is sent.
-        pasteQueued := true
-        SetTimer(
-            () => QuickPhraseFinishPaste(finalText, pasteTarget),
-            -30
-        )
     } catch as err {
         errorMessage := err.Message
     } finally {
-        ; Keep the workflow locked until the queued paste has completed.
-        if !pasteQueued {
-            AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhraseTransactionActive := false
 
-            if reopenSelector {
-                SetTimer(
-                    () => ShowQuickPhraseSelector(false),
-                    -1
-                )
-            } else {
-                AppState.QuickPhrasePasteTarget := ""
-            }
+        if reopenSelector {
+            SetTimer(
+                () => ShowQuickPhraseSelector(false),
+                -1
+            )
+        } else {
+            AppState.QuickPhrasePasteTarget := ""
         }
     }
 
     if errorMessage != "" {
-        AppState.QuickPhraseTransactionActive := false
-        AppState.QuickPhrasePasteTarget := ""
-
         ShowToolTip(
             errorMessage,
             2200
         )
-    }
-}
-
-QuickPhraseFinishPaste(text, pasteTarget) {
-    ok := false
-
-    try {
-        ok := QuickPhrasePasteText(
-            text,
-            pasteTarget
-        )
-    } catch as err {
-        ShowToolTip(
-            err.Message,
-            2200
-        )
-    } finally {
-        AppState.QuickPhraseTransactionActive := false
-        AppState.QuickPhrasePasteTarget := ""
+        return
     }
 
     if !ok {
@@ -681,40 +656,23 @@ QuickPhrasePasteText(text, pasteTarget) {
         return false
 
     targetHwnd := pasteTarget.window
-
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
 
+    ; Use the application's existing, proven foreground clipboard paste path.
+    ; Quick Phrase only supplies an explicit destination window; it does not
+    ; maintain a second keyboard-delivery implementation.
+    previousTarget := AppState.TargetWindow
     backup := ""
 
     try {
-        ; Preserve the original clipboard across overlapping Quick Phrase
-        ; transactions. If a previous transaction is still pending and its
-        ; clipboard has not changed, keep its original backup.
-        currentSequence := DllCall(
-            "GetClipboardSequenceNumber",
-            "UInt"
-        )
-
-        if (
-            AppState.QuickPhraseClipboardRestorePending
-            && currentSequence == AppState.QuickPhraseClipboardSequence
-            && IsObject(AppState.QuickPhraseClipboardBackup)
-        ) {
-            backup := AppState.QuickPhraseClipboardBackup
-        } else {
-            backup := ClipboardAll()
-        }
-
-        ; Windows text clipboard conventionally exposes lines as CRLF.
-        ; Normalize the completed phrase before assigning/checking the
-        ; clipboard so multiline input is not rejected merely because a
-        ; GuiControl.Value/clipboard boundary used LF instead of CRLF.
+        backup := ClipboardAll()
         clipboardText := QuickPhraseNormalizeClipboardText(text)
 
-        ; Replace the clipboard only after the complete phrase has been
-        ; assembled. The target window/control is restored later by
-        ; QuickPhraseTarget immediately before Ctrl+V.
+        ; Temporarily point the shared paste helper at this workflow's captured
+        ; destination, then restore the caller's global target afterwards.
+        AppState.TargetWindow := targetHwnd
+
         AppState.IgnoreNextClipChange := true
         A_Clipboard := clipboardText
 
@@ -726,98 +684,22 @@ QuickPhrasePasteText(text, pasteTarget) {
                 "Quick Phrase clipboard content did not match the requested text."
             )
 
-        expected := A_Clipboard
-        sequence := DllCall(
-            "GetClipboardSequenceNumber",
-            "UInt"
-        )
+        ActivateAndPaste()
 
-        AppState.QuickPhraseClipboardBackup := backup
-        AppState.QuickPhraseClipboardExpected := expected
-        AppState.QuickPhraseClipboardSequence := sequence
-
-        AppState.QuickPhraseClipboardRestoreGeneration += 1
-        generation := AppState.QuickPhraseClipboardRestoreGeneration
-        AppState.QuickPhraseClipboardRestorePending := true
-
-        ; Deliver through the same clipboard-paste mechanism used by the
-        ; existing history workflow: activate the captured window, restore
-        ; its original focused control when possible, then send Ctrl+V.
-        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget)
-
-        if !delivery.ok
-            throw Error(delivery.error)
-
-        ; Do not restore the original clipboard synchronously. Some
-        ; applications read clipboard data asynchronously after Ctrl+V.
-        SetTimer(
-            () => QuickPhraseRestoreClipboard(generation),
-            -AppState.QuickPhraseClipboardRestoreDelay
-        )
-
+        ; Keep the clipboard stable long enough for the receiving application
+        ; to consume Ctrl+V before restoring the previous user clipboard.
+        Sleep(120)
         return true
     } catch {
+        return false
+    } finally {
         if IsObject(backup) {
             AppState.IgnoreNextClipChange := true
             try A_Clipboard := backup
         }
 
-        AppState.QuickPhraseClipboardRestorePending := false
-        AppState.QuickPhraseClipboardBackup := ""
-        AppState.QuickPhraseClipboardExpected := ""
-        AppState.QuickPhraseClipboardSequence := 0
-
-        return false
+        AppState.TargetWindow := previousTarget
     }
-}
-QuickPhraseRestoreClipboard(generation) {
-    if !AppState.QuickPhraseClipboardRestorePending
-        return
-
-    if generation != AppState.QuickPhraseClipboardRestoreGeneration
-        return
-
-    currentSequence := DllCall(
-        "GetClipboardSequenceNumber",
-        "UInt"
-    )
-
-    ; A newer clipboard mutation belongs to the user or another application.
-    ; Never overwrite it with the old pre-Quick-Phrase clipboard.
-    if currentSequence != AppState.QuickPhraseClipboardSequence {
-        AppState.QuickPhraseClipboardRestorePending := false
-        AppState.QuickPhraseClipboardBackup := ""
-        AppState.QuickPhraseClipboardExpected := ""
-        AppState.QuickPhraseClipboardSequence := 0
-        return
-    }
-
-    if A_Clipboard != AppState.QuickPhraseClipboardExpected {
-        AppState.QuickPhraseClipboardRestorePending := false
-        AppState.QuickPhraseClipboardBackup := ""
-        AppState.QuickPhraseClipboardExpected := ""
-        AppState.QuickPhraseClipboardSequence := 0
-        return
-    }
-
-    backup := AppState.QuickPhraseClipboardBackup
-
-    AppState.IgnoreNextClipChange := true
-
-    try {
-        A_Clipboard := backup
-    } catch {
-        SetTimer(
-            () => QuickPhraseRestoreClipboard(generation),
-            -250
-        )
-        return
-    }
-
-    AppState.QuickPhraseClipboardRestorePending := false
-    AppState.QuickPhraseClipboardBackup := ""
-    AppState.QuickPhraseClipboardExpected := ""
-    AppState.QuickPhraseClipboardSequence := 0
 }
 
 ToggleQuickPhraseEnabled(*) {
