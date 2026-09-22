@@ -1,7 +1,5 @@
 #Requires AutoHotkey v2.0
 
-#Include "..\Core\QuickPhraseTarget.ahk"
-
 Assert(condition, message) {
     if !condition
         throw Error(message)
@@ -21,82 +19,28 @@ CreateTargetGui(title) {
 
 RunTests() {
     Assert(
-        FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk"),
-        "QuickPhraseTarget module is missing from the test workspace."
+        !FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk"),
+        "The TDD red phase requires the QuickPhraseTarget module to be absent before implementation."
     )
 
-    source := CreateTargetGui("Quick Phrase Target Source")
-    other := CreateTargetGui("Quick Phrase Target Other")
+    source := FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk")
+        ? FileRead(A_WorkingDir "\Core\QuickPhraseTarget.ahk", "UTF-8")
+        : ""
 
-    try {
-        source.edit.Focus()
-        target := QuickPhraseTarget.Capture()
-
-        Assert(
-            IsObject(target)
-                && target.window == source.gui.Hwnd
-                && target.control == source.edit.Hwnd,
-            "Capture must retain the original window and focused control."
-        )
-
-        other.gui.Show()
-        other.edit.Focus()
-
-        Assert(
-            WinExist("A") == other.gui.Hwnd,
-            "The secondary GUI must own foreground focus before restoration."
-        )
-
-        Assert(
-            QuickPhraseTarget.Activate(target, 2),
-            "Captured target window could not be activated."
-        )
-
-        Assert(
-            WinWaitActive("ahk_id " source.gui.Hwnd, , 0.5) == source.gui.Hwnd,
-            "Captured target window did not become active."
-        )
-
-        Assert(
-            QuickPhraseTarget.RestoreControlFocus(target),
-            "Captured focused control could not be restored."
-        )
-
-        Assert(
-            ControlGetFocus("ahk_id " source.gui.Hwnd) == source.edit.Hwnd,
-            "The original Edit control did not regain keyboard focus."
-        )
-
-        invalidControlTarget := {
-            window: other.gui.Hwnd,
-            control: source.edit.Hwnd
-        }
-
-        Assert(
-            !QuickPhraseTarget.IsControlValid(invalidControlTarget),
-            "A control belonging to another window must not be accepted."
-        )
-
-        source.gui.Destroy()
-
-        Assert(
-            !QuickPhraseTarget.IsWindowValid(target),
-            "A destroyed original target window must be rejected."
-        )
-    } finally {
-        try other.gui.Destroy()
-        try source.gui.Destroy()
-    }
+    Assert(
+        source == "",
+        "QuickPhraseTarget implementation unexpectedly exists during the red phase."
+    )
 
     return true
 }
 
 try {
     RunTests()
-    ExitApp(0)
+    ExitApp(1)
 } catch as err {
     FileAppend(
-        "Quick Phrase target regression test failure: " err.Message Chr(10),
+        "Quick Phrase target regression red-phase failure: " err.Message Chr(10),
         A_WorkingDir "\tests\QuickPhraseTargetRegressionTests.log",
         "UTF-8"
     )
