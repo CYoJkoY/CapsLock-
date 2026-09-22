@@ -1,19 +1,6 @@
 #Requires AutoHotkey v2.0
 
-ShowQuickPhraseSelector(captureTarget := true) {
-    ; The selector is only the browsing stage. A target is captured once for
-    ; the current selector session and is never replaced by another GUI.
-    if AppState.QuickPhraseTransactionActive
-        return
-
-    if captureTarget {
-        target := QuickPhraseTarget.Capture()
-        if !QuickPhraseTarget.IsWindowValid(target)
-            return
-
-        AppState.QuickPhrasePasteTarget := target
-    }
-
+ShowQuickPhraseSelector() {
     if IsObject(AppState.QuickPhraseGui) {
         try {
             if WinExist("ahk_id " AppState.QuickPhraseGui.Hwnd) {
@@ -88,10 +75,6 @@ QuickPhraseDestroyVariableDialog(myGui) {
 
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
-
-    if !AppState.QuickPhraseTransactionActive
-        AppState.QuickPhrasePasteTarget := ""
-
     return true
 }
 
@@ -180,22 +163,7 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    target := QuickPhraseTarget.Capture()
-    if !QuickPhraseTarget.IsWindowValid(target)
-        return
-
-    AppState.QuickPhrasePasteTarget := target
-    ShowQuickPhraseSelector(false)
-}
-
-QuickPhraseCaptureFocusTarget() {
-    ; Kept as a compatibility wrapper for existing callers.
-    target := QuickPhraseTarget.Capture()
-    if !QuickPhraseTarget.IsWindowValid(target)
-        return 0
-
-    AppState.QuickPhrasePasteTarget := target
-    return target.window
+    ShowQuickPhraseSelector()
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -216,31 +184,17 @@ QuickPhraseUseSelected(selectorGui) {
         return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    target := AppState.QuickPhrasePasteTarget
-
     if !IsObject(phrase)
         return true
 
-    if !QuickPhraseTarget.IsWindowValid(target) {
-        ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
-        return true
-    }
-
-    ; Keep the transaction locked while the selector is removed, variables are
-    ; collected, and the final paste is scheduled. The actual paste runs in a
-    ; fresh script thread after the selector/variable GUI event has returned.
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
-    QuickPhraseExecutePhrase(
-        phrase,
-        target
-    )
-
+    QuickPhraseExecutePhrase(phrase)
     return true
 }
 
-QuickPhraseExecutePhrase(phrase, target) {
+QuickPhraseExecutePhrase(phrase) {
     reopenSelector := false
     ok := false
     errorMessage := ""
@@ -249,10 +203,7 @@ QuickPhraseExecutePhrase(phrase, target) {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(
-                phrase.content,
-                target
-            )
+            ok := QuickPhrasePasteText(phrase.content)
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -264,26 +215,18 @@ QuickPhraseExecutePhrase(phrase, target) {
                 return
             }
 
-            ; ShowQuickPhraseVariableDialog() does not return until its GUI
-            ; has been destroyed. Perform the final paste synchronously here
-            ; instead of scheduling another timer thread. This keeps the whole
-            ; completed-phrase delivery on one deterministic path after the
-            ; variable GUI lifecycle has ended.
-            ok := QuickPhrasePasteText(
-                result.text,
-                target
-            )
+            ; The variable dialog has already been destroyed before this call.
+            ; Resolve the output destination only now, from the current mouse
+            ; position beneath the Quick Phrase UI.
+            ok := QuickPhrasePasteText(result.text)
         }
     } catch as err {
         errorMessage := err.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
 
-        if reopenSelector {
-            ShowQuickPhraseSelector(false)
-        } else {
-            AppState.QuickPhrasePasteTarget := ""
-        }
+        if reopenSelector
+            ShowQuickPhraseSelector()
     }
 
     if errorMessage != "" {
@@ -650,8 +593,72 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhrasePasteText(text, target) {
-    if !QuickPhraseTarget.IsWindowValid(target)
+QuickPhraseResolveMouseTarget() {
+    ; The Quick Phrase UI has already been destroyed before this function is
+    ; called, so MouseGetPos now resolves the application beneath the exact
+    ; screen position where the output action was clicked.
+    MouseGetPos(, , &windowHwnd, &controlHwnd, 2)
+
+    if !windowHwnd
+        return ""
+
+    if QuickPhraseIsInternalWindow(windowHwnd)
+        return ""
+
+    if !WinExist("ahk_id " windowHwnd)
+        return ""
+
+    if controlHwnd && !WinExist("ahk_id " controlHwnd)
+        controlHwnd := 0
+
+    return {
+        window: windowHwnd,
+        control: controlHwnd
+    }
+}
+
+QuickPhraseIsInternalWindow(hwnd) {
+    if IsObject(AppState.QuickPhraseGui) {
+        try {
+            if AppState.QuickPhraseGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.QuickPhraseVariableGui) {
+        try {
+            if AppState.QuickPhraseVariableGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.QuickPhraseManagerGui) {
+        try {
+            if AppState.QuickPhraseManagerGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsSet(CustomMenu) {
+        try {
+            if CustomMenu.menuHwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.FullHistoryGui) {
+        try {
+            if AppState.FullHistoryGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    return false
+}
+
+QuickPhrasePasteText(text) {
+    target := QuickPhraseResolveMouseTarget()
+    if !IsObject(target)
         return false
 
     backup := ClipboardAll()
@@ -663,14 +670,27 @@ QuickPhrasePasteText(text, target) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        delivery := QuickPhraseTarget.DeliverPaste(target)
-        if !delivery.ok
+        try {
+            WinActivate("ahk_id " target.window)
+        } catch {
             return false
+        }
 
-        ; Give the target application time to consume Ctrl+V before restoring
-        ; the caller's original clipboard content.
-        Sleep(120)
-        return true
+        try {
+            if WinWaitActive("ahk_id " target.window, , 1) != target.window
+                return false
+
+            ; Click() with no coordinates preserves the current physical mouse
+            ; position. This lets native controls and browser/editor surfaces
+            ; perform their own hit-testing and place the caret at the cursor.
+            Click()
+            Sleep(40)
+            Send("^v")
+            Sleep(120)
+            return true
+        } catch {
+            return false
+        }
     } catch {
         return false
     } finally {
@@ -763,7 +783,7 @@ CloseQuickPhraseManager(myGui) {
     AppState.QuickPhraseManagerGui := ""
 
     if returnToSelector
-        ShowQuickPhraseSelector(false)
+        ShowQuickPhraseSelector()
 }
 
 QuickPhraseRefreshManager(myGui) {

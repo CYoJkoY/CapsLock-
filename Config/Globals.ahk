@@ -12,19 +12,8 @@ class AppState {
     static QuickPhraseContentDir := A_ScriptDir "\configs\QuickPhrases"
     static QuickPhraseGui := ""
     static QuickPhraseManagerGui := ""
-    static QuickPhrasePasteTarget := ""
     static QuickPhraseVariableGui := ""
     static QuickPhraseTransactionActive := false
-
-    ; Runtime state for the Quick Phrase clipboard transaction. The original
-    ; clipboard is restored asynchronously only when no newer clipboard
-    ; mutation occurred after the phrase was pasted.
-    static QuickPhraseClipboardRestorePending := false
-    static QuickPhraseClipboardBackup := ""
-    static QuickPhraseClipboardExpected := ""
-    static QuickPhraseClipboardSequence := 0
-    static QuickPhraseClipboardRestoreGeneration := 0
-    static QuickPhraseClipboardRestoreDelay := 1000
 
     ; --- Settings ---
     static PasteMode := 1
