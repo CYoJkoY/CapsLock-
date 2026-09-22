@@ -7,9 +7,11 @@ ShowQuickPhraseSelector(captureTarget := true) {
         return
 
     if captureTarget {
-        CapturePasteTarget()
-        if !AppState.TargetWindow || !WinExist("ahk_id " AppState.TargetWindow)
+        target := QuickPhraseTarget.Capture()
+        if !QuickPhraseTarget.IsWindowValid(target)
             return
+
+        AppState.QuickPhrasePasteTarget := target
     }
 
     if IsObject(AppState.QuickPhraseGui) {
@@ -87,10 +89,8 @@ QuickPhraseDestroyVariableDialog(myGui) {
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
 
-    if !AppState.QuickPhraseTransactionActive {
+    if !AppState.QuickPhraseTransactionActive
         AppState.QuickPhrasePasteTarget := ""
-        AppState.TargetWindow := 0
-    }
 
     return true
 }
@@ -180,20 +180,22 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    ; Reuse the application's established paste-target capture used by the
-    ; history menu. The target is captured before any Quick Phrase GUI exists.
-    CapturePasteTarget()
-
-    if !AppState.TargetWindow || !WinExist("ahk_id " AppState.TargetWindow)
+    target := QuickPhraseTarget.Capture()
+    if !QuickPhraseTarget.IsWindowValid(target)
         return
 
+    AppState.QuickPhrasePasteTarget := target
     ShowQuickPhraseSelector(false)
 }
 
 QuickPhraseCaptureFocusTarget() {
-    ; Kept as a compatibility wrapper for existing callers/tests.
-    CapturePasteTarget()
-    return AppState.TargetWindow
+    ; Kept as a compatibility wrapper for existing callers.
+    target := QuickPhraseTarget.Capture()
+    if !QuickPhraseTarget.IsWindowValid(target)
+        return 0
+
+    AppState.QuickPhrasePasteTarget := target
+    return target.window
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -214,12 +216,12 @@ QuickPhraseUseSelected(selectorGui) {
         return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    targetHwnd := AppState.TargetWindow
+    target := AppState.QuickPhrasePasteTarget
 
     if !IsObject(phrase)
         return true
 
-    if !targetHwnd || !WinExist("ahk_id " targetHwnd) {
+    if !QuickPhraseTarget.IsWindowValid(target) {
         ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
         return true
     }
@@ -233,13 +235,13 @@ QuickPhraseUseSelected(selectorGui) {
 
     QuickPhraseExecutePhrase(
         phrase,
-        targetHwnd
+        target
     )
 
     return true
 }
 
-QuickPhraseExecutePhrase(phrase, targetHwnd) {
+QuickPhraseExecutePhrase(phrase, target) {
     ok := false
     reopenSelector := false
     errorMessage := ""
@@ -250,7 +252,7 @@ QuickPhraseExecutePhrase(phrase, targetHwnd) {
         if variables.Length == 0 {
             ok := QuickPhrasePasteText(
                 phrase.content,
-                targetHwnd
+                target
             )
         } else {
             result := ShowQuickPhraseVariableDialog(
@@ -265,7 +267,7 @@ QuickPhraseExecutePhrase(phrase, targetHwnd) {
 
             ok := QuickPhrasePasteText(
                 result.text,
-                targetHwnd
+                target
             )
         }
     } catch as err {
@@ -279,11 +281,11 @@ QuickPhraseExecutePhrase(phrase, targetHwnd) {
                 -1
             )
         } else {
-            AppState.TargetWindow := 0
+            AppState.QuickPhrasePasteTarget := ""
         }
     }
 
-    if errorMessage != "" {
+    if errorMessage != "{
         ShowToolTip(
             errorMessage,
             2200
@@ -497,8 +499,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
         etxtControl := {
             name: etxtName,
-            edit: etxtEdit
-        }
+            edit: etxtEdit        }
 
         controls.Push(etxtControl)
     }
@@ -648,24 +649,25 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhrasePasteText(text, targetHwnd) {
-    if !targetHwnd || !WinExist("ahk_id " targetHwnd)
+QuickPhrasePasteText(text, target) {
+    if !QuickPhraseTarget.IsWindowValid(target)
         return false
 
-    previousTarget := AppState.TargetWindow
     backup := ClipboardAll()
 
     try {
-        ; Use exactly the same global TargetWindow + ActivateAndPaste path as
-        ; the working History/normal paste workflow.
-        AppState.TargetWindow := targetHwnd
         AppState.IgnoreNextClipChange := true
         A_Clipboard := QuickPhraseNormalizeClipboardText(text)
 
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        ActivateAndPaste()
+        delivery := QuickPhraseTarget.DeliverPaste(target)
+        if !delivery.ok
+            return false
+
+        ; Give the target application time to consume Ctrl+V before restoring
+        ; the caller's original clipboard content.
         Sleep(120)
         return true
     } catch {
@@ -673,7 +675,6 @@ QuickPhrasePasteText(text, targetHwnd) {
     } finally {
         AppState.IgnoreNextClipChange := true
         try A_Clipboard := backup
-        AppState.TargetWindow := previousTarget
     }
 }
 
@@ -748,7 +749,6 @@ ShowQuickPhraseManager(returnToSelector := false) {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
-
     AppState.QuickPhraseManagerGui := myGui
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     myGui.Show("w740 h590")
@@ -763,8 +763,6 @@ CloseQuickPhraseManager(myGui) {
 
     if returnToSelector
         ShowQuickPhraseSelector(false)
-    else
-        AppState.TargetWindow := 0
 }
 
 QuickPhraseRefreshManager(myGui) {
