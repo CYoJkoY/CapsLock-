@@ -714,7 +714,7 @@ QuickPhrasePasteText(text, pasteTarget) {
         ; prefers the original focused control, then falls back to the target
         ; window, with a final foreground Send for custom Chromium/Electron
         ; controls.
-        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget)
+        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget, text)
 
         if !delivery.ok
             throw Error(delivery.error)
