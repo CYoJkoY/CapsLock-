@@ -159,7 +159,7 @@ class QuickPhraseTarget {
                     "ahk_id " target.control,
                     "ahk_id " target.window
                 )
-                return true
+                return "editpaste"
             } catch {
                 ; Fall through to the keyboard-message path for modified/custom
                 ; edit implementations which expose an HWND but reject
@@ -176,7 +176,7 @@ class QuickPhraseTarget {
                 "ahk_id " target.control,
                 "ahk_id " target.window
             )
-            return true
+            return "controlsend"
         } catch {
             return false
         }
@@ -219,16 +219,18 @@ class QuickPhraseTarget {
                 error: "Quick Phrase target window could not be activated."
             }
 
-        if this.SendToControl(target, text)
+        controlMode := this.SendToControl(target, text)
+
+        if controlMode != ""
             return {
                 ok: true,
-                mode: "control",
-                controlRestored: true,
+                mode: controlMode,
+                controlRestored: controlMode == "controlsend",
                 error: ""
             }
 
         ; The original control may have been destroyed or may reject
-        ; ControlSend. Fall back to the original top-level window.
+        ; EditPaste/ControlSend. Fall back to the original top-level window.
         if this.SendToWindow(target)
             return {
                 ok: true,
