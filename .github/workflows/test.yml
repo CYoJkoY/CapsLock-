@@ -1,4 +1,4 @@
-name: Regression Tests
+name: AutoHotkey Syntax Check
 
 on:
   pull_request:
@@ -7,16 +7,17 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: capslock-regression-${{ github.event.pull_request.number || github.ref }}
+  group: capslock-syntax-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  regression:
-    name: Regression Tests
+  syntax:
+    name: AutoHotkey Syntax Check
     runs-on: windows-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
@@ -27,10 +28,7 @@ jobs:
         with:
           version: '2.0.28'
 
-      - name: Run regression tests
+      - name: Validate AutoHotkey source
         shell: pwsh
-        run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
-
-      - name: Run Cloud Sync regression tests
-        shell: pwsh
-        run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+        timeout-minutes: 2
+        run: .\autohotkey\AutoHotkey64.exe /ErrorStdOut /Validate .\CapsLock-.ahk

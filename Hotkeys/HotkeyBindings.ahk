@@ -11,7 +11,11 @@
         SetCapsLockState( "AlwaysOn" )
 }
 
-#HotIf GetKeyState( "CapsLock", "P" )
+CapsLockHotkeysAvailable() {
+    return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
+}
+
+#HotIf CapsLockHotkeysAvailable()
 
 
     +Left:: Send( "^+{Left}" )
@@ -31,7 +35,7 @@
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
-#HotIf GetKeyState( "CapsLock", "P" ) && !WindowHole.IsActive()
+#HotIf CapsLockHotkeysAvailable() && !WindowHole.IsActive()
 
     LButton:: {
         AdjustOpacity( 20 )
@@ -62,7 +66,7 @@
             WinSetTransparent( 255, hwnd )
     }
 
-#HotIf GetKeyState( "CapsLock", "P" )
+#HotIf CapsLockHotkeysAvailable()
 
     w::
     8::
@@ -108,8 +112,8 @@
 ; when CapsLock is released first. The tilde keeps the key-up event visible.
 ~x up:: WindowHole.HandleXUp()
 
-#HotIf GetKeyState( "CapsLock", "P" ) && AppState.QuickPhraseEnabled
-    +p:: ShowQuickPhraseSelector()
+#HotIf CapsLockHotkeysAvailable() && AppState.QuickPhraseEnabled
+    +p:: QuickPhraseHandleHotkey()
 #HotIf
 
 

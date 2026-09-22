@@ -40,7 +40,7 @@ class OneDriveOAuth {
             5,
             Integer(data.Get("interval", 5))
         )
-        this.ExpiresAt := A_TickCount64 + Integer(data.Get("expires_in", 900)) * 1000
+        this.ExpiresAt := DllCall("GetTickCount64", "UInt64") + Integer(data.Get("expires_in", 900)) * 1000
 
         if this.DeviceCode == ""
             throw Error("Microsoft did not return a device code.")
@@ -144,7 +144,7 @@ class OneDriveOAuth {
         if !this.Active
             return
 
-        if A_TickCount64 >= this.ExpiresAt {
+        if DllCall("GetTickCount64", "UInt64") >= this.ExpiresAt {
             this._Finish(false, "OneDrive authorization code expired.")
             return
         }

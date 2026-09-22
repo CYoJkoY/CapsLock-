@@ -12,6 +12,8 @@ class AppState {
     static QuickPhraseContentDir := A_ScriptDir "\configs\QuickPhrases"
     static QuickPhraseGui := ""
     static QuickPhraseManagerGui := ""
+    static QuickPhraseVariableGui := ""
+    static QuickPhraseTransactionActive := false
 
     ; --- Settings ---
     static PasteMode := 1

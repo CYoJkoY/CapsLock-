@@ -1,12 +1,6 @@
 #Requires AutoHotkey v2.0
 
-ShowQuickPhraseSelector(captureTarget := true) {
-    if captureTarget {
-        target := WinExist("A")
-        if target
-            AppState.TargetWindow := target
-    }
-
+ShowQuickPhraseSelector() {
     if IsObject(AppState.QuickPhraseGui) {
         try {
             if WinExist("ahk_id " AppState.QuickPhraseGui.Hwnd) {
@@ -20,7 +14,10 @@ ShowQuickPhraseSelector(captureTarget := true) {
         }
     }
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"))
+    myGui := Gui(
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
+    )
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "💬 " Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"), 640)
     ThemeHelper.AddSubtitle(
@@ -66,11 +63,19 @@ ShowQuickPhraseSelector(captureTarget := true) {
     QuickPhraseRefreshSelector(myGui)
 }
 
-CloseQuickPhraseSelector(myGui) {
-    try myGui.Destroy()
+QuickPhraseDestroySelector(myGui) {
     AppState.QuickPhraseGui := ""
-    if !IsObject(AppState.QuickPhraseManagerGui)
-        AppState.TargetWindow := 0
+    try myGui.Destroy()
+}
+
+QuickPhraseDestroyVariableDialog(myGui) {
+    AppState.QuickPhraseVariableGui := ""
+    try myGui.Destroy()
+}
+
+CloseQuickPhraseSelector(myGui) {
+    QuickPhraseDestroySelector(myGui)
+    return true
 }
 
 QuickPhraseOpenManager(selectorGui) {
@@ -86,10 +91,17 @@ QuickPhraseRefreshSelector(myGui) {
     filter := StrLower(Trim(myGui.SearchBox.Text))
     list.Delete()
     count := 0
+    phrases := []
 
     for phrase in QuickPhraseStore.GetAll() {
-        if filter != "" && !InStr(StrLower(phrase.name " " phrase.content), filter)
+        if filter != "" && !InStr(StrLower(phrase.name " " phrase.category " " phrase.content), filter)
             continue
+        phrases.Push(phrase)
+    }
+
+    QuickPhraseSortSelectorPhrases(phrases)
+
+    for phrase in phrases {
         list.Add(, phrase.id, phrase.name, phrase.category, QuickPhrasePreview(phrase.content, 100))
         count += 1
     }
@@ -101,45 +113,139 @@ QuickPhraseRefreshSelector(myGui) {
         myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", count)
 }
 
-QuickPhraseUseSelected(myGui) {
-    row := myGui.ListView.GetNext(0, "Focused")
+QuickPhraseSortSelectorPhrases(phrases) {
+    n := phrases.Length
+    if n <= 1
+        return
+
+    Loop n - 1 {
+        limit := n - A_Index
+        Loop limit {
+            index := A_Index
+            left := phrases[index]
+            right := phrases[index + 1]
+
+            if QuickPhraseCompareSelectorPhrases(left, right) > 0 {
+                phrases[index] := right
+                phrases[index + 1] := left
+            }
+        }
+    }
+}
+
+QuickPhraseCompareSelectorPhrases(left, right) {
+    leftCategory := Trim(left.category)
+    rightCategory := Trim(right.category)
+
+    if leftCategory == "" && rightCategory != ""
+        return 1
+    if leftCategory != "" && rightCategory == ""
+        return -1
+
+    categoryCompare := StrCompare(leftCategory, rightCategory, false)
+    if categoryCompare != 0
+        return categoryCompare
+
+    if left.order != right.order
+        return left.order < right.order ? -1 : 1
+
+    nameCompare := StrCompare(left.name, right.name, false)
+    if nameCompare != 0
+        return nameCompare
+
+    if left.id == right.id
+        return 0
+
+    return left.id < right.id ? -1 : 1
+}
+
+QuickPhraseHandleHotkey(*) {
+    if AppState.QuickPhraseTransactionActive
+        return
+
+    ShowQuickPhraseSelector()
+}
+
+QuickPhraseUseSelected(selectorGui) {
+    if AppState.QuickPhraseTransactionActive
+        return true
+
+    row := selectorGui.ListView.GetNext(0, "Focused")
     if !row
-        row := myGui.ListView.GetNext(0)
+        row := selectorGui.ListView.GetNext(0)
 
     if !row {
         ShowToolTip(Lang("MSG_QUICK_PHRASE_SELECT", "Please select a quick phrase."), 1500)
-        return
+        return true
     }
 
-    idText := myGui.ListView.GetText(row, 1)
+    idText := selectorGui.ListView.GetText(row, 1)
     if !(idText ~= "^\d+$")
-        return
+        return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    target := AppState.TargetWindow
-    if !IsObject(phrase) || !target || !WinExist("ahk_id " target) {
-        ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
+    if !IsObject(phrase)
+        return true
+
+    AppState.QuickPhraseTransactionActive := true
+    QuickPhraseDestroySelector(selectorGui)
+
+    QuickPhraseExecutePhrase(phrase)
+    return true
+}
+
+QuickPhraseExecutePhrase(phrase) {
+    reopenSelector := false
+    ok := false
+    errorMessage := ""
+
+    try {
+        variables := QuickPhraseExtractVariables(phrase.content)
+
+        if variables.Length == 0 {
+            ok := QuickPhrasePasteText(phrase.content)
+        } else {
+            result := ShowQuickPhraseVariableDialog(
+                phrase,
+                variables
+            )
+
+            if !result.ok {
+                reopenSelector := result.cancelled
+                return
+            }
+
+            ; The variable dialog has already been destroyed before this call.
+            ; Resolve the output destination only now, from the current mouse
+            ; position beneath the Quick Phrase UI.
+            ok := QuickPhrasePasteText(result.text)
+        }
+    } catch as err {
+        errorMessage := err.Message
+    } finally {
+        AppState.QuickPhraseTransactionActive := false
+
+        if reopenSelector
+            ShowQuickPhraseSelector()
+    }
+
+    if errorMessage != "" {
+        ShowToolTip(
+            errorMessage,
+            2200
+        )
         return
     }
 
-    myGui.Hide()
-    variables := QuickPhraseExtractVariables(phrase.content)
-    if variables.Length == 0 {
-        ok := QuickPhrasePasteText(phrase.content, target)
-    } else {
-        result := ShowQuickPhraseVariableDialog(phrase, variables)
-        if !result.ok {
-            myGui.Show()
-            WinActivate("ahk_id " myGui.Hwnd)
-            myGui.SearchBox.Focus()
-            return
-        }
-        ok := QuickPhrasePasteText(result.text, target)
+    if !ok {
+        ShowToolTip(
+            Lang(
+                "MSG_QUICK_PHRASE_PASTE_FAILED",
+                "Could not insert the quick phrase."
+            ),
+            2200
+        )
     }
-
-    CloseQuickPhraseSelector(myGui)
-    if !ok
-        ShowToolTip(Lang("MSG_QUICK_PHRASE_PASTE_FAILED", "Could not insert the quick phrase."), 2200)
 }
 
 QuickPhrasePreview(text, maxChars := 80) {
@@ -183,104 +289,413 @@ QuickPhraseApplyVariables(template, values) {
 }
 
 ShowQuickPhraseVariableDialog(phrase, variables) {
-    result := {ok: false, text: ""}
-    rows := Integer((variables.Length + 1) / 2)
-    previewY := 102 + rows * 52
+    result := {
+        ok: false,
+        cancelled: false,
+        text: ""
+    }
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_QUICK_PHRASE_VARIABLE_TITLE", "Fill phrase variables"))
+    ; etxt is the reserved free-form multiline variable. Keep ordinary
+    ; variables compact and place the multiline field on its own row.
+    normalVariables := []
+    etxtName := ""
+
+    for name in variables {
+        if (
+            StrLower(Trim(name)) == "etxt"
+            && etxtName == ""
+        ) {
+            etxtName := name
+        } else {
+            normalVariables.Push(name)
+        }
+    }
+
+    normalRows := 0
+    if normalVariables.Length > 0
+        normalRows := Integer((normalVariables.Length + 1) / 2)
+
+    normalRowH := 78
+    ; Every variable can contain structured/multiline text (for example YAML).
+    ; Keep the compact two-column layout, but make each input a true multiline
+    ; Edit control so pasted line breaks are preserved.
+    normalEditOptions := "Multi WantReturn VScroll " ThemeHelper.GetEditOptions()
+    normalBottomY := 96 + normalRows * normalRowH
+
+    if etxtName != "" {
+        etxtLabelY := normalBottomY + 8
+        etxtEditY := etxtLabelY + 18
+        previewY := etxtEditY + 96 + 10
+    } else {
+        etxtLabelY := 0
+        etxtEditY := 0
+        previewY := 102 + normalRows * normalRowH
+    }
+
+    myGui := Gui(
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_TITLE",
+            "Fill phrase variables"
+        )
+    )
+
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "✎ " Lang("GUI_QUICK_PHRASE_VARIABLE_TITLE", "Fill phrase variables"), 640)
-    ThemeHelper.AddSubtitle(
+
+    ThemeHelper.AddTitle(
         myGui,
-        Lang("GUI_QUICK_PHRASE_VARIABLE_HINT", "Fields follow first appearance order; repeated names are requested once."),
+        "✎ " Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_TITLE",
+            "Fill phrase variables"
+        ),
         640
     )
+
+    ThemeHelper.AddSubtitle(
+        myGui,
+        Lang(
+            "GUI_QUICK_PHRASE_VARIABLE_HINT",
+            "Fields follow first appearance order; repeated names are requested once."
+        ),
+        640
+    )
+
     ThemeHelper.AddSeparator(myGui, 640)
 
     controls := []
-    for index, name in variables {
-        column := index <= rows ? 0 : 1
-        row := column ? index - rows : index
-        x := 16 + column * 320
-        y := 96 + (row - 1) * 52
+    etxtControl := ""
 
-        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        myGui.Add("Text", "x" x " y" y " w300", name)
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        edit := myGui.Add("Edit", "x" x " y" (y + 18) " w300 r1 " ThemeHelper.GetEditOptions(), "")
+    ; Ordinary variables stay compact while supporting multiline input.
+    for index, name in normalVariables {
+        column := index <= normalRows ? 0 : 1
+        row := column ? index - normalRows : index
+
+        x := 16 + column * 320
+        y := 96 + (row - 1) * normalRowH
+
+        myGui.SetFont(
+            "s9 c" AppState.THEME_FG_DIM,
+            AppState.THEME_FONT
+        )
+
+        myGui.Add(
+            "Text",
+            "x" x " y" y " w300",
+            name
+        )
+
+        myGui.SetFont(
+            "s10 c" AppState.THEME_FG,
+            AppState.THEME_FONT
+        )
+
+        edit := myGui.Add(
+            "Edit",
+            "x" x
+            " y" (y + 18)
+            " w300"
+            " r3 "
+            normalEditOptions,
+            ""
+        )
+
         ThemeHelper.StyleEdit(edit)
-        controls.Push({name: name, edit: edit})
+
+        controls.Push({
+            name: name,
+            edit: edit
+        })
     }
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-    myGui.Add("Text", "x16 y" previewY, Lang("GUI_QUICK_PHRASE_PREVIEW", "Preview"))
+    ; etxt is intentionally multiline and full width so Enter inserts
+    ; real line breaks instead of accepting the dialog.
+    if etxtName != "" {
+        myGui.SetFont(
+            "s9 c" AppState.THEME_FG_DIM,
+            AppState.THEME_FONT
+        )
+
+        myGui.Add(
+            "Text",
+            "x16 y" etxtLabelY " w640",
+            etxtName
+        )
+
+        myGui.SetFont(
+            "s10 c" AppState.THEME_FG,
+            AppState.THEME_FONT
+        )
+
+        etxtEdit := myGui.Add(
+            "Edit",
+            "x16"
+            " y" etxtEditY
+            " w640"
+            " r5"
+            " VScroll"
+            " WantReturn "
+            ThemeHelper.GetEditOptions(),
+            ""
+        )
+
+        ThemeHelper.StyleEdit(etxtEdit)
+
+        etxtControl := {
+            name: etxtName,
+            edit: etxtEdit
+        }
+
+        controls.Push(etxtControl)
+    }
+
+    myGui.SetFont(
+        "s9 c" AppState.THEME_FG_DIM,
+        AppState.THEME_FONT
+    )
+
+    myGui.Add(
+        "Text",
+        "x16 y" previewY,
+        Lang(
+            "GUI_QUICK_PHRASE_PREVIEW",
+            "Preview"
+        )
+    )
+
     preview := myGui.Add(
         "Edit",
-        "x16 y" (previewY + 20) " w640 h120 ReadOnly VScroll Wrap " ThemeHelper.GetEditOptions(),
+        "x16"
+        " y" (previewY + 20)
+        " w640"
+        " h120"
+        " ReadOnly"
+        " VScroll"
+        " Wrap "
+        ThemeHelper.GetEditOptions(),
         phrase.content
     )
+
     ThemeHelper.StyleEdit(preview)
 
-    okBtn := ThemeHelper.AddButton(myGui, "Default w90 x456 y+12", "✓ " Lang("GUI_OK", "OK"), "primary")
-    cancelBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", "✕ " Lang("GUI_CANCEL", "Cancel"))
+    okBtn := ThemeHelper.AddButton(
+        myGui,
+        "Default w90 x456 y+12",
+        "✓ " Lang("GUI_OK", "OK"),
+        "primary"
+    )
+
+    cancelBtn := ThemeHelper.AddButton(
+        myGui,
+        "x+8 yp w90",
+        "✕ " Lang("GUI_CANCEL", "Cancel")
+    )
 
     RefreshPreview(*) {
         values := Map()
+
         for item in controls
             values[item.name] := item.edit.Text
-        preview.Value := QuickPhraseApplyVariables(phrase.content, values)
+
+        preview.Value := QuickPhraseApplyVariables(
+            phrase.content,
+            values
+        )
     }
 
     Accept(*) {
+        if result.ok
+            return true
+
         values := Map()
+
         for item in controls
             values[item.name] := item.edit.Text
+
         result.ok := true
-        result.text := QuickPhraseApplyVariables(phrase.content, values)
-        myGui.Destroy()
+        result.cancelled := false
+        result.text := QuickPhraseApplyVariables(
+            phrase.content,
+            values
+        )
+
+        QuickPhraseDestroyVariableDialog(myGui)
+
+        return true
     }
 
     Cancel(*) {
-        myGui.Destroy()
+        result.cancelled := true
+
+        QuickPhraseDestroyVariableDialog(myGui)
+
+        return true
     }
 
     for item in controls
-        item.edit.OnEvent("Change", RefreshPreview)
-    okBtn.OnEvent("Click", Accept)
-    cancelBtn.OnEvent("Click", Cancel)
-    myGui.OnEvent("Escape", Cancel)
-    myGui.OnEvent("Close", Cancel)
+        item.edit.OnEvent(
+            "Change",
+            RefreshPreview
+        )
+
+    okBtn.OnEvent(
+        "Click",
+        Accept
+    )
+
+    cancelBtn.OnEvent(
+        "Click",
+        Cancel
+    )
+
+    myGui.OnEvent(
+        "Escape",
+        Cancel
+    )
+
+    myGui.OnEvent(
+        "Close",
+        Cancel
+    )
 
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
-    myGui.Show("w680 h" (previewY + 185))
-    controls[1].edit.Focus()
+    AppState.QuickPhraseVariableGui := myGui
+
+    ; Gui.Show() displays and activates the variable-input window.
+    ; Do not issue a second WinActivate() against its HWND here: the GUI
+    ; manager may still be transitioning the window, and the extra activation
+    ; can raise "Target window not found" for an otherwise valid Gui object.
+    myGui.Show(
+        "w680 h" (previewY + 185)
+    )
+
+    if (
+        variables.Length > 0
+        && StrLower(Trim(variables[1])) == "etxt"
+        && IsObject(etxtControl)
+    ) {
+        etxtControl.edit.Focus()
+    } else if controls.Length > 0 {
+        controls[1].edit.Focus()
+    }
+
     RefreshPreview()
-    WinWaitClose("ahk_id " myGui.Hwnd)
+
+    WinWaitClose(
+        "ahk_id " myGui.Hwnd
+    )
+
     return result
 }
 
-QuickPhrasePasteText(text, targetHwnd) {
-    if !targetHwnd || !WinExist("ahk_id " targetHwnd)
+QuickPhraseNormalizeClipboardText(text) {
+    normalized := StrReplace(text, "`r`n", "`n")
+    normalized := StrReplace(normalized, "`r", "`n")
+    return StrReplace(normalized, "`n", "`r`n")
+}
+
+QuickPhraseResolveMouseTarget() {
+    ; The Quick Phrase UI has already been destroyed before this function is
+    ; called, so MouseGetPos now resolves the application beneath the exact
+    ; screen position where the output action was clicked.
+    MouseGetPos(, , &windowHwnd, &controlHwnd, 2)
+
+    if !windowHwnd
+        return ""
+
+    if QuickPhraseIsInternalWindow(windowHwnd)
+        return ""
+
+    if !WinExist("ahk_id " windowHwnd)
+        return ""
+
+    if controlHwnd && !WinExist("ahk_id " controlHwnd)
+        controlHwnd := 0
+
+    return {
+        window: windowHwnd,
+        control: controlHwnd
+    }
+}
+
+QuickPhraseIsInternalWindow(hwnd) {
+    if IsObject(AppState.QuickPhraseGui) {
+        try {
+            if AppState.QuickPhraseGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.QuickPhraseVariableGui) {
+        try {
+            if AppState.QuickPhraseVariableGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.QuickPhraseManagerGui) {
+        try {
+            if AppState.QuickPhraseManagerGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    if IsSet(CustomMenu) {
+        try {
+            if CustomMenu.menuHwnd == hwnd
+                return true
+        }
+    }
+
+    if IsObject(AppState.FullHistoryGui) {
+        try {
+            if AppState.FullHistoryGui.Hwnd == hwnd
+                return true
+        }
+    }
+
+    return false
+}
+
+QuickPhrasePasteText(text) {
+    target := QuickPhraseResolveMouseTarget()
+    if !IsObject(target)
         return false
 
-    savedClipboard := ClipboardAll()
+    backup := ClipboardAll()
+
     try {
         AppState.IgnoreNextClipChange := true
-        A_Clipboard := text
+        A_Clipboard := QuickPhraseNormalizeClipboardText(text)
+
         if !ClipWait(1)
+            throw Error("Quick Phrase clipboard was not ready.")
+
+        try {
+            WinActivate("ahk_id " target.window)
+        } catch {
             return false
-        WinActivate("ahk_id " targetHwnd)
-        if !WinWaitActive("ahk_id " targetHwnd, , 1)
+        }
+
+        try {
+            if WinWaitActive("ahk_id " target.window, , 1) != target.window
+                return false
+
+            ; Click() with no coordinates preserves the current physical mouse
+            ; position. This lets native controls and browser/editor surfaces
+            ; perform their own hit-testing and place the caret at the cursor.
+            Click()
+            Sleep(40)
+            Send("^v")
+            Sleep(120)
+            return true
+        } catch {
             return false
-        Sleep(80)
-        Send("^v")
-        Sleep(120)
-        return true
+        }
     } catch {
         return false
     } finally {
         AppState.IgnoreNextClipChange := true
-        try A_Clipboard := savedClipboard
+        try A_Clipboard := backup
     }
 }
 
@@ -288,8 +703,13 @@ ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
     ConfigManager.Save()
 
-    if !AppState.QuickPhraseEnabled && IsObject(AppState.QuickPhraseGui)
+    if (
+        !AppState.QuickPhraseEnabled
+        && IsObject(AppState.QuickPhraseGui)
+        && !AppState.QuickPhraseTransactionActive
+    ) {
         CloseQuickPhraseSelector(AppState.QuickPhraseGui)
+    }
 
     key := AppState.QuickPhraseEnabled ? "MSG_QUICK_PHRASE_ENABLED" : "MSG_QUICK_PHRASE_DISABLED"
     ShowToolTip(Lang(key), 1800)
@@ -350,7 +770,6 @@ ShowQuickPhraseManager(returnToSelector := false) {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
-
     AppState.QuickPhraseManagerGui := myGui
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     myGui.Show("w740 h590")
@@ -364,9 +783,7 @@ CloseQuickPhraseManager(myGui) {
     AppState.QuickPhraseManagerGui := ""
 
     if returnToSelector
-        ShowQuickPhraseSelector(false)
-    else
-        AppState.TargetWindow := 0
+        ShowQuickPhraseSelector()
 }
 
 QuickPhraseRefreshManager(myGui) {
