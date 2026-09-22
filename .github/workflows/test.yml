@@ -38,3 +38,7 @@ jobs:
       - name: Run Quick Phrase regression tests
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
+
+      - name: Run Quick Phrase target regression tests
+        shell: pwsh
+        run: .\\autohotkey\\AutoHotkey64.exe .\\tests\\QuickPhraseTargetRegressionTests.ahk\n
