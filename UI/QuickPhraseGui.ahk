@@ -241,18 +241,16 @@ QuickPhraseUseSelected(selectorGui) {
 }
 
 QuickPhraseExecutePhrase(phrase, pasteTarget) {
-    ok := false
     reopenSelector := false
+    pasteQueued := false
     errorMessage := ""
+    finalText := ""
 
     try {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(
-                phrase.content,
-                pasteTarget
-            )
+            finalText := phrase.content
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -264,35 +262,62 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
                 return
             }
 
-            ok := QuickPhrasePasteText(
-                result.text,
-                pasteTarget
-            )
+            finalText := result.text
         }
+
+        ; The variable-dialog/OK callback has just destroyed the GUI. Queue
+        ; the actual clipboard + paste work onto a fresh thread so Windows has
+        ; completed the GUI teardown/focus transition before Ctrl+V is sent.
+        pasteQueued := true
+        SetTimer(
+            () => QuickPhraseFinishPaste(finalText, pasteTarget),
+            -30
+        )
     } catch as err {
         errorMessage := err.Message
     } finally {
-        AppState.QuickPhraseTransactionActive := false
+        ; Keep the workflow locked until the queued paste has completed.
+        if !pasteQueued {
+            AppState.QuickPhraseTransactionActive := false
 
-        ; Preserve the captured destination until a cancelled workflow has
-        ; reopened the selector. The selector is then allowed to reuse the
-        ; same target without recapturing its own window.
-        if reopenSelector {
-            SetTimer(
-                () => ShowQuickPhraseSelector(false),
-                -1
-            )
-        } else {
-            AppState.QuickPhrasePasteTarget := ""
+            if reopenSelector {
+                SetTimer(
+                    () => ShowQuickPhraseSelector(false),
+                    -1
+                )
+            } else {
+                AppState.QuickPhrasePasteTarget := ""
+            }
         }
     }
 
     if errorMessage != "" {
+        AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhrasePasteTarget := ""
+
         ShowToolTip(
             errorMessage,
             2200
         )
-        return
+    }
+}
+
+QuickPhraseFinishPaste(text, pasteTarget) {
+    ok := false
+
+    try {
+        ok := QuickPhrasePasteText(
+            text,
+            pasteTarget
+        )
+    } catch as err {
+        ShowToolTip(
+            err.Message,
+            2200
+        )
+    } finally {
+        AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhrasePasteTarget := ""
     }
 
     if !ok {
