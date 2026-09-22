@@ -659,45 +659,33 @@ QuickPhrasePasteText(text, pasteTarget) {
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
 
-    ; Use the application's existing, proven foreground clipboard paste path.
-    ; Quick Phrase only supplies an explicit destination window; it does not
-    ; maintain a second keyboard-delivery implementation.
+    ; Reuse the exact shared clipboard -> ActivateAndPaste workflow used by
+    ; the rest of the application. Quick Phrase does not add a second
+    ; keyboard-delivery implementation or a fragile clipboard equality gate.
     previousTarget := AppState.TargetWindow
-    backup := ""
+    backup := ClipboardAll()
 
     try {
-        backup := ClipboardAll()
-        clipboardText := QuickPhraseNormalizeClipboardText(text)
-
-        ; Temporarily point the shared paste helper at this workflow's captured
-        ; destination, then restore the caller's global target afterwards.
         AppState.TargetWindow := targetHwnd
 
         AppState.IgnoreNextClipChange := true
-        A_Clipboard := clipboardText
+        A_Clipboard := QuickPhraseNormalizeClipboardText(text)
 
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        if A_Clipboard != clipboardText
-            throw Error(
-                "Quick Phrase clipboard content did not match the requested text."
-            )
-
         ActivateAndPaste()
 
-        ; Keep the clipboard stable long enough for the receiving application
-        ; to consume Ctrl+V before restoring the previous user clipboard.
+        ; Keep the generated phrase on the clipboard until the receiving
+        ; application has had time to consume Ctrl+V, then restore the user's
+        ; previous clipboard.
         Sleep(120)
         return true
     } catch {
         return false
     } finally {
-        if IsObject(backup) {
-            AppState.IgnoreNextClipChange := true
-            try A_Clipboard := backup
-        }
-
+        AppState.IgnoreNextClipChange := true
+        try A_Clipboard := backup
         AppState.TargetWindow := previousTarget
     }
 }
