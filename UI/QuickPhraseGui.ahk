@@ -226,12 +226,6 @@ QuickPhraseCaptureExternalTarget(windowHwnd) {
             controlClass := ""
     }
 
-    AppState.QuickPhraseExternalTarget := {
-        window: windowHwnd,
-        control: controlHwnd,
-        controlClass: controlClass
-    }
-
     previous := AppState.QuickPhraseExternalTarget
     AppState.QuickPhraseExternalTarget := {
         window: windowHwnd,
