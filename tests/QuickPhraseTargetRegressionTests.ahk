@@ -156,7 +156,7 @@ RunTests() {
     Assert(
         InStr(source, "QuickPhraseTarget.Capture()") > 0
             && InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
-            && InStr(source, "QuickPhraseTarget.RestoreControlFocus(") == 0,
+            && InStr(source, "QuickPhraseTarget.IsCapturedControlFocused(") == 0,
         "Quick Phrase UI is not routed through the isolated target component."
     )
 
@@ -178,15 +178,15 @@ RunTests() {
             && InStr(targetSource, "static SendForegroundPaste(") > 0
             && InStr(targetSource, "static DeliverPaste(") > 0
             && InStr(targetSource, "ControlSend(") == 0
-            && InStr(targetSource, "ControlFocus(") > 0,
+            && InStr(targetSource, "ControlFocus(") == 0,
         "Quick Phrase target delivery must keep direct EditPaste plus a foreground fallback without ControlSend."
     )
 
     Assert(
         InStr(targetSource, "static ForegroundSettleDelay := 100") > 0
             && InStr(targetSource, "Sleep(this.ForegroundSettleDelay)") > 0
-            && InStr(targetSource, "controlRestored := this.RestoreControlFocus(target)") > 0,
-        "Quick Phrase delivery must restore the captured control when available and keep the established settling delay."
+            && InStr(targetSource, "controlRestored := this.IsCapturedControlFocused(target)") > 0,
+        "Quick Phrase delivery must avoid forcing external editor focus and keep the established settling delay."
     )
 
     RunTargetDeliveryTest()
