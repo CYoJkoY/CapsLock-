@@ -17,6 +17,7 @@ jobs:
   regression:
     name: Regression Tests
     runs-on: windows-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -27,6 +28,22 @@ jobs:
         with:
           version: '2.0.28'
 
-      - name: Run AutoHotkey regression tests
-        shell: cmd
-        run: tests\run-regression-tests.cmd
+      - name: Run AutoHotkey startup smoke test
+        shell: pwsh
+        timeout-minutes: 1
+        run: .\autohotkey\AutoHotkey64.exe .\tests\AhkExitSmoke.ahk
+
+      - name: Run regression tests
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+
+      - name: Run Cloud Sync regression tests
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+
+      - name: Run Quick Phrase regression tests
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
