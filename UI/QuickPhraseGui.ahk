@@ -727,45 +727,57 @@ QuickPhraseIsInternalWindow(hwnd) {
 
 QuickPhrasePasteText(text) {
     target := QuickPhraseGetTarget()
-    if !IsObject(target)
+    if !IsObject(target) {
+        QuickPhraseDebugLog("paste-start", "target=none")
         return false
+    }
 
-    if !target.window || !WinExist("ahk_id " target.window)
+    if !target.window || !WinExist("ahk_id " target.window) {
+        QuickPhraseDebugLog(
+            "paste-start",
+            "target-window-gone " QuickPhraseDescribeTarget(target)
+        )
         return false
+    }
 
     QuickPhraseDebugLog(
         "paste-start",
         "length=" StrLen(text)
             " active=" QuickPhraseDescribeWindow(WinExist("A"))
             " target=" QuickPhraseDescribeTarget(target)
+            " targetFocus=" QuickPhraseDescribeFocus(target.window)
     )
 
-    ; Native Edit/RichEdit-style controls can receive the completed phrase
-    ; directly at their saved caret. This does not require activating the
-    ; target window and does not require changing the user's clipboard.
+    ; Native Edit/RichEdit-style controls can receive text directly at the
+    ; captured caret without activating the target application.
+    ; Do not restrict this attempt to a hard-coded class allow-list: Windows
+    ; and third-party editors expose additional Edit-compatible classes.
     if target.control && WinExist("ahk_id " target.control) {
-        if QuickPhraseIsTextInputControl(target.controlClass) {
-            try {
-                EditPaste(
-                    QuickPhraseNormalizeClipboardText(text),
-                    target.control,
-                    "ahk_id " target.window
-                )
-                QuickPhraseDebugLog(
-                    "paste-control",
-                    "method=EditPaste control=" target.control
-                        " class=" target.controlClass
-                        " success=1"
-                )
-                return true
-            } catch as err {
-                QuickPhraseDebugLog(
-                    "paste-control",
-                    "method=EditPaste control=" target.control
-                        " class=" target.controlClass
-                        " success=0 error=" QuickPhraseDebugSanitize(err.Message)
-                )
-            }
+        try {
+            QuickPhraseDebugLog(
+                "paste-edit",
+                "attempt control=" target.control
+                    " class=" target.controlClass
+            )
+
+            EditPaste(
+                QuickPhraseNormalizeClipboardText(text),
+                target.control
+            )
+
+            QuickPhraseDebugLog(
+                "paste-edit",
+                "success=1 control=" target.control
+                    " class=" target.controlClass
+            )
+            return true
+        } catch as err {
+            QuickPhraseDebugLog(
+                "paste-edit",
+                "success=0 control=" target.control
+                    " class=" target.controlClass
+                    " error=" QuickPhraseDebugDescribeError(err)
+            )
         }
     }
 
@@ -778,40 +790,22 @@ QuickPhrasePasteText(text) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        ; Prefer delivering Ctrl+V to the exact child control captured when
-        ; Quick Phrase started. This avoids a second focus restoration step
-        ; after the variable dialog and is also suitable for browser render
-        ; widgets such as Chrome/Electron surfaces when they expose a child HWND.
-        if target.control && WinExist("ahk_id " target.control) {
-            try {
-                ControlSend(
-                    "^v",
-                    target.control,
-                    "ahk_id " target.window
-                )
-                QuickPhraseDebugLog(
-                    "paste-control",
-                    "method=ControlSend control=" target.control
-                        " class=" target.controlClass
-                        " success=1"
-                )
-                return true
-            } catch as err {
-                QuickPhraseDebugLog(
-                    "paste-control",
-                    "method=ControlSend control=" target.control
-                        " class=" target.controlClass
-                        " success=0 error=" QuickPhraseDebugSanitize(err.Message)
-                )
-            }
-        }
+        QuickPhraseDebugLog(
+            "paste-clipboard",
+            "ready=1 target=" QuickPhraseDescribeTarget(target)
+                " active=" QuickPhraseDescribeWindow(WinExist("A"))
+        )
 
+        ; Re-activate the original top-level window first. For browser and
+        ; custom editor surfaces, the previously focused child can then be
+        ; restored explicitly before the real Ctrl+V keystroke is generated.
         try {
             WinActivate("ahk_id " target.window)
         } catch as err {
             QuickPhraseDebugLog(
                 "paste-window",
-                "method=WinActivate success=0 error=" QuickPhraseDebugSanitize(err.Message)
+                "method=WinActivate success=0 error="
+                    QuickPhraseDebugDescribeError(err)
             )
             return false
         }
@@ -819,24 +813,74 @@ QuickPhrasePasteText(text) {
         if WinWaitActive("ahk_id " target.window, , 1) != target.window {
             QuickPhraseDebugLog(
                 "paste-window",
-                "method=WinWaitActive success=0 active=" QuickPhraseDescribeWindow(WinExist("A"))
+                "method=WinWaitActive success=0 active="
+                    QuickPhraseDescribeWindow(WinExist("A"))
             )
             return false
         }
 
-        Sleep(100)
+        QuickPhraseDebugLog(
+            "paste-window",
+            "method=WinActivate success=1 active="
+                QuickPhraseDescribeWindow(WinExist("A"))
+                " focus=" QuickPhraseDescribeFocus(target.window)
+        )
+
+        if target.control && WinExist("ahk_id " target.control) {
+            try {
+                ControlFocus(
+                    target.control,
+                    "ahk_id " target.window
+                )
+                Sleep(50)
+
+                focusedControl := 0
+                try focusedControl := ControlGetFocus(
+                    "ahk_id " target.window
+                )
+
+                QuickPhraseDebugLog(
+                    "paste-focus",
+                    "method=ControlFocus targetControl=" target.control
+                        " targetClass=" target.controlClass
+                        " focusedControl=" focusedControl
+                        " active=" QuickPhraseDescribeWindow(WinExist("A"))
+                )
+            } catch as err {
+                QuickPhraseDebugLog(
+                    "paste-focus",
+                    "method=ControlFocus success=0 targetControl="
+                        target.control
+                        " class=" target.controlClass
+                        " error=" QuickPhraseDebugDescribeError(err)
+                )
+            }
+        } else {
+            QuickPhraseDebugLog(
+                "paste-focus",
+                "skip=target-control-gone control=" target.control
+            )
+        }
+
+        ; ControlSend can report success even when a browser/custom editor
+        ; ignores the posted keyboard messages. Send Ctrl+V only after the
+        ; captured top-level window and, when possible, child control are
+        ; actually focused.
+        Sleep(40)
         Send("^v")
         Sleep(120)
 
         QuickPhraseDebugLog(
-            "paste-window",
-            "method=Send success=1 active=" QuickPhraseDescribeWindow(WinExist("A"))
+            "paste-send",
+            "method=Send success=1 active="
+                QuickPhraseDescribeWindow(WinExist("A"))
+                " focus=" QuickPhraseDescribeFocus(target.window)
         )
         return true
     } catch as err {
         QuickPhraseDebugLog(
             "paste-failed",
-            "error=" QuickPhraseDebugSanitize(err.Message)
+            "error=" QuickPhraseDebugDescribeError(err)
         )
         return false
     } finally {
@@ -844,7 +888,6 @@ QuickPhrasePasteText(text) {
         try A_Clipboard := backup
     }
 }
-
 QuickPhraseIsTextInputControl(controlClass) {
     if controlClass == ""
         return false
@@ -903,6 +946,26 @@ QuickPhraseDescribeWindow(hwnd) {
         processName := "?"
 
     return "hwnd=" hwnd " class=" className " exe=" processName
+}
+
+QuickPhraseDescribeFocus(windowHwnd) {
+    if !windowHwnd
+        return "focus=0"
+
+    focused := 0
+    try focused := ControlGetFocus("ahk_id " windowHwnd)
+    catch
+        focused := 0
+
+    if !focused
+        return "focus=0"
+
+    className := ""
+    try className := WinGetClass("ahk_id " focused)
+    catch
+        className := "?"
+
+    return "focus=" focused " class=" className
 }
 
 QuickPhraseDescribeTarget(target) {
