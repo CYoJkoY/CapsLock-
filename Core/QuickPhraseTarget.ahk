@@ -12,6 +12,17 @@ class QuickPhraseTarget {
 
         controlHwnd := this._GetKeyboardFocus(windowHwnd)
 
+        ; GetGUIThreadInfo is the authoritative Windows focus query. Some
+        ; applications expose focus through AHK's ControlGetFocus even when
+        ; GetGUIThreadInfo cannot provide a child HWND, so keep the older API
+        ; as a narrow capture fallback.
+        if !controlHwnd {
+            try
+                controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
+            catch
+                controlHwnd := 0
+        }
+
         return {
             window: windowHwnd,
             control: controlHwnd
@@ -192,19 +203,21 @@ class QuickPhraseTarget {
                     controlRestored: false
                 }
             } catch {
-                return {
-                    ok: false,
-                    controlRestored: false
-                }
             }
         }
 
-        ; Some applications do not expose a controllable child HWND. For those
-        ; targets, the top-level window is the only reliable destination. This
-        ; fallback is allowed only when no usable captured control exists.
-        if !controlValid {
+        ; If the exact original child still exists but Windows would not let us
+        ; restore its focus, address that child directly instead of sending to
+        ; the current foreground window. ControlSend is the final child-targeted
+        ; fallback for custom controls that do not implement native WM_PASTE.
+        if controlValid {
             try {
-                Send("^v")
+                ControlSend(
+                    "^v",
+                    target.control,
+                    "ahk_id " target.window
+                )
+
                 return {
                     ok: true,
                     controlRestored: false
@@ -217,9 +230,20 @@ class QuickPhraseTarget {
             }
         }
 
-        return {
-            ok: false,
-            controlRestored: false
+        ; Only a target without a usable original child control may fall back to
+        ; the top-level foreground paste path. This prevents Quick Phrase's own
+        ; GUI from accidentally receiving Ctrl+V when a captured child exists.
+        try {
+            Send("^v")
+            return {
+                ok: true,
+                controlRestored: false
+            }
+        } catch {
+            return {
+                ok: false,
+                controlRestored: false
+            }
         }
     }
 
