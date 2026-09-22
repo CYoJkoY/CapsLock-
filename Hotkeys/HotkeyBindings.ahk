@@ -85,7 +85,7 @@ QuickPhraseHotkeyAvailable() {
             WinSetTransparent( 255, hwnd )
     }
 
-#HotIf CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive
+#HotIf CapsLockHotkeysAvailable()
 
     w::
     8::
