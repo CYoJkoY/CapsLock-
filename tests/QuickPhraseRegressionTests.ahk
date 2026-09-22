@@ -79,10 +79,11 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "normalEditOptions := ThemeHelper.GetEditOptions()") > 0
-            && InStr(source, '" r1 " normalEditOptions') > 0
-            && InStr(source, '" WantReturn " ThemeHelper.GetEditOptions()') > 0,
-        "Ordinary variables must remain single-line while only {{etxt}} uses multiline WantReturn input."
+        InStr(source, 'normalEditOptions := "Multi WantReturn VScroll " ThemeHelper.GetEditOptions()') > 0
+            && InStr(source, '" r3 " normalEditOptions') > 0
+            && InStr(source, 'values[item.name] := item.edit.Text') > 0
+            && InStr(source, "QuickPhraseNormalizeClipboardText(text)") > 0,
+        "Quick Phrase variables must support multiline structured input and preserve/normalize line endings for clipboard paste."
     )
 
     return true
