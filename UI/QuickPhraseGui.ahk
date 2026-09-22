@@ -711,21 +711,20 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Send directly to the control which had focus when Quick Phrase
-        ; started. The Quick Phrase dialog owns foreground focus while the
-        ; user fills variables, so reactivating the target window here would
-        ; only introduce an unnecessary focus race.
-        try {
-            controlHwnd := pasteTarget.control
+        ; Reuse the project's established paste delivery path instead of
+        ; sending to a captured child-control HWND. This intentionally restores
+        ; the original target window and emits a normal Ctrl+V, matching
+        ; clipboard history, file paste, and Pandoc paste behavior.
+        previousTarget := AppState.TargetWindow
+        AppState.TargetWindow := targetHwnd
 
-            if controlHwnd && WinExist("ahk_id " controlHwnd)
-                ControlSend("^v", controlHwnd, "ahk_id " targetHwnd)
-            else
-                ControlSend("^v",, "ahk_id " targetHwnd)
-        } catch {
-            throw Error(
-                "Quick Phrase focus target could not receive paste."
-            )
+        try {
+            if !WinExist("ahk_id " targetHwnd)
+                throw Error("Quick Phrase target window is no longer available.")
+
+            ActivateAndPaste()
+        } finally {
+            AppState.TargetWindow := previousTarget
         }
 
         ; Do not restore the original clipboard synchronously. Some
