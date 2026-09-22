@@ -60,8 +60,8 @@ RunTargetDeliveryTest() {
         delivery := QuickPhraseTarget.DeliverPaste(target)
 
         Assert(
-            delivery.ok,
-            "Quick Phrase target delivery returned failure."
+            delivery.ok && delivery.mode == "control",
+            "Quick Phrase target control delivery did not use the captured control path."
         )
         Assert(
             WinExist("A") == firstGui.Hwnd,
@@ -79,6 +79,44 @@ RunTargetDeliveryTest() {
         A_Clipboard := originalClipboard
         secondGui.Destroy()
         firstGui.Destroy()
+    }
+}
+
+RunWindowFallbackTest() {
+    payload := "Quick Phrase window fallback test"
+
+    gui := Gui("+AlwaysOnTop", "Quick Phrase Window Fallback Test")
+    edit := gui.Add("Edit", "w360 h90", "")
+    gui.Show("w420 h160")
+    edit.Focus()
+
+    if !WinWaitActive("ahk_id " gui.Hwnd, , 1)
+        throw Error("Window-fallback test window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+    target.control := 0
+
+    originalClipboard := ClipboardAll()
+
+    try {
+        A_Clipboard := payload
+
+        if !ClipWait(1)
+            throw Error("Window-fallback test clipboard did not become ready.")
+
+        delivery := QuickPhraseTarget.DeliverPaste(target)
+
+        Assert(
+            delivery.ok && delivery.mode == "window",
+            "Quick Phrase did not fall back to window-level ControlSend."
+        )
+        Assert(
+            edit.Text == payload,
+            "Quick Phrase window-level fallback did not paste into the focused control."
+        )
+    } finally {
+        A_Clipboard := originalClipboard
+        gui.Destroy()
     }
 }
 
@@ -123,7 +161,7 @@ RunTests() {
     Assert(
         InStr(source, "AppState.TargetWindow :=") == 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase must not mutate the global paste target or use ControlSend directly."
+        "Quick Phrase UI must not mutate the global paste target or bypass the dedicated target-delivery component."
     )
 
     Assert(
@@ -134,6 +172,7 @@ RunTests() {
     )
 
     RunTargetDeliveryTest()
+    RunWindowFallbackTest()
     RunInvalidTargetTest()
 
     return true
