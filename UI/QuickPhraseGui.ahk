@@ -1,6 +1,7 @@
 #Requires AutoHotkey v2.0
 
 ShowQuickPhraseSelector() {
+    QuickPhraseStartTargetTracking()
     if IsObject(AppState.QuickPhraseGui) {
         try {
             if WinExist("ahk_id " AppState.QuickPhraseGui.Hwnd) {
@@ -72,7 +73,7 @@ QuickPhraseDestroyVariableDialog(myGui) {
     QuickPhraseDebugLog(
         "variable-destroy",
         "hwnd=" myGui.Hwnd
-            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
     )
     AppState.QuickPhraseVariableGui := ""
     try myGui.Destroy()
@@ -80,7 +81,8 @@ QuickPhraseDestroyVariableDialog(myGui) {
 
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
-    AppState.QuickPhraseTarget := ""
+    QuickPhraseStopTargetTracking()
+    AppState.QuickPhraseExternalTarget := ""
     return true
 }
 
@@ -166,56 +168,116 @@ QuickPhraseCompareSelectorPhrases(left, right) {
 }
 
 QuickPhraseHandleHotkey(*) {
+    QuickPhraseStartTargetTracking()
+
+    if AppState.QuickPhraseTransactionActive
+        return
+
     QuickPhraseDebugLog(
         "hotkey",
         "active=" QuickPhraseDescribeWindow(WinExist("A"))
-    )
-
-    if AppState.QuickPhraseTransactionActive {
-        QuickPhraseDebugLog("hotkey", "ignored=transaction-active")
-        return
-    }
-
-    ; Capture the editable target before Quick Phrase takes focus.
-    ; Internal CapsLock UI windows are never valid output targets.
-    captured := QuickPhraseCaptureTarget()
-    QuickPhraseDebugLog(
-        "capture",
-        captured
-            ? QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
-            : "failed"
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
     )
 
     ShowQuickPhraseSelector()
 }
 
-QuickPhraseCaptureTarget() {
-    if IsObject(AppState.QuickPhraseTarget)
-        return true
+QuickPhraseStartTargetTracking() {
+    if !AppState.QuickPhraseExternalTargetTracking {
+        AppState.QuickPhraseExternalTargetTracking := true
+        SetTimer(QuickPhraseTrackExternalFocus, 20)
+    }
 
-    windowHwnd := WinExist("A")
+    QuickPhraseTrackExternalFocus()
+}
+
+QuickPhraseStopTargetTracking() {
+    if !AppState.QuickPhraseExternalTargetTracking
+        return
+
+    AppState.QuickPhraseExternalTargetTracking := false
+    SetTimer(QuickPhraseTrackExternalFocus, 0)
+}
+
+QuickPhraseTrackExternalFocus() {
+    if !AppState.QuickPhraseExternalTargetTracking
+        return
+
+    activeHwnd := WinExist("A")
+    if !activeHwnd || QuickPhraseIsInternalWindow(activeHwnd)
+        return
+
+    QuickPhraseCaptureExternalTarget(activeHwnd)
+}
+
+QuickPhraseCaptureExternalTarget(windowHwnd) {
     if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return false
 
-    control := 0
-    try control := ControlGetFocus("A")
-    catch
-        control := 0
+    if !WinExist("ahk_id " windowHwnd)
+        return false
 
+    controlHwnd := QuickPhraseGetFocusedControl(windowHwnd)
     controlClass := ""
-    if control {
-        try controlClass := WinGetClass("ahk_id " control)
+
+    if controlHwnd {
+        try controlClass := WinGetClass("ahk_id " controlHwnd)
         catch
             controlClass := ""
     }
 
-    AppState.QuickPhraseTarget := {
+    AppState.QuickPhraseExternalTarget := {
         window: windowHwnd,
-        control: control,
+        control: controlHwnd,
         controlClass: controlClass
     }
+
+    QuickPhraseDebugLog(
+        "external-focus",
+        QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
+    )
     return true
 }
+
+QuickPhraseGetFocusedControl(windowHwnd) {
+    threadId := DllCall(
+        "GetWindowThreadProcessId",
+        "Ptr", windowHwnd,
+        "UInt", 0
+    )
+
+    if threadId {
+        info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
+        NumPut(
+            "UInt",
+            info.Size,
+            info,
+            0
+        )
+
+        if DllCall(
+            "GetGUIThreadInfo",
+            "UInt", threadId,
+            "Ptr", info.Ptr,
+            "Int"
+        ) {
+            focusOffset := A_PtrSize == 8 ? 16 : 12
+            focusHwnd := NumGet(
+                info,
+                focusOffset,
+                "Ptr"
+            )
+            if focusHwnd
+                return focusHwnd
+        }
+    }
+
+    try
+        return ControlGetFocus("ahk_id " windowHwnd)
+    catch
+        return 0
+}
+
 
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
@@ -242,7 +304,7 @@ QuickPhraseUseSelected(selectorGui) {
         "select",
         "phraseId=" Integer(idText)
             " vars=" QuickPhraseExtractVariables(phrase.content).Length
-            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
     )
 
     AppState.QuickPhraseTransactionActive := true
@@ -250,7 +312,7 @@ QuickPhraseUseSelected(selectorGui) {
 
     QuickPhraseDebugLog(
         "selector-destroyed",
-        "target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+        "target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
     )
 
     QuickPhraseExecutePhrase(phrase)
@@ -278,7 +340,7 @@ QuickPhraseExecutePhrase(phrase) {
                 "ok=" result.ok
                     " cancelled=" result.cancelled
                     " length=" StrLen(result.text)
-                    " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+                    " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
             )
 
             if !result.ok {
@@ -296,10 +358,12 @@ QuickPhraseExecutePhrase(phrase) {
     } finally {
         AppState.QuickPhraseTransactionActive := false
 
-        if reopenSelector
+        if reopenSelector {
             ShowQuickPhraseSelector()
-        else
-            AppState.QuickPhraseTarget := ""
+        } else {
+            QuickPhraseStopTargetTracking()
+            AppState.QuickPhraseExternalTarget := ""
+        }
     }
 
     if errorMessage != "" {
@@ -653,7 +717,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         "hwnd=" myGui.Hwnd
             " first=" (variables.Length > 0 ? variables[1] : "")
             " controls=" controls.Length
-            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
     )
 
     if (
@@ -682,7 +746,7 @@ QuickPhraseNormalizeClipboardText(text) {
 }
 
 QuickPhraseGetTarget() {
-    target := AppState.QuickPhraseTarget
+    target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
 }
 
@@ -726,6 +790,8 @@ QuickPhraseIsInternalWindow(hwnd) {
 }
 
 QuickPhrasePasteText(text) {
+    QuickPhraseTrackExternalFocus()
+
     target := QuickPhraseGetTarget()
     if !IsObject(target) {
         QuickPhraseDebugLog("paste-start", "target=none")
@@ -745,14 +811,14 @@ QuickPhrasePasteText(text) {
         "length=" StrLen(text)
             " active=" QuickPhraseDescribeWindow(WinExist("A"))
             " target=" QuickPhraseDescribeTarget(target)
-            " targetFocus=" QuickPhraseDescribeFocus(target.window)
     )
 
-    ; Native Edit/RichEdit-style controls can receive text directly at the
-    ; captured caret without activating the target application.
-    ; Do not restrict this attempt to a hard-coded class allow-list: Windows
-    ; and third-party editors expose additional Edit-compatible classes.
-    if target.control && WinExist("ahk_id " target.control) {
+    ; Native edit controls can receive text directly at their existing caret.
+    ; This path does not disturb the user's foreground application.
+    if target.control
+        && WinExist("ahk_id " target.control)
+        && QuickPhraseIsTextInputControl(target.controlClass)
+    {
         try {
             QuickPhraseDebugLog(
                 "paste-edit",
@@ -793,12 +859,11 @@ QuickPhrasePasteText(text) {
         QuickPhraseDebugLog(
             "paste-clipboard",
             "ready=1 target=" QuickPhraseDescribeTarget(target)
-                " active=" QuickPhraseDescribeWindow(WinExist("A"))
         )
 
-        ; Re-activate the original top-level window first. For browser and
-        ; custom editor surfaces, the previously focused child can then be
-        ; restored explicitly before the real Ctrl+V keystroke is generated.
+        ; Non-native editors (Chromium/Electron/WebView/custom controls) own
+        ; their logical caret internally. Reactivate the latest external
+        ; top-level window and let its own focus state receive the real paste.
         try {
             WinActivate("ahk_id " target.window)
         } catch as err {
@@ -823,49 +888,8 @@ QuickPhrasePasteText(text) {
             "paste-window",
             "method=WinActivate success=1 active="
                 QuickPhraseDescribeWindow(WinExist("A"))
-                " focus=" QuickPhraseDescribeFocus(target.window)
         )
 
-        if target.control && WinExist("ahk_id " target.control) {
-            try {
-                ControlFocus(
-                    target.control,
-                    "ahk_id " target.window
-                )
-                Sleep(50)
-
-                focusedControl := 0
-                try focusedControl := ControlGetFocus(
-                    "ahk_id " target.window
-                )
-
-                QuickPhraseDebugLog(
-                    "paste-focus",
-                    "method=ControlFocus targetControl=" target.control
-                        " targetClass=" target.controlClass
-                        " focusedControl=" focusedControl
-                        " active=" QuickPhraseDescribeWindow(WinExist("A"))
-                )
-            } catch as err {
-                QuickPhraseDebugLog(
-                    "paste-focus",
-                    "method=ControlFocus success=0 targetControl="
-                        target.control
-                        " class=" target.controlClass
-                        " error=" QuickPhraseDebugDescribeError(err)
-                )
-            }
-        } else {
-            QuickPhraseDebugLog(
-                "paste-focus",
-                "skip=target-control-gone control=" target.control
-            )
-        }
-
-        ; ControlSend can report success even when a browser/custom editor
-        ; ignores the posted keyboard messages. Send Ctrl+V only after the
-        ; captured top-level window and, when possible, child control are
-        ; actually focused.
         Sleep(40)
         Send("^v")
         Sleep(120)
@@ -874,7 +898,6 @@ QuickPhrasePasteText(text) {
             "paste-send",
             "method=Send success=1 active="
                 QuickPhraseDescribeWindow(WinExist("A"))
-                " focus=" QuickPhraseDescribeFocus(target.window)
         )
         return true
     } catch as err {
@@ -888,6 +911,8 @@ QuickPhrasePasteText(text) {
         try A_Clipboard := backup
     }
 }
+
+
 QuickPhraseIsTextInputControl(controlClass) {
     if controlClass == ""
         return false
