@@ -18,11 +18,28 @@ CapsLockHotkeysAvailable() {
     return GetKeyState( "CapsLock", "P" )
 }
 
-QuickPhraseHotkeyAvailable() {
-    return CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive
+QuickPhraseUiActive() {
+    if AppState.QuickPhraseTransactionActive
+        return true
+
+    return IsObject(AppState.QuickPhraseGui)
+        || IsObject(AppState.QuickPhraseVariableGui)
+        || IsObject(AppState.QuickPhraseManagerGui)
 }
 
-#HotIf CapsLockHotkeysAvailable()
+CapsLockActionHotkeysAvailable() {
+    return CapsLockHotkeysAvailable() && !QuickPhraseUiActive()
+}
+
+QuickPhraseHotkeyAvailable() {
+    return CapsLockHotkeysAvailable()
+        && !QuickPhraseUiActive()
+        && !AppState.QuickPhraseClipboardRestorePending
+}
+
+#HotIf
+
+#HotIf CapsLockActionHotkeysAvailable()
 
 
     +Left:: Send( "^+{Left}" )
@@ -42,7 +59,7 @@ QuickPhraseHotkeyAvailable() {
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
-#HotIf CapsLockHotkeysAvailable() && !WindowHole.IsActive()
+#HotIf CapsLockActionHotkeysAvailable() && !WindowHole.IsActive()
 
     LButton:: {
         AdjustOpacity( 20 )
@@ -73,7 +90,7 @@ QuickPhraseHotkeyAvailable() {
             WinSetTransparent( 255, hwnd )
     }
 
-#HotIf CapsLockHotkeysAvailable()
+#HotIf CapsLockActionHotkeysAvailable()
 
     w::
     8::

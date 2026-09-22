@@ -15,7 +15,6 @@ class AppState {
     static QuickPhraseVariableGui := ""
     static QuickPhraseTransactionActive := false
     static QuickPhraseExternalTarget := ""
-    static QuickPhraseTargetTracking := false
     static QuickPhraseClipboardRestorePending := false
     static QuickPhraseClipboardBackup := ""
     static QuickPhraseClipboardExpected := ""

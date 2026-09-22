@@ -18,8 +18,6 @@ class DarkInputDialog {
             "w" (width - 20) " r1 y+12 " ThemeHelper.GetEditOptions(),
             default
         )
-        editCtrl.Focus()
-
         btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
         btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
 
@@ -41,6 +39,7 @@ class DarkInputDialog {
 
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
         myGui.Show("AutoSize Center")
+        editCtrl.Focus()
         WinWaitClose("ahk_id " myGui.Hwnd)
         return { Result: resultAction, Value: resultValue }
     }
