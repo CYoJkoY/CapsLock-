@@ -210,7 +210,7 @@ QuickPhraseUseSelected(selectorGui) {
     }
 
     idText := selectorGui.ListView.GetText(row, 1)
-    if !(idText ~= "^d+$")
+    if !(idText ~= "^\d+$")
         return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
