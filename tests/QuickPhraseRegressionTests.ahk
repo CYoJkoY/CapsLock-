@@ -29,11 +29,10 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "previousTarget := AppState.TargetWindow") > 0
-            && InStr(source, "AppState.TargetWindow := targetHwnd") > 0
-            && InStr(source, "ActivateAndPaste()") > 0
+        InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
+            && InStr(source, "AppState.TargetWindow := targetHwnd") == 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase final insertion must reuse the established activate-and-paste path without ControlSend."
+        "Quick Phrase must use the dedicated target-delivery component without mutating the global paste target."
     )
 
     Assert(
