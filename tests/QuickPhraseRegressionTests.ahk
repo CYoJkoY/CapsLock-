@@ -31,11 +31,10 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseTarget.Activate(pasteTarget)") > 0
-            && InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
+        InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
             && InStr(source, "AppState.TargetWindow :=") == 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase must activate and deliver through the dedicated target component without mutating the global paste target."
+        "Quick Phrase must deliver through the dedicated target component without mutating the global paste target."
     )
 
     Assert(
@@ -49,11 +48,11 @@ RunTests() {
             && InStr(targetSource, "static IsControlValid(") > 0
             && InStr(targetSource, "static Activate(") > 0
             && InStr(targetSource, "static RestoreControlFocus(") > 0
-            && InStr(targetSource, "static SendToControl(") > 0
-            && InStr(targetSource, "EditPaste(") > 0
-            && InStr(targetSource, "static SendToWindow(") > 0
-            && InStr(targetSource, "ControlSend(") > 0
-            && InStr(targetSource, "Send("^v")") > 0
+            && InStr(targetSource, "static SendForegroundPaste(") > 0
+            && InStr(targetSource, "ControlFocus(") > 0
+            && InStr(targetSource, "EditPaste(") == 0
+            && InStr(targetSource, "ControlSend(") == 0
+            && InStr(targetSource, 'Send("^v")') > 0
             && InStr(targetSource, "static DeliverPaste(") > 0,
         "Quick Phrase target module is missing part of the target delivery lifecycle API."
     )
