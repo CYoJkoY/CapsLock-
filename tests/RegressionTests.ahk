@@ -270,10 +270,25 @@ RunTests() {
     return true
 }
 
+
+WriteTestResult(status, message := "") {
+    path := A_Args.Length > 0 ? A_Args[1] : A_WorkingDir "\tests\TestResult.txt"
+
+    try FileDelete(path)
+
+    payload := status
+    if message != ""
+        payload .= Chr(10) message
+
+    FileAppend(payload, path, "UTF-8")
+}
+
 try {
     RunTests()
+    WriteTestResult("PASS")
     ExitApp(0)
 } catch as err {
+    WriteTestResult("FAIL", err.Message)
     FileAppend(
         "Regression test failure: " err.Message Chr(10),
         A_WorkingDir "\tests\RegressionTests.log",
