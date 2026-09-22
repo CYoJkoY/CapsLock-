@@ -373,8 +373,10 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     if normalVariables.Length > 0
         normalRows := Integer((normalVariables.Length + 1) / 2)
 
-    normalRowH := 78
-    normalEditOptions := "Multi WantReturn " ThemeHelper.GetEditOptions()
+    normalRowH := 62
+    ; Ordinary {{name}} fields are intentionally single-line. Only the
+    ; reserved {{etxt}} field needs multiline/WantReturn semantics.
+    normalEditOptions := ThemeHelper.GetEditOptions()
     normalBottomY := 96 + normalRows * normalRowH
 
     if etxtName != "" {
@@ -449,7 +451,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "x" x
             " y" (y + 18)
             " w300"
-            " r3 "
+            " r1 "
             normalEditOptions,
             ""
         )
@@ -549,7 +551,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         values := Map()
 
         for item in controls
-            values[item.name] := item.edit.Text
+            values[item.name] := item.edit.Value
 
         preview.Value := QuickPhraseApplyVariables(
             phrase.content,
@@ -564,7 +566,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         values := Map()
 
         for item in controls
-            values[item.name] := item.edit.Text
+            values[item.name] := item.edit.Value
 
         result.ok := true
         result.cancelled := false
