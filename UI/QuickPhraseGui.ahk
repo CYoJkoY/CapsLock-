@@ -69,6 +69,11 @@ QuickPhraseDestroySelector(myGui) {
 }
 
 QuickPhraseDestroyVariableDialog(myGui) {
+    QuickPhraseDebugLog(
+        "variable-destroy",
+        "hwnd=" myGui.Hwnd
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+    )
     AppState.QuickPhraseVariableGui := ""
     try myGui.Destroy()
 }
@@ -242,6 +247,11 @@ QuickPhraseUseSelected(selectorGui) {
 
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
+
+    QuickPhraseDebugLog(
+        "selector-destroyed",
+        "target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+    )
 
     QuickPhraseExecutePhrase(phrase)
     return true
