@@ -49,7 +49,6 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\WindowUtils.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
-#Include "Core\QuickPhraseFocusTracker.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
@@ -83,7 +82,6 @@ Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()
 QuickPhraseStore.Load()
-QuickPhraseFocusTracker.Initialize()
 CloudSyncIdentity.Initialize()
 CloudSyncState.Initialize()
 CloudSyncCoordinator.Initialize()
