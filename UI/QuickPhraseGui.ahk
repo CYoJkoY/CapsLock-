@@ -196,8 +196,49 @@ QuickPhraseCaptureFocusTarget() {
     if !windowHwnd
         return ""
 
+    controlHwnd := 0
+    try
+        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
+    catch
+        controlHwnd := 0
+
     return {
-        window: windowHwnd
+        window: windowHwnd,
+        control: controlHwnd
+    }
+}
+
+QuickPhraseRestorePasteFocus(pasteTarget, targetHwnd) {
+    if !IsObject(pasteTarget)
+        return false
+
+    if !pasteTarget.HasOwnProp("control")
+        return false
+
+    controlHwnd := pasteTarget.control
+    if !controlHwnd || !WinExist("ahk_id " controlHwnd)
+        return false
+
+    rootHwnd := DllCall(
+        "GetAncestor",
+        "Ptr",
+        controlHwnd,
+        "UInt",
+        2,
+        "Ptr"
+    )
+
+    if rootHwnd != targetHwnd
+        return false
+
+    try {
+        ControlFocus(
+            controlHwnd,
+            "ahk_id " targetHwnd
+        )
+        return true
+    } catch {
+        return false
     }
 }
 
@@ -710,9 +751,11 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Re-activate the original destination only at the final insertion
-        ; stage. The current foreground state then supplies the real focus
-        ; after all temporary Quick Phrase windows have been destroyed.
+        ; Reactivate the original destination only after all temporary
+        ; Quick Phrase windows have been destroyed. Restore the exact
+        ; control which had focus when Quick Phrase started when that
+        ; HWND is still valid; custom applications may reject ControlFocus,
+        ; so the window-level focus path remains the compatibility fallback.
         try {
             WinActivate("ahk_id " targetHwnd)
 
@@ -725,6 +768,11 @@ QuickPhrasePasteText(text, pasteTarget) {
                     "Quick Phrase target window could not be activated."
                 )
             }
+
+            QuickPhraseRestorePasteFocus(
+                pasteTarget,
+                targetHwnd
+            )
 
             Sleep(30)
             Send("^v")

@@ -34,3 +34,7 @@ jobs:
       - name: Run Cloud Sync regression tests
         shell: pwsh
         run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+
+      - name: Run Quick Phrase regression tests
+        shell: pwsh
+        run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
