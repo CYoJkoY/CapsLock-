@@ -1,5 +1,6 @@
 #Requires AutoHotkey v2.0
 
+#Include "..\Config\Globals.ahk"
 #Include "..\Core\QuickPhraseTarget.ahk"
 
 Assert(condition, message) {
@@ -60,8 +61,8 @@ RunTargetDeliveryTest() {
         delivery := QuickPhraseTarget.DeliverPaste(target)
 
         Assert(
-            delivery.ok && delivery.mode == "control",
-            "Quick Phrase target control delivery did not use the captured control path."
+            delivery.ok && delivery.mode == "editpaste",
+            "Quick Phrase target did not use direct EditPaste for the captured native Edit control."
         )
         Assert(
             WinExist("A") == firstGui.Hwnd,
