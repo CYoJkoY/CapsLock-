@@ -76,8 +76,6 @@ QuickPhraseDestroyVariableDialog(myGui) {
     try myGui.Destroy()
 }
 
-CloseQuickPhraseSelector(myGui)
-
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
     AppState.QuickPhraseExternalTarget := ""
@@ -242,8 +240,6 @@ QuickPhraseGetFocusedControl(windowHwnd) {
         return 0
 }
 
-QuickPhraseUseSelected
-
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -265,10 +261,8 @@ QuickPhraseUseSelected(selectorGui) {
     if !IsObject(phrase)
         return true
 
-
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
-
 
     QuickPhraseExecutePhrase(phrase)
     return true
@@ -327,8 +321,6 @@ QuickPhraseExecutePhrase(phrase) {
         )
     }
 }
-
-QuickPhrasePreview
 
 QuickPhrasePreview(text, maxChars := 80) {
     preview := Trim(RegExReplace(String(text), "[\r\n\t\v\f]+", " "))
@@ -600,7 +592,6 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             values
         )
 
-
         QuickPhraseDestroyVariableDialog(myGui)
 
         return true
@@ -650,7 +641,6 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     myGui.Show(
         "w680 h" (previewY + 185)
     )
-
 
     if (
         variables.Length > 0
@@ -733,8 +723,6 @@ QuickPhraseIsInternalWindow(hwnd) {
     return false
 }
 
-QuickPhrasePasteText(text)
-
 QuickPhrasePasteText(text) {
     target := QuickPhraseGetExternalTarget()
     if !IsObject(target)
@@ -797,17 +785,6 @@ QuickPhrasePasteText(text) {
     } finally {
         if clipboardPrepared {
             QuickPhraseScheduleClipboardRestore(
-                backup,
-                expectedText,
-                expectedSequence
-            )
-        }
-    }
-}
-
-QuickPhraseScheduleClipboardRestore
-
-QuickPhraseScheduleClipboardRestore(
                 backup,
                 expectedText,
                 expectedSequence
