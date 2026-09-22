@@ -65,7 +65,6 @@ ShowQuickPhraseSelector() {
 
 QuickPhraseDestroySelector(myGui) {
     AppState.QuickPhraseGui := ""
-    AppState.QuickPhraseTarget := ""
     try myGui.Destroy()
 }
 
@@ -76,6 +75,7 @@ QuickPhraseDestroyVariableDialog(myGui) {
 
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
+    AppState.QuickPhraseTarget := ""
     return true
 }
 
@@ -251,6 +251,8 @@ QuickPhraseExecutePhrase(phrase) {
 
         if reopenSelector
             ShowQuickPhraseSelector()
+        else
+            AppState.QuickPhraseTarget := ""
     }
 
     if errorMessage != "" {
