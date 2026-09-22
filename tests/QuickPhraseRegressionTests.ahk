@@ -11,6 +11,8 @@ ReadSource(path) {
 
 RunTests() {
     source := ReadSource("UI\QuickPhraseGui.ahk")
+    trackerSource := ReadSource("Core\QuickPhraseFocusTracker.ahk")
+    entrySource := ReadSource("CapsLock-.ahk")
 
     Assert(
         InStr(source, "QuickPhraseTransactionActive") > 0
@@ -23,7 +25,22 @@ RunTests() {
     Assert(
         InStr(source, "ControlGetFocus(") > 0
             && InStr(source, "control: controlHwnd") > 0,
-        "Quick Phrase does not capture the original focused control."
+        "Quick Phrase does not capture the initial focused control."
+    )
+
+    Assert(
+        InStr(trackerSource, "QuickPhraseFocusTracker.Initialize()") > 0
+            && InStr(trackerSource, "target := AppState.QuickPhrasePasteTarget") > 0
+            && InStr(trackerSource, "target.window := currentWindow") > 0
+            && InStr(trackerSource, "target.control := currentControl") > 0
+            && InStr(trackerSource, "QuickPhraseIsInternalWindow") > 0,
+        "Quick Phrase does not continuously refresh the latest external focus target."
+    )
+
+    Assert(
+        InStr(entrySource, '#Include "Core\QuickPhraseFocusTracker.ahk"') > 0
+            && InStr(entrySource, "QuickPhraseFocusTracker.Initialize()") > 0,
+        "Quick Phrase focus tracker is not registered at application startup."
     )
 
     Assert(
@@ -31,7 +48,7 @@ RunTests() {
             && InStr(source, "ControlFocus(") > 0
             && InStr(source, 'WinActivate("ahk_id " targetHwnd)') > 0
             && InStr(source, 'Send("^v")') > 0,
-        "Quick Phrase final insertion does not restore the original control with a window-level fallback."
+        "Quick Phrase final insertion does not restore focus and send the completed phrase."
     )
 
     Assert(
