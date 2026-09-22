@@ -45,7 +45,7 @@ AutomateVariableDialog(*) {
             return
 
         ControlSetText(
-            "Injected value",
+            "first line`r`nsecond line",
             "ahk_id " editHwnd,
             "ahk_id " guiHwnd
         )
@@ -72,7 +72,7 @@ RunVariableDialogTest() {
     global VariableDialogAutomationError
 
     phrase := {
-        content: "Hello {{text}}!"
+        content: "Hello:`r`n{{text}}`r`n!"
     }
 
     VariableDialogAutomationDone := false
@@ -110,8 +110,8 @@ RunVariableDialogTest() {
     )
 
     Assert(
-        result.text == "Hello Injected value!",
-        "Variable dialog returned incorrect assembled text: [" result.text "]"
+        result.text == "Hello:`r`nfirst line`r`nsecond line`r`n!",
+        "Variable dialog did not preserve multiline variable line endings: [" result.text "]"
     )
 }
 
