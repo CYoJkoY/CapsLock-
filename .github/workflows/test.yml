@@ -57,7 +57,7 @@ jobs:
             $process.Dispose()
 
             if ($exitCode -ne 0) {
-              throw "AutoHotkey test failed with exit code $exitCode: $relativeScript"
+              throw "AutoHotkey test failed with exit code ${exitCode}: $relativeScript"
             }
           }
 
@@ -84,7 +84,7 @@ jobs:
             }
             $exitCode = $process.ExitCode
             $process.Dispose()
-            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code $exitCode: $relativeScript" }
+            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code ${exitCode}: $relativeScript" }
           }
           Invoke-AhkTest "tests\CloudSyncRegressionTests.ahk"
 
@@ -109,7 +109,7 @@ jobs:
             }
             $exitCode = $process.ExitCode
             $process.Dispose()
-            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code $exitCode: $relativeScript" }
+            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code ${exitCode}: $relativeScript" }
           }
           Invoke-AhkTest "tests\QuickPhraseRegressionTests.ahk"
 
@@ -134,6 +134,6 @@ jobs:
             }
             $exitCode = $process.ExitCode
             $process.Dispose()
-            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code $exitCode: $relativeScript" }
+            if ($exitCode -ne 0) { throw "AutoHotkey test failed with exit code ${exitCode}: $relativeScript" }
           }
           Invoke-AhkTest "tests\QuickPhraseTargetRegressionTests.ahk"
