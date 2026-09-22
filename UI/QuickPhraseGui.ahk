@@ -7,11 +7,9 @@ ShowQuickPhraseSelector(captureTarget := true) {
         return
 
     if captureTarget {
-        pasteTarget := QuickPhraseCaptureFocusTarget()
-        if !IsObject(pasteTarget)
+        CapturePasteTarget()
+        if !AppState.TargetWindow || !WinExist("ahk_id " AppState.TargetWindow)
             return
-
-        AppState.QuickPhrasePasteTarget := pasteTarget
     }
 
     if IsObject(AppState.QuickPhraseGui) {
@@ -180,19 +178,20 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
-    ; Capture the original foreground window before Quick Phrase opens any GUI.
-    ; The final insertion deliberately follows the same activation-and-paste
-    ; path used by CapsLock + Shift + V history pasting.
-    pasteTarget := QuickPhraseCaptureFocusTarget()
-    if !IsObject(pasteTarget)
+    ; Reuse the application's established paste-target capture used by the
+    ; history menu. The target is captured before any Quick Phrase GUI exists.
+    CapturePasteTarget()
+
+    if !AppState.TargetWindow || !WinExist("ahk_id " AppState.TargetWindow)
         return
 
-    AppState.QuickPhrasePasteTarget := pasteTarget
     ShowQuickPhraseSelector(false)
 }
 
 QuickPhraseCaptureFocusTarget() {
-    return QuickPhraseTarget.Capture()
+    ; Kept as a compatibility wrapper for existing callers/tests.
+    CapturePasteTarget()
+    return AppState.TargetWindow
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -209,38 +208,32 @@ QuickPhraseUseSelected(selectorGui) {
     }
 
     idText := selectorGui.ListView.GetText(row, 1)
-    if !(idText ~= "^\d+$")
+    if !(idText ~= "^d+$")
         return true
 
     phrase := QuickPhraseStore.GetById(Integer(idText))
-    pasteTarget := AppState.QuickPhrasePasteTarget
+    targetHwnd := AppState.TargetWindow
+
     if !IsObject(phrase)
         return true
 
-    if !IsObject(pasteTarget) || !pasteTarget.window || !WinExist("ahk_id " pasteTarget.window) {
+    if !targetHwnd || !WinExist("ahk_id " targetHwnd) {
         ShowToolTip(Lang("MSG_NO_TARGET", "No target window detected."), 2000)
         return true
     }
 
-    ; Finish the selector's GUI event before creating the variable-input GUI.
-    ; The selector is destroyed immediately, then execution is deferred to a
-    ; fresh script thread. Both Quick Phrase GUIs are owned by the original
-    ; target window, so Windows never needs to infer the previous window from
-    ; the selector.
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
     SetTimer(
-        () => QuickPhraseExecutePhrase(phrase, pasteTarget),
+        () => QuickPhraseExecutePhrase(phrase, targetHwnd),
         -1
     )
 
-    ; The source GUI was destroyed from its ListView callback. Returning a
-    ; non-empty value prevents additional callbacks for the destroyed GUI.
     return true
 }
 
-QuickPhraseExecutePhrase(phrase, pasteTarget) {
+QuickPhraseExecutePhrase(phrase, targetHwnd) {
     ok := false
     reopenSelector := false
     errorMessage := ""
@@ -251,7 +244,7 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
         if variables.Length == 0 {
             ok := QuickPhrasePasteText(
                 phrase.content,
-                pasteTarget
+                targetHwnd
             )
         } else {
             result := ShowQuickPhraseVariableDialog(
@@ -264,12 +257,9 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
                 return
             }
 
-            ; The variable dialog is fully closed by the time
-            ; ShowQuickPhraseVariableDialog() returns. Paste immediately through
-            ; the same ActivateAndPaste() path used by History/normal paste.
             ok := QuickPhrasePasteText(
                 result.text,
-                pasteTarget
+                targetHwnd
             )
         }
     } catch as err {
@@ -283,7 +273,7 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
                 -1
             )
         } else {
-            AppState.QuickPhrasePasteTarget := ""
+            AppState.TargetWindow := 0
         }
     }
 
@@ -305,6 +295,7 @@ QuickPhraseExecutePhrase(phrase, pasteTarget) {
         )
     }
 }
+
 
 QuickPhrasePreview(text, maxChars := 80) {
     preview := Trim(RegExReplace(String(text), "[\r\n\t\v\f]+", " "))
@@ -651,23 +642,17 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhrasePasteText(text, pasteTarget) {
-    if !IsObject(pasteTarget)
-        return false
-
-    targetHwnd := pasteTarget.window
+QuickPhrasePasteText(text, targetHwnd) {
     if !targetHwnd || !WinExist("ahk_id " targetHwnd)
         return false
 
-    ; Reuse the exact shared clipboard -> ActivateAndPaste workflow used by
-    ; the rest of the application. Quick Phrase does not add a second
-    ; keyboard-delivery implementation or a fragile clipboard equality gate.
     previousTarget := AppState.TargetWindow
     backup := ClipboardAll()
 
     try {
+        ; Use exactly the same global TargetWindow + ActivateAndPaste path as
+        ; the working History/normal paste workflow.
         AppState.TargetWindow := targetHwnd
-
         AppState.IgnoreNextClipChange := true
         A_Clipboard := QuickPhraseNormalizeClipboardText(text)
 
@@ -675,10 +660,6 @@ QuickPhrasePasteText(text, pasteTarget) {
             throw Error("Quick Phrase clipboard was not ready.")
 
         ActivateAndPaste()
-
-        ; Keep the generated phrase on the clipboard until the receiving
-        ; application has had time to consume Ctrl+V, then restore the user's
-        ; previous clipboard.
         Sleep(120)
         return true
     } catch {
