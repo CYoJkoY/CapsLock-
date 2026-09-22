@@ -12,7 +12,11 @@
 }
 
 CapsLockHotkeysAvailable() {
-    return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
+    return GetKeyState( "CapsLock", "P" )
+}
+
+QuickPhraseHotkeyAvailable() {
+    return CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive
 }
 
 #HotIf CapsLockHotkeysAvailable()
@@ -112,7 +116,7 @@ CapsLockHotkeysAvailable() {
 ; when CapsLock is released first. The tilde keeps the key-up event visible.
 ~x up:: WindowHole.HandleXUp()
 
-#HotIf CapsLockHotkeysAvailable() && AppState.QuickPhraseEnabled
+#HotIf QuickPhraseHotkeyAvailable() && AppState.QuickPhraseEnabled
     +p:: QuickPhraseHandleHotkey()
 #HotIf
 
