@@ -35,6 +35,7 @@ jobs:
           function Invoke-AhkTest([string]$relativeScript) {
             $exe = Join-Path $root "autohotkey\AutoHotkey64.exe"
             $script = Join-Path $root $relativeScript
+            $result = Join-Path $env:RUNNER_TEMP ("capslock-ahk-" + [Guid]::NewGuid().ToString("N") + ".result")
 
             if (-not (Test-Path -LiteralPath $exe)) {
               throw "AutoHotkey executable not found: $exe"
@@ -46,7 +47,7 @@ jobs:
 
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = $exe
-            $psi.Arguments = '"' + $script + '"'
+            $psi.Arguments = '"' + $script + '" "' + $result + '"'
             $psi.WorkingDirectory = $root
             $psi.UseShellExecute = $false
             $psi.CreateNoWindow = $true
@@ -61,7 +62,12 @@ jobs:
 
               $deadline = [DateTime]::UtcNow.AddSeconds(60)
 
-              while (-not $process.HasExited) {
+              while (-not (Test-Path -LiteralPath $result)) {
+                if ($process.HasExited) {
+                  $exitCode = $process.ExitCode
+                  throw ("AutoHotkey test exited before reporting a result (exit code {0}): {1}" -f $exitCode, $relativeScript)
+                }
+
                 if ([DateTime]::UtcNow -ge $deadline) {
                   try { $process.Kill() } catch {}
                   throw "AutoHotkey test timed out after 60 seconds: $relativeScript"
@@ -70,13 +76,30 @@ jobs:
                 Start-Sleep -Milliseconds 100
               }
 
-              $exitCode = $process.ExitCode
+              $payload = Get-Content -LiteralPath $result -Raw -Encoding UTF8
+              $lines = $payload -split "\r?\n", 2
+              $status = $lines[0].Trim()
+              $message = if ($lines.Count -gt 1) { $lines[1].Trim() } else { "" }
 
-              if ($exitCode -ne 0) {
-                throw "AutoHotkey test failed with exit code ${exitCode}: $relativeScript"
+              if ($status -ne "PASS") {
+                if ($message -ne "") {
+                  throw ("AutoHotkey test reported failure: {0}`n{1}" -f $relativeScript, $message)
+                }
+                throw "AutoHotkey test reported failure: $relativeScript"
+              }
+
+              $exitDeadline = [DateTime]::UtcNow.AddSeconds(5)
+              while (-not $process.HasExited -and [DateTime]::UtcNow -lt $exitDeadline) {
+                Start-Sleep -Milliseconds 50
+              }
+
+              if (-not $process.HasExited) {
+                try { $process.Kill() } catch {}
+                throw "AutoHotkey test reported PASS but did not exit promptly: $relativeScript"
               }
             } finally {
-              $process.Dispose()
+              try { $process.Dispose() } catch {}
+              Remove-Item -LiteralPath $result -Force -ErrorAction SilentlyContinue
             }
           }
 
