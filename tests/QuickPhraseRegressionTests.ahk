@@ -53,6 +53,7 @@ RunTests() {
             && InStr(targetSource, "EditPaste(") > 0
             && InStr(targetSource, "static SendToWindow(") > 0
             && InStr(targetSource, "ControlSend(") > 0
+            && InStr(targetSource, "Send("^v")") > 0
             && InStr(targetSource, "static DeliverPaste(") > 0,
         "Quick Phrase target module is missing part of the target delivery lifecycle API."
     )
