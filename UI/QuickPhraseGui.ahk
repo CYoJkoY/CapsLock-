@@ -999,10 +999,7 @@ QuickPhraseDebugPath() {
 
 QuickPhraseDebugLog(stage, details := "") {
     try {
-        line := FormatTime(, "yyyy-MM-dd HH:mm:ss.fff")
-            " [" stage "] "
-            details
-            Chr(13) Chr(10)
+        line := FormatTime(, "yyyy-MM-dd HH:mm:ss.fff") " [" stage "] " details Chr(13) Chr(10)
         FileAppend(line, QuickPhraseDebugPath(), "UTF-8")
     } catch {
     }
@@ -1042,9 +1039,7 @@ QuickPhraseDescribeTarget(target) {
     if !IsObject(target)
         return "none"
 
-    return "window=(" QuickPhraseDescribeWindow(target.window) ")"
-        " control=" target.control
-        " class=" target.controlClass
+    return "window=(" QuickPhraseDescribeWindow(target.window) ")" " control=" target.control " class=" target.controlClass
 }
 
 ToggleQuickPhraseEnabled(*) {
