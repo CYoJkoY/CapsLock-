@@ -20,6 +20,11 @@ CreateTargetGui(title) {
 }
 
 RunTests() {
+    Assert(
+        FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk"),
+        "QuickPhraseTarget module is missing from the test workspace."
+    )
+
     source := CreateTargetGui("Quick Phrase Target Source")
     other := CreateTargetGui("Quick Phrase Target Other")
 
