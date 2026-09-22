@@ -183,8 +183,8 @@ QuickPhraseHandleHotkey(*) {
 }
 
 QuickPhraseStartTargetTracking() {
-    if !AppState.QuickPhraseExternalTargetTracking {
-        AppState.QuickPhraseExternalTargetTracking := true
+    if !AppState.QuickPhraseTargetTracking {
+        AppState.QuickPhraseTargetTracking := true
         SetTimer(QuickPhraseTrackExternalFocus, 20)
     }
 
@@ -192,15 +192,15 @@ QuickPhraseStartTargetTracking() {
 }
 
 QuickPhraseStopTargetTracking() {
-    if !AppState.QuickPhraseExternalTargetTracking
+    if !AppState.QuickPhraseTargetTracking
         return
 
-    AppState.QuickPhraseExternalTargetTracking := false
+    AppState.QuickPhraseTargetTracking := false
     SetTimer(QuickPhraseTrackExternalFocus, 0)
 }
 
 QuickPhraseTrackExternalFocus() {
-    if !AppState.QuickPhraseExternalTargetTracking
+    if !AppState.QuickPhraseTargetTracking
         return
 
     activeHwnd := WinExist("A")
