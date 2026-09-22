@@ -192,14 +192,7 @@ QuickPhraseHandleHotkey(*) {
 }
 
 QuickPhraseCaptureFocusTarget() {
-    windowHwnd := WinExist("A")
-
-    if !windowHwnd
-        return ""
-
-    return {
-        window: windowHwnd
-    }
+    return QuickPhraseTarget.Capture()
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -715,17 +708,10 @@ QuickPhrasePasteText(text, pasteTarget) {
         ; sending to a captured child-control HWND. This intentionally restores
         ; the original target window and emits a normal Ctrl+V, matching
         ; clipboard history, file paste, and Pandoc paste behavior.
-        previousTarget := AppState.TargetWindow
-        AppState.TargetWindow := targetHwnd
+        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget)
 
-        try {
-            if !WinExist("ahk_id " targetHwnd)
-                throw Error("Quick Phrase target window is no longer available.")
-
-            ActivateAndPaste()
-        } finally {
-            AppState.TargetWindow := previousTarget
-        }
+        if !delivery.ok
+            throw Error(delivery.error)
 
         ; Do not restore the original clipboard synchronously. Some
         ; applications read clipboard data asynchronously after Ctrl+V.

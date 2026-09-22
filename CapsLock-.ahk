@@ -22,6 +22,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 #Include "Core\QuickPhraseStore.ahk"
+#Include "Core\QuickPhraseTarget.ahk"
 #Include "Core\CloudSyncIdentity.ahk"
 #Include "Core\CloudSyncCredentials.ahk"
 #Include "Core\CloudSyncState.ahk"

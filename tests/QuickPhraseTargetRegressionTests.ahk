@@ -5,32 +5,134 @@ Assert(condition, message) {
         throw Error(message)
 }
 
-CreateTargetGui(title) {
-    gui := Gui("+AlwaysOnTop", title)
-    edit := gui.Add("Edit", "w320 h80", "")
-    gui.Show("w360 h140")
-    edit.Focus()
+ReadSource(path) {
+    return FileRead(A_WorkingDir "\\" path, "UTF-8")
+}
 
-    return {
-        gui: gui,
-        edit: edit
+RunTargetDeliveryTest() {
+    payload := "Quick Phrase target delivery test"
+
+    firstGui := Gui("+AlwaysOnTop", "Quick Phrase Target Test")
+    firstEdit := firstGui.Add("Edit", "w360 h90", "")
+    firstGui.Show("w420 h160")
+
+    firstEdit.Focus()
+    WinActivate("ahk_id " firstGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " firstGui.Hwnd, , 1)
+        throw Error("First test window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+
+    Assert(
+        IsObject(target)
+            && target.window == firstGui.Hwnd,
+        "Quick Phrase target capture did not preserve the active window."
+    )
+    Assert(
+        target.control == firstEdit.Hwnd,
+        "Quick Phrase target capture did not preserve the focused control."
+    )
+    Assert(
+        QuickPhraseTarget.IsWindowValid(target)
+            && QuickPhraseTarget.IsControlValid(target),
+        "Captured Quick Phrase target failed validation."
+    )
+
+    secondGui := Gui("+AlwaysOnTop", "Quick Phrase Target Interference")
+    secondEdit := secondGui.Add("Edit", "w360 h90", "")
+    secondGui.Show("w420 h160")
+    secondEdit.Focus()
+
+    if !WinWaitActive("ahk_id " secondGui.Hwnd, , 1)
+        throw Error("Second test window did not become active.")
+
+    originalClipboard := ClipboardAll()
+
+    try {
+        A_Clipboard := payload
+
+        if !ClipWait(1)
+            throw Error("Test clipboard did not become ready.")
+
+        delivery := QuickPhraseTarget.DeliverPaste(target)
+
+        Assert(
+            delivery.ok,
+            "Quick Phrase target delivery returned failure."
+        )
+        Assert(
+            WinExist("A") == firstGui.Hwnd,
+            "Quick Phrase delivery did not reactivate the original window."
+        )
+        Assert(
+            ControlGetFocus("ahk_id " firstGui.Hwnd) == firstEdit.Hwnd,
+            "Quick Phrase delivery did not restore the original focused control."
+        )
+        Assert(
+            firstEdit.Text == payload,
+            "Quick Phrase delivery did not paste into the original control."
+        )
+    } finally {
+        A_Clipboard := originalClipboard
+        secondGui.Destroy()
+        firstGui.Destroy()
     }
 }
 
+RunInvalidTargetTest() {
+    gui := Gui("+AlwaysOnTop", "Quick Phrase Invalid Target Test")
+    edit := gui.Add("Edit", "w240 h60", "")
+    gui.Show("w300 h130")
+    edit.Focus()
+
+    if !WinWaitActive("ahk_id " gui.Hwnd, , 1)
+        throw Error("Invalid-target test window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+    gui.Destroy()
+
+    Assert(
+        !QuickPhraseTarget.IsWindowValid(target),
+        "Destroyed Quick Phrase target window was still considered valid."
+    )
+    Assert(
+        !QuickPhraseTarget.Activate(target),
+        "Destroyed Quick Phrase target window was activated unexpectedly."
+    )
+}
+
 RunTests() {
-    Assert(
-        !FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk"),
-        "The TDD red phase requires the QuickPhraseTarget module to be absent before implementation."
-    )
-
-    source := FileExist(A_WorkingDir "\Core\QuickPhraseTarget.ahk")
-        ? FileRead(A_WorkingDir "\Core\QuickPhraseTarget.ahk", "UTF-8")
-        : ""
+    source := ReadSource("UI\QuickPhraseGui.ahk")
+    rootSource := ReadSource("CapsLock-.ahk")
 
     Assert(
-        source == "",
-        "QuickPhraseTarget implementation unexpectedly exists during the red phase."
+        InStr(rootSource, '#Include "Core\QuickPhraseTarget.ahk"') > 0,
+        "Quick Phrase target module is not included by the application entry point."
     )
+
+    Assert(
+        InStr(source, "QuickPhraseTarget.Capture()") > 0
+            && InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
+            && InStr(source, "QuickPhraseTarget.RestoreControlFocus(") == 0,
+        "Quick Phrase UI is not routed through the isolated target component."
+    )
+
+    Assert(
+        InStr(source, "AppState.TargetWindow :=") == 0
+            && InStr(source, "ControlSend(") == 0,
+        "Quick Phrase must not mutate the global paste target or use ControlSend directly."
+    )
+
+    Assert(
+        InStr(source, "if variables.Length == 0") > 0
+            && InStr(source, "ok := QuickPhrasePasteText(") > 0
+            && InStr(source, "result.text := QuickPhraseApplyVariables(") > 0,
+        "Fixed and variable Quick Phrases must both reach the shared final paste path."
+    )
+
+    RunTargetDeliveryTest()
+    RunInvalidTargetTest()
 
     return true
 }
@@ -50,11 +152,12 @@ WriteTestResult(status, message := "") {
 
 try {
     RunTests()
-    ExitApp(1)
+    WriteTestResult("PASS")
+    ExitApp(0)
 } catch as err {
     WriteTestResult("FAIL", err.Message)
     FileAppend(
-        "Quick Phrase target regression failure: " err.Message Chr(10),
+        "Quick Phrase target regression test failure: " err.Message Chr(10),
         A_WorkingDir "\tests\QuickPhraseTargetRegressionTests.log",
         "UTF-8"
     )
