@@ -29,16 +29,18 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "AppState.TargetWindow := targetHwnd") > 0
+        InStr(source, "previousTarget := AppState.TargetWindow") > 0
+            && InStr(source, "AppState.TargetWindow := targetHwnd") > 0
             && InStr(source, "ActivateAndPaste()") > 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase final insertion must reuse the same activate-and-paste path as clipboard history."
+        "Quick Phrase final insertion must reuse the established activate-and-paste path without ControlSend."
     )
 
     Assert(
-        InStr(source, "result.text := QuickPhraseApplyVariables(") > 0
-            && InStr(source, "QuickPhrasePasteText(") > 0,
-        "Variable substitution is not connected to final phrase insertion."
+        InStr(source, "if variables.Length == 0") > 0
+            && InStr(source, "ok := QuickPhrasePasteText(") > 0
+            && InStr(source, "result.text := QuickPhraseApplyVariables(") > 0,
+        "Fixed and variable Quick Phrases must both reach the shared final paste path."
     )
 
     Assert(
