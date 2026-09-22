@@ -8,6 +8,9 @@ if not exist "%AHK%" (
     exit /b 2
 )
 
+call :run "tests\AhkExitSmoke.ahk"
+if errorlevel 1 exit /b %errorlevel%
+
 call :run "tests\RegressionTests.ahk"
 if errorlevel 1 exit /b %errorlevel%
 
