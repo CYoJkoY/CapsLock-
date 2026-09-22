@@ -656,13 +656,6 @@ QuickPhrasePasteText(text, pasteTarget) {
     backup := ""
 
     try {
-        ; Re-establish the original destination before replacing the clipboard.
-        ; This removes a second race window where a GUI can remain foreground
-        ; while the clipboard changes. The actual Ctrl+V is still delivered
-        ; only after the clipboard contains the completed phrase.
-        if !QuickPhraseTarget.Activate(pasteTarget)
-            throw Error("Quick Phrase target window could not be activated.")
-
         ; Preserve the original clipboard across overlapping Quick Phrase
         ; transactions. If a previous transaction is still pending and its
         ; clipboard has not changed, keep its original backup.
@@ -681,13 +674,12 @@ QuickPhrasePasteText(text, pasteTarget) {
             backup := ClipboardAll()
         }
 
+        ; Replace the clipboard only after the complete phrase has been
+        ; assembled. The target window/control is restored later by
+        ; QuickPhraseTarget immediately before Ctrl+V.
         AppState.IgnoreNextClipChange := true
         A_Clipboard := text
 
-        ; Clipboard assignment is normally synchronous, but ClipWait
-        ; protects against a transient clipboard-provider delay on Windows.
-        ; Throw here so the catch block restores the pre-Quick-Phrase
-        ; clipboard instead of returning with temporary text still installed.
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
@@ -710,11 +702,10 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Deliver Ctrl+V through the captured target. The target component first
-        ; prefers the original focused control, then falls back to the target
-        ; window, with a final foreground Send for custom Chromium/Electron
-        ; controls.
-        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget, text)
+        ; Deliver through the same clipboard-paste mechanism used by the
+        ; existing history workflow: activate the captured window, restore
+        ; its original focused control when possible, then send Ctrl+V.
+        delivery := QuickPhraseTarget.DeliverPaste(pasteTarget)
 
         if !delivery.ok
             throw Error(delivery.error)
@@ -741,7 +732,6 @@ QuickPhrasePasteText(text, pasteTarget) {
         return false
     }
 }
-
 QuickPhraseRestoreClipboard(generation) {
     if !AppState.QuickPhraseClipboardRestorePending
         return
