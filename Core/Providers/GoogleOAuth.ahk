@@ -134,12 +134,12 @@ class GoogleOAuth {
             return
 
         try {
-            buffer := Buffer(8192, 0)
+            mybuffer := Buffer(8192, 0)
             received := DllCall(
                 "ws2_32\recv",
                 "Ptr", client,
-                "Ptr", buffer.Ptr,
-                "Int", buffer.Size - 1,
+                "Ptr", mybuffer.Ptr,
+                "Int", mybuffer.Size - 1,
                 "Int", 0,
                 "Int"
             )
@@ -160,7 +160,7 @@ class GoogleOAuth {
             query := this._ParseQuery(match[1])
             code := query.Get("code", "")
             returnedState := query.Get("state", "")
-            error := query.Get("error", "")
+            myerror := query.Get("error", "")
 
             if returnedState == "" || returnedState != this.StateToken {
                 this._SendBrowserResponse(client, false)
@@ -168,9 +168,9 @@ class GoogleOAuth {
                 return
             }
 
-            if error != "" {
+            if myerror != "" {
                 this._SendBrowserResponse(client, false)
-                this._Finish(false, "Google authorization was not completed: " error)
+                this._Finish(false, "Google authorization was not completed: " myerror)
                 return
             }
 
@@ -368,13 +368,13 @@ class GoogleOAuth {
             . body
 
         size := StrPut(response, "UTF-8")
-        buffer := Buffer(size, 0)
-        StrPut(response, buffer, "UTF-8")
+        mybuffer := Buffer(size, 0)
+        StrPut(response, mybuffer, "UTF-8")
 
         DllCall(
             "ws2_32\send",
             "Ptr", client,
-            "Ptr", buffer.Ptr,
+            "Ptr", mybuffer.Ptr,
             "Int", size - 1,
             "Int", 0,
             "Int"

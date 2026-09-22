@@ -202,16 +202,16 @@ class QuickPhraseStore {
     static _Section(id) => this.SectionPrefix id
 
     static _WriteContent(path, content) {
-        file := ""
+        myfile := ""
         try {
-            file := FileOpen(path, "w", "UTF-8")
-            if !IsObject(file)
+            myfile := FileOpen(path, "w", "UTF-8")
+            if !IsObject(myfile)
                 return false
-            file.Write(content)
-            file.Close()
+            myfile.Write(content)
+            myfile.Close()
             return true
         } catch {
-            try file.Close()
+            try myfile.Close()
             return false
         }
     }

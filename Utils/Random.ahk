@@ -5,12 +5,12 @@ RandomBytes(size) {
     if size <= 0
         return Buffer(1, 0)
 
-    buffer := Buffer(size, 0)
+    mybuffer := Buffer(size, 0)
     status := DllCall(
         "bcrypt\BCryptGenRandom",
         "Ptr", 0,
-        "Ptr", buffer.Ptr,
-        "UInt", buffer.Size,
+        "Ptr", mybuffer.Ptr,
+        "UInt", mybuffer.Size,
         "UInt", 0x00000002,
         "UInt"
     )
@@ -18,5 +18,5 @@ RandomBytes(size) {
     if status != 0
         throw Error("BCryptGenRandom failed: 0x" Format("{:08X}", status))
 
-    return buffer
+    return mybuffer
 }
