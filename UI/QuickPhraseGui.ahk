@@ -824,7 +824,7 @@ QuickPhrasePasteText(text) {
     )
 
     ; Native edit controls can receive text directly at their existing caret.
-    ; This path does not disturb the user's foreground application.
+    ; This avoids an application focus transition and does not touch the user's clipboard.
     if target.control
         && WinExist("ahk_id " target.control)
         && QuickPhraseIsTextInputControl(target.controlClass)
@@ -858,17 +858,27 @@ QuickPhrasePasteText(text) {
     }
 
     backup := ClipboardAll()
+    expectedText := QuickPhraseNormalizeClipboardText(text)
+    expectedSequence := 0
+    clipboardPrepared := false
 
     try {
         AppState.IgnoreNextClipChange := true
-        A_Clipboard := QuickPhraseNormalizeClipboardText(text)
+        A_Clipboard := expectedText
 
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
+        expectedSequence := DllCall(
+            "GetClipboardSequenceNumber",
+            "UInt"
+        )
+        clipboardPrepared := true
+
         QuickPhraseDebugLog(
             "paste-clipboard",
-            "ready=1 target=" QuickPhraseDescribeTarget(target)
+            "ready=1 sequence=" expectedSequence
+                " target=" QuickPhraseDescribeTarget(target)
         )
 
         ; Non-native editors (Chromium/Electron/WebView/custom controls) own
@@ -917,11 +927,56 @@ QuickPhrasePasteText(text) {
         )
         return false
     } finally {
-        AppState.IgnoreNextClipChange := true
-        try A_Clipboard := backup
+        if clipboardPrepared {
+            QuickPhraseScheduleClipboardRestore(
+                backup,
+                expectedText,
+                expectedSequence
+            )
+        }
     }
 }
 
+QuickPhraseScheduleClipboardRestore(backup, expectedText, expectedSequence) {
+    AppState.QuickPhraseClipboardBackup := backup
+    AppState.QuickPhraseClipboardExpected := expectedText
+    AppState.QuickPhraseClipboardSequence := expectedSequence
+    AppState.QuickPhraseClipboardRestorePending := true
+
+    SetTimer(
+        QuickPhraseRestoreClipboard,
+        -750
+    )
+}
+
+QuickPhraseRestoreClipboard() {
+    if !AppState.QuickPhraseClipboardRestorePending
+        return
+
+    AppState.QuickPhraseClipboardRestorePending := false
+
+    backup := AppState.QuickPhraseClipboardBackup
+    expectedText := AppState.QuickPhraseClipboardExpected
+    expectedSequence := AppState.QuickPhraseClipboardSequence
+
+    AppState.QuickPhraseClipboardBackup := ""
+    AppState.QuickPhraseClipboardExpected := ""
+    AppState.QuickPhraseClipboardSequence := 0
+
+    currentSequence := DllCall(
+        "GetClipboardSequenceNumber",
+        "UInt"
+    )
+
+    if currentSequence != expectedSequence
+        return
+
+    if A_Clipboard != expectedText
+        return
+
+    AppState.IgnoreNextClipChange := true
+    try A_Clipboard := backup
+}
 
 QuickPhraseIsTextInputControl(controlClass) {
     if controlClass == ""
