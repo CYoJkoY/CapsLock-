@@ -864,14 +864,14 @@ class WindowHole {
             return 0
 
         try {
-            type := DllCall(
+            mytype := DllCall(
                 "GetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", tempRegion,
                 "Int"
             )
 
-            if type > 0 {
+            if mytype > 0 {
                 state.hadOriginalRegion := true
                 state.originalRegion := tempRegion
                 tempRegion := 0
@@ -1703,14 +1703,14 @@ class WindowHole {
             return 0
 
         try {
-            type := DllCall(
+            mytype := DllCall(
                 "GetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", tempRegion,
                 "Int"
             )
 
-            if type > 0 {
+            if mytype > 0 {
                 state.hadOriginalRegion := true
                 state.originalRegion := tempRegion
                 tempRegion := 0
