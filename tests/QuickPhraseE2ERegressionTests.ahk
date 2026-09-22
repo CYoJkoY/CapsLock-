@@ -27,6 +27,7 @@ WriteTestResult(status, message := "") {
 
 global AutomationDone := false
 global AutomationError := ""
+global AutomationValue := "Injected E2E value"
 
 AutomateVariableDialog(*) {
     global AutomationDone
@@ -77,6 +78,7 @@ AutomateVariableDialog(*) {
 RunVariableEndToEndTest() {
     global AutomationDone
     global AutomationError
+    global AutomationValue
 
     targetGui := Gui("+AlwaysOnTop", "Quick Phrase Variable E2E Target")
     targetEdit := targetGui.Add("Edit", "w420 h100", "")
@@ -102,6 +104,7 @@ RunVariableEndToEndTest() {
 
     AutomationDone := false
     AutomationError := ""
+    AutomationValue := "Injected E2E value"
 
     SetTimer(
         AutomateVariableDialog,
@@ -266,6 +269,7 @@ RunSelectorFixedPhraseEndToEndTest() {
 RunSelectorVariablePhraseEndToEndTest() {
     global AutomationDone
     global AutomationError
+    global AutomationValue
 
     targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E Target")
     targetEdit := targetGui.Add("Edit", "w420 h100", "")
