@@ -37,7 +37,7 @@ QuickPhraseHotkeyAvailable() {
         && !AppState.QuickPhraseClipboardRestorePending
 }
 
-#HotIf CapsLockActionHotkeysAvailable()
+#HotIf CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive
 
 
     +Left:: Send( "^+{Left}" )
@@ -57,7 +57,7 @@ QuickPhraseHotkeyAvailable() {
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
 
-#HotIf CapsLockActionHotkeysAvailable() && !WindowHole.IsActive()
+#HotIf CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive && !WindowHole.IsActive()
 
     LButton:: {
         AdjustOpacity( 20 )
@@ -88,7 +88,7 @@ QuickPhraseHotkeyAvailable() {
             WinSetTransparent( 255, hwnd )
     }
 
-#HotIf CapsLockActionHotkeysAvailable()
+#HotIf CapsLockHotkeysAvailable() && !AppState.QuickPhraseTransactionActive
 
     w::
     8::
