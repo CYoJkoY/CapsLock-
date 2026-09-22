@@ -12,6 +12,7 @@ class QuickPhraseTarget {
         "TEdit",
         "EditControl"
     ]
+
     static Capture() {
         windowHwnd := WinExist("A")
 
@@ -149,9 +150,10 @@ class QuickPhraseTarget {
         if !this.IsControlValid(target)
             return false
 
-        ; Native Edit-like controls have a dedicated paste API. It writes the
-        ; supplied text at the control's caret without depending on foreground
-        ; focus and without modifying the clipboard.
+        ; Native Edit-like controls can accept the completed phrase directly.
+        ; This path does not depend on foreground focus and does not change
+        ; the clipboard, which is useful when the application exposes a real
+        ; Windows edit control.
         if text != "" && this.IsEditLikeControl(target) {
             try {
                 EditPaste(
@@ -161,47 +163,29 @@ class QuickPhraseTarget {
                 )
                 return "editpaste"
             } catch {
-                ; Fall through to the focused-control keyboard path for
-                ; modified/custom edit implementations which reject EditPaste.
+                ; Fall through to the normal foreground keyboard path.
             }
         }
 
-        ; When the captured control can be focused again, prefer a real
-        ; foreground Ctrl+V. This preserves the application's normal input
-        ; pipeline and is more compatible with custom/virtualized editors than
-        ; treating a successful ControlSend call as proof that the application
-        ; processed the paste.
+        ; The generic Quick Phrase path intentionally uses a real foreground
+        ; Ctrl+V after restoring the captured control. Many applications use
+        ; custom/virtualized editors where ControlSend can return without the
+        ; application actually processing the keystroke.
         if this.RestoreControlFocus(target) {
             try {
                 Send("^v")
                 return "foreground-control"
             } catch {
-                ; Fall through to ControlSend.
+                return false
             }
         }
 
-        try {
-            ControlSend(
-                "^v",
-                "ahk_id " target.control,
-                "ahk_id " target.window
-            )
-            return "controlsend"
-        } catch {
-            return false
-        }
+        return false
     }
 
-    static SendToWindow(target) {
-        if !this.IsWindowValid(target)
-            return false
-
+    static SendForegroundPaste() {
         try {
-            ControlSend(
-                "^v",
-                "",
-                "ahk_id " target.window
-            )
+            Send("^v")
             return true
         } catch {
             return false
@@ -217,9 +201,6 @@ class QuickPhraseTarget {
                 error: "Quick Phrase target window is no longer available."
             }
 
-        ; Re-establish the original top-level window before delivery.
-        ; Foreground Send remains available for editors which do not accept
-        ; ControlSend-style posted keyboard messages.
         if !this.Activate(target)
             return {
                 ok: false,
@@ -234,39 +215,30 @@ class QuickPhraseTarget {
             return {
                 ok: true,
                 mode: controlMode,
-                controlRestored: controlMode == "controlsend",
+                controlRestored: controlMode == "foreground-control",
                 error: ""
             }
 
-        ; The original control may have been destroyed or may reject
-        ; EditPaste/ControlSend. Fall back to the original top-level window.
-        if this.SendToWindow(target)
-            return {
-                ok: true,
-                mode: "window",
-                controlRestored: false,
-                error: ""
-            }
+        ; At this point the captured child HWND was either unavailable or not
+        ; focusable. Do not treat ControlSend-to-window as proof of delivery:
+        ; custom Chromium/Electron editors may silently ignore it while AHK
+        ; still reports success. The target top-level window is already active,
+        ; so preserve the original application's foreground Ctrl+V behavior.
+        Sleep(30)
 
-        ; Preserve the compatibility behavior used by the rest of the
-        ; application for custom/Chromium/Electron targets. The window has
-        ; already been confirmed active, so this final fallback does not
-        ; depend on the Quick Phrase GUI remaining in the foreground.
-        try {
-            Send("^v")
+        if this.SendForegroundPaste()
             return {
                 ok: true,
                 mode: "foreground",
                 controlRestored: false,
                 error: ""
             }
-        } catch as err {
-            return {
-                ok: false,
-                mode: "none",
-                controlRestored: false,
-                error: "Quick Phrase paste failed: " err.Message
-            }
+
+        return {
+            ok: false,
+            mode: "none",
+            controlRestored: false,
+            error: "Quick Phrase paste failed: foreground Ctrl+V could not be sent."
         }
     }
 }
