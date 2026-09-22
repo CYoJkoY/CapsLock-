@@ -499,7 +499,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
         etxtControl := {
             name: etxtName,
-            edit: etxtEdit        }
+            edit: etxtEdit
+        }
 
         controls.Push(etxtControl)
     }
