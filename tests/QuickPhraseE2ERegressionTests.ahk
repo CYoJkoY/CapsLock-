@@ -69,11 +69,11 @@ AutomateVariableDialog(*) {
     }
 }
 
-RunEndToEndTest() {
+RunVariableEndToEndTest() {
     global AutomationDone
     global AutomationError
 
-    targetGui := Gui("+AlwaysOnTop", "Quick Phrase E2E Target")
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Variable E2E Target")
     targetEdit := targetGui.Add("Edit", "w420 h100", "")
 
     targetGui.Show("w480 h170")
@@ -81,14 +81,14 @@ RunEndToEndTest() {
     WinActivate("ahk_id " targetGui.Hwnd)
 
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
-        throw Error("E2E target window did not become active.")
+        throw Error("Variable E2E target window did not become active.")
 
     target := QuickPhraseTarget.Capture()
 
     Assert(
         target.window == targetGui.Hwnd
             && target.control == targetEdit.Hwnd,
-        "E2E target capture did not preserve the original Edit control."
+        "Variable E2E target capture did not preserve the original Edit control."
     )
 
     phrase := {
@@ -134,8 +134,57 @@ RunEndToEndTest() {
     targetGui.Destroy()
 }
 
+RunFixedPhraseEndToEndTest() {
+    phraseText := "Fixed Quick Phrase regression"
+
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Fixed E2E Target")
+    targetEdit := targetGui.Add("Edit", "w420 h100", "")
+
+    targetGui.Show("w480 h170")
+    targetEdit.Focus()
+    WinActivate("ahk_id " targetGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
+        throw Error("Fixed E2E target window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+
+    Assert(
+        target.window == targetGui.Hwnd
+            && target.control == targetEdit.Hwnd,
+        "Fixed E2E target capture did not preserve the original Edit control."
+    )
+
+    phrase := {
+        content: phraseText
+    }
+
+    originalClipboard := ClipboardAll()
+
+    try {
+        QuickPhraseExecutePhrase(
+            phrase,
+            target
+        )
+
+        Assert(
+            targetEdit.Text == phraseText,
+            "Fixed Quick Phrase flow did not paste into the original target. Actual: ["
+                targetEdit.Text "]"
+        )
+
+        ; Allow the asynchronous Quick Phrase clipboard restoration to complete
+        ; so this test does not leave transaction state behind for later steps.
+        Sleep(AppState.QuickPhraseClipboardRestoreDelay + 50)
+    } finally {
+        A_Clipboard := originalClipboard
+        targetGui.Destroy()
+    }
+}
+
 try {
-    RunEndToEndTest()
+    RunVariableEndToEndTest()
+    RunFixedPhraseEndToEndTest()
     WriteTestResult("PASS")
     ExitApp(0)
 } catch as err {
