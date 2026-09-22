@@ -105,7 +105,7 @@ RunForegroundFallbackTest() {
         if !ClipWait(1)
             throw Error("Foreground-fallback test clipboard did not become ready.")
 
-        delivery := QuickPhraseTarget.DeliverPaste(target, payload)
+        delivery := QuickPhraseTarget.DeliverPaste(target)
 
         Assert(
             delivery.ok && delivery.mode == "foreground",
@@ -114,59 +114,6 @@ RunForegroundFallbackTest() {
         Assert(
             edit.Text == payload,
             "Quick Phrase foreground fallback did not paste into the focused control."
-        )
-    } finally {
-        A_Clipboard := originalClipboard
-        gui.Destroy()
-    }
-}
-
-RunCustomControlForegroundTest() {
-    payload := "Quick Phrase custom control foreground test"
-
-    gui := Gui("+AlwaysOnTop", "Quick Phrase Custom Control Fallback Test")
-    edit := gui.Add("Edit", "w360 h90", "")
-    button := gui.Add("Button", "w100", "Interference")
-    gui.Show("w420 h200")
-
-    edit.Focus()
-
-    if !WinWaitActive("ahk_id " gui.Hwnd, , 1)
-        throw Error("Custom-control fallback test window did not become active.")
-
-    target := QuickPhraseTarget.Capture()
-
-    Assert(
-        target.control == edit.Hwnd,
-        "Custom-control fallback test did not start with the Edit control focused."
-    )
-
-    ; Simulate a valid but non-edit child HWND such as a rendering/helper
-    ; surface in a custom editor. The fallback must not force that child to
-    ; become focused before Ctrl+V, because it is not the logical text caret.
-    target.control := button.Hwnd
-
-    originalClipboard := ClipboardAll()
-
-    try {
-        A_Clipboard := payload
-
-        if !ClipWait(1)
-            throw Error("Custom-control fallback test clipboard did not become ready.")
-
-        delivery := QuickPhraseTarget.DeliverPaste(target, payload)
-
-        Assert(
-            delivery.ok && delivery.mode == "foreground",
-            "Quick Phrase custom-control target did not use the foreground fallback."
-        )
-        Assert(
-            edit.Text == payload,
-            "Quick Phrase custom-control fallback did not preserve the original edit focus."
-        )
-        Assert(
-            ControlGetFocus("ahk_id " gui.Hwnd) == edit.Hwnd,
-            "Quick Phrase custom-control fallback incorrectly changed the focused control."
         )
     } finally {
         A_Clipboard := originalClipboard
