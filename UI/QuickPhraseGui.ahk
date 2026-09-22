@@ -240,8 +240,8 @@ QuickPhraseExecutePhrase(phrase) {
             }
 
             ; The variable dialog has already been destroyed before this call.
-            ; Resolve the output destination only now, from the current mouse
-            ; position beneath the Quick Phrase UI.
+            ; The original editing target is still held by the Quick Phrase
+            ; transaction and is restored immediately before paste.
             ok := QuickPhrasePasteText(result.text)
         }
     } catch as err {
