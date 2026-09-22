@@ -90,13 +90,7 @@ RunVariableEndToEndTest() {
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
         throw Error("Variable E2E target window did not become active.")
 
-    target := QuickPhraseTarget.Capture()
-
-    Assert(
-        target.window == targetGui.Hwnd
-            && target.control == targetEdit.Hwnd,
-        "Variable E2E target capture did not preserve the original Edit control."
-    )
+    AppState.TargetWindow := targetGui.Hwnd
 
     phrase := {
         content: "Prefix {{text}} Suffix"
@@ -114,7 +108,7 @@ RunVariableEndToEndTest() {
     try {
         QuickPhraseExecutePhrase(
             phrase,
-            target
+            targetGui.Hwnd
         )
     } finally {
         SetTimer(
@@ -155,13 +149,7 @@ RunFixedPhraseEndToEndTest() {
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
         throw Error("Fixed E2E target window did not become active.")
 
-    target := QuickPhraseTarget.Capture()
-
-    Assert(
-        target.window == targetGui.Hwnd
-            && target.control == targetEdit.Hwnd,
-        "Fixed E2E target capture did not preserve the original Edit control."
-    )
+    AppState.TargetWindow := targetGui.Hwnd
 
     phrase := {
         content: phraseText
@@ -172,7 +160,7 @@ RunFixedPhraseEndToEndTest() {
     try {
         QuickPhraseExecutePhrase(
             phrase,
-            target
+            targetGui.Hwnd
         )
 
         Assert(
@@ -198,16 +186,10 @@ RunSelectorFixedPhraseEndToEndTest() {
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
         throw Error("Selector fixed E2E target window did not become active.")
 
-    target := QuickPhraseTarget.Capture()
-
-    Assert(
-        target.window == targetGui.Hwnd
-            && target.control == targetEdit.Hwnd,
-        "Selector fixed E2E target capture did not preserve the original Edit control."
-    )
+    AppState.TargetWindow := targetGui.Hwnd
 
     originalPhrases := QuickPhraseStore._phrases
-    originalTarget := AppState.QuickPhrasePasteTarget
+    originalTarget := AppState.TargetWindow
     originalTransaction := AppState.QuickPhraseTransactionActive
 
     phrase := {
@@ -219,7 +201,7 @@ RunSelectorFixedPhraseEndToEndTest() {
         content: "Selector fixed phrase result"
     }
 
-    AppState.QuickPhrasePasteTarget := target
+    AppState.TargetWindow := targetGui.Hwnd
     AppState.QuickPhraseTransactionActive := false
     QuickPhraseStore._phrases := [phrase]
 
@@ -240,7 +222,14 @@ RunSelectorFixedPhraseEndToEndTest() {
         throw Error("Selector fixed E2E selector window did not become active.")
 
     try {
-        QuickPhraseUseSelected(selectorGui)
+        ControlClick(
+            "X20 Y10",
+            "ahk_id " selectorGui.Hwnd,
+            ,
+            "Left",
+            2,
+            "Pos"
+        )
 
         timeoutAt := A_TickCount + 2000
         while targetEdit.Text != phrase.content {
@@ -260,7 +249,7 @@ RunSelectorFixedPhraseEndToEndTest() {
         }
 
         QuickPhraseStore._phrases := originalPhrases
-        AppState.QuickPhrasePasteTarget := originalTarget
+        AppState.TargetWindow := originalTarget
         AppState.QuickPhraseTransactionActive := originalTransaction
         targetGui.Destroy()
     }
@@ -280,16 +269,10 @@ RunSelectorVariablePhraseEndToEndTest() {
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
         throw Error("Selector variable E2E target window did not become active.")
 
-    target := QuickPhraseTarget.Capture()
-
-    Assert(
-        target.window == targetGui.Hwnd
-            && target.control == targetEdit.Hwnd,
-        "Selector variable E2E target capture did not preserve the original Edit control."
-    )
+    AppState.TargetWindow := targetGui.Hwnd
 
     originalPhrases := QuickPhraseStore._phrases
-    originalTarget := AppState.QuickPhrasePasteTarget
+    originalTarget := AppState.TargetWindow
     originalTransaction := AppState.QuickPhraseTransactionActive
     originalVariableGui := AppState.QuickPhraseVariableGui
 
@@ -304,7 +287,7 @@ RunSelectorVariablePhraseEndToEndTest() {
 
     expectedText := "你将接收一份 YAML 格式的“上下文交接包”，用于恢复此前会话的工作状态。`r`n`r`n现在准备接收 YAML，这是你的YAML信息：`r`n`r`ntitle: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
 
-    AppState.QuickPhrasePasteTarget := target
+    AppState.TargetWindow := targetGui.Hwnd
     AppState.QuickPhraseTransactionActive := false
     AppState.QuickPhraseVariableGui := ""
     QuickPhraseStore._phrases := [phrase]
@@ -380,7 +363,7 @@ RunSelectorVariablePhraseEndToEndTest() {
         }
 
         QuickPhraseStore._phrases := originalPhrases
-        AppState.QuickPhrasePasteTarget := originalTarget
+        AppState.TargetWindow := originalTarget
         AppState.QuickPhraseTransactionActive := originalTransaction
         AppState.QuickPhraseVariableGui := originalVariableGui
         targetGui.Destroy()
