@@ -61,8 +61,8 @@ RunTargetDeliveryTest() {
         delivery := QuickPhraseTarget.DeliverPaste(target, payload)
 
         Assert(
-            delivery.ok && delivery.mode == "editpaste",
-            "Quick Phrase target did not use direct EditPaste for the captured native Edit control."
+            delivery.ok && delivery.mode == "foreground-control" && delivery.controlRestored,
+            "Quick Phrase target did not restore the captured Edit focus before foreground paste."
         )
         Assert(
             WinExist("A") == firstGui.Hwnd,
@@ -238,13 +238,12 @@ RunTests() {
     Assert(
         InStr(targetSource, "static ForegroundSettleDelay := 100") > 0
             && InStr(targetSource, "Sleep(this.ForegroundSettleDelay)") > 0
-            && InStr(targetSource, "Do not call ControlFocus for custom/non-edit controls.") > 0,
-        "Quick Phrase custom-control delivery must keep the established settling delay without forcing a child focus."
+            && InStr(targetSource, "controlRestored := this.RestoreControlFocus(target)") > 0,
+        "Quick Phrase delivery must restore the captured control when available and keep the established settling delay."
     )
 
     RunTargetDeliveryTest()
     RunForegroundFallbackTest()
-    RunCustomControlForegroundTest()
     RunInvalidTargetTest()
 
     return true
