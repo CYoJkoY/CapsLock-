@@ -168,10 +168,10 @@ QuickPhraseCompareSelectorPhrases(left, right) {
 }
 
 QuickPhraseHandleHotkey(*) {
-    QuickPhraseStartTargetTracking()
-
     if AppState.QuickPhraseTransactionActive
         return
+
+    QuickPhraseStartTargetTracking()
 
     QuickPhraseDebugLog(
         "hotkey",
@@ -232,10 +232,26 @@ QuickPhraseCaptureExternalTarget(windowHwnd) {
         controlClass: controlClass
     }
 
-    QuickPhraseDebugLog(
-        "external-focus",
-        QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
-    )
+    previous := AppState.QuickPhraseExternalTarget
+    AppState.QuickPhraseExternalTarget := {
+        window: windowHwnd,
+        control: controlHwnd,
+        controlClass: controlClass
+    }
+
+    if !IsObject(previous)
+        changed := true
+    else
+        changed := previous.window != windowHwnd
+            || previous.control != controlHwnd
+            || previous.controlClass != controlClass
+
+    if changed {
+        QuickPhraseDebugLog(
+            "external-focus",
+            QuickPhraseDescribeTarget(AppState.QuickPhraseExternalTarget)
+        )
+    }
     return true
 }
 
@@ -349,8 +365,8 @@ QuickPhraseExecutePhrase(phrase) {
             }
 
             ; The variable dialog has already been destroyed before this call.
-            ; The original editing target is still held by the Quick Phrase
-            ; transaction and is delivered directly to that saved target.
+            ; The latest external target is held independently from the
+            ; Quick Phrase UI and is used for the final delivery.
             ok := QuickPhrasePasteText(result.text)
         }
     } catch as err {
@@ -745,7 +761,7 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhraseGetTarget() {
+QuickPhraseGetLatestExternalTarget() {
     target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
 }
@@ -792,7 +808,7 @@ QuickPhraseIsInternalWindow(hwnd) {
 QuickPhrasePasteText(text) {
     QuickPhraseTrackExternalFocus()
 
-    target := QuickPhraseGetTarget()
+    target := QuickPhraseGetLatestExternalTarget()
     if !IsObject(target) {
         QuickPhraseDebugLog("paste-start", "target=none")
         return false
@@ -971,26 +987,6 @@ QuickPhraseDescribeWindow(hwnd) {
         processName := "?"
 
     return "hwnd=" hwnd " class=" className " exe=" processName
-}
-
-QuickPhraseDescribeFocus(windowHwnd) {
-    if !windowHwnd
-        return "focus=0"
-
-    focused := 0
-    try focused := ControlGetFocus("ahk_id " windowHwnd)
-    catch
-        focused := 0
-
-    if !focused
-        return "focus=0"
-
-    className := ""
-    try className := WinGetClass("ahk_id " focused)
-    catch
-        className := "?"
-
-    return "focus=" focused " class=" className
 }
 
 QuickPhraseDescribeTarget(target) {
