@@ -285,7 +285,7 @@ QuickPhraseExecutePhrase(phrase, target) {
         }
     }
 
-    if errorMessage != "{
+    if errorMessage != "" {
         ShowToolTip(
             errorMessage,
             2200
