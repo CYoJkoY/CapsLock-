@@ -23,11 +23,9 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseCaptureFocusTarget()") > 0
-            && InStr(source, "QuickPhraseTarget.Capture()") > 0
-            && InStr(source, "window: windowHwnd") == 0
-            && InStr(source, "control: controlHwnd") == 0,
-        "Quick Phrase must capture its destination through the isolated target component."
+        InStr(source, "CapturePasteTarget()") > 0
+            && InStr(source, "AppState.TargetWindow") > 0,
+        "Quick Phrase must capture the destination through the application's shared paste target."
     )
 
     Assert(
