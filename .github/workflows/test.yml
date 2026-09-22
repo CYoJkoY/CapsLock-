@@ -52,3 +52,8 @@ jobs:
         shell: pwsh
         timeout-minutes: 2
         run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseTargetRegressionTests.ahk
+
+      - name: Run Quick Phrase variable dialog regression tests
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseVariableDialogRegressionTests.ahk
