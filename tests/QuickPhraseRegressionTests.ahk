@@ -50,6 +50,7 @@ RunTests() {
             && InStr(targetSource, "static Activate(") > 0
             && InStr(targetSource, "static RestoreControlFocus(") > 0
             && InStr(targetSource, "static SendToControl(") > 0
+            && InStr(targetSource, "EditPaste(") > 0
             && InStr(targetSource, "static SendToWindow(") > 0
             && InStr(targetSource, "ControlSend(") > 0
             && InStr(targetSource, "static DeliverPaste(") > 0,
