@@ -108,13 +108,54 @@ class QuickPhraseTarget {
         }
     }
 
-    static SendToControl(target) {
+    static IsEditLikeControl(target) {
         if !this.IsControlValid(target)
             return false
 
-        ; ControlSend is the primary delivery path because it targets the HWND
-        ; captured before Quick Phrase opened any GUI. Restoring focus first
-        ; keeps controls that only accept keyboard paste after focus compatible.
+        try {
+            className := WinGetClass("ahk_id " target.control)
+        } catch {
+            return false
+        }
+
+        classNameLower := StrLower(className)
+
+        for knownClass in AppState.TextInputControls {
+            knownClassLower := StrLower(knownClass)
+
+            if (
+                classNameLower == knownClassLower
+                || InStr(classNameLower, knownClassLower) == 1
+            ) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    static SendToControl(target, text := "") {
+        if !this.IsControlValid(target)
+            return false
+
+        ; Native Edit-like controls have a dedicated paste API. It writes the
+        ; supplied text at the control's caret without depending on foreground
+        ; focus and without modifying the clipboard.
+        if text != "" && this.IsEditLikeControl(target) {
+            try {
+                EditPaste(
+                    text,
+                    "ahk_id " target.control,
+                    "ahk_id " target.window
+                )
+                return true
+            } catch {
+                ; Fall through to the keyboard-message path for modified/custom
+                ; edit implementations which expose an HWND but reject
+                ; EditPaste.
+            }
+        }
+
         if !this.RestoreControlFocus(target)
             return false
 
@@ -146,7 +187,7 @@ class QuickPhraseTarget {
         }
     }
 
-    static DeliverPaste(target) {
+    static DeliverPaste(target, text := "") {
         if !this.IsWindowValid(target)
             return {
                 ok: false,
@@ -167,7 +208,7 @@ class QuickPhraseTarget {
                 error: "Quick Phrase target window could not be activated."
             }
 
-        if this.SendToControl(target)
+        if this.SendToControl(target, text)
             return {
                 ok: true,
                 mode: "control",
