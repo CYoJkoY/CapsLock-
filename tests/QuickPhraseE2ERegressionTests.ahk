@@ -31,6 +31,7 @@ global AutomationError := ""
 AutomateVariableDialog(*) {
     global AutomationDone
     global AutomationError
+    global AutomationValue
 
     if AutomationDone
         return
@@ -52,7 +53,11 @@ AutomateVariableDialog(*) {
             "ahk_id " guiHwnd
         )
 
-        SendText("Injected E2E value")
+        ControlSetText(
+            AutomationValue,
+            "ahk_id " editHwnd,
+            "ahk_id " guiHwnd
+        )
         Sleep(60)
 
         ControlClick(
@@ -286,12 +291,14 @@ RunSelectorVariablePhraseEndToEndTest() {
 
     phrase := {
         id: 1,
-        name: "Selector variable phrase",
+        name: "Selector multiline YAML phrase",
         category: "",
         order: 1,
         contentFile: "phrase-1.txt",
-        content: "Prefix {{text}} Suffix"
+        content: "你将接收一份 YAML 格式的“上下文交接包”，用于恢复此前会话的工作状态。`r`n`r`n现在准备接收 YAML，这是你的YAML信息：`r`n`r`n{{YAML转生信息}}"
     }
+
+    expectedText := "你将接收一份 YAML 格式的“上下文交接包”，用于恢复此前会话的工作状态。`r`n`r`n现在准备接收 YAML，这是你的YAML信息：`r`n`r`ntitle: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
 
     AppState.QuickPhrasePasteTarget := target
     AppState.QuickPhraseTransactionActive := false
@@ -316,6 +323,7 @@ RunSelectorVariablePhraseEndToEndTest() {
 
     AutomationDone := false
     AutomationError := ""
+    AutomationValue := "title: Context handoff`r`nstate:`r`n  - first line`r`n  - second line"
 
     SetTimer(
         AutomateVariableDialog,
@@ -326,7 +334,7 @@ RunSelectorVariablePhraseEndToEndTest() {
         QuickPhraseUseSelected(selectorGui)
 
         timeoutAt := A_TickCount + 3000
-        while targetEdit.Text != "Prefix Injected E2E value Suffix" {
+        while targetEdit.Text != expectedText {
             if A_TickCount >= timeoutAt
                 break
             Sleep(20)
@@ -343,8 +351,8 @@ RunSelectorVariablePhraseEndToEndTest() {
         )
 
         Assert(
-            targetEdit.Text == "Prefix Injected E2E value Suffix",
-            "Selector variable Quick Phrase did not paste the assembled value into the original target. Actual: ["
+            targetEdit.Text == expectedText,
+            "Selector multiline YAML Quick Phrase did not paste the assembled value into the original target. Actual: ["
                 targetEdit.Text "]"
         )
     } finally {
