@@ -87,8 +87,10 @@ QuickPhraseDestroyVariableDialog(myGui) {
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
 
-    if !AppState.QuickPhraseTransactionActive
+    if !AppState.QuickPhraseTransactionActive {
         AppState.QuickPhrasePasteTarget := ""
+        AppState.TargetWindow := 0
+    }
 
     return true
 }
