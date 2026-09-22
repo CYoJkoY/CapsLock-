@@ -373,10 +373,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     if normalVariables.Length > 0
         normalRows := Integer((normalVariables.Length + 1) / 2)
 
-    normalRowH := 62
-    ; Ordinary {{name}} fields are intentionally single-line. Only the
-    ; reserved {{etxt}} field needs multiline/WantReturn semantics.
-    normalEditOptions := ThemeHelper.GetEditOptions()
+    normalRowH := 78
+    ; Every variable can contain structured/multiline text (for example YAML).
+    ; Keep the compact two-column layout, but make each input a true multiline
+    ; Edit control so pasted line breaks are preserved.
+    normalEditOptions := "Multi WantReturn VScroll " ThemeHelper.GetEditOptions()
     normalBottomY := 96 + normalRows * normalRowH
 
     if etxtName != "" {
@@ -451,7 +452,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "x" x
             " y" (y + 18)
             " w300"
-            " r1 "
+            " r3 "
             normalEditOptions,
             ""
         )
@@ -551,7 +552,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         values := Map()
 
         for item in controls
-            values[item.name] := item.edit.Value
+            values[item.name] := item.edit.Text
 
         preview.Value := QuickPhraseApplyVariables(
             phrase.content,
@@ -566,7 +567,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         values := Map()
 
         for item in controls
-            values[item.name] := item.edit.Value
+            values[item.name] := item.edit.Text
 
         result.ok := true
         result.cancelled := false
@@ -644,6 +645,12 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     return result
 }
 
+QuickPhraseNormalizeClipboardText(text) {
+    normalized := StrReplace(text, "`r`n", "`n")
+    normalized := StrReplace(normalized, "`r", "`n")
+    return StrReplace(normalized, "`n", "`r`n")
+}
+
 QuickPhrasePasteText(text, pasteTarget) {
     if !IsObject(pasteTarget)
         return false
@@ -674,16 +681,22 @@ QuickPhrasePasteText(text, pasteTarget) {
             backup := ClipboardAll()
         }
 
+        ; Windows text clipboard conventionally exposes lines as CRLF.
+        ; Normalize the completed phrase before assigning/checking the
+        ; clipboard so multiline input is not rejected merely because a
+        ; GuiControl.Value/clipboard boundary used LF instead of CRLF.
+        clipboardText := QuickPhraseNormalizeClipboardText(text)
+
         ; Replace the clipboard only after the complete phrase has been
         ; assembled. The target window/control is restored later by
         ; QuickPhraseTarget immediately before Ctrl+V.
         AppState.IgnoreNextClipChange := true
-        A_Clipboard := text
+        A_Clipboard := clipboardText
 
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        if A_Clipboard != text
+        if A_Clipboard != clipboardText
             throw Error(
                 "Quick Phrase clipboard content did not match the requested text."
             )
