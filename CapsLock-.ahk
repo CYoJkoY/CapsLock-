@@ -7,20 +7,10 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOn.wav, SND_ON
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
 
-#Include "Utils\Language.ahk"
-#Include "Utils\ResourceSound.ahk"
-#Include "Utils\MethodsUtils.ahk"
-#Include "Utils\DarkInputDialog.ahk"
-#Include "Utils\Json.ahk"
-#Include "Utils\Hash.ahk"
-#Include "Utils\Base64.ahk"
-#Include "Utils\Random.ahk"
-#Include "Utils\HttpClient.ahk"
-#Include "Utils\SecureStorage.ahk"
-
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
+
 #Include "Core\QuickPhraseStore.ahk"
 #Include "Core\CloudSyncIdentity.ahk"
 #Include "Core\CloudSyncCredentials.ahk"
@@ -39,7 +29,6 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\Providers\OneDriveOAuth.ahk"
 #Include "Core\Providers\OneDriveProvider.ahk"
 #Include "Core\Providers\WebDavProvider.ahk"
-
 #Include "Core\Clipboard.ahk"
 #Include "Core\ClipboardPaste.ahk"
 #Include "Core\FileValidation.ahk"
@@ -58,8 +47,6 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "History\FullHistoryHandlers.ahk"
 #Include "History\CustomMenu.ahk"
 
-#Include "UI\Cheatsheet.ahk"
-
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
 #Include "Hotkeys\PasteHandler.ahk"
@@ -68,6 +55,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Tray\TrayMenu.ahk"
 #Include "Tray\TraySettings.ahk"
 
+#Include "UI\Cheatsheet.ahk"
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
@@ -75,6 +63,17 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
+
+#Include "Utils\Language.ahk"
+#Include "Utils\ResourceSound.ahk"
+#Include "Utils\MethodsUtils.ahk"
+#Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\Json.ahk"
+#Include "Utils\Hash.ahk"
+#Include "Utils\Base64.ahk"
+#Include "Utils\Random.ahk"
+#Include "Utils\HttpClient.ahk"
+#Include "Utils\SecureStorage.ahk"
 
 Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
 
