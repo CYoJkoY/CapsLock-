@@ -161,14 +161,24 @@ class QuickPhraseTarget {
                 )
                 return "editpaste"
             } catch {
-                ; Fall through to the keyboard-message path for modified/custom
-                ; edit implementations which expose an HWND but reject
-                ; EditPaste.
+                ; Fall through to the focused-control keyboard path for
+                ; modified/custom edit implementations which reject EditPaste.
             }
         }
 
-        if !this.RestoreControlFocus(target)
-            return false
+        ; When the captured control can be focused again, prefer a real
+        ; foreground Ctrl+V. This preserves the application's normal input
+        ; pipeline and is more compatible with custom/virtualized editors than
+        ; treating a successful ControlSend call as proof that the application
+        ; processed the paste.
+        if this.RestoreControlFocus(target) {
+            try {
+                Send("^v")
+                return "foreground-control"
+            } catch {
+                ; Fall through to ControlSend.
+            }
+        }
 
         try {
             ControlSend(
@@ -207,10 +217,9 @@ class QuickPhraseTarget {
                 error: "Quick Phrase target window is no longer available."
             }
 
-        ; Re-establish the original top-level window before delivery. This is
-        ; important for controls that require the application to own the
-        ; foreground session, while ControlSend still pins the keystroke to
-        ; the captured target instead of whichever Quick Phrase GUI is active.
+        ; Re-establish the original top-level window before delivery.
+        ; Foreground Send remains available for editors which do not accept
+        ; ControlSend-style posted keyboard messages.
         if !this.Activate(target)
             return {
                 ok: false,
