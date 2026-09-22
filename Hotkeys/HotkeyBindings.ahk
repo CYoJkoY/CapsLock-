@@ -37,8 +37,6 @@ QuickPhraseHotkeyAvailable() {
         && !AppState.QuickPhraseClipboardRestorePending
 }
 
-#HotIf
-
 #HotIf CapsLockActionHotkeysAvailable()
 
 
