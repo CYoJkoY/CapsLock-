@@ -335,7 +335,16 @@ RunSelectorVariablePhraseEndToEndTest() {
     )
 
     try {
-        QuickPhraseUseSelected(selectorGui)
+        ; Exercise the actual ListView DoubleClick event used by the GUI,
+        ; rather than calling QuickPhraseUseSelected() directly.
+        ControlClick(
+            "X20 Y10",
+            "ahk_id " selectorGui.Hwnd,
+            ,
+            "Left",
+            2,
+            "Pos"
+        )
 
         timeoutAt := A_TickCount + 3000
         while targetEdit.Text != expectedText {
