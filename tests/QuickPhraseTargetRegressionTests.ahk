@@ -35,12 +35,26 @@ RunTests() {
     return true
 }
 
+
+WriteTestResult(status, message := "") {
+    path := A_Args.Length > 0 ? A_Args[1] : A_WorkingDir "\tests\TestResult.txt"
+
+    try FileDelete(path)
+
+    payload := status
+    if message != ""
+        payload .= Chr(10) message
+
+    FileAppend(payload, path, "UTF-8")
+}
+
 try {
     RunTests()
     ExitApp(1)
 } catch as err {
+    WriteTestResult("FAIL", err.Message)
     FileAppend(
-        "Quick Phrase target regression red-phase failure: " err.Message Chr(10),
+        "Quick Phrase target regression failure: " err.Message Chr(10),
         A_WorkingDir "\tests\QuickPhraseTargetRegressionTests.log",
         "UTF-8"
     )
