@@ -161,12 +161,26 @@ QuickPhraseCompareSelectorPhrases(left, right) {
 }
 
 QuickPhraseHandleHotkey(*) {
-    if AppState.QuickPhraseTransactionActive
+    QuickPhraseDebugLog(
+        "hotkey",
+        "active=" QuickPhraseDescribeWindow(WinExist("A"))
+    )
+
+    if AppState.QuickPhraseTransactionActive {
+        QuickPhraseDebugLog("hotkey", "ignored=transaction-active")
         return
+    }
 
     ; Capture the editable target before Quick Phrase takes focus.
     ; Internal CapsLock UI windows are never valid output targets.
-    QuickPhraseCaptureTarget()
+    captured := QuickPhraseCaptureTarget()
+    QuickPhraseDebugLog(
+        "capture",
+        captured
+            ? QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+            : "failed"
+    )
+
     ShowQuickPhraseSelector()
 }
 
@@ -178,14 +192,22 @@ QuickPhraseCaptureTarget() {
     if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return false
 
-    control := ""
+    control := 0
     try control := ControlGetFocus("A")
     catch
-        control := ""
+        control := 0
+
+    controlClass := ""
+    if control {
+        try controlClass := WinGetClass("ahk_id " control)
+        catch
+            controlClass := ""
+    }
 
     AppState.QuickPhraseTarget := {
         window: windowHwnd,
-        control: control
+        control: control,
+        controlClass: controlClass
     }
     return true
 }
@@ -211,6 +233,13 @@ QuickPhraseUseSelected(selectorGui) {
     if !IsObject(phrase)
         return true
 
+    QuickPhraseDebugLog(
+        "select",
+        "phraseId=" Integer(idText)
+            " vars=" QuickPhraseExtractVariables(phrase.content).Length
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+    )
+
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
@@ -234,6 +263,14 @@ QuickPhraseExecutePhrase(phrase) {
                 variables
             )
 
+            QuickPhraseDebugLog(
+                "variable-result",
+                "ok=" result.ok
+                    " cancelled=" result.cancelled
+                    " length=" StrLen(result.text)
+                    " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
+            )
+
             if !result.ok {
                 reopenSelector := result.cancelled
                 return
@@ -241,7 +278,7 @@ QuickPhraseExecutePhrase(phrase) {
 
             ; The variable dialog has already been destroyed before this call.
             ; The original editing target is still held by the Quick Phrase
-            ; transaction and is restored immediately before paste.
+            ; transaction and is delivered directly to that saved target.
             ok := QuickPhrasePasteText(result.text)
         }
     } catch as err {
@@ -544,6 +581,13 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             values
         )
 
+        QuickPhraseDebugLog(
+            "variable-accept",
+            "hwnd=" myGui.Hwnd
+                " length=" StrLen(result.text)
+                " controls=" controls.Length
+        )
+
         QuickPhraseDestroyVariableDialog(myGui)
 
         return true
@@ -592,6 +636,14 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ; can raise "Target window not found" for an otherwise valid Gui object.
     myGui.Show(
         "w680 h" (previewY + 185)
+    )
+
+    QuickPhraseDebugLog(
+        "variable-show",
+        "hwnd=" myGui.Hwnd
+            " first=" (variables.Length > 0 ? variables[1] : "")
+            " controls=" controls.Length
+            " target=" QuickPhraseDescribeTarget(AppState.QuickPhraseTarget)
     )
 
     if (
@@ -671,6 +723,42 @@ QuickPhrasePasteText(text) {
     if !target.window || !WinExist("ahk_id " target.window)
         return false
 
+    QuickPhraseDebugLog(
+        "paste-start",
+        "length=" StrLen(text)
+            " active=" QuickPhraseDescribeWindow(WinExist("A"))
+            " target=" QuickPhraseDescribeTarget(target)
+    )
+
+    ; Native Edit/RichEdit-style controls can receive the completed phrase
+    ; directly at their saved caret. This does not require activating the
+    ; target window and does not require changing the user's clipboard.
+    if target.control && WinExist("ahk_id " target.control) {
+        if QuickPhraseIsTextInputControl(target.controlClass) {
+            try {
+                EditPaste(
+                    QuickPhraseNormalizeClipboardText(text),
+                    target.control,
+                    "ahk_id " target.window
+                )
+                QuickPhraseDebugLog(
+                    "paste-control",
+                    "method=EditPaste control=" target.control
+                        " class=" target.controlClass
+                        " success=1"
+                )
+                return true
+            } catch as err {
+                QuickPhraseDebugLog(
+                    "paste-control",
+                    "method=EditPaste control=" target.control
+                        " class=" target.controlClass
+                        " success=0 error=" QuickPhraseDebugSanitize(err.Message)
+                )
+            }
+        }
+    }
+
     backup := ClipboardAll()
 
     try {
@@ -680,37 +768,140 @@ QuickPhrasePasteText(text) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
+        ; Prefer delivering Ctrl+V to the exact child control captured when
+        ; Quick Phrase started. This avoids a second focus restoration step
+        ; after the variable dialog and is also suitable for browser render
+        ; widgets such as Chrome/Electron surfaces when they expose a child HWND.
+        if target.control && WinExist("ahk_id " target.control) {
+            try {
+                ControlSend(
+                    "^v",
+                    target.control,
+                    "ahk_id " target.window
+                )
+                QuickPhraseDebugLog(
+                    "paste-control",
+                    "method=ControlSend control=" target.control
+                        " class=" target.controlClass
+                        " success=1"
+                )
+                return true
+            } catch as err {
+                QuickPhraseDebugLog(
+                    "paste-control",
+                    "method=ControlSend control=" target.control
+                        " class=" target.controlClass
+                        " success=0 error=" QuickPhraseDebugSanitize(err.Message)
+                )
+            }
+        }
+
         try {
             WinActivate("ahk_id " target.window)
-        } catch {
+        } catch as err {
+            QuickPhraseDebugLog(
+                "paste-window",
+                "method=WinActivate success=0 error=" QuickPhraseDebugSanitize(err.Message)
+            )
             return false
         }
 
-        try {
-            if WinWaitActive("ahk_id " target.window, , 1) != target.window
-                return false
-
-            ; Restore the original native control when one was available.
-            ; Browser/Electron editors may expose no stable child control;
-            ; in that case the activated window retains its own editable DOM
-            ; focus/caret without a synthetic mouse click.
-            if target.control != "" {
-                try ControlFocus(target.control, "ahk_id " target.window)
-            }
-
-            Sleep(40)
-            Send("^v")
-            Sleep(120)
-            return true
-        } catch {
+        if WinWaitActive("ahk_id " target.window, , 1) != target.window {
+            QuickPhraseDebugLog(
+                "paste-window",
+                "method=WinWaitActive success=0 active=" QuickPhraseDescribeWindow(WinExist("A"))
+            )
             return false
         }
-    } catch {
+
+        Sleep(100)
+        Send("^v")
+        Sleep(120)
+
+        QuickPhraseDebugLog(
+            "paste-window",
+            "method=Send success=1 active=" QuickPhraseDescribeWindow(WinExist("A"))
+        )
+        return true
+    } catch as err {
+        QuickPhraseDebugLog(
+            "paste-failed",
+            "error=" QuickPhraseDebugSanitize(err.Message)
+        )
         return false
     } finally {
         AppState.IgnoreNextClipChange := true
         try A_Clipboard := backup
     }
+}
+
+QuickPhraseIsTextInputControl(controlClass) {
+    if controlClass == ""
+        return false
+
+    normalized := StrLower(controlClass)
+
+    for knownClass in AppState.TextInputControls {
+        known := StrLower(knownClass)
+        if normalized == known
+            return true
+    }
+
+    return false
+}
+
+QuickPhraseDebugPath() {
+    return A_Temp "\CapsLock-QuickPhraseDebug.log"
+}
+
+QuickPhraseDebugLog(stage, details := "") {
+    try {
+        line := FormatTime(, "yyyy-MM-dd HH:mm:ss.fff")
+            " [" stage "] "
+            details
+            Chr(13) Chr(10)
+        FileAppend(line, QuickPhraseDebugPath(), "UTF-8")
+    } catch {
+    }
+}
+
+QuickPhraseDebugDescribeError(error) {
+    return error is Error
+        ? QuickPhraseDebugSanitize(error.Message)
+        : QuickPhraseDebugSanitize(String(error))
+}
+
+QuickPhraseDebugSanitize(text) {
+    text := StrReplace(String(text), Chr(13), " ")
+    text := StrReplace(text, Chr(10), " ")
+    return StrReplace(text, "|", "/")
+}
+
+QuickPhraseDescribeWindow(hwnd) {
+    if !hwnd
+        return "hwnd=0"
+
+    className := ""
+    processName := ""
+
+    try className := WinGetClass("ahk_id " hwnd)
+    catch
+        className := "?"
+
+    try processName := WinGetProcessName("ahk_id " hwnd)
+    catch
+        processName := "?"
+
+    return "hwnd=" hwnd " class=" className " exe=" processName
+}
+
+QuickPhraseDescribeTarget(target) {
+    if !IsObject(target)
+        return "none"
+
+    return "window=(" QuickPhraseDescribeWindow(target.window) ")"
+        " control=" target.control
+        " class=" target.controlClass
 }
 
 ToggleQuickPhraseEnabled(*) {
