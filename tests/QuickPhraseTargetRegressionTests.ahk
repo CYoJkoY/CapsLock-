@@ -58,7 +58,7 @@ RunTargetDeliveryTest() {
         if !ClipWait(1)
             throw Error("Test clipboard did not become ready.")
 
-        delivery := QuickPhraseTarget.DeliverPaste(target)
+        delivery := QuickPhraseTarget.DeliverPaste(target, payload)
 
         Assert(
             delivery.ok && delivery.mode == "editpaste",
@@ -83,16 +83,16 @@ RunTargetDeliveryTest() {
     }
 }
 
-RunWindowFallbackTest() {
-    payload := "Quick Phrase window fallback test"
+RunForegroundFallbackTest() {
+    payload := "Quick Phrase foreground fallback test"
 
-    gui := Gui("+AlwaysOnTop", "Quick Phrase Window Fallback Test")
+    gui := Gui("+AlwaysOnTop", "Quick Phrase Foreground Fallback Test")
     edit := gui.Add("Edit", "w360 h90", "")
     gui.Show("w420 h160")
     edit.Focus()
 
     if !WinWaitActive("ahk_id " gui.Hwnd, , 1)
-        throw Error("Window-fallback test window did not become active.")
+        throw Error("Foreground-fallback test window did not become active.")
 
     target := QuickPhraseTarget.Capture()
     target.control := 0
@@ -103,17 +103,17 @@ RunWindowFallbackTest() {
         A_Clipboard := payload
 
         if !ClipWait(1)
-            throw Error("Window-fallback test clipboard did not become ready.")
+            throw Error("Foreground-fallback test clipboard did not become ready.")
 
-        delivery := QuickPhraseTarget.DeliverPaste(target)
+        delivery := QuickPhraseTarget.DeliverPaste(target, payload)
 
         Assert(
-            delivery.ok && delivery.mode == "window",
-            "Quick Phrase did not fall back to window-level ControlSend."
+            delivery.ok && delivery.mode == "foreground",
+            "Quick Phrase did not use the foreground Ctrl+V fallback when no child control was available."
         )
         Assert(
             edit.Text == payload,
-            "Quick Phrase window-level fallback did not paste into the focused control."
+            "Quick Phrase foreground fallback did not paste into the focused control."
         )
     } finally {
         A_Clipboard := originalClipboard
@@ -146,6 +146,7 @@ RunInvalidTargetTest() {
 RunTests() {
     source := ReadSource("UI\QuickPhraseGui.ahk")
     rootSource := ReadSource("CapsLock-.ahk")
+    targetSource := ReadSource("Core\QuickPhraseTarget.ahk")
 
     Assert(
         InStr(rootSource, '#Include "Core\QuickPhraseTarget.ahk"') > 0,
@@ -172,8 +173,16 @@ RunTests() {
         "Fixed and variable Quick Phrases must both reach the shared final paste path."
     )
 
+    Assert(
+        InStr(targetSource, "EditPaste(") > 0
+            && InStr(targetSource, "static SendForegroundPaste(") > 0
+            && InStr(targetSource, "static DeliverPaste(") > 0
+            && InStr(targetSource, "ControlSend(") == 0,
+        "Quick Phrase target delivery must use direct EditPaste or the verified foreground path rather than ControlSend."
+    )
+
     RunTargetDeliveryTest()
-    RunWindowFallbackTest()
+    RunForegroundFallbackTest()
     RunInvalidTargetTest()
 
     return true
