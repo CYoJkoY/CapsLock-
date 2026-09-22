@@ -242,18 +242,17 @@ QuickPhraseUseSelected(selectorGui) {
 
 QuickPhraseExecutePhrase(phrase, target) {
     reopenSelector := false
-    deferredPaste := false
+    ok := false
     errorMessage := ""
 
     try {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            QuickPhraseScheduleFinalPaste(
+            ok := QuickPhrasePasteText(
                 phrase.content,
                 target
             )
-            deferredPaste := true
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -265,62 +264,26 @@ QuickPhraseExecutePhrase(phrase, target) {
                 return
             }
 
-            ; The current call stack still belongs to the selector's
-            ; DoubleClick handler. Schedule the final paste for a new
-            ; script thread so the selector/variable GUI event has fully
-            ; returned before the original target is activated.
-            QuickPhraseScheduleFinalPaste(
+            ; ShowQuickPhraseVariableDialog() does not return until its GUI
+            ; has been destroyed. Perform the final paste synchronously here
+            ; instead of scheduling another timer thread. This keeps the whole
+            ; completed-phrase delivery on one deterministic path after the
+            ; variable GUI lifecycle has ended.
+            ok := QuickPhrasePasteText(
                 result.text,
                 target
             )
-            deferredPaste := true
         }
-    } catch as err {
-        errorMessage := err.Message
-    } finally {
-        if !deferredPaste {
-            AppState.QuickPhraseTransactionActive := false
-
-            if reopenSelector {
-                SetTimer(
-                    () => ShowQuickPhraseSelector(false),
-                    -1
-                )
-            } else {
-                AppState.QuickPhrasePasteTarget := ""
-            }
-        }
-    }
-
-    if errorMessage != "" {
-        ShowToolTip(
-            errorMessage,
-            2200
-        )
-    }
-}
-
-QuickPhraseScheduleFinalPaste(text, target) {
-    SetTimer(
-        () => QuickPhraseFinalizePaste(text, target),
-        -1
-    )
-}
-
-QuickPhraseFinalizePaste(text, target) {
-    ok := false
-    errorMessage := ""
-
-    try {
-        ok := QuickPhrasePasteText(
-            text,
-            target
-        )
     } catch as err {
         errorMessage := err.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
-        AppState.QuickPhrasePasteTarget := ""
+
+        if reopenSelector {
+            ShowQuickPhraseSelector(false)
+        } else {
+            AppState.QuickPhrasePasteTarget := ""
+        }
     }
 
     if errorMessage != "" {
@@ -341,7 +304,6 @@ QuickPhraseFinalizePaste(text, target) {
         )
     }
 }
-
 
 QuickPhrasePreview(text, maxChars := 80) {
     preview := Trim(RegExReplace(String(text), "[\r\n\t\v\f]+", " "))
