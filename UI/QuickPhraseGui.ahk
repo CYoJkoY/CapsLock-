@@ -65,6 +65,7 @@ ShowQuickPhraseSelector() {
 
 QuickPhraseDestroySelector(myGui) {
     AppState.QuickPhraseGui := ""
+    AppState.QuickPhraseTarget := ""
     try myGui.Destroy()
 }
 
@@ -163,7 +164,30 @@ QuickPhraseHandleHotkey(*) {
     if AppState.QuickPhraseTransactionActive
         return
 
+    ; Capture the editable target before Quick Phrase takes focus.
+    ; Internal CapsLock UI windows are never valid output targets.
+    QuickPhraseCaptureTarget()
     ShowQuickPhraseSelector()
+}
+
+QuickPhraseCaptureTarget() {
+    if IsObject(AppState.QuickPhraseTarget)
+        return true
+
+    windowHwnd := WinExist("A")
+    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+        return false
+
+    control := ""
+    try control := ControlGetFocus("A")
+    catch
+        control := ""
+
+    AppState.QuickPhraseTarget := {
+        window: windowHwnd,
+        control: control
+    }
+    return true
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -593,28 +617,9 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhraseResolveMouseTarget() {
-    ; The Quick Phrase UI has already been destroyed before this function is
-    ; called, so MouseGetPos now resolves the application beneath the exact
-    ; screen position where the output action was clicked.
-    MouseGetPos(, , &windowHwnd, &controlHwnd, 2)
-
-    if !windowHwnd
-        return ""
-
-    if QuickPhraseIsInternalWindow(windowHwnd)
-        return ""
-
-    if !WinExist("ahk_id " windowHwnd)
-        return ""
-
-    if controlHwnd && !WinExist("ahk_id " controlHwnd)
-        controlHwnd := 0
-
-    return {
-        window: windowHwnd,
-        control: controlHwnd
-    }
+QuickPhraseGetTarget() {
+    target := AppState.QuickPhraseTarget
+    return IsObject(target) ? target : ""
 }
 
 QuickPhraseIsInternalWindow(hwnd) {
@@ -657,8 +662,11 @@ QuickPhraseIsInternalWindow(hwnd) {
 }
 
 QuickPhrasePasteText(text) {
-    target := QuickPhraseResolveMouseTarget()
+    target := QuickPhraseGetTarget()
     if !IsObject(target)
+        return false
+
+    if !target.window || !WinExist("ahk_id " target.window)
         return false
 
     backup := ClipboardAll()
@@ -680,10 +688,14 @@ QuickPhrasePasteText(text) {
             if WinWaitActive("ahk_id " target.window, , 1) != target.window
                 return false
 
-            ; Click() with no coordinates preserves the current physical mouse
-            ; position. This lets native controls and browser/editor surfaces
-            ; perform their own hit-testing and place the caret at the cursor.
-            Click()
+            ; Restore the original native control when one was available.
+            ; Browser/Electron editors may expose no stable child control;
+            ; in that case the activated window retains its own editable DOM
+            ; focus/caret without a synthetic mouse click.
+            if target.control != "" {
+                try ControlFocus(target.control, "ahk_id " target.window)
+            }
+
             Sleep(40)
             Send("^v")
             Sleep(120)
