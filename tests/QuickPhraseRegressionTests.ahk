@@ -47,9 +47,9 @@ RunTests() {
             && InStr(targetSource, "static IsWindowValid(") > 0
             && InStr(targetSource, "static IsControlValid(") > 0
             && InStr(targetSource, "static Activate(") > 0
-            && InStr(targetSource, "static RestoreControlFocus(") > 0
+            && InStr(targetSource, "static IsCapturedControlFocused(") > 0
             && InStr(targetSource, "static SendForegroundPaste(") > 0
-            && InStr(targetSource, "ControlFocus(") > 0
+            && InStr(targetSource, "ControlFocus(") == 0
             && InStr(targetSource, "EditPaste(") == 0
             && InStr(targetSource, "ControlSend(") == 0
             && InStr(targetSource, 'Send("^v")') > 0
@@ -59,8 +59,9 @@ RunTests() {
 
     Assert(
         InStr(source, "if variables.Length == 0") > 0
-            && InStr(source, "ok := QuickPhrasePasteText(") > 0
-            && InStr(source, "result.text := QuickPhraseApplyVariables(") > 0,
+            && InStr(source, "QuickPhraseFinishPaste(") > 0
+            && InStr(source, "result.text := QuickPhraseApplyVariables(") > 0
+            && InStr(source, "SetTimer(") > 0,
         "Fixed and variable Quick Phrases must both reach the shared final paste path."
     )
 
@@ -72,6 +73,7 @@ RunTests() {
 
     Assert(
         InStr(source, "QuickPhraseClipboardRestorePending") > 0
+            && InStr(source, "QuickPhraseNormalizeClipboardText(text)") > 0
             && InStr(source, "QuickPhraseRestoreClipboard(generation)") > 0
             && InStr(source, "QuickPhraseClipboardRestoreDelay") > 0
             && InStr(source, "savedClipboard := ClipboardAll()") == 0,
