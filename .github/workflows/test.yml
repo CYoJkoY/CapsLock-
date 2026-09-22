@@ -29,16 +29,24 @@ jobs:
 
       - name: Run regression tests
         shell: pwsh
-        run: .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+        run: |
+          & .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Cloud Sync regression tests
         shell: pwsh
-        run: .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+        run: |
+          & .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Quick Phrase regression tests
         shell: pwsh
-        run: .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
+        run: |
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Quick Phrase target regression tests
         shell: pwsh
-        run: .\\autohotkey\\AutoHotkey64.exe .\\tests\\QuickPhraseTargetRegressionTests.ahk\n
+        run: |
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseTargetRegressionTests.ahk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
