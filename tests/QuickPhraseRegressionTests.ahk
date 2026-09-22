@@ -29,7 +29,8 @@ RunTests() {
     )
 
     Assert(
-        InStr(trackerSource, "QuickPhraseFocusTracker.Initialize()") > 0
+        InStr(trackerSource, "class QuickPhraseFocusTracker") > 0
+            && InStr(trackerSource, "QuickPhraseFocusTrackerUpdate()") > 0
             && InStr(trackerSource, "target := AppState.QuickPhrasePasteTarget") > 0
             && InStr(trackerSource, "target.window := currentWindow") > 0
             && InStr(trackerSource, "target.control := currentControl") > 0
