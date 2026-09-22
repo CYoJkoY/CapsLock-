@@ -850,12 +850,12 @@ QuickPhrasePasteText(text) {
                     " class=" target.controlClass
             )
             return true
-        } catch as err {
+        } catch as caughtError {
             QuickPhraseDebugLog(
                 "paste-edit",
                 "success=0 control=" target.control
                     " class=" target.controlClass
-                    " error=" QuickPhraseDebugDescribeError(err)
+                    " error=" QuickPhraseDebugDescribeError(caughtError)
             )
         }
     }
@@ -889,11 +889,11 @@ QuickPhrasePasteText(text) {
         ; top-level window and let its own focus state receive the real paste.
         try {
             WinActivate("ahk_id " target.window)
-        } catch as err {
+        } catch as caughtError {
             QuickPhraseDebugLog(
                 "paste-window",
                 "method=WinActivate success=0 error="
-                    QuickPhraseDebugDescribeError(err)
+                    QuickPhraseDebugDescribeError(caughtError)
             )
             return false
         }
@@ -923,10 +923,10 @@ QuickPhrasePasteText(text) {
                 QuickPhraseDescribeWindow(WinExist("A"))
         )
         return true
-    } catch as err {
+    } catch as caughtError {
         QuickPhraseDebugLog(
             "paste-failed",
-            "error=" QuickPhraseDebugDescribeError(err)
+            "error=" QuickPhraseDebugDescribeError(caughtError)
         )
         return false
     } finally {
