@@ -173,8 +173,6 @@ RunFixedPhraseEndToEndTest() {
                 targetEdit.Text "]"
         )
 
-        ; Allow the asynchronous Quick Phrase clipboard restoration to complete
-        ; so this test does not leave transaction state behind for later steps.
         Sleep(AppState.QuickPhraseClipboardRestoreDelay + 50)
     } finally {
         A_Clipboard := originalClipboard
@@ -183,24 +181,21 @@ RunFixedPhraseEndToEndTest() {
 }
 
 RunSelectorFixedPhraseEndToEndTest() {
-    global AutomationDone
-    global AutomationError
-
-    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector E2E Target")
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Fixed E2E Target")
     targetEdit := targetGui.Add("Edit", "w420 h100", "")
     targetGui.Show("w480 h170")
     targetEdit.Focus()
     WinActivate("ahk_id " targetGui.Hwnd)
 
     if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
-        throw Error("Selector E2E target window did not become active.")
+        throw Error("Selector fixed E2E target window did not become active.")
 
     target := QuickPhraseTarget.Capture()
 
     Assert(
         target.window == targetGui.Hwnd
             && target.control == targetEdit.Hwnd,
-        "Selector E2E target capture did not preserve the original Edit control."
+        "Selector fixed E2E target capture did not preserve the original Edit control."
     )
 
     originalPhrases := QuickPhraseStore._phrases
@@ -220,7 +215,7 @@ RunSelectorFixedPhraseEndToEndTest() {
     AppState.QuickPhraseTransactionActive := false
     QuickPhraseStore._phrases := [phrase]
 
-    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector E2E")
+    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Fixed E2E")
     list := selectorGui.Add(
         "ListView",
         "w420 r3 -Multi",
@@ -234,7 +229,7 @@ RunSelectorFixedPhraseEndToEndTest() {
     WinActivate("ahk_id " selectorGui.Hwnd)
 
     if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
-        throw Error("Selector E2E selector window did not become active.")
+        throw Error("Selector fixed E2E selector window did not become active.")
 
     try {
         QuickPhraseUseSelected(selectorGui)
@@ -263,9 +258,119 @@ RunSelectorFixedPhraseEndToEndTest() {
     }
 }
 
+RunSelectorVariablePhraseEndToEndTest() {
+    global AutomationDone
+    global AutomationError
+
+    targetGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E Target")
+    targetEdit := targetGui.Add("Edit", "w420 h100", "")
+    targetGui.Show("w480 h170")
+    targetEdit.Focus()
+    WinActivate("ahk_id " targetGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " targetGui.Hwnd, , 1)
+        throw Error("Selector variable E2E target window did not become active.")
+
+    target := QuickPhraseTarget.Capture()
+
+    Assert(
+        target.window == targetGui.Hwnd
+            && target.control == targetEdit.Hwnd,
+        "Selector variable E2E target capture did not preserve the original Edit control."
+    )
+
+    originalPhrases := QuickPhraseStore._phrases
+    originalTarget := AppState.QuickPhrasePasteTarget
+    originalTransaction := AppState.QuickPhraseTransactionActive
+    originalVariableGui := AppState.QuickPhraseVariableGui
+
+    phrase := {
+        id: 1,
+        name: "Selector variable phrase",
+        category: "",
+        order: 1,
+        contentFile: "phrase-1.txt",
+        content: "Prefix {{text}} Suffix"
+    }
+
+    AppState.QuickPhrasePasteTarget := target
+    AppState.QuickPhraseTransactionActive := false
+    AppState.QuickPhraseVariableGui := ""
+    QuickPhraseStore._phrases := [phrase]
+
+    selectorGui := Gui("+AlwaysOnTop", "Quick Phrase Selector Variable E2E")
+    list := selectorGui.Add(
+        "ListView",
+        "w420 r3 -Multi",
+        ["ID", "Name", "Category", "Preview"]
+    )
+    list.Add(, phrase.id, phrase.name, phrase.category, phrase.content)
+    list.Modify(1, "Select")
+    list.Modify(1, "Focus")
+    selectorGui.ListView := list
+    selectorGui.Show("w460 h180")
+    WinActivate("ahk_id " selectorGui.Hwnd)
+
+    if !WinWaitActive("ahk_id " selectorGui.Hwnd, , 1)
+        throw Error("Selector variable E2E selector window did not become active.")
+
+    AutomationDone := false
+    AutomationError := ""
+
+    SetTimer(
+        AutomateVariableDialog,
+        20
+    )
+
+    try {
+        QuickPhraseUseSelected(selectorGui)
+
+        timeoutAt := A_TickCount + 3000
+        while targetEdit.Text != "Prefix Injected E2E value Suffix" {
+            if A_TickCount >= timeoutAt
+                break
+            Sleep(20)
+        }
+
+        Assert(
+            AutomationError == "",
+            "Selector variable dialog automation failed: " AutomationError
+        )
+
+        Assert(
+            AutomationDone,
+            "Selector variable dialog was never confirmed."
+        )
+
+        Assert(
+            targetEdit.Text == "Prefix Injected E2E value Suffix",
+            "Selector variable Quick Phrase did not paste the assembled value into the original target. Actual: ["
+                targetEdit.Text "]"
+        )
+    } finally {
+        SetTimer(AutomateVariableDialog, 0)
+
+        if IsObject(AppState.QuickPhraseVariableGui) {
+            try AppState.QuickPhraseVariableGui.Destroy()
+        }
+
+        if IsObject(selectorGui) {
+            try selectorGui.Destroy()
+        }
+
+        QuickPhraseStore._phrases := originalPhrases
+        AppState.QuickPhrasePasteTarget := originalTarget
+        AppState.QuickPhraseTransactionActive := originalTransaction
+        AppState.QuickPhraseVariableGui := originalVariableGui
+        targetGui.Destroy()
+    }
+}
+
 try {
     RunVariableEndToEndTest()
     RunFixedPhraseEndToEndTest()
+    RunSelectorFixedPhraseEndToEndTest()
+    RunSelectorVariablePhraseEndToEndTest()
     WriteTestResult("PASS")
     ExitApp(0)
 } catch as err {
