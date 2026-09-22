@@ -1,5 +1,8 @@
 #Requires AutoHotkey v2.0
 
+; AppState is provided by the root script's Config\\Globals.ahk include.
+IsSet(AppState)
+
 ShowQuickPhraseSelector() {
     QuickPhraseStartTargetTracking()
     if IsObject(AppState.QuickPhraseGui) {
@@ -363,8 +366,8 @@ QuickPhraseExecutePhrase(phrase) {
             ; Quick Phrase UI and is used for the final delivery.
             ok := QuickPhrasePasteText(result.text)
         }
-    } catch as err {
-        errorMessage := err.Message
+    } catch as caughtError {
+        errorMessage := caughtError.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
 
@@ -536,7 +539,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             AppState.THEME_FONT
         )
 
-        edit := myGui.Add(
+        editControl := myGui.Add(
             "Edit",
             "x" x
             " y" (y + 18)
@@ -546,11 +549,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             ""
         )
 
-        ThemeHelper.StyleEdit(edit)
+        ThemeHelper.StyleEdit(editControl)
 
         controls.Push({
             name: name,
-            edit: edit
+            edit: editControl
         })
     }
 
