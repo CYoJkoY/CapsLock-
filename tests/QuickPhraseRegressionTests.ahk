@@ -31,10 +31,11 @@ RunTests() {
     )
 
     Assert(
-        InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
+        InStr(source, "QuickPhraseTarget.Activate(pasteTarget)") > 0
+            && InStr(source, "QuickPhraseTarget.DeliverPaste(") > 0
             && InStr(source, "AppState.TargetWindow :=") == 0
             && InStr(source, "ControlSend(") == 0,
-        "Quick Phrase must use the dedicated target-delivery component without mutating the global paste target."
+        "Quick Phrase must activate and deliver through the dedicated target component without mutating the global paste target."
     )
 
     Assert(
@@ -48,8 +49,11 @@ RunTests() {
             && InStr(targetSource, "static IsControlValid(") > 0
             && InStr(targetSource, "static Activate(") > 0
             && InStr(targetSource, "static RestoreControlFocus(") > 0
+            && InStr(targetSource, "static SendToControl(") > 0
+            && InStr(targetSource, "static SendToWindow(") > 0
+            && InStr(targetSource, "ControlSend(") > 0
             && InStr(targetSource, "static DeliverPaste(") > 0,
-        "Quick Phrase target module is missing part of the target lifecycle API."
+        "Quick Phrase target module is missing part of the target delivery lifecycle API."
     )
 
     Assert(
@@ -63,6 +67,14 @@ RunTests() {
         InStr(source, "WinWaitClose(") > 0
             && InStr(source, "QuickPhraseDestroyVariableDialog(myGui)") > 0,
         "Variable dialog completion lifecycle is incomplete."
+    )
+
+    Assert(
+        InStr(source, "QuickPhraseClipboardRestorePending") > 0
+            && InStr(source, "QuickPhraseRestoreClipboard(generation)") > 0
+            && InStr(source, "QuickPhraseClipboardRestoreDelay") > 0
+            && InStr(source, "savedClipboard := ClipboardAll()") == 0,
+        "Quick Phrase must not restore the previous clipboard synchronously after paste."
     )
 
     return true
