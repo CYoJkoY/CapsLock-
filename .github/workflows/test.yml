@@ -30,27 +30,27 @@ jobs:
       - name: Run regression tests
         shell: pwsh
         run: |
-          & .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk
+          & .\autohotkey\AutoHotkey64.exe .\tests\RegressionTests.ahk | Out-Null
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) { throw "RegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Cloud Sync regression tests
         shell: pwsh
         run: |
-          & .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk
+          & .\autohotkey\AutoHotkey64.exe .\tests\CloudSyncRegressionTests.ahk | Out-Null
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) { throw "CloudSyncRegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Quick Phrase regression tests
         shell: pwsh
         run: |
-          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseRegressionTests.ahk | Out-Null
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) { throw "QuickPhraseRegressionTests.ahk exited with code $exitCode." }
 
       - name: Run Quick Phrase target regression tests
         shell: pwsh
         run: |
-          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseTargetRegressionTests.ahk
+          & .\autohotkey\AutoHotkey64.exe .\tests\QuickPhraseTargetRegressionTests.ahk | Out-Null
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) { throw "QuickPhraseTargetRegressionTests.ahk exited with code $exitCode." }
