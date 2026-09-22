@@ -654,8 +654,12 @@ QuickPhrasePasteText(text, pasteTarget) {
     backup := ""
 
     try {
-        ; The selector and variable dialog are temporary UI stages. Restore
-        ; the original destination only when the completed phrase is ready.
+        ; Re-establish the original destination before replacing the clipboard.
+        ; This removes a second race window where a GUI can remain foreground
+        ; while the clipboard changes. The actual Ctrl+V is still delivered
+        ; only after the clipboard contains the completed phrase.
+        if !QuickPhraseTarget.Activate(pasteTarget)
+            throw Error("Quick Phrase target window could not be activated.")
 
         ; Preserve the original clipboard across overlapping Quick Phrase
         ; transactions. If a previous transaction is still pending and its
@@ -704,10 +708,10 @@ QuickPhrasePasteText(text, pasteTarget) {
         generation := AppState.QuickPhraseClipboardRestoreGeneration
         AppState.QuickPhraseClipboardRestorePending := true
 
-        ; Reuse the project's established paste delivery path instead of
-        ; sending to a captured child-control HWND. This intentionally restores
-        ; the original target window and emits a normal Ctrl+V, matching
-        ; clipboard history, file paste, and Pandoc paste behavior.
+        ; Deliver Ctrl+V through the captured target. The target component first
+        ; prefers the original focused control, then falls back to the target
+        ; window, with a final foreground Send for custom Chromium/Electron
+        ; controls.
         delivery := QuickPhraseTarget.DeliverPaste(pasteTarget)
 
         if !delivery.ok
