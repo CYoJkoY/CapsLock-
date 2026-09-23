@@ -17,8 +17,17 @@ ShowQuickPhraseSelector() {
         }
     }
 
+    ownerTarget := QuickPhraseGetExternalTarget()
+    ownerOption := ""
+    if IsObject(ownerTarget)
+        && ownerTarget.window
+        && WinExist("ahk_id " ownerTarget.window)
+    {
+        ownerOption := " +Owner" ownerTarget.window
+    }
+
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox" ownerOption,
         Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
     )
     ThemeHelper.StyleGui(myGui)
@@ -73,6 +82,17 @@ QuickPhraseDestroySelector(myGui) {
 
 QuickPhraseDestroyVariableDialog(myGui) {
     AppState.QuickPhraseVariableGui := ""
+
+    target := QuickPhraseGetExternalTarget()
+    try myGui.Hide()
+
+    if IsObject(target)
+        && target.window
+        && WinExist("ahk_id " target.window)
+    {
+        try WinActivate("ahk_id " target.window)
+    }
+
     try myGui.Destroy()
 }
 
