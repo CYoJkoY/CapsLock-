@@ -255,6 +255,9 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
+            ; The variable dialog is the second focus owner. Hide it before
+            ; delivery, then paste while this OK event is still executing.
+            ; This avoids relying on focus restoration after WinWaitClose().
             target := QuickPhraseGetExternalTarget()
             if !IsObject(target) {
                 errorMessage := Lang(
@@ -264,9 +267,7 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; The variable dialog has fully closed when WinWaitClose() returns.
-            ; Use the same synchronous delivery path as fixed phrases.
-            ok := QuickPhrasePasteText(result.text, target)
+            ok := result.HasProp("pasteOk") ? result.pasteOk : false
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
@@ -568,11 +569,18 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             values
         )
 
-        result.ok := true
         result.cancelled := false
 
+        ; Hide the variable GUI before restoring the original target. The paste
+        ; is completed from this same OK event, so no later callback needs to
+        ; recover the caret after the dialog is destroyed.
         QuickPhraseDestroyVariableDialog(myGui)
 
+        target := QuickPhraseGetExternalTarget()
+        result.pasteOk := IsObject(target)
+            && QuickPhrasePasteText(result.text, target)
+
+        result.ok := true
         return true
     }
 
