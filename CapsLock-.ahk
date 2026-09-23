@@ -81,7 +81,6 @@ Language.Load()
 ConfigManager.Load()
 HistoryManager.Load()
 QuickPhraseStore.Load()
-QuickPhraseInitializeFocusTracking()
 CloudSyncIdentity.Initialize()
 CloudSyncState.Initialize()
 CloudSyncCoordinator.Initialize()
@@ -98,5 +97,4 @@ OnExit((*) => (
     WindowHole.Stop(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()
-    QuickPhraseShutdownFocusTracking()
 ))
