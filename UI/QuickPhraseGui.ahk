@@ -577,6 +577,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     Accept(*) {
+
         if result.ok
             return true
 
@@ -585,12 +586,13 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         for item in controls
             values[item.name] := item.edit.Text
 
-        result.ok := true
-        result.cancelled := false
         result.text := QuickPhraseApplyVariables(
             phrase.content,
             values
         )
+
+        result.ok := true
+        result.cancelled := false
 
         QuickPhraseDestroyVariableDialog(myGui)
 
@@ -598,6 +600,10 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     Cancel(*) {
+
+        if result.ok
+            return true
+
         result.cancelled := true
 
         QuickPhraseDestroyVariableDialog(myGui)
