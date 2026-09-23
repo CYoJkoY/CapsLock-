@@ -167,9 +167,6 @@ QuickPhraseHandleHotkey(*) {
     if !QuickPhraseHotkeyAvailable()
         return
 
-    ; Read the foreground window and keyboard focus before any Quick Phrase
-    ; GUI is created. GetGUIThreadInfo(0) reads the foreground thread directly,
-    ; avoiding a second, later focus lookup through the target window's thread.
     target := QuickPhraseCaptureExternalTarget()
     if !IsObject(target)
         return
@@ -179,31 +176,39 @@ QuickPhraseHandleHotkey(*) {
 }
 
 QuickPhraseCaptureExternalTarget() {
-    windowHwnd := DllCall("GetForegroundWindow", "Ptr")
-    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+    currentWindow := DllCall("GetForegroundWindow", "Ptr")
+    if !currentWindow || QuickPhraseIsInternalWindow(currentWindow)
         return ""
 
-    state := QuickPhraseReadForegroundTarget()
-    if !IsObject(state) || state.window != windowHwnd
+    cached := AppState.QuickPhraseLatestExternalTarget
+    if IsObject(cached)
+        && cached.window == currentWindow
+        && A_TickCount - cached.tick <= 1500
+    {
+        return cached
+    }
+
+    target := QuickPhraseReadForegroundTarget()
+    if !IsObject(target) || target.window != currentWindow
         return ""
 
-    return state
+    return target
 }
 
 QuickPhraseReadForegroundTarget() {
+    return QuickPhraseReadThreadTarget(0, true)
+}
+
+QuickPhraseReadThreadTarget(threadId := 0, requireForeground := false) {
     infoBuffer := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
     NumPut("UInt", infoBuffer.Size, infoBuffer, 0)
 
     if !DllCall(
         "GetGUIThreadInfo",
-        "UInt", 0,
+        "UInt", threadId,
         "Ptr", infoBuffer.Ptr,
         "Int"
     )
-        return ""
-
-    windowHwnd := DllCall("GetForegroundWindow", "Ptr")
-    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return ""
 
     activeHwnd := NumGet(
@@ -212,8 +217,24 @@ QuickPhraseReadForegroundTarget() {
         "Ptr"
     )
 
-    if activeHwnd && activeHwnd != windowHwnd
-        return ""
+    foregroundHwnd := DllCall("GetForegroundWindow", "Ptr")
+    if requireForeground {
+        if !foregroundHwnd || QuickPhraseIsInternalWindow(foregroundHwnd)
+            return ""
+
+        if activeHwnd && activeHwnd != foregroundHwnd
+            return ""
+
+        windowHwnd := foregroundHwnd
+    } else {
+        if !activeHwnd || QuickPhraseIsInternalWindow(activeHwnd)
+            return ""
+
+        if foregroundHwnd != activeHwnd
+            return ""
+
+        windowHwnd := activeHwnd
+    }
 
     controlHwnd := NumGet(
         infoBuffer,
@@ -238,8 +259,101 @@ QuickPhraseReadForegroundTarget() {
         window: windowHwnd,
         control: controlHwnd,
         caret: caretHwnd,
-        controlClass: controlClass
+        controlClass: controlClass,
+        tick: A_TickCount
     }
+}
+
+QuickPhraseInitializeFocusTracking() {
+    if AppState.QuickPhraseFocusCallback
+        return true
+
+    try {
+        AppState.QuickPhraseFocusCallback := CallbackCreate(
+            QuickPhraseWinEventProc,
+            "",
+            7
+        )
+
+        AppState.QuickPhraseFocusForegroundHook := DllCall(
+            "SetWinEventHook",
+            "UInt", 0x0003,
+            "UInt", 0x0003,
+            "Ptr", 0,
+            "Ptr", AppState.QuickPhraseFocusCallback,
+            "UInt", 0,
+            "UInt", 0,
+            "UInt", 0x0002,
+            "Ptr"
+        )
+
+        AppState.QuickPhraseFocusObjectHook := DllCall(
+            "SetWinEventHook",
+            "UInt", 0x8005,
+            "UInt", 0x8005,
+            "Ptr", 0,
+            "Ptr", AppState.QuickPhraseFocusCallback,
+            "UInt", 0,
+            "UInt", 0,
+            "UInt", 0x0002,
+            "Ptr"
+        )
+
+        if !AppState.QuickPhraseFocusForegroundHook
+            || !AppState.QuickPhraseFocusObjectHook
+        {
+            QuickPhraseShutdownFocusTracking()
+            return false
+        }
+
+        target := QuickPhraseReadForegroundTarget()
+        if IsObject(target)
+            AppState.QuickPhraseLatestExternalTarget := target
+
+        return true
+    } catch {
+        QuickPhraseShutdownFocusTracking()
+        return false
+    }
+}
+
+QuickPhraseShutdownFocusTracking() {
+    if AppState.QuickPhraseFocusForegroundHook {
+        try DllCall(
+            "UnhookWinEvent",
+            "Ptr", AppState.QuickPhraseFocusForegroundHook
+        )
+        AppState.QuickPhraseFocusForegroundHook := 0
+    }
+
+    if AppState.QuickPhraseFocusObjectHook {
+        try DllCall(
+            "UnhookWinEvent",
+            "Ptr", AppState.QuickPhraseFocusObjectHook
+        )
+        AppState.QuickPhraseFocusObjectHook := 0
+    }
+
+    if AppState.QuickPhraseFocusCallback {
+        try CallbackFree(AppState.QuickPhraseFocusCallback)
+        AppState.QuickPhraseFocusCallback := 0
+    }
+
+    AppState.QuickPhraseLatestExternalTarget := ""
+}
+
+QuickPhraseWinEventProc(
+    hook,
+    event,
+    hwnd,
+    idObject,
+    idChild,
+    eventThread,
+    eventTime
+) {
+    target := QuickPhraseReadThreadTarget(eventThread)
+    if IsObject(target)
+        AppState.QuickPhraseLatestExternalTarget := target
 }
 
 QuickPhraseUseSelected(selectorGui) {
