@@ -1,0 +1,25 @@
+{
+    "fileViewType": "tree",
+    "includeCommitsMentionedByReflogs": false,
+    "issueLinkingConfig": {
+        "issue": "#(\\d+)",
+        "url": "https://github.com/CYoJkoY/CapsLock-/issues/$1"
+    },
+    "pinnedBranches": [],
+    "pinnedCommits": [],
+    "pullRequestConfig": {
+        "provider": "github",
+        "hostRootUrl": "https://github.com",
+        "sourceRemote": "origin",
+        "sourceOwner": "CYoJkoY",
+        "sourceRepo": "CapsLock-",
+        "destRemote": "origin",
+        "destOwner": "CYoJkoY",
+        "destRepo": "CapsLock-",
+        "destProjectId": "",
+        "destBranch": "main",
+        "custom": null
+    },
+    "showRemoteBranches": true,
+    "exportedAt": 1790187367126
+}
