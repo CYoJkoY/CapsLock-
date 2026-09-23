@@ -255,9 +255,9 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; Accept() performs the delivery in the variable-dialog event
-            ; itself. By the time this blocking function resumes, the paste
-            ; result is already known.
+            ; Accept() schedules delivery after its GUI event thread
+            ; returns. By the time WinWaitClose() resumes, the timer thread
+            ; has already completed the paste and destroyed the dialog.
             ok := result.HasProp("pasteOk") ? result.pasteOk : false
         }
     } catch as caughtError {
@@ -561,20 +561,28 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         )
 
         result.cancelled := false
-
-        ; Stop showing the variable dialog before delivery, but keep the GUI
-        ; alive until the paste finishes. This lets QuickPhrasePasteText()
-        ; activate the original target and send Ctrl+V from this same OK event,
-        ; with no code relying on execution after Destroy().
-        try myGui.Hide()
-
-        target := QuickPhraseGetExternalTarget()
-        result.pasteOk := IsObject(target)
-            && QuickPhrasePasteText(result.text, target)
-
         result.ok := true
 
-        QuickPhraseDestroyVariableDialog(myGui)
+        target := QuickPhraseGetExternalTarget()
+
+        ; The OK callback must not perform the final paste itself. It is a GUI
+        ; event thread whose owner is the variable dialog, unlike the fixed
+        ; phrase delivery thread. Hide the dialog now, return from this event,
+        ; then let a fresh timer thread restore the original target and paste.
+        try myGui.Hide()
+
+        delivery := {
+            result: result,
+            text: result.text,
+            target: target,
+            gui: myGui
+        }
+
+        SetTimer(
+            QuickPhraseFinalizeVariablePhrase.Bind(delivery),
+            -1
+        )
+
         return true
     }
 
@@ -650,6 +658,32 @@ QuickPhraseGetExternalTarget(targetOverride := "") {
 
     target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
+}
+
+QuickPhraseFinalizeVariablePhrase(delivery) {
+    ok := false
+
+    try {
+        if (
+            IsObject(delivery)
+            && delivery.HasProp("target")
+            && IsObject(delivery.target)
+            && delivery.target.window
+        ) {
+            ok := QuickPhrasePasteText(
+                delivery.text,
+                delivery.target
+            )
+        }
+    } catch {
+        ok := false
+    } finally {
+        if IsObject(delivery) && delivery.HasProp("result")
+            delivery.result.pasteOk := ok
+
+        if IsObject(delivery) && delivery.HasProp("gui")
+            QuickPhraseDestroyVariableDialog(delivery.gui)
+    }
 }
 
 QuickPhraseIsInternalWindow(hwnd) {
