@@ -15,6 +15,10 @@ CapsLockHotkeysAvailable() {
     return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
 }
 
+CapsLockPhysicalModifierHeld() {
+    return ( DllCall( "GetAsyncKeyState", "Int", 0x14, "Short" ) & 0x8000 ) != 0
+}
+
 QuickPhraseUiActive() {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -30,6 +34,11 @@ QuickPhraseHotkeyAvailable() {
         && !QuickPhraseUiActive()
         && !AppState.QuickPhraseClipboardRestorePending
 }
+
+#HotIf CapsLockPhysicalModifierHeld()
+    j:: JumpToLine()
+    k:: TerminateProcessByPid()
+#HotIf
 
 #HotIf CapsLockHotkeysAvailable()
 
@@ -109,8 +118,6 @@ QuickPhraseHotkeyAvailable() {
 
     p:: ConvertWithPandoc()
 
-    j:: JumpToLine()
-    k:: TerminateProcessByPid()
     l:: WindowSwitcherGui.Show()
 
     x:: WindowHole.HandleXDown()
