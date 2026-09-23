@@ -17,17 +17,8 @@ ShowQuickPhraseSelector() {
         }
     }
 
-    ownerTarget := QuickPhraseGetExternalTarget()
-    ownerOption := ""
-    if IsObject(ownerTarget)
-        && ownerTarget.window
-        && WinExist("ahk_id " ownerTarget.window)
-    {
-        ownerOption := " +Owner" ownerTarget.window
-    }
-
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox" ownerOption,
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
         Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
     )
     ThemeHelper.StyleGui(myGui)
@@ -372,17 +363,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         previewY := 102 + normalRows * normalRowH
     }
 
-    ownerTarget := QuickPhraseGetExternalTarget()
-    ownerOption := ""
-    if IsObject(ownerTarget)
-        && ownerTarget.window
-        && WinExist("ahk_id " ownerTarget.window)
-    {
-        ownerOption := " +Owner" ownerTarget.window
-    }
-
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox" ownerOption,
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
         Lang(
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
@@ -615,10 +597,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     AppState.QuickPhraseVariableGui := myGui
 
-    ; Gui.Show() activates the variable-input window. The window is
-    ; owned by the original external target when possible, so closing it can
-    ; return activation to the same top-level editing window instead of
-    ; leaving focus on an unrelated application window.
+    ; Gui.Show() activates the variable-input window.
+    ; The original external target is restored only by the final paste path.
     myGui.Show(
         "w680 h" (previewY + 185)
     )
