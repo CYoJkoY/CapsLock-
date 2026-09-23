@@ -2,8 +2,11 @@
 
 class DarkInputDialog {
     static Show(prompt, title, default := "", width := 360) {
-        resultValue := ""
-        resultAction := "Cancel"
+        result := {
+            Result: "Cancel",
+            Value: "",
+            Closed: false
+        }
 
         myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", title)
         ThemeHelper.StyleGui(myGui)
@@ -18,19 +21,20 @@ class DarkInputDialog {
             "w" (width - 20) " r1 y+12 " ThemeHelper.GetEditOptions(),
             default
         )
-        editCtrl.Focus()
-
         btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
         btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
 
         OnOK(*) {
-            resultValue := editCtrl.Value
-            resultAction := "OK"
-            myGui.Destroy()
+            result.Value := editCtrl.Value
+            result.Result := "OK"
+            result.Closed := true
+            myGui.Hide()
+            return true
         }
         OnCancel(*) {
-            resultAction := "Cancel"
-            myGui.Destroy()
+            result.Closed := true
+            myGui.Hide()
+            return true
         }
         btnOK.OnEvent("Click", OnOK)
         btnCancel.OnEvent("Click", OnCancel)
@@ -39,7 +43,17 @@ class DarkInputDialog {
 
         ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
         myGui.Show("AutoSize Center")
-        WinWaitClose("ahk_id " myGui.Hwnd)
-        return { Result: resultAction, Value: resultValue }
+        editCtrl.Focus()
+
+        while !result.Closed {
+            Sleep(10)
+        }
+
+        try myGui.Destroy()
+
+        return {
+            Result: result.Result,
+            Value: result.Value
+        }
     }
 }

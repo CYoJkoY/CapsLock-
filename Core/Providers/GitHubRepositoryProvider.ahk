@@ -179,9 +179,9 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
 
     _ErrorMessage(response, fallback) {
         try {
-            error := Json.Parse(response.body)
-            if IsObject(error) && error.Has("message")
-                return String(error["message"])
+            myerror := Json.Parse(response.body)
+            if IsObject(myerror) && myerror.Has("message")
+                return String(myerror["message"])
         } catch {
         }
 

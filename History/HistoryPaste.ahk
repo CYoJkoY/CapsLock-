@@ -21,20 +21,22 @@ class HistoryPasteUtils {
     }
 }
 
-PasteAsPlainText(content, tooltipMsg := "") {
+PasteAsPlainText(content, tooltipMsg := "", targetHwnd := 0) {
     backup := A_Clipboard
 
     AppState.IgnoreNextClipChange := true
     A_Clipboard := content
 
-    ActivateAndPaste()
-    Sleep(50)
+    ActivateAndPaste(targetHwnd)
+    Sleep(300)
 
     AppState.IgnoreNextClipChange := true
     A_Clipboard := backup
 
     if tooltipMsg != ""
         ShowToolTip(tooltipMsg, 2000)
+
+    return true
 }
 
 PasteImagesAsPdf(imagePathText) {

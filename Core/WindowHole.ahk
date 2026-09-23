@@ -63,7 +63,7 @@ class WindowHole {
             ; Always register the second-level key as a context-insensitive
             ; hotkey. Context-sensitive #HotIf evaluation can be delayed while
             ; the script is busy, which makes the X + 1 sequence intermittent.
-            HotIf
+            HotIf()
             Hotkey("1", this.SecondLevelHotkeyCallback, "Off")
             this.SecondLevelHotkeyEnabled := false
             return true
@@ -79,7 +79,7 @@ class WindowHole {
             return false
 
         try {
-            HotIf
+            HotIf()
             Hotkey("1", enabled ? "On" : "Off")
             this.SecondLevelHotkeyEnabled := enabled
             return true
@@ -864,14 +864,14 @@ class WindowHole {
             return 0
 
         try {
-            type := DllCall(
+            mytype := DllCall(
                 "GetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", tempRegion,
                 "Int"
             )
 
-            if type > 0 {
+            if mytype > 0 {
                 state.hadOriginalRegion := true
                 state.originalRegion := tempRegion
                 tempRegion := 0
@@ -1703,14 +1703,14 @@ class WindowHole {
             return 0
 
         try {
-            type := DllCall(
+            mytype := DllCall(
                 "GetWindowRgn",
                 "Ptr", hwnd,
                 "Ptr", tempRegion,
                 "Int"
             )
 
-            if type > 0 {
+            if mytype > 0 {
                 state.hadOriginalRegion := true
                 state.originalRegion := tempRegion
                 tempRegion := 0

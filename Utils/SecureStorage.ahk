@@ -45,15 +45,15 @@ class SecureStorage {
         if dir != "" && !DirExist(dir)
             DirCreate(dir)
 
-        file := FileOpen(path, "w", "RAW")
-        if !IsObject(file)
+        myfile := FileOpen(path, "w", "RAW")
+        if !IsObject(myfile)
             throw Error("Could not open secure storage file.")
 
         try {
-            file.RawWrite(encrypted, encrypted.Size)
-            file.Close()
+            myfile.RawWrite(encrypted, encrypted.Size)
+            myfile.Close()
         } catch {
-            try file.Close()
+            try myfile.Close()
             throw
         }
 
@@ -64,17 +64,17 @@ class SecureStorage {
         if !FileExist(path)
             return ""
 
-        file := FileOpen(path, "r", "RAW")
-        if !IsObject(file)
+        myfile := FileOpen(path, "r", "RAW")
+        if !IsObject(myfile)
             return ""
 
         try {
-            size := file.Length
+            size := myfile.Length
             encrypted := Buffer(size, 0)
-            file.RawRead(encrypted, size)
-            file.Close()
+            myfile.RawRead(encrypted, size)
+            myfile.Close()
         } catch {
-            try file.Close()
+            try myfile.Close()
             return ""
         }
 

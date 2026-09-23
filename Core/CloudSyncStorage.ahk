@@ -135,14 +135,14 @@ class CloudSyncStorage {
             contentFile := "phrase-" id ".txt"
             contentPath := stagingDir "\QuickPhrases\" contentFile
 
-            file := FileOpen(contentPath, "w", "UTF-8")
-            if !IsObject(file)
+            mtfile := FileOpen(contentPath, "w", "UTF-8")
+            if !IsObject(mtfile)
                 return false
             try {
-                file.Write(content)
-                file.Close()
+                mtfile.Write(content)
+                mtfile.Close()
             } catch {
-                try file.Close()
+                try mtfile.Close()
                 return false
             }
 

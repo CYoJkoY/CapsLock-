@@ -1,5 +1,8 @@
 #Requires AutoHotkey v2.0
 
+; AppState is provided by the root script's Config\\Globals.ahk include.
+IsSet(AppState)
+
 ShowQuickPhraseSelector() {
     if IsObject(AppState.QuickPhraseGui) {
         try {
@@ -70,11 +73,13 @@ QuickPhraseDestroySelector(myGui) {
 
 QuickPhraseDestroyVariableDialog(myGui) {
     AppState.QuickPhraseVariableGui := ""
+    try myGui.Hide()
     try myGui.Destroy()
 }
 
 CloseQuickPhraseSelector(myGui) {
     QuickPhraseDestroySelector(myGui)
+    AppState.QuickPhraseExternalTarget := ""
     return true
 }
 
@@ -160,10 +165,40 @@ QuickPhraseCompareSelectorPhrases(left, right) {
 }
 
 QuickPhraseHandleHotkey(*) {
-    if AppState.QuickPhraseTransactionActive
+    if !QuickPhraseHotkeyAvailable()
         return
 
+    target := QuickPhraseCaptureExternalTarget()
+    if !IsObject(target)
+        return
+
+    AppState.QuickPhraseExternalTarget := target
     ShowQuickPhraseSelector()
+}
+
+QuickPhraseCaptureExternalTarget() {
+    windowHwnd := WinExist("A")
+
+    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+        return ""
+
+    controlHwnd := 0
+    controlClass := ""
+
+    try {
+        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
+        if controlHwnd
+            controlClass := WinGetClass("ahk_id " controlHwnd)
+    } catch {
+        controlHwnd := 0
+        controlClass := ""
+    }
+
+    return {
+        window: windowHwnd,
+        control: controlHwnd,
+        controlClass: controlClass
+    }
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -190,7 +225,13 @@ QuickPhraseUseSelected(selectorGui) {
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
-    QuickPhraseExecutePhrase(phrase)
+    ; Let the selector's GUI event thread unwind before opening the
+    ; variable-input dialog. The variable workflow must not be nested inside
+    ; the selector's Click/DoubleClick callback.
+    SetTimer(
+        QuickPhraseExecutePhrase.Bind(phrase),
+        -1
+    )
     return true
 }
 
@@ -215,18 +256,20 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; The variable dialog has already been destroyed before this call.
-            ; Resolve the output destination only now, from the current mouse
-            ; position beneath the Quick Phrase UI.
+            ; 变量窗口已在 ShowQuickPhraseVariableDialog() 内销毁完毕，
+            ; 这里与无参路径共用同一个同步交付点：同一个线程、GUI 已销毁、
+            ; 目标仍是 CapsLock+Shift+P 触发时捕获的 target。
             ok := QuickPhrasePasteText(result.text)
         }
-    } catch as err {
-        errorMessage := err.Message
+    } catch as caughtError {
+        errorMessage := caughtError.Message
     } finally {
         AppState.QuickPhraseTransactionActive := false
 
         if reopenSelector
             ShowQuickPhraseSelector()
+        else
+            AppState.QuickPhraseExternalTarget := ""
     }
 
     if errorMessage != "" {
@@ -389,7 +432,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             AppState.THEME_FONT
         )
 
-        edit := myGui.Add(
+        editControl := myGui.Add(
             "Edit",
             "x" x
             " y" (y + 18)
@@ -399,11 +442,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             ""
         )
 
-        ThemeHelper.StyleEdit(edit)
+        ThemeHelper.StyleEdit(editControl)
 
         controls.Push({
             name: name,
-            edit: edit
+            edit: editControl
         })
     }
 
@@ -503,6 +546,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     Accept(*) {
+
         if result.ok
             return true
 
@@ -511,22 +555,27 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         for item in controls
             values[item.name] := item.edit.Text
 
-        result.ok := true
-        result.cancelled := false
         result.text := QuickPhraseApplyVariables(
             phrase.content,
             values
         )
 
-        QuickPhraseDestroyVariableDialog(myGui)
+        result.cancelled := false
+        result.ok := true
+
+        try myGui.Hide()
 
         return true
     }
 
     Cancel(*) {
+
+        if result.ok
+            return true
+
         result.cancelled := true
 
-        QuickPhraseDestroyVariableDialog(myGui)
+        try myGui.Hide()
 
         return true
     }
@@ -560,10 +609,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     AppState.QuickPhraseVariableGui := myGui
 
-    ; Gui.Show() displays and activates the variable-input window.
-    ; Do not issue a second WinActivate() against its HWND here: the GUI
-    ; manager may still be transitioning the window, and the extra activation
-    ; can raise "Target window not found" for an otherwise valid Gui object.
+    ; Gui.Show() activates the variable-input window.
+    ; The original external target is restored only by the final paste path.
     myGui.Show(
         "w680 h" (previewY + 185)
     )
@@ -580,44 +627,35 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     RefreshPreview()
 
-    WinWaitClose(
-        "ahk_id " myGui.Hwnd
-    )
+    while !result.ok && !result.cancelled
+        Sleep(10)
+
+    QuickPhraseDestroyVariableDialog(myGui)
 
     return result
 }
 
-QuickPhraseNormalizeClipboardText(text) {
-    normalized := StrReplace(text, "`r`n", "`n")
-    normalized := StrReplace(normalized, "`r", "`n")
-    return StrReplace(normalized, "`n", "`r`n")
-}
+QuickPhraseGetExternalTarget(targetOverride := "") {
+    if IsObject(targetOverride)
+        return targetOverride
 
-QuickPhraseResolveMouseTarget() {
-    ; The Quick Phrase UI has already been destroyed before this function is
-    ; called, so MouseGetPos now resolves the application beneath the exact
-    ; screen position where the output action was clicked.
-    MouseGetPos(, , &windowHwnd, &controlHwnd, 2)
-
-    if !windowHwnd
-        return ""
-
-    if QuickPhraseIsInternalWindow(windowHwnd)
-        return ""
-
-    if !WinExist("ahk_id " windowHwnd)
-        return ""
-
-    if controlHwnd && !WinExist("ahk_id " controlHwnd)
-        controlHwnd := 0
-
-    return {
-        window: windowHwnd,
-        control: controlHwnd
-    }
+    target := AppState.QuickPhraseExternalTarget
+    return IsObject(target) ? target : ""
 }
 
 QuickPhraseIsInternalWindow(hwnd) {
+    if !hwnd
+        return true
+
+    if hwnd == A_ScriptHwnd
+        return true
+
+    try {
+        if WinGetPID("ahk_id " hwnd) == ProcessExist()
+            return true
+    } catch {
+    }
+
     if IsObject(AppState.QuickPhraseGui) {
         try {
             if AppState.QuickPhraseGui.Hwnd == hwnd
@@ -656,49 +694,210 @@ QuickPhraseIsInternalWindow(hwnd) {
     return false
 }
 
-QuickPhrasePasteText(text) {
-    target := QuickPhraseResolveMouseTarget()
-    if !IsObject(target)
+QuickPhraseActivateCapturedTarget(target) {
+    if !IsObject(target) || !target.window
         return false
 
-    backup := ClipboardAll()
+    windowHwnd := target.window
+
+    if QuickPhraseIsInternalWindow(windowHwnd)
+        return false
+
+    if !WinExist("ahk_id " windowHwnd)
+        return false
+
+    if WinExist("A") != windowHwnd {
+        try
+            WinActivate("ahk_id " windowHwnd)
+        catch
+            return false
+
+        if !WinWaitActive("ahk_id " windowHwnd, , 1)
+            return false
+    }
+
+    return true
+}
+
+QuickPhrasePasteText(text, targetOverride := "") {
+    target := QuickPhraseGetExternalTarget(targetOverride)
+
+    if !IsObject(target) || !target.window
+        return false
+
+    if QuickPhraseIsInternalWindow(target.window)
+        return false
+
+    if !WinExist("ahk_id " target.window)
+        return false
 
     try {
-        AppState.IgnoreNextClipChange := true
-        A_Clipboard := QuickPhraseNormalizeClipboardText(text)
-
-        if !ClipWait(1)
-            throw Error("Quick Phrase clipboard was not ready.")
-
-        try {
-            WinActivate("ahk_id " target.window)
-        } catch {
-            return false
+        ; The top-level window is only the outer destination. For the
+        ; parameterized workflow, the important state is the actual child
+        ; window that owned keyboard focus before Quick Phrase opened.
+        ; Do not restrict this to a hard-coded class list: Chromium/Electron
+        ; and other custom editors may expose a non-standard focus HWND.
+        if (
+            target.HasProp("control")
+            && target.control
+            && WinExist("ahk_id " target.control)
+        ) {
+            QuickPhraseRestoreCapturedControl(target)
         }
 
-        try {
-            if WinWaitActive("ahk_id " target.window, , 1) != target.window
-                return false
-
-            ; Click() with no coordinates preserves the current physical mouse
-            ; position. This lets native controls and browser/editor surfaces
-            ; perform their own hit-testing and place the caret at the cursor.
-            Click()
-            Sleep(40)
-            Send("^v")
-            Sleep(120)
-            return true
-        } catch {
-            return false
-        }
+        return PasteAsPlainText(text, "", target.window)
     } catch {
         return false
-    } finally {
-        AppState.IgnoreNextClipChange := true
-        try A_Clipboard := backup
     }
 }
 
+QuickPhraseRestoreCapturedControl(target) {
+    if !IsObject(target)
+        return false
+
+    if !target.HasProp("window") || !target.window
+        return false
+
+    if !target.HasProp("control") || !target.control
+        return false
+
+    windowHwnd := target.window
+    controlHwnd := target.control
+
+    if !WinExist("ahk_id " windowHwnd)
+        return false
+
+    if !WinExist("ahk_id " controlHwnd)
+        return false
+
+    try {
+        rootHwnd := DllCall(
+            "GetAncestor",
+            "Ptr",
+            controlHwnd,
+            "UInt",
+            2,
+            "Ptr"
+        )
+
+        if rootHwnd != windowHwnd
+            return false
+
+        if WinExist("A") != windowHwnd {
+            WinActivate("ahk_id " windowHwnd)
+
+            if !WinWaitActive(
+                "ahk_id " windowHwnd,
+                ,
+                1
+            ) {
+                return false
+            }
+        }
+
+        targetThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr",
+            windowHwnd,
+            "UInt",
+            0
+        )
+
+        controlThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr",
+            controlHwnd,
+            "UInt",
+            0
+        )
+
+        currentThreadId := DllCall(
+            "GetCurrentThreadId"
+        )
+
+        if !targetThreadId || !controlThreadId
+            return false
+
+        attached := false
+
+        try {
+            if (
+                currentThreadId != controlThreadId
+                && !DllCall(
+                    "AttachThreadInput",
+                    "UInt",
+                    currentThreadId,
+                    "UInt",
+                    controlThreadId,
+                    "Int",
+                    true
+                )
+            ) {
+                return false
+            }
+
+            attached := currentThreadId != controlThreadId
+
+            ; SetFocus() returns the previous focus HWND, not a
+            ; success flag. A zero return is valid when there was no
+            ; previously focused window, so success is determined solely by
+            ; the subsequent GetGUIThreadInfo verification.
+            DllCall(
+                "SetFocus",
+                "Ptr",
+                controlHwnd,
+                "Ptr"
+            )
+
+            Sleep(30)
+
+            info := Buffer(
+                A_PtrSize == 8 ? 72 : 48,
+                0
+            )
+
+            NumPut(
+                "UInt",
+                info.Size,
+                info,
+                0
+            )
+
+            if !DllCall(
+                "GetGUIThreadInfo",
+                "UInt",
+                targetThreadId,
+                "Ptr",
+                info.Ptr,
+                "Int"
+            ) {
+                return false
+            }
+
+            focusOffset := A_PtrSize == 8 ? 16 : 12
+
+            return NumGet(
+                info,
+                focusOffset,
+                "Ptr"
+            ) == controlHwnd
+        } finally {
+            if attached {
+                DllCall(
+                    "AttachThreadInput",
+                    "UInt",
+                    currentThreadId,
+                    "UInt",
+                    controlThreadId,
+                    "Int",
+                    false
+                )
+            }
+        }
+    } catch {
+        return false
+    }
+}
 ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
     ConfigManager.Save()

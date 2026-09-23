@@ -31,19 +31,23 @@ PasteFile(filePath, fileType := "auto") {
     ShowToolTip(Lang("MSG_PASTE_FILE_TYPE", "", fileType), 1500)
 }
 
-ActivateAndPaste() {
-    targetHwnd := AppState.TargetWindow
+ActivateAndPaste(targetHwnd := 0) {
+    if !targetHwnd
+        targetHwnd := AppState.TargetWindow
+
     activeHwnd := WinExist("A")
 
     if targetHwnd && WinExist("ahk_id " targetHwnd) {
         if activeHwnd != targetHwnd
             WinActivate("ahk_id " targetHwnd)
     } else if activeHwnd {
+        targetHwnd := activeHwnd
         WinActivate("ahk_id " activeHwnd)
     }
 
     Sleep(100)
     Send("^v")
+    return true
 }
 
 GetFileType(filePath) {

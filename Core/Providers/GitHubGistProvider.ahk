@@ -103,9 +103,9 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         body := Map()
         files := Map()
-        file := Map()
-        file["content"] := String(packageText)
-        files[this.FileName] := file
+        myfile := Map()
+        myfile["content"] := String(packageText)
+        files[this.FileName] := myfile
         body["files"] := files
 
         if AppState.CloudSyncTarget == "" {
@@ -228,9 +228,9 @@ class GitHubGistProvider extends CloudSyncProvider {
 
     _ErrorMessage(response, fallback) {
         try {
-            error := Json.Parse(response.body)
-            if IsObject(error) && error.Has("message")
-                return String(error["message"])
+            myerror := Json.Parse(response.body)
+            if IsObject(myerror) && myerror.Has("message")
+                return String(myerror["message"])
         } catch {
         }
 

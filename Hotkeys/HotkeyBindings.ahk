@@ -15,6 +15,26 @@ CapsLockHotkeysAvailable() {
     return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
 }
 
+QuickPhraseUiActive() {
+    if AppState.QuickPhraseTransactionActive
+        return true
+
+    return IsObject(AppState.QuickPhraseGui)
+        || IsObject(AppState.QuickPhraseVariableGui)
+        || IsObject(AppState.QuickPhraseManagerGui)
+}
+
+
+QuickPhraseHotkeyAvailable() {
+    return CapsLockHotkeysAvailable()
+        && !QuickPhraseUiActive()
+}
+
+#HotIf GetKeyState( "CapsLock", "P" )
+    j:: JumpToLine()
+    k:: TerminateProcessByPid()
+#HotIf
+
 #HotIf CapsLockHotkeysAvailable()
 
 
@@ -93,8 +113,6 @@ CapsLockHotkeysAvailable() {
 
     p:: ConvertWithPandoc()
 
-    j:: JumpToLine()
-    k:: TerminateProcessByPid()
     l:: WindowSwitcherGui.Show()
 
     x:: WindowHole.HandleXDown()
@@ -112,7 +130,7 @@ CapsLockHotkeysAvailable() {
 ; when CapsLock is released first. The tilde keeps the key-up event visible.
 ~x up:: WindowHole.HandleXUp()
 
-#HotIf CapsLockHotkeysAvailable() && AppState.QuickPhraseEnabled
+#HotIf QuickPhraseHotkeyAvailable() && AppState.QuickPhraseEnabled
     +p:: QuickPhraseHandleHotkey()
 #HotIf
 

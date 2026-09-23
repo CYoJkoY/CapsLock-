@@ -45,10 +45,10 @@ Base64EncodeBuffer(buffer, size := "", urlSafe := false) {
 
 Base64EncodeText(text, urlSafe := false) {
     size := StrPut(String(text), "UTF-8") - 1
-    buffer := Buffer(Max(size, 1), 0)
+    mybuffer := Buffer(Max(size, 1), 0)
     if size > 0
-        StrPut(String(text), buffer, "UTF-8")
-    return Base64EncodeBuffer(buffer, size, urlSafe)
+        StrPut(String(text), mybuffer, "UTF-8")
+    return Base64EncodeBuffer(mybuffer, size, urlSafe)
 }
 
 Base64DecodeToBuffer(text, urlSafe := false) {
@@ -73,7 +73,7 @@ Base64DecodeToBuffer(text, urlSafe := false) {
         padding++
 
     dataLength := Floor(StrLen(clean) / 4) * 3 - padding
-    buffer := Buffer(Max(dataLength, 1), 0)
+    mybuffer := Buffer(Max(dataLength, 1), 0)
 
     alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     outIndex := 0
@@ -92,19 +92,19 @@ Base64DecodeToBuffer(text, urlSafe := false) {
             throw Error("Invalid Base64 character.")
 
         if outIndex < dataLength
-            NumPut("UChar", (c1 << 2) | (c2 >> 4), buffer, outIndex++)
+            NumPut("UChar", (c1 << 2) | (c2 >> 4), mybuffer, outIndex++)
         if outIndex < dataLength
-            NumPut("UChar", ((c2 & 0x0F) << 4) | (c3 >> 2), buffer, outIndex++)
+            NumPut("UChar", ((c2 & 0x0F) << 4) | (c3 >> 2), mybuffer, outIndex++)
         if outIndex < dataLength
-            NumPut("UChar", ((c3 & 0x03) << 6) | c4, buffer, outIndex++)
+            NumPut("UChar", ((c3 & 0x03) << 6) | c4, mybuffer, outIndex++)
     }
 
-    return buffer
+    return mybuffer
 }
 
 Base64DecodeText(text, urlSafe := false) {
-    buffer := Base64DecodeToBuffer(text, urlSafe)
-    if buffer.Size == 0
+    mybuffer := Base64DecodeToBuffer(text, urlSafe)
+    if mybuffer.Size == 0
         return ""
-    return StrGet(buffer, buffer.Size, "UTF-8")
+    return StrGet(mybuffer, mybuffer.Size, "UTF-8")
 }

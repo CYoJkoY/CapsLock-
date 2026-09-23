@@ -46,15 +46,15 @@ FormUrlEncode(values) {
 UriEncode(text) {
     text := String(text)
     size := StrPut(text, "UTF-8") - 1
-    buffer := Buffer(Max(size, 1), 0)
+    mybuffer := Buffer(Max(size, 1), 0)
     if size > 0
-        StrPut(text, buffer, "UTF-8")
+        StrPut(text, mybuffer, "UTF-8")
 
     alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
     result := ""
 
     Loop size {
-        byte := NumGet(buffer, A_Index - 1, "UChar")
+        byte := NumGet(mybuffer, A_Index - 1, "UChar")
         ch := Chr(byte)
 
         if InStr(alphabet, ch)
