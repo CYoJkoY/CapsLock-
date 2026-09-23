@@ -829,42 +829,136 @@ QuickPhraseRestoreCapturedControl(target) {
     if !target.HasProp("control") || !target.control
         return false
 
-    if !WinExist("ahk_id " target.window)
+    windowHwnd := target.window
+    controlHwnd := target.control
+
+    if !WinExist("ahk_id " windowHwnd)
         return false
 
-    if !WinExist("ahk_id " target.control)
+    if !WinExist("ahk_id " controlHwnd)
         return false
 
     try {
-        if WinExist("A") != target.window {
-            WinActivate("ahk_id " target.window)
-
-            if !WinWaitActive("ahk_id " target.window, , 1)
-                return false
-        }
-
-        ControlFocus(
-            target.control,
-            "ahk_id " target.window
+        rootHwnd := DllCall(
+            "GetAncestor",
+            "Ptr",
+            controlHwnd,
+            "UInt",
+            2,
+            "Ptr"
         )
 
-        Sleep(30)
+        if rootHwnd != windowHwnd
+            return false
+
+        if WinExist("A") != windowHwnd {
+            WinActivate("ahk_id " windowHwnd)
+
+            if !WinWaitActive(
+                "ahk_id " windowHwnd,
+                ,
+                1
+            ) {
+                return false
+            }
+        }
+
+        targetThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr",
+            windowHwnd,
+            "UInt",
+            0
+        )
+
+        controlThreadId := DllCall(
+            "GetWindowThreadProcessId",
+            "Ptr",
+            controlHwnd,
+            "UInt",
+            0
+        )
+
+        currentThreadId := DllCall(
+            "GetCurrentThreadId"
+        )
+
+        if !targetThreadId || !controlThreadId
+            return false
+
+        attached := false
 
         try {
-            focusedControl := ControlGetFocus(
-                "ahk_id " target.window
+            if (
+                currentThreadId != controlThreadId
+                && !DllCall(
+                    "AttachThreadInput",
+                    "UInt",
+                    currentThreadId,
+                    "UInt",
+                    controlThreadId,
+                    "Int",
+                    true
+                )
+            ) {
+                return false
+            }
+
+            attached := currentThreadId != controlThreadId
+
+            if DllCall(
+                "SetFocus",
+                "Ptr",
+                controlHwnd,
+                "Ptr"
+            ) == 0 {
+                return false
+            }
+
+            Sleep(30)
+
+            info := Buffer(
+                A_PtrSize == 8 ? 72 : 48,
+                0
             )
 
-            if focusedControl == target.control
-                return true
+            NumPut(
+                "UInt",
+                info.Size,
+                info,
+                0
+            )
 
-            ; ControlGetFocus may return a class/NN string rather than the
-            ; exact HWND on some applications. A successful ControlFocus is
-            ; still useful in that case, so do not reject it solely on this
-            ; verification result.
-            return true
-        } catch {
-            return true
+            if !DllCall(
+                "GetGUIThreadInfo",
+                "UInt",
+                targetThreadId,
+                "Ptr",
+                info.Ptr,
+                "Int"
+            ) {
+                return false
+            }
+
+            focusOffset := A_PtrSize == 8 ? 16 : 12
+
+            return NumGet(
+                info,
+                focusOffset,
+                "Ptr"
+            ) == controlHwnd
+        } finally {
+            if attached {
+                DllCall(
+                    "AttachThreadInput",
+                    "UInt",
+                    currentThreadId,
+                    "UInt",
+                    controlThreadId,
+                    "Int",
+                    false
+                )
+            }
         }
     } catch {
         return false
