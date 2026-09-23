@@ -522,8 +522,17 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         previewY := 102 + normalRows * normalRowH
     }
 
+    ownerTarget := QuickPhraseGetExternalTarget()
+    ownerOption := ""
+    if IsObject(ownerTarget)
+        && ownerTarget.window
+        && WinExist("ahk_id " ownerTarget.window)
+    {
+        ownerOption := " +Owner" ownerTarget.window
+    }
+
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        "+AlwaysOnTop -MaximizeBox -MinimizeBox" ownerOption,
         Lang(
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
@@ -756,10 +765,10 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
     AppState.QuickPhraseVariableGui := myGui
 
-    ; Gui.Show() displays and activates the variable-input window.
-    ; Do not issue a second WinActivate() against its HWND here: the GUI
-    ; manager may still be transitioning the window, and the extra activation
-    ; can raise "Target window not found" for an otherwise valid Gui object.
+    ; Gui.Show() activates the variable-input window. The window is
+    ; owned by the original external target when possible, so closing it can
+    ; return activation to the same top-level editing window instead of
+    ; leaving focus on an unrelated application window.
     myGui.Show(
         "w680 h" (previewY + 185)
     )
@@ -860,34 +869,26 @@ QuickPhraseActivateCapturedTarget(windowHwnd, expectedControl := 0) {
     if WinWaitActive("ahk_id " windowHwnd, , 1) != windowHwnd
         return false
 
-    ; Window activation and keyboard-focus restoration are separate state
-    ; transitions. Do not send Ctrl+V until the foreground thread reports a
-    ; focus HWND that actually belongs to the captured target window.
-    deadline := A_TickCount + 500
-
-    while true {
-        state := QuickPhraseReadForegroundTarget()
-
-        if IsObject(state) && state.window == windowHwnd && state.control {
-            if expectedControl && state.control == expectedControl
-                return true
-
-            rootHwnd := DllCall(
-                "GetAncestor",
-                "Ptr", state.control,
-                "UInt", 2,
-                "Ptr"
+    ; The top-level window is the stable target. A child HWND is only a
+    ; best-effort restoration hint: Chromium/Electron/WebView editors often
+    ; expose no standard editable child HWND even though Ctrl+V is valid.
+    if expectedControl
+        && WinExist("ahk_id " expectedControl)
+    {
+        try {
+            ControlFocus(
+                expectedControl,
+                "ahk_id " windowHwnd
             )
-
-            if rootHwnd == windowHwnd
-                return true
+        } catch {
         }
-
-        if A_TickCount >= deadline
-            return false
-
-        Sleep(10)
     }
+
+    ; Let the target thread process the activation/focus transition before
+    ; synthesizing the paste keystroke. Do not reject the target merely because
+    ; GetGUIThreadInfo reports a non-standard or missing child HWND.
+    Sleep(20)
+    return WinActive("ahk_id " windowHwnd) == windowHwnd
 }
 
 QuickPhrasePasteText(text) {
