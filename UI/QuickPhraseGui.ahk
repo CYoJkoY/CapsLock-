@@ -236,6 +236,7 @@ QuickPhraseUseSelected(selectorGui) {
 
 QuickPhraseExecutePhrase(phrase) {
     reopenSelector := false
+    deferredTransaction := false
     ok := false
     errorMessage := ""
 
@@ -255,20 +256,26 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; Accept() schedules delivery after its GUI event thread
-            ; returns. By the time WinWaitClose() resumes, the timer thread
-            ; has already completed the paste and destroyed the dialog.
+            ; The variable dialog owns the rest of this transaction after OK.
+            ; Its finalizer will paste, destroy the GUI, and release the target.
+            if result.HasProp("pending") && result.pending {
+                deferredTransaction := true
+                return
+            }
+
             ok := result.HasProp("pasteOk") ? result.pasteOk : false
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
     } finally {
-        AppState.QuickPhraseTransactionActive := false
+        if !deferredTransaction {
+            AppState.QuickPhraseTransactionActive := false
 
-        if reopenSelector {
-            ShowQuickPhraseSelector()
-        } else {
-            AppState.QuickPhraseExternalTarget := ""
+            if reopenSelector {
+                ShowQuickPhraseSelector()
+            } else {
+                AppState.QuickPhraseExternalTarget := ""
+            }
         }
     }
 
@@ -562,13 +569,13 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
         result.cancelled := false
         result.ok := true
+        result.pending := true
 
         target := QuickPhraseGetExternalTarget()
 
-        ; The OK callback must not perform the final paste itself. It is a GUI
-        ; event thread whose owner is the variable dialog, unlike the fixed
-        ; phrase delivery thread. Hide the dialog now, return from this event,
-        ; then let a fresh timer thread restore the original target and paste.
+        ; The OK callback only commits the completed text. It must not end the
+        ; transaction or perform the paste itself. A fresh script thread owns
+        ; the final delivery and cleanup.
         try myGui.Hide()
 
         delivery := {
@@ -678,11 +685,29 @@ QuickPhraseFinalizeVariablePhrase(delivery) {
     } catch {
         ok := false
     } finally {
-        if IsObject(delivery) && delivery.HasProp("result")
+        if IsObject(delivery) && delivery.HasProp("result") {
             delivery.result.pasteOk := ok
+            delivery.result.pending := false
+        }
 
         if IsObject(delivery) && delivery.HasProp("gui")
             QuickPhraseDestroyVariableDialog(delivery.gui)
+
+        ; The async variable transaction owns its own cleanup. The outer
+        ; QuickPhraseExecutePhrase() deliberately does not touch these fields
+        ; while pending=true.
+        AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhraseExternalTarget := ""
+    }
+
+    if !ok {
+        ShowToolTip(
+            Lang(
+                "MSG_QUICK_PHRASE_PASTE_FAILED",
+                "Could not insert the quick phrase."
+            ),
+            2200
+        )
     }
 }
 
