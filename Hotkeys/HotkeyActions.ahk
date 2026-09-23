@@ -217,6 +217,8 @@ JumpToLine() {
             && IsTextInputControlClass(targetControlClass)
         {
             try ControlFocus(targetControl, "ahk_id " targetHwnd)
+            catch
+                targetControl := 0
         }
 
         Sleep(120)
@@ -333,8 +335,6 @@ TerminateProcessByPid() {
 
     closeSucceeded := false
 
-    closeSucceeded := false
-
     try
         closeSucceeded := ProcessClose(pid) == pid
     catch {
@@ -361,14 +361,34 @@ TerminateProcessByPid() {
     }
 
     if ProcessWaitClose(pid, 2) != 0 {
-        ShowToolTip(
-            Lang(
-                "MSG_PROCESS_CLOSE_FAILED",
-                "The process could not be terminated. It may be protected or access is denied."
-            ),
-            2500
-        )
-        return
+        fallbackIdentity := GetProcessIdentity(pid)
+
+        if fallbackIdentity == "" || fallbackIdentity != originalIdentity {
+            ShowToolTip(
+                Lang(
+                    "MSG_PROCESS_CHANGED",
+                    "The process changed before termination. No action was taken."
+                ),
+                2200
+            )
+            return
+        }
+
+        try
+            RunWait("taskkill.exe /F /PID " pid, , "Hide")
+        catch {
+        }
+
+        if ProcessWaitClose(pid, 2) != 0 {
+            ShowToolTip(
+                Lang(
+                    "MSG_PROCESS_CLOSE_FAILED",
+                    "The process could not be terminated. It may be protected or access is denied."
+                ),
+                2500
+            )
+            return
+        }
     }
 
     ShowToolTip(
