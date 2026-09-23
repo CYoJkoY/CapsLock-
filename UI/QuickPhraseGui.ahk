@@ -766,62 +766,6 @@ QuickPhraseDeferredPaste(text, target) {
         )
     }
 }
-QuickPhraseScheduleClipboardRestore(backup, expectedText, expectedSequence) {
-    AppState.QuickPhraseClipboardBackup := backup
-    AppState.QuickPhraseClipboardExpected := expectedText
-    AppState.QuickPhraseClipboardSequence := expectedSequence
-    AppState.QuickPhraseClipboardRestorePending := true
-
-    SetTimer(
-        QuickPhraseRestoreClipboard,
-        -750
-    )
-}
-
-QuickPhraseRestoreClipboard() {
-    if !AppState.QuickPhraseClipboardRestorePending
-        return
-
-    AppState.QuickPhraseClipboardRestorePending := false
-
-    backup := AppState.QuickPhraseClipboardBackup
-    expectedText := AppState.QuickPhraseClipboardExpected
-    expectedSequence := AppState.QuickPhraseClipboardSequence
-
-    AppState.QuickPhraseClipboardBackup := ""
-    AppState.QuickPhraseClipboardExpected := ""
-    AppState.QuickPhraseClipboardSequence := 0
-
-    currentSequence := DllCall(
-        "GetClipboardSequenceNumber",
-        "UInt"
-    )
-
-    if currentSequence != expectedSequence
-        return
-
-    if A_Clipboard != expectedText
-        return
-
-    AppState.IgnoreNextClipChange := true
-    try A_Clipboard := backup
-}
-
-QuickPhraseIsTextInputControl(controlClass) {
-    if controlClass == ""
-        return false
-
-    normalized := StrLower(controlClass)
-
-    for knownClass in AppState.TextInputControls {
-        known := StrLower(knownClass)
-        if normalized == known
-            return true
-    }
-
-    return false
-}
-
 ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
     ConfigManager.Save()
