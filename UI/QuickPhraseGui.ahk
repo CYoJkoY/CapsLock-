@@ -731,7 +731,7 @@ QuickPhraseIsInternalWindow(hwnd) {
     return false
 }
 
-QuickPhraseActivateCapturedTarget(windowHwnd) {
+QuickPhraseActivateCapturedTarget(windowHwnd, expectedControl := 0) {
     if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return false
 
@@ -746,13 +746,26 @@ QuickPhraseActivateCapturedTarget(windowHwnd) {
     if WinWaitActive("ahk_id " windowHwnd, , 1) != windowHwnd
         return false
 
-    deadline := A_TickCount + 350
+    ; Window activation and keyboard-focus restoration are separate state
+    ; transitions. Do not send Ctrl+V until the foreground thread reports a
+    ; focus HWND that actually belongs to the captured target window.
+    deadline := A_TickCount + 500
 
     while true {
-        foregroundHwnd := DllCall("GetForegroundWindow", "Ptr")
-        if foregroundHwnd == windowHwnd {
-            state := QuickPhraseReadForegroundTarget()
-            if IsObject(state) && state.window == windowHwnd
+        state := QuickPhraseReadForegroundTarget()
+
+        if IsObject(state) && state.window == windowHwnd && state.control {
+            if expectedControl && state.control == expectedControl
+                return true
+
+            rootHwnd := DllCall(
+                "GetAncestor",
+                "Ptr", state.control,
+                "UInt", 2,
+                "Ptr"
+            )
+
+            if rootHwnd == windowHwnd
                 return true
         }
 
@@ -808,7 +821,7 @@ QuickPhrasePasteText(text) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        if !QuickPhraseActivateCapturedTarget(target.window)
+        if !QuickPhraseActivateCapturedTarget(target.window, target.control)
             return false
 
         SendEvent("^v")
