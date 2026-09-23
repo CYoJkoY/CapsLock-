@@ -741,18 +741,72 @@ QuickPhrasePasteText(text, targetOverride := "") {
         return false
 
     try {
+        ; The top-level window is only the outer destination. For the
+        ; parameterized workflow, the important state is the actual child
+        ; window that owned keyboard focus before Quick Phrase opened.
+        ; Do not restrict this to a hard-coded class list: Chromium/Electron
+        ; and other custom editors may expose a non-standard focus HWND.
         if (
             target.HasProp("control")
             && target.control
             && WinExist("ahk_id " target.control)
-            && target.HasProp("controlClass")
-            && IsTextInputControlClass(target.controlClass)
         ) {
-            try
-                ControlFocus(target.control, "ahk_id " target.window)
+            QuickPhraseRestoreCapturedControl(target)
         }
 
         return PasteAsPlainText(text, "", target.window)
+    } catch {
+        return false
+    }
+}
+
+QuickPhraseRestoreCapturedControl(target) {
+    if !IsObject(target)
+        return false
+
+    if !target.HasProp("window") || !target.window
+        return false
+
+    if !target.HasProp("control") || !target.control
+        return false
+
+    if !WinExist("ahk_id " target.window)
+        return false
+
+    if !WinExist("ahk_id " target.control)
+        return false
+
+    try {
+        if WinExist("A") != target.window {
+            WinActivate("ahk_id " target.window)
+
+            if !WinWaitActive("ahk_id " target.window, , 1)
+                return false
+        }
+
+        ControlFocus(
+            target.control,
+            "ahk_id " target.window
+        )
+
+        Sleep(30)
+
+        try {
+            focusedControl := ControlGetFocus(
+                "ahk_id " target.window
+            )
+
+            if focusedControl == target.control
+                return true
+
+            ; ControlGetFocus may return a class/NN string rather than the
+            ; exact HWND on some applications. A successful ControlFocus is
+            ; still useful in that case, so do not reject it solely on this
+            ; verification result.
+            return true
+        } catch {
+            return true
+        }
     } catch {
         return false
     }
