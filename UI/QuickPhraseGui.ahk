@@ -167,77 +167,79 @@ QuickPhraseHandleHotkey(*) {
     if !QuickPhraseHotkeyAvailable()
         return
 
-    targetHwnd := WinExist("A")
-    if !targetHwnd || QuickPhraseIsInternalWindow(targetHwnd)
+    ; Read the foreground window and keyboard focus before any Quick Phrase
+    ; GUI is created. GetGUIThreadInfo(0) reads the foreground thread directly,
+    ; avoiding a second, later focus lookup through the target window's thread.
+    target := QuickPhraseCaptureExternalTarget()
+    if !IsObject(target)
         return
 
-    if !QuickPhraseCaptureExternalTarget(targetHwnd)
-        return
-
+    AppState.QuickPhraseExternalTarget := target
     ShowQuickPhraseSelector()
 }
 
-QuickPhraseCaptureExternalTarget(windowHwnd) {
+QuickPhraseCaptureExternalTarget() {
+    windowHwnd := DllCall("GetForegroundWindow", "Ptr")
     if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
-        return false
+        return ""
 
-    if !WinExist("ahk_id " windowHwnd)
-        return false
+    state := QuickPhraseReadForegroundTarget()
+    if !IsObject(state) || state.window != windowHwnd
+        return ""
 
-    controlHwnd := QuickPhraseGetFocusedControl(windowHwnd)
+    return state
+}
+
+QuickPhraseReadForegroundTarget() {
+    infoBuffer := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
+    NumPut("UInt", infoBuffer.Size, infoBuffer, 0)
+
+    if !DllCall(
+        "GetGUIThreadInfo",
+        "UInt", 0,
+        "Ptr", infoBuffer.Ptr,
+        "Int"
+    )
+        return ""
+
+    windowHwnd := DllCall("GetForegroundWindow", "Ptr")
+    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+        return ""
+
+    activeHwnd := NumGet(
+        infoBuffer,
+        8,
+        "Ptr"
+    )
+
+    if activeHwnd && activeHwnd != windowHwnd
+        return ""
+
+    controlHwnd := NumGet(
+        infoBuffer,
+        A_PtrSize == 8 ? 16 : 12,
+        "Ptr"
+    )
+
+    caretHwnd := NumGet(
+        infoBuffer,
+        A_PtrSize == 8 ? 48 : 28,
+        "Ptr"
+    )
+
     controlClass := ""
-
     if controlHwnd {
         try controlClass := WinGetClass("ahk_id " controlHwnd)
         catch
             controlClass := ""
     }
 
-    AppState.QuickPhraseExternalTarget := {
+    return {
         window: windowHwnd,
         control: controlHwnd,
+        caret: caretHwnd,
         controlClass: controlClass
     }
-    return true
-}
-
-QuickPhraseGetFocusedControl(windowHwnd) {
-    threadId := DllCall(
-        "GetWindowThreadProcessId",
-        "Ptr", windowHwnd,
-        "UInt", 0
-    )
-
-    if threadId {
-        info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
-        NumPut(
-            "UInt",
-            info.Size,
-            info,
-            0
-        )
-
-        if DllCall(
-            "GetGUIThreadInfo",
-            "UInt", threadId,
-            "Ptr", info.Ptr,
-            "Int"
-        ) {
-            focusOffset := A_PtrSize == 8 ? 16 : 12
-            focusHwnd := NumGet(
-                info,
-                focusOffset,
-                "Ptr"
-            )
-            if focusHwnd
-                return focusHwnd
-        }
-    }
-
-    try
-        return ControlGetFocus("ahk_id " windowHwnd)
-    catch
-        return 0
 }
 
 QuickPhraseUseSelected(selectorGui) {
@@ -289,7 +291,6 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            QuickPhraseRefreshCapturedTarget()
             ok := QuickPhrasePasteText(result.text)
         }
     } catch as caughtError {
@@ -679,32 +680,6 @@ QuickPhraseGetExternalTarget() {
     return IsObject(target) ? target : ""
 }
 
-QuickPhraseRefreshCapturedTarget() {
-    target := QuickPhraseGetExternalTarget()
-    if !IsObject(target) || !target.window
-        return false
-
-    if !WinExist("ahk_id " target.window) || QuickPhraseIsInternalWindow(target.window)
-        return false
-
-    controlHwnd := QuickPhraseGetFocusedControl(target.window)
-    if !controlHwnd || !WinExist("ahk_id " controlHwnd)
-        return true
-
-    controlClass := ""
-    try
-        controlClass := WinGetClass("ahk_id " controlHwnd)
-    catch
-        return true
-
-    ; Keep the top-level target captured at hotkey invocation, but refresh
-    ; only its child control after the variable dialog closes. This prevents
-    ; a stale HWND from sending variable phrases through an invalid control.
-    target.control := controlHwnd
-    target.controlClass := controlClass
-    return true
-}
-
 QuickPhraseIsInternalWindow(hwnd) {
     if !hwnd
         return true
@@ -756,6 +731,38 @@ QuickPhraseIsInternalWindow(hwnd) {
     return false
 }
 
+QuickPhraseActivateCapturedTarget(windowHwnd) {
+    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+        return false
+
+    if !WinExist("ahk_id " windowHwnd)
+        return false
+
+    try
+        WinActivate("ahk_id " windowHwnd)
+    catch
+        return false
+
+    if WinWaitActive("ahk_id " windowHwnd, , 1) != windowHwnd
+        return false
+
+    deadline := A_TickCount + 350
+
+    while true {
+        foregroundHwnd := DllCall("GetForegroundWindow", "Ptr")
+        if foregroundHwnd == windowHwnd {
+            state := QuickPhraseReadForegroundTarget()
+            if IsObject(state) && state.window == windowHwnd
+                return true
+        }
+
+        if A_TickCount >= deadline
+            return false
+
+        Sleep(10)
+    }
+}
+
 QuickPhrasePasteText(text) {
     target := QuickPhraseGetExternalTarget()
     if !IsObject(target)
@@ -801,16 +808,10 @@ QuickPhrasePasteText(text) {
         if !ClipWait(1)
             throw Error("Quick Phrase clipboard was not ready.")
 
-        try
-            WinActivate("ahk_id " target.window)
-        catch
+        if !QuickPhraseActivateCapturedTarget(target.window)
             return false
 
-        if WinWaitActive("ahk_id " target.window, , 1) != target.window
-            return false
-
-        Sleep(40)
-        Send("^v")
+        SendEvent("^v")
         Sleep(120)
         return true
     } catch {
