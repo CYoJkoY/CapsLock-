@@ -19,10 +19,6 @@ class AppState {
     static QuickPhraseClipboardBackup := ""
     static QuickPhraseClipboardExpected := ""
     static QuickPhraseClipboardSequence := 0
-    static QuickPhraseFocusForegroundHook := 0
-    static QuickPhraseFocusObjectHook := 0
-    static QuickPhraseFocusCallback := 0
-    static QuickPhraseLatestExternalTarget := ""
 
     ; --- Settings ---
     static PasteMode := 1
