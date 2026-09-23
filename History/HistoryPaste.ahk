@@ -28,7 +28,7 @@ PasteAsPlainText(content, tooltipMsg := "", targetHwnd := 0) {
     A_Clipboard := content
 
     ActivateAndPaste(targetHwnd)
-    Sleep(50)
+    Sleep(300)
 
     AppState.IgnoreNextClipChange := true
     A_Clipboard := backup

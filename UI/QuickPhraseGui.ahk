@@ -200,6 +200,7 @@ QuickPhraseCaptureExternalTarget() {
         controlClass: controlClass
     }
 }
+
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -236,7 +237,6 @@ QuickPhraseUseSelected(selectorGui) {
 
 QuickPhraseExecutePhrase(phrase) {
     reopenSelector := false
-    deferredTransaction := false
     ok := false
     errorMessage := ""
 
@@ -256,27 +256,20 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; The variable dialog owns the rest of this transaction after OK.
-            ; Its finalizer will paste, destroy the GUI, and release the target.
-            if result.HasProp("pending") && result.pending {
-                deferredTransaction := true
-                return
-            }
-
-            ok := result.HasProp("pasteOk") ? result.pasteOk : false
+            ; 变量窗口已在 ShowQuickPhraseVariableDialog() 内销毁完毕，
+            ; 这里与无参路径共用同一个同步交付点：同一个线程、GUI 已销毁、
+            ; 目标仍是 CapsLock+Shift+P 触发时捕获的 target。
+            ok := QuickPhrasePasteText(result.text)
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
     } finally {
-        if !deferredTransaction {
-            AppState.QuickPhraseTransactionActive := false
+        AppState.QuickPhraseTransactionActive := false
 
-            if reopenSelector {
-                ShowQuickPhraseSelector()
-            } else {
-                AppState.QuickPhraseExternalTarget := ""
-            }
-        }
+        if reopenSelector
+            ShowQuickPhraseSelector()
+        else
+            AppState.QuickPhraseExternalTarget := ""
     }
 
     if errorMessage != "" {
@@ -569,26 +562,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
         result.cancelled := false
         result.ok := true
-        result.pending := true
 
-        target := QuickPhraseGetExternalTarget()
-
-        ; The OK callback only commits the completed text. It must not end the
-        ; transaction or perform the paste itself. A fresh script thread owns
-        ; the final delivery and cleanup.
         try myGui.Hide()
-
-        delivery := {
-            result: result,
-            text: result.text,
-            target: target,
-            gui: myGui
-        }
-
-        SetTimer(
-            QuickPhraseFinalizeVariablePhrase.Bind(delivery),
-            -1
-        )
 
         return true
     }
@@ -600,7 +575,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
         result.cancelled := true
 
-        QuickPhraseDestroyVariableDialog(myGui)
+        try myGui.Hide()
 
         return true
     }
@@ -652,9 +627,10 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     RefreshPreview()
 
-    WinWaitClose(
-        "ahk_id " myGui.Hwnd
-    )
+    while !result.ok && !result.cancelled
+        Sleep(10)
+
+    QuickPhraseDestroyVariableDialog(myGui)
 
     return result
 }
@@ -665,50 +641,6 @@ QuickPhraseGetExternalTarget(targetOverride := "") {
 
     target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
-}
-
-QuickPhraseFinalizeVariablePhrase(delivery) {
-    ok := false
-
-    try {
-        if (
-            IsObject(delivery)
-            && delivery.HasProp("target")
-            && IsObject(delivery.target)
-            && delivery.target.window
-        ) {
-            ok := QuickPhrasePasteText(
-                delivery.text,
-                delivery.target
-            )
-        }
-    } catch {
-        ok := false
-    } finally {
-        if IsObject(delivery) && delivery.HasProp("result") {
-            delivery.result.pasteOk := ok
-            delivery.result.pending := false
-        }
-
-        if IsObject(delivery) && delivery.HasProp("gui")
-            QuickPhraseDestroyVariableDialog(delivery.gui)
-
-        ; The async variable transaction owns its own cleanup. The outer
-        ; QuickPhraseExecutePhrase() deliberately does not touch these fields
-        ; while pending=true.
-        AppState.QuickPhraseTransactionActive := false
-        AppState.QuickPhraseExternalTarget := ""
-    }
-
-    if !ok {
-        ShowToolTip(
-            Lang(
-                "MSG_QUICK_PHRASE_PASTE_FAILED",
-                "Could not insert the quick phrase."
-            ),
-            2200
-        )
-    }
 }
 
 QuickPhraseIsInternalWindow(hwnd) {
