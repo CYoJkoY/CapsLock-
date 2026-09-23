@@ -906,14 +906,16 @@ QuickPhraseRestoreCapturedControl(target) {
 
             attached := currentThreadId != controlThreadId
 
-            if DllCall(
+            ; SetFocus() returns the previous focus HWND, not a
+            ; success flag. A zero return is valid when there was no
+            ; previously focused window, so success is determined solely by
+            ; the subsequent GetGUIThreadInfo verification.
+            DllCall(
                 "SetFocus",
                 "Ptr",
                 controlHwnd,
                 "Ptr"
-            ) == 0 {
-                return false
-            }
+            )
 
             Sleep(30)
 
