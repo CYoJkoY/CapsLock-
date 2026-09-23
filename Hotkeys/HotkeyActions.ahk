@@ -224,7 +224,7 @@ JumpToLine() {
         SendEvent("^g")
         Sleep(180)
 
-        SendEvent(String(lineNumber))
+        SendText(String(lineNumber))
         SendEvent("{Enter}")
     } catch {
         ShowToolTip(
@@ -333,38 +333,42 @@ TerminateProcessByPid() {
 
     closeSucceeded := false
 
-    try {
-        closedPid := ProcessClose(pid)
-        closeSucceeded := closedPid == pid
-    } catch {
+    closeSucceeded := false
+
+    try
+        closeSucceeded := ProcessClose(pid) == pid
+    catch {
         closeSucceeded := false
     }
 
-    if closeSucceeded {
-        if ProcessWaitClose(pid, 2) != 0
-            closeSucceeded := false
-    }
-
     if !closeSucceeded {
-        try
-            RunWait(
-                "taskkill.exe /F /PID " pid,
-                ,
-                "Hide"
-            )
-        catch {
-        }
-
-        if ProcessWaitClose(pid, 2) != 0 {
+        fallbackIdentity := GetProcessIdentity(pid)
+        if fallbackIdentity == "" || fallbackIdentity != originalIdentity {
             ShowToolTip(
                 Lang(
-                    "MSG_PROCESS_CLOSE_FAILED",
-                    "The process could not be terminated. It may be protected or access is denied."
+                    "MSG_PROCESS_CHANGED",
+                    "The process changed before termination. No action was taken."
                 ),
-                2500
+                2200
             )
             return
         }
+
+        try
+            RunWait("taskkill.exe /F /PID " pid, , "Hide")
+        catch {
+        }
+    }
+
+    if ProcessWaitClose(pid, 2) != 0 {
+        ShowToolTip(
+            Lang(
+                "MSG_PROCESS_CLOSE_FAILED",
+                "The process could not be terminated. It may be protected or access is denied."
+            ),
+            2500
+        )
+        return
     }
 
     ShowToolTip(

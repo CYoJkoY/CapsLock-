@@ -15,10 +15,6 @@ CapsLockHotkeysAvailable() {
     return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
 }
 
-CapsLockPhysicalModifierHeld() {
-    return ( DllCall( "GetAsyncKeyState", "Int", 0x14, "Short" ) & 0x8000 ) != 0
-}
-
 QuickPhraseUiActive() {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -35,7 +31,7 @@ QuickPhraseHotkeyAvailable() {
         && !AppState.QuickPhraseClipboardRestorePending
 }
 
-#HotIf CapsLockPhysicalModifierHeld()
+#HotIf GetKeyState( "CapsLock", "P" )
     j:: JumpToLine()
     k:: TerminateProcessByPid()
 #HotIf
