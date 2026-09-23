@@ -253,14 +253,9 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; Do not paste from the variable dialog's event/close stack.
-            ; Queue the delivery for a fresh AutoHotkey thread after the GUI
-            ; callback and window destruction have fully unwound.
-            SetTimer(
-                QuickPhraseDeferredPaste.Bind(result.text, target),
-                -1
-            )
-            ok := true
+            ; The variable dialog has fully closed when WinWaitClose() returns.
+            ; Use the same synchronous delivery path as fixed phrases.
+            ok := QuickPhrasePasteText(result.text, target)
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
@@ -747,24 +742,6 @@ QuickPhrasePasteText(text, targetOverride := "") {
         return PasteAsPlainText(text, "", target.window)
     catch
         return false
-}
-QuickPhraseDeferredPaste(text, target) {
-    ok := false
-
-    try
-        ok := QuickPhrasePasteText(text, target)
-    catch
-        ok := false
-
-    if !ok {
-        ShowToolTip(
-            Lang(
-                "MSG_QUICK_PHRASE_PASTE_FAILED",
-                "Could not insert the quick phrase."
-            ),
-            2200
-        )
-    }
 }
 ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
