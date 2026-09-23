@@ -289,6 +289,7 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
+            QuickPhraseRefreshCapturedTarget()
             ok := QuickPhrasePasteText(result.text)
         }
     } catch as caughtError {
@@ -676,6 +677,32 @@ QuickPhraseNormalizeClipboardText(text) {
 QuickPhraseGetExternalTarget() {
     target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
+}
+
+QuickPhraseRefreshCapturedTarget() {
+    target := QuickPhraseGetExternalTarget()
+    if !IsObject(target) || !target.window
+        return false
+
+    if !WinExist("ahk_id " target.window) || QuickPhraseIsInternalWindow(target.window)
+        return false
+
+    controlHwnd := QuickPhraseGetFocusedControl(target.window)
+    if !controlHwnd || !WinExist("ahk_id " controlHwnd)
+        return true
+
+    controlClass := ""
+    try
+        controlClass := WinGetClass("ahk_id " controlHwnd)
+    catch
+        return true
+
+    ; Keep the top-level target captured at hotkey invocation, but refresh
+    ; only its child control after the variable dialog closes. This prevents
+    ; a stale HWND from sending variable phrases through an invalid control.
+    target.control := controlHwnd
+    target.controlClass := controlClass
+    return true
 }
 
 QuickPhraseIsInternalWindow(hwnd) {
