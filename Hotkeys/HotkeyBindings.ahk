@@ -1,8 +1,5 @@
 #Requires AutoHotkey v2.0
 
-; AppState is provided by the root script's Config\\Globals.ahk include.
-IsSet(AppState)
-
 *CapsLock:: {
     if !( A_PriorKey = "CapsLock" )
         return
