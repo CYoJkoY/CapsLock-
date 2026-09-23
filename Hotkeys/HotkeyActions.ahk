@@ -169,6 +169,18 @@ JumpToLine() {
     if !targetHwnd
         return
 
+    targetControl := 0
+    targetControlClass := ""
+
+    try {
+        targetControl := ControlGetFocus("ahk_id " targetHwnd)
+        if targetControl
+            targetControlClass := WinGetClass("ahk_id " targetControl)
+    } catch {
+        targetControl := 0
+        targetControlClass := ""
+    }
+
     result := DarkInputDialog.Show(
         Lang("GUI_GOTO_LINE_PROMPT", "Enter a positive line number:"),
         Lang("GUI_GOTO_LINE_TITLE", "Jump to line")
@@ -200,19 +212,40 @@ JumpToLine() {
         if !WinWaitActive("ahk_id " targetHwnd, , 1)
             throw Error("Target window could not be activated.")
 
-        Sleep(80)
+        if targetControl
+            && WinExist("ahk_id " targetControl)
+            && IsTextInputControlClass(targetControlClass)
+        {
+            try ControlFocus(targetControl, "ahk_id " targetHwnd)
+        }
 
-        Send("^g")
-        Sleep(80)
+        Sleep(120)
 
-        SendText(String(lineNumber))
-        Send("{Enter}")
+        SendEvent("^g")
+        Sleep(180)
+
+        SendEvent(String(lineNumber))
+        SendEvent("{Enter}")
     } catch {
         ShowToolTip(
             Lang("MSG_TARGET_WINDOW_GONE", "The target window is no longer available."),
             1800
         )
     }
+}
+
+IsTextInputControlClass(controlClass) {
+    if controlClass == ""
+        return false
+
+    normalized := StrLower(controlClass)
+
+    for knownClass in AppState.TextInputControls {
+        if normalized == StrLower(knownClass)
+            return true
+    }
+
+    return false
 }
 
 TerminateProcessByPid() {
@@ -298,28 +331,40 @@ TerminateProcessByPid() {
         return
     }
 
-    try
+    closeSucceeded := false
+
+    try {
         closedPid := ProcessClose(pid)
-    catch {
-        ShowToolTip(
-            Lang(
-                "MSG_PROCESS_CLOSE_FAILED",
-                "The process could not be terminated. It may be protected or access is denied."
-            ),
-            2500
-        )
-        return
+        closeSucceeded := closedPid == pid
+    } catch {
+        closeSucceeded := false
     }
 
-    if closedPid != pid {
-        ShowToolTip(
-            Lang(
-                "MSG_PROCESS_CLOSE_FAILED",
-                "The process could not be terminated. It may be protected or access is denied."
-            ),
-            2500
-        )
-        return
+    if closeSucceeded {
+        if ProcessWaitClose(pid, 2) != 0
+            closeSucceeded := false
+    }
+
+    if !closeSucceeded {
+        try
+            RunWait(
+                "taskkill.exe /F /PID " pid,
+                ,
+                "Hide"
+            )
+        catch {
+        }
+
+        if ProcessWaitClose(pid, 2) != 0 {
+            ShowToolTip(
+                Lang(
+                    "MSG_PROCESS_CLOSE_FAILED",
+                    "The process could not be terminated. It may be protected or access is denied."
+                ),
+                2500
+            )
+            return
+        }
     }
 
     ShowToolTip(
