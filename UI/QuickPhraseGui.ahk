@@ -186,186 +186,15 @@ QuickPhraseHandleHotkey(*) {
 }
 
 QuickPhraseCaptureExternalTarget() {
-    currentWindow := DllCall("GetForegroundWindow", "Ptr")
-    if !currentWindow || QuickPhraseIsInternalWindow(currentWindow)
+    windowHwnd := WinExist("A")
+
+    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return ""
-
-    cached := AppState.QuickPhraseLatestExternalTarget
-    if IsObject(cached)
-        && cached.window == currentWindow
-        && A_TickCount - cached.tick <= 1500
-    {
-        return cached
-    }
-
-    target := QuickPhraseReadForegroundTarget()
-    if !IsObject(target) || target.window != currentWindow
-        return ""
-
-    return target
-}
-
-QuickPhraseReadForegroundTarget() {
-    return QuickPhraseReadThreadTarget(0, true)
-}
-
-QuickPhraseReadThreadTarget(threadId := 0, requireForeground := false) {
-    infoBuffer := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
-    NumPut("UInt", infoBuffer.Size, infoBuffer, 0)
-
-    if !DllCall(
-        "GetGUIThreadInfo",
-        "UInt", threadId,
-        "Ptr", infoBuffer.Ptr,
-        "Int"
-    )
-        return ""
-
-    activeHwnd := NumGet(
-        infoBuffer,
-        8,
-        "Ptr"
-    )
-
-    foregroundHwnd := DllCall("GetForegroundWindow", "Ptr")
-    if requireForeground {
-        if !foregroundHwnd || QuickPhraseIsInternalWindow(foregroundHwnd)
-            return ""
-
-        if activeHwnd && activeHwnd != foregroundHwnd
-            return ""
-
-        windowHwnd := foregroundHwnd
-    } else {
-        if !activeHwnd || QuickPhraseIsInternalWindow(activeHwnd)
-            return ""
-
-        if foregroundHwnd != activeHwnd
-            return ""
-
-        windowHwnd := activeHwnd
-    }
-
-    controlHwnd := NumGet(
-        infoBuffer,
-        A_PtrSize == 8 ? 16 : 12,
-        "Ptr"
-    )
-
-    caretHwnd := NumGet(
-        infoBuffer,
-        A_PtrSize == 8 ? 48 : 28,
-        "Ptr"
-    )
-
-    controlClass := ""
-    if controlHwnd {
-        try controlClass := WinGetClass("ahk_id " controlHwnd)
-        catch
-            controlClass := ""
-    }
 
     return {
-        window: windowHwnd,
-        control: controlHwnd,
-        caret: caretHwnd,
-        controlClass: controlClass,
-        tick: A_TickCount
+        window: windowHwnd
     }
 }
-
-QuickPhraseInitializeFocusTracking() {
-    if AppState.QuickPhraseFocusCallback
-        return true
-
-    try {
-        AppState.QuickPhraseFocusCallback := CallbackCreate(
-            QuickPhraseWinEventProc,
-            "",
-            7
-        )
-
-        AppState.QuickPhraseFocusForegroundHook := DllCall(
-            "SetWinEventHook",
-            "UInt", 0x0003,
-            "UInt", 0x0003,
-            "Ptr", 0,
-            "Ptr", AppState.QuickPhraseFocusCallback,
-            "UInt", 0,
-            "UInt", 0,
-            "UInt", 0x0002,
-            "Ptr"
-        )
-
-        AppState.QuickPhraseFocusObjectHook := DllCall(
-            "SetWinEventHook",
-            "UInt", 0x8005,
-            "UInt", 0x8005,
-            "Ptr", 0,
-            "Ptr", AppState.QuickPhraseFocusCallback,
-            "UInt", 0,
-            "UInt", 0,
-            "UInt", 0x0002,
-            "Ptr"
-        )
-
-        if !AppState.QuickPhraseFocusForegroundHook
-            || !AppState.QuickPhraseFocusObjectHook
-        {
-            QuickPhraseShutdownFocusTracking()
-            return false
-        }
-
-        target := QuickPhraseReadForegroundTarget()
-        if IsObject(target)
-            AppState.QuickPhraseLatestExternalTarget := target
-
-        return true
-    } catch {
-        QuickPhraseShutdownFocusTracking()
-        return false
-    }
-}
-
-QuickPhraseShutdownFocusTracking() {
-    if AppState.QuickPhraseFocusForegroundHook {
-        try DllCall(
-            "UnhookWinEvent",
-            "Ptr", AppState.QuickPhraseFocusForegroundHook
-        )
-        AppState.QuickPhraseFocusForegroundHook := 0
-    }
-
-    if AppState.QuickPhraseFocusObjectHook {
-        try DllCall(
-            "UnhookWinEvent",
-            "Ptr", AppState.QuickPhraseFocusObjectHook
-        )
-        AppState.QuickPhraseFocusObjectHook := 0
-    }
-
-    if AppState.QuickPhraseFocusCallback {
-        try CallbackFree(AppState.QuickPhraseFocusCallback)
-        AppState.QuickPhraseFocusCallback := 0
-    }
-
-    AppState.QuickPhraseLatestExternalTarget := ""
-}
-
-QuickPhraseWinEventProc(
-    hook,
-    event,
-    hwnd,
-    idObject,
-    idChild,
-    eventThread,
-    eventTime
-) {
-    target := QuickPhraseReadThreadTarget(eventThread)
-    if IsObject(target)
-        AppState.QuickPhraseLatestExternalTarget := target
-}
-
 QuickPhraseUseSelected(selectorGui) {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -818,12 +647,6 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     return result
 }
 
-QuickPhraseNormalizeClipboardText(text) {
-    normalized := StrReplace(text, "`r`n", "`n")
-    normalized := StrReplace(normalized, "`r", "`n")
-    return StrReplace(normalized, "`n", "`r`n")
-}
-
 QuickPhraseGetExternalTarget(targetOverride := "") {
     if IsObject(targetOverride)
         return targetOverride
@@ -883,41 +706,29 @@ QuickPhraseIsInternalWindow(hwnd) {
     return false
 }
 
-QuickPhraseActivateCapturedTarget(windowHwnd, expectedControl := 0) {
-    if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
+QuickPhraseActivateCapturedTarget(target) {
+    if !IsObject(target) || !target.window
+        return false
+
+    windowHwnd := target.window
+
+    if QuickPhraseIsInternalWindow(windowHwnd)
         return false
 
     if !WinExist("ahk_id " windowHwnd)
         return false
 
-    try
-        WinActivate("ahk_id " windowHwnd)
-    catch
-        return false
+    if WinExist("A") != windowHwnd {
+        try
+            WinActivate("ahk_id " windowHwnd)
+        catch
+            return false
 
-    if WinWaitActive("ahk_id " windowHwnd, , 1) != windowHwnd
-        return false
-
-    ; The top-level window is the stable target. A child HWND is only a
-    ; best-effort restoration hint: Chromium/Electron/WebView editors often
-    ; expose no standard editable child HWND even though Ctrl+V is valid.
-    if expectedControl
-        && WinExist("ahk_id " expectedControl)
-    {
-        try {
-            ControlFocus(
-                expectedControl,
-                "ahk_id " windowHwnd
-            )
-        } catch {
-        }
+        if !WinWaitActive("ahk_id " windowHwnd, , 1)
+            return false
     }
 
-    ; Let the target thread process the activation/focus transition before
-    ; synthesizing the paste keystroke. Do not reject the target merely because
-    ; GetGUIThreadInfo reports a non-standard or missing child HWND.
-    Sleep(20)
-    return WinActive("ahk_id " windowHwnd) == windowHwnd
+    return true
 }
 
 QuickPhrasePasteText(text, targetOverride := "") {
@@ -925,72 +736,40 @@ QuickPhrasePasteText(text, targetOverride := "") {
     if !IsObject(target)
         return false
 
-    if !target.window || !WinExist("ahk_id " target.window)
+    if !QuickPhraseActivateCapturedTarget(target)
         return false
 
-    if target.control
-        && WinExist("ahk_id " target.control)
-        && QuickPhraseIsTextInputControl(target.controlClass)
-    {
-        try {
-            EditPaste(
-                QuickPhraseNormalizeClipboardText(text),
-                target.control
-            )
-            return true
-        } catch {
-        }
-    }
-
-    backup := ""
-    try
-        backup := ClipboardAll()
-    catch
-        return false
-
-    expectedText := QuickPhraseNormalizeClipboardText(text)
-    expectedSequence := 0
-    clipboardPrepared := false
+    ; Reuse the same proven delivery sequence as HistoryPaste.ahk:
+    ; text-only clipboard backup, replace clipboard, brief activation settle,
+    ; real Ctrl+V, then restore the original clipboard.
+    backup := A_Clipboard
 
     try {
         AppState.IgnoreNextClipChange := true
-        A_Clipboard := expectedText
-
-        expectedSequence := DllCall(
-            "GetClipboardSequenceNumber",
-            "UInt"
-        )
-        clipboardPrepared := true
+        A_Clipboard := text
 
         if !ClipWait(1)
-            throw Error("Quick Phrase clipboard was not ready.")
-
-        if !QuickPhraseActivateCapturedTarget(target.window, target.control)
             return false
 
-        SendEvent("^v")
-        Sleep(120)
+        Sleep(100)
+        Send("^v")
+        Sleep(50)
         return true
     } catch {
         return false
     } finally {
-        if clipboardPrepared {
-            QuickPhraseScheduleClipboardRestore(
-                backup,
-                expectedText,
-                expectedSequence
-            )
-        }
+        AppState.IgnoreNextClipChange := true
+        A_Clipboard := backup
     }
 }
 
 QuickPhraseDeferredPaste(text, target) {
     ok := false
+
     try
         ok := QuickPhrasePasteText(text, target)
-    catch {
+    catch
         ok := false
-    }
 
     if !ok {
         ShowToolTip(
@@ -1002,7 +781,6 @@ QuickPhraseDeferredPaste(text, target) {
         )
     }
 }
-
 QuickPhraseScheduleClipboardRestore(backup, expectedText, expectedSequence) {
     AppState.QuickPhraseClipboardBackup := backup
     AppState.QuickPhraseClipboardExpected := expectedText
