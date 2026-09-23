@@ -2,8 +2,11 @@
 
 class DarkInputDialog {
     static Show(prompt, title, default := "", width := 360) {
-        resultValue := ""
-        resultAction := "Cancel"
+        dialogState := {
+            Result: "Cancel",
+            Value: "",
+            Resolved: false
+        }
 
         myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", title)
         ThemeHelper.StyleGui(myGui)
@@ -22,13 +25,15 @@ class DarkInputDialog {
         btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
 
         OnOK(*) {
-            resultValue := editCtrl.Value
-            resultAction := "OK"
+            dialogState.Value := editCtrl.Value
+            dialogState.Result := "OK"
+            dialogState.Resolved := true
             myGui.Destroy()
             return true
         }
         OnCancel(*) {
-            resultAction := "Cancel"
+            if !dialogState.Resolved
+                dialogState.Result := "Cancel"
             myGui.Destroy()
             return true
         }
@@ -41,6 +46,6 @@ class DarkInputDialog {
         myGui.Show("AutoSize Center")
         editCtrl.Focus()
         WinWaitClose("ahk_id " myGui.Hwnd)
-        return { Result: resultAction, Value: resultValue }
+        return dialogState
     }
 }

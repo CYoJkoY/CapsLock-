@@ -168,80 +168,11 @@ GetProcessIdentity(pid) {
     return identity
 }
 
-CaptureKeyboardTarget(windowHwnd) {
-    if !windowHwnd
-        return ""
-
-    threadId := DllCall(
-        "GetWindowThreadProcessId",
-        "Ptr", windowHwnd,
-        "UInt", 0
-    )
-
-    controlHwnd := 0
-
-    if threadId {
-        info := Buffer(A_PtrSize == 8 ? 72 : 48, 0)
-        NumPut(
-            "UInt",
-            info.Size,
-            info,
-            0
-        )
-
-        if DllCall(
-            "GetGUIThreadInfo",
-            "UInt", threadId,
-            "Ptr", info.Ptr,
-            "Int"
-        ) {
-            focusOffset := A_PtrSize == 8 ? 16 : 12
-            controlHwnd := NumGet(
-                info,
-                focusOffset,
-                "Ptr"
-            )
-        }
-    }
-
-    if !controlHwnd {
-        try controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
-        catch
-            controlHwnd := 0
-    }
-
-    return {
-        window: windowHwnd,
-        control: controlHwnd
-    }
-}
-
-RestoreKeyboardTarget(target) {
-    if !IsObject(target)
-        return false
-
-    if !target.window || !WinExist("ahk_id " target.window)
-        return false
-
-    WinActivate("ahk_id " target.window)
-
-    if WinWaitActive("ahk_id " target.window, , 1) != target.window
-        return false
-
-    if target.control && WinExist("ahk_id " target.control) {
-        try ControlFocus("ahk_id " target.control, "ahk_id " target.window)
-    }
-
-    Sleep(40)
-    return true
-}
 
 JumpToLine() {
     targetHwnd := WinExist("A")
     if !targetHwnd
         return
-
-    target := CaptureKeyboardTarget(targetHwnd)
 
     result := DarkInputDialog.Show(
         Lang("GUI_GOTO_LINE_PROMPT", "Enter a positive line number:"),
@@ -260,7 +191,7 @@ JumpToLine() {
         return
     }
 
-    if !RestoreKeyboardTarget(target) {
+    if !WinExist("ahk_id " targetHwnd) {
         ShowToolTip(
             Lang("MSG_TARGET_WINDOW_GONE", "The target window is no longer available."),
             1800
@@ -269,6 +200,13 @@ JumpToLine() {
     }
 
     try {
+        WinActivate("ahk_id " targetHwnd)
+
+        if !WinWaitActive("ahk_id " targetHwnd, , 1)
+            throw Error("Target window could not be activated.")
+
+        Sleep(80)
+
         Send("^g")
         Sleep(80)
 
