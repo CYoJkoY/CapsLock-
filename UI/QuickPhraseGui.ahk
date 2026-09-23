@@ -224,7 +224,13 @@ QuickPhraseUseSelected(selectorGui) {
     AppState.QuickPhraseTransactionActive := true
     QuickPhraseDestroySelector(selectorGui)
 
-    QuickPhraseExecutePhrase(phrase)
+    ; Let the selector's GUI event thread unwind before opening the
+    ; variable-input dialog. The variable workflow must not be nested inside
+    ; the selector's Click/DoubleClick callback.
+    SetTimer(
+        QuickPhraseExecutePhrase.Bind(phrase),
+        -1
+    )
     return true
 }
 
