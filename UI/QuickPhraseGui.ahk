@@ -82,17 +82,7 @@ QuickPhraseDestroySelector(myGui) {
 
 QuickPhraseDestroyVariableDialog(myGui) {
     AppState.QuickPhraseVariableGui := ""
-
-    target := QuickPhraseGetExternalTarget()
     try myGui.Hide()
-
-    if IsObject(target)
-        && target.window
-        && WinExist("ahk_id " target.window)
-    {
-        try WinActivate("ahk_id " target.window)
-    }
-
     try myGui.Destroy()
 }
 
@@ -425,7 +415,23 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ok := QuickPhrasePasteText(result.text)
+            target := QuickPhraseGetExternalTarget()
+            if !IsObject(target) {
+                errorMessage := Lang(
+                    "MSG_QUICK_PHRASE_PASTE_FAILED",
+                    "Could not insert the quick phrase."
+                )
+                return
+            }
+
+            ; Do not paste from the variable dialog's event/close stack.
+            ; Queue the delivery for a fresh AutoHotkey thread after the GUI
+            ; callback and window destruction have fully unwound.
+            SetTimer(
+                QuickPhraseDeferredPaste.Bind(result.text, target),
+                -1
+            )
+            ok := true
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
@@ -818,7 +824,10 @@ QuickPhraseNormalizeClipboardText(text) {
     return StrReplace(normalized, "`n", "`r`n")
 }
 
-QuickPhraseGetExternalTarget() {
+QuickPhraseGetExternalTarget(targetOverride := "") {
+    if IsObject(targetOverride)
+        return targetOverride
+
     target := AppState.QuickPhraseExternalTarget
     return IsObject(target) ? target : ""
 }
@@ -911,8 +920,8 @@ QuickPhraseActivateCapturedTarget(windowHwnd, expectedControl := 0) {
     return WinActive("ahk_id " windowHwnd) == windowHwnd
 }
 
-QuickPhrasePasteText(text) {
-    target := QuickPhraseGetExternalTarget()
+QuickPhrasePasteText(text, targetOverride := "") {
+    target := QuickPhraseGetExternalTarget(targetOverride)
     if !IsObject(target)
         return false
 
@@ -972,6 +981,25 @@ QuickPhrasePasteText(text) {
                 expectedSequence
             )
         }
+    }
+}
+
+QuickPhraseDeferredPaste(text, target) {
+    ok := false
+    try
+        ok := QuickPhrasePasteText(text, target)
+    catch {
+        ok := false
+    }
+
+    if !ok {
+        ShowToolTip(
+            Lang(
+                "MSG_QUICK_PHRASE_PASTE_FAILED",
+                "Could not insert the quick phrase."
+            ),
+            2200
+        )
     }
 }
 
