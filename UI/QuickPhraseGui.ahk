@@ -182,8 +182,22 @@ QuickPhraseCaptureExternalTarget() {
     if !windowHwnd || QuickPhraseIsInternalWindow(windowHwnd)
         return ""
 
+    controlHwnd := 0
+    controlClass := ""
+
+    try {
+        controlHwnd := ControlGetFocus("ahk_id " windowHwnd)
+        if controlHwnd
+            controlClass := WinGetClass("ahk_id " controlHwnd)
+    } catch {
+        controlHwnd := 0
+        controlClass := ""
+    }
+
     return {
-        window: windowHwnd
+        window: windowHwnd,
+        control: controlHwnd,
+        controlClass: controlClass
     }
 }
 QuickPhraseUseSelected(selectorGui) {
@@ -718,10 +732,22 @@ QuickPhrasePasteText(text, targetOverride := "") {
     if !WinExist("ahk_id " target.window)
         return false
 
-    try
+    try {
+        if (
+            target.HasProp("control")
+            && target.control
+            && WinExist("ahk_id " target.control)
+            && target.HasProp("controlClass")
+            && IsTextInputControlClass(target.controlClass)
+        ) {
+            try
+                ControlFocus(target.control, "ahk_id " target.window)
+        }
+
         return PasteAsPlainText(text, "", target.window)
-    catch
+    } catch {
         return false
+    }
 }
 ToggleQuickPhraseEnabled(*) {
     AppState.QuickPhraseEnabled := !AppState.QuickPhraseEnabled
