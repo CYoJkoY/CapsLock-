@@ -733,36 +733,21 @@ QuickPhraseActivateCapturedTarget(target) {
 
 QuickPhrasePasteText(text, targetOverride := "") {
     target := QuickPhraseGetExternalTarget(targetOverride)
-    if !IsObject(target)
+
+    if !IsObject(target) || !target.window
         return false
 
-    if !QuickPhraseActivateCapturedTarget(target)
+    if QuickPhraseIsInternalWindow(target.window)
         return false
 
-    ; Reuse the same proven delivery sequence as HistoryPaste.ahk:
-    ; text-only clipboard backup, replace clipboard, brief activation settle,
-    ; real Ctrl+V, then restore the original clipboard.
-    backup := A_Clipboard
-
-    try {
-        AppState.IgnoreNextClipChange := true
-        A_Clipboard := text
-
-        if !ClipWait(1)
-            return false
-
-        Sleep(100)
-        Send("^v")
-        Sleep(50)
-        return true
-    } catch {
+    if !WinExist("ahk_id " target.window)
         return false
-    } finally {
-        AppState.IgnoreNextClipChange := true
-        A_Clipboard := backup
-    }
+
+    try
+        return PasteAsPlainText(text, "", target.window)
+    catch
+        return false
 }
-
 QuickPhraseDeferredPaste(text, target) {
     ok := false
 
