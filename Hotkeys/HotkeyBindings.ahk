@@ -28,7 +28,6 @@ QuickPhraseUiActive() {
 QuickPhraseHotkeyAvailable() {
     return CapsLockHotkeysAvailable()
         && !QuickPhraseUiActive()
-        && !AppState.QuickPhraseClipboardRestorePending
 }
 
 #HotIf GetKeyState( "CapsLock", "P" )
