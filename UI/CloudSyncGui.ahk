@@ -306,7 +306,23 @@ ShowCloudSyncSettings(*) {
         return y
     }
 
+    RepaintGui() {
+        static RDW_INVALIDATE  := 0x0001
+        static RDW_ERASE       := 0x0004
+        static RDW_ALLCHILDREN := 0x0080
+        static RDW_UPDATENOW   := 0x0100
+
+        ; Force one synchronous repaint of the whole client area AND every
+        ; child window. Hiding or moving controls in the same tick does not
+        ; reliably invalidate the parent, leaving stale text on screen until
+        ; something else (e.g. the mouse) triggers a paint.
+        DllCall("user32\RedrawWindow", "ptr", myGui.Hwnd, "ptr", 0, "ptr", 0,
+            "uint", RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW)
+    }
+
     ProviderFields(recenter := false) {
+        SendMessage(0x000B, 0, 0, , "ahk_id " myGui.Hwnd)   ; WM_SETREDRAW off
+
         for ctrl in allProviderCtrls
             ctrl.Visible := false
 
@@ -342,6 +358,19 @@ ShowCloudSyncSettings(*) {
         winH := Max(contentBottom + 16, 260)
         maxH := A_ScreenHeight - 40
         myGui.Show("w660 h" Min(winH, maxH) (recenter ? " Center" : ""))
+
+        SendMessage(0x000B, 1, 0, , "ahk_id " myGui.Hwnd)   ; WM_SETREDRAW on
+
+        for ctrl in allProviderCtrls {
+            if !ctrl.Visible
+                continue
+            switch ctrl.Type {
+                case "Edit", "ComboBox": ThemeHelper.StyleEdit(ctrl)
+                case "Button":           ThemeHelper.StyleButton(ctrl)
+            }
+        }
+
+        RepaintGui()
     }
 
     LoadFields() {
@@ -552,7 +581,8 @@ ShowCloudSyncSettings(*) {
 
     provider.OnEvent("Change", (*) => (
         ProviderFields(),
-        status.Text := CloudSyncCoordinator.GetStatusText()
+        status.Text := CloudSyncCoordinator.GetStatusText(),
+        RepaintGui()
     ))
 
     googleAuthorize.OnEvent("Click", AuthorizeGoogle)
