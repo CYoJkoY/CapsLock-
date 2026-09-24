@@ -1,6 +1,21 @@
 #Requires AutoHotkey v2.0
 
 class CloudSyncSerializer {
+    ; Machine-specific settings: they depend on local install paths / installed
+    ; software, so syncing them would overwrite the peer's working values.
+    ; These keys are excluded from the sync payload; the peer keeps its own
+    ; local values when applying.
+    static MachineLocal := Map(
+        "ImageMagick", Map("Path", true),
+        "Pandoc",      Map("Path", true),
+        "WindowHole",  Map(
+            "allowedExecutables",  true,
+            "excludedExecutables", true,
+            "allowedClasses",      true,
+            "excludedClasses",     true
+        )
+    )
+
     static ExportConfig() {
         config := Map()
 
@@ -34,21 +49,37 @@ class CloudSyncSerializer {
         pandoc["OutputFormat"] := String(AppState.PandocOutputFormat)
         config["Pandoc"] := pandoc
 
-        windowHole := Map()
-        windowHole["diameter"] := String(AppState.WindowHoleDiameter)
-        windowHole["shape"] := String(AppState.WindowHoleShape)
-        windowHole["activation"] := String(AppState.WindowHoleActivation)
-        windowHole["updateInterval"] := String(AppState.WindowHoleUpdateInterval)
-        windowHole["fallbackToMinimize"] := AppState.WindowHoleFallbackToMinimize ? "1" : "0"
-        windowHole["allowedExecutables"] := Join(AppState.WindowHoleAllowedExecutables, "|")
-        windowHole["excludedExecutables"] := Join(AppState.WindowHoleExcludedExecutables, "|")
-        windowHole["allowedClasses"] := Join(AppState.WindowHoleAllowedClasses, "|")
-        windowHole["excludedClasses"] := Join(AppState.WindowHoleExcludedClasses, "|")
-        config["WindowHole"] := windowHole
+        mywindowHole := Map()
+        mywindowHole["diameter"] := String(AppState.WindowHoleDiameter)
+        mywindowHole["shape"] := String(AppState.WindowHoleShape)
+        mywindowHole["activation"] := String(AppState.WindowHoleActivation)
+        mywindowHole["updateInterval"] := String(AppState.WindowHoleUpdateInterval)
+        mywindowHole["fallbackToMinimize"] := AppState.WindowHoleFallbackToMinimize ? "1" : "0"
+        mywindowHole["allowedExecutables"] := Join(AppState.WindowHoleAllowedExecutables, "|")
+        mywindowHole["excludedExecutables"] := Join(AppState.WindowHoleExcludedExecutables, "|")
+        mywindowHole["allowedClasses"] := Join(AppState.WindowHoleAllowedClasses, "|")
+        mywindowHole["excludedClasses"] := Join(AppState.WindowHoleExcludedClasses, "|")
+        config["WindowHole"] := mywindowHole
 
         ignore := Map()
         ignore["Rules"] := Join(AppState.IgnorePatterns, "|")
         config["Ignore"] := ignore
+
+        return this._StripMachineLocal(config)
+    }
+
+    static _StripMachineLocal(config) {
+        if !IsObject(config) || !(config is Map)
+            return config
+
+        for sectionName, keys in this.MachineLocal {
+            if !config.Has(sectionName) || !(config[sectionName] is Map)
+                continue
+            for key in keys {
+                if config[sectionName].Has(key)
+                    config[sectionName].Delete(key)
+            }
+        }
 
         return config
     }

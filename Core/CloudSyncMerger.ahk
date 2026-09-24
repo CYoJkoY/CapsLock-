@@ -58,16 +58,16 @@ class CloudSyncMerger {
         merged := []
 
         for id in ids {
-            hasBase := baseMap.Has(id)
+            hasBaseid := baseMap.Has(id)
             hasLocal := localMap.Has(id)
             hasRemote := remoteMap.Has(id)
 
-            baseItem := hasBase ? baseMap[id] : ""
+            baseItem := hasBaseid ? baseMap[id] : ""
             localItem := hasLocal ? localMap[id] : ""
             remoteItem := hasRemote ? remoteMap[id] : ""
 
             mergedItem := this._MergeValue(
-                hasBase,
+                hasBaseid,
                 baseItem,
                 hasLocal,
                 localItem,
@@ -105,16 +105,16 @@ class CloudSyncMerger {
         this._SortStrings(keyList)
 
         for key in keyList {
-            hasBase := IsObject(base) && base is Map && base.Has(key)
+            hasBaseid := IsObject(base) && base is Map && base.Has(key)
             hasLocal := IsObject(localData) && localData is Map && localData.Has(key)
             hasRemote := IsObject(remoteData) && remoteData is Map && remoteData.Has(key)
 
-            baseValue := hasBase ? base[key] : ""
+            baseValue := hasBaseid ? base[key] : ""
             localValue := hasLocal ? localData[key] : ""
             remoteValue := hasRemote ? remoteData[key] : ""
 
             mergedItem := this._MergeValue(
-                hasBase,
+                hasBaseid,
                 baseValue,
                 hasLocal,
                 localValue,
@@ -132,7 +132,7 @@ class CloudSyncMerger {
     }
 
     static _MergeValue(
-        hasBase,
+        hasBaseid,
         baseValue,
         hasLocal,
         localValue,
@@ -144,21 +144,26 @@ class CloudSyncMerger {
         if hasLocal && hasRemote && this._Equals(localValue, remoteValue)
             return {present: true, value: localValue}
 
-        if this._SameState(hasBase, baseValue, hasLocal, localValue)
+        if this._SameState(hasBaseid, baseValue, hasLocal, localValue)
             return hasRemote
                 ? {present: true, value: remoteValue}
                 : {present: false}
 
-        if this._SameState(hasBase, baseValue, hasRemote, remoteValue)
+        if this._SameState(hasBaseid, baseValue, hasRemote, remoteValue)
             return hasLocal
                 ? {present: true, value: localValue}
                 : {present: false}
 
+        ; A key present in base but missing from both local and remote 
+        ; means both sides removed it — delete it instead of raising a conflict
+        if hasBaseid && !hasLocal && !hasRemote
+            return {present: false}
+
         if hasLocal && hasRemote
             && this._CanMergeMaps(localValue, remoteValue)
-            && (!hasBase || (IsObject(baseValue) && baseValue is Map))
+            && (!hasBaseid || (IsObject(baseValue) && baseValue is Map))
         {
-            baseMap := hasBase && baseValue is Map ? baseValue : Map()
+            baseMap := hasBaseid && baseValue is Map ? baseValue : Map()
             nestedConflicts := []
             merged := this._MergeMap(
                 baseMap,
@@ -177,7 +182,7 @@ class CloudSyncMerger {
 
         conflicts.Push({
             path: path,
-            base: hasBase ? baseValue : "",
+            base: hasBaseid ? baseValue : "",
             local: hasLocal ? localValue : "",
             remote: hasRemote ? remoteValue : ""
         })

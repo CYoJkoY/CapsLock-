@@ -92,7 +92,7 @@ class CloudSyncState {
         this.Set("Sync", "conflictRemoteFingerprint", "")
         this.Set("Sync", "conflictReason", "")
         this.Set("Sync", "lastError", "")
-        this.Set("Sync", "lastProviderKey", "")
+        this.Set("Sync", "lastProviderKey", GetCloudSyncProviderKey())
     }
 
     static _EnsureDirectories() {

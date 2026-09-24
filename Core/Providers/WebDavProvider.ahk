@@ -63,10 +63,17 @@ class WebDavProvider extends CloudSyncProvider {
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
+        this._EnsureParentCollection()
 
         headers := this._Headers()
-        if expectedRevision != ""
-            headers["If-Match"] := expectedRevision
+        if expectedRevision != "" {
+            etag := Trim(expectedRevision)
+            ; RFC 7232: If-Match requires a quoted entity-tag; 
+            ; quote it if the server returns one bare.
+            if !InStr(etag, '"') && !InStr(etag, "W/")
+                etag := '"' etag '"'
+            headers["If-Match"] := etag
+        }
 
         response := HttpClient.Request(
             "PUT",
@@ -95,6 +102,25 @@ class WebDavProvider extends CloudSyncProvider {
 
     Disconnect() {
         return true
+    }
+
+    ; WebDAV PUT doesn't create parent collections automatically,
+    ; so a direct PUT to a path with subdirectories fails with 409/404.
+    ; 405 = parent collection already exists, 409 = an intermediate level is  missing 
+    ; — both are safe to ignore;
+    ; the real outcome is decided by the following PUT.
+    _EnsureParentCollection() {
+        url := this._Url()
+        base := this._BaseUrl()
+        parent := SubStr(url, 1, InStr(url, "/", , -1) - 1)
+
+        if parent == "" || parent == base || parent == url
+            return
+
+        try
+            HttpClient.Request("MKCOL", parent, this._Headers(), "", 10000)
+        catch {
+        }
     }
 
     _BaseUrl() {

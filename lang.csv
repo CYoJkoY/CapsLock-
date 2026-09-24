@@ -362,3 +362,4 @@ GUI_CLOUD_SYNC_USE_REMOTE,"Use Remote","Utiliser le distant","使用远端","リ
 GUI_CLOUD_SYNC_MERGE,"Merge","Fusionner","合并","マージ","병합","合併","Объединить","Scal","Combinar","Mesclar","Zusammenführen","Birleştir","Unisci"
 GUI_CLOUD_SYNC_CANCEL,"Cancel","Annuler","取消","キャンセル","취소","取消","Отмена","Anuluj","Cancelar","Cancelar","Abbrechen","İptal","Annulla"
 MSG_CLOUD_SYNC_IDLE,"Cloud Sync is ready.","La synchronisation cloud est prête.","云同步已就绪。","クラウド同期の準備ができました。","클라우드 동기화를 사용할 준비가 되었습니다.","雲端同步已就緒。","Облачная синхронизация готова.","Synchronizacja w chmurze jest gotowa.","La sincronización en la nube está lista.","A sincronização na nuvem está pronta.","Cloud-Synchronisierung ist bereit.","Bulut Senkronizasyonu hazır.","La sincronizzazione cloud è pronta."
+GUI_SAVE,Save,Enregistrer,保存,保存,저장,儲存,Сохранить,Zapisz,Guardar,Salvar,Speichern,Kaydet,Salva

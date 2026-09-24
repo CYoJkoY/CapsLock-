@@ -45,7 +45,10 @@ class SecureStorage {
         if dir != "" && !DirExist(dir)
             DirCreate(dir)
 
-        myfile := FileOpen(path, "w", "RAW")
+        ; Write to a temp file first, then atomically replace: 
+        ; a crash midway won't leave behind a half-written, corrupted credentials.dat
+        tmpPath := path ".tmp"
+        myfile := FileOpen(tmpPath, "w", "RAW")
         if !IsObject(myfile)
             throw Error("Could not open secure storage file.")
 
@@ -54,7 +57,15 @@ class SecureStorage {
             myfile.Close()
         } catch {
             try myfile.Close()
+            try FileDelete(tmpPath)
             throw
+        }
+
+        try
+            FileMove(tmpPath, path, true)
+        catch as err {
+            try FileDelete(tmpPath)
+            throw err
         }
 
         return true
