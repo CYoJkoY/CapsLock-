@@ -263,10 +263,6 @@ ShowCloudSyncSettings(*) {
     ; AHK only finalizes control geometry (especially auto-wrapped Text heights)
     ; after the window exists, so create it hidden once before measuring.
     myGui.Show("w660 h600 Hide")
-    WinGetPos(, , , &outerH, "ahk_id " myGui.Hwnd)
-    myGui.GetClientPos(, , , &clientH)
-    chromeH := outerH - clientH        ; title bar + borders
-
     provider.GetPos(, &providerY, , &providerH)
     providerAreaY := providerY + providerH + 12
 
@@ -343,7 +339,7 @@ ShowCloudSyncSettings(*) {
         }
 
         contentBottom := Reflow(rows, gaps, providerAreaY)
-        winH := contentBottom + 16 + chromeH
+        winH := Max(contentBottom + 16, 260)
         maxH := A_ScreenHeight - 40
         myGui.Show("w660 h" Min(winH, maxH) (recenter ? " Center" : ""))
     }
