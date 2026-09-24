@@ -5,6 +5,8 @@ class CloudSyncCoordinator {
     static Syncing := false
     static RetryCount := 0
     static PendingAutoSync := false
+    static FirstPendingAt := 0
+    static MaxDebounceMs := 60000
 
     static Initialize() {
         AppState.CloudSyncLastSuccess :=
@@ -60,8 +62,18 @@ class CloudSyncCoordinator {
         AppState.CloudSyncLocalDirty := true
         CloudSyncState.Set("Sync", "localDirty", "1")
 
-        if !AppState.CloudSyncEnabled || !AppState.CloudSyncAutoEnabled
+        if !this.PendingAutoSync
+            this.FirstPendingAt := A_TickCount
+
+        ; Continuous changes (e.g. successive copy-paste) keep resetting the 5-second
+        ; debounce, delaying sync indefinitely. Once the deadline is reached, stop
+        ; waiting and sync right away.
+        if A_TickCount - this.FirstPendingAt >= this.MaxDebounceMs {
+            this.PendingAutoSync := false
+            this.FirstPendingAt := 0
+            this.SyncNow()
             return
+        }
 
         this.PendingAutoSync := true
         this.ScheduleAutoSync()
@@ -103,6 +115,7 @@ class CloudSyncCoordinator {
             return
 
         this.PendingAutoSync := false
+        this.FirstPendingAt := 0
 
         if !AppState.CloudSyncLocalDirty
             return
@@ -166,7 +179,7 @@ class CloudSyncCoordinator {
             return false
         }
 
-        if !this._IsProviderConfigured() {
+        if !this._IsProviderConfigured() && CloudSyncCredentials.Get("webdav","username","") != "" {
             this._SetState("not-configured")
             return false
         }
@@ -334,6 +347,9 @@ class CloudSyncCoordinator {
                 return Lang("MSG_CLOUD_SYNC_CONNECTED", "Connection validated.")
             case "conflict":
                 return Lang("MSG_CLOUD_SYNC_CONFLICT", "Cloud Sync conflict requires attention.")
+            case "recovery-error":
+                return Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention.")
+                    " " Lang("MSG_CLOUD_SYNC_CONFLICT", "Cloud Sync conflict requires attention.")
             case "error":
                 errorText := Lang("MSG_CLOUD_SYNC_FAILED", "The last synchronization failed.")
                 if AppState.CloudSyncLastError != ""
@@ -353,6 +369,7 @@ class CloudSyncCoordinator {
 
         this.Provider := ""
         this.PendingAutoSync := false
+        this.FirstPendingAt := 0
         this.StopAutoSync()
         AppState.CloudSyncConflict := false
         AppState.CloudSyncLocalDirty := false

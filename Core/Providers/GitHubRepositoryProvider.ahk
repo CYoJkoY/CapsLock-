@@ -31,7 +31,25 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
 
     ValidateConnection() {
         this.Connect()
-        return this.GetTarget() != ""
+
+        ; GetTarget() is just a concatenated string, always non-empty, so it can't be
+        ; used to test reachability. Query the file metadata for real: both 200 (already
+        ; exists) and 404 (not created yet, will be created on first upload) mean the
+        ; config is valid; any other status means a path/permission problem.
+        response := this._GetFileMetadata(
+            AppState.CloudSyncGitHubOwner,
+            AppState.CloudSyncGitHubRepository,
+            AppState.CloudSyncGitHubPath,
+            AppState.CloudSyncGitHubBranch,
+            CloudSyncCredentials.Get("github", "token", "")
+        )
+
+        switch response.status {
+            case 200, 404:
+                return true
+            default:
+                throw Error(this._ErrorMessage(response, "GitHub repository validation failed."))
+        }
     }
 
     GetTarget() {
@@ -150,7 +168,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
     }
 
     _GetFileMetadata(owner, repo, path, branch, token) {
-        url := this.ApiBase "/repos/" owner "/" repo "/contents/" path "?ref=" UriEncode(branch)
+        url := this.ApiBase "/repos/" owner "/" repo "/contents/" UriEncodePath(path) "?ref=" UriEncode(branch)
         return HttpClient.Request(
             "GET",
             url,

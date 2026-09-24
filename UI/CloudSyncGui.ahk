@@ -431,9 +431,6 @@ ShowCloudSyncSettings(*) {
                 AppState.CloudSyncGitHubBranch := Trim(repoBranch.Text)
                 AppState.CloudSyncGitHubPath := Trim(repoPath.Text)
 
-                if gistToken.Text != ""
-                    gistToken.Text := ""
-
                 if repoToken.Text != "" {
                     if !CloudSyncCredentials.Set("github", "token", repoToken.Text) {
                         ShowToolTip(Lang("MSG_CLOUD_SYNC_CREDENTIAL_SAVE_FAILED", "Could not save the encrypted credential."), 2200)
@@ -470,6 +467,7 @@ ShowCloudSyncSettings(*) {
                         return false
                     }
 
+                webdavUser.Text := ""
                 webdavPassword.Text := ""
         }
 
@@ -479,6 +477,8 @@ ShowCloudSyncSettings(*) {
 
         if IsNumber(interval.Text)
             AppState.CloudSyncInterval := Clamp(Integer(interval.Text), 5, 1440)
+        else 
+            interval.Text := String(AppState.CloudSyncInterval)
 
         ConfigManager.Save(false)
         CloudSyncIdentity.Initialize()
