@@ -16,6 +16,7 @@ class ThemeHelper {
     static _fgColorRef := 0
     static _bgBrushRef := 0
     static _hooked     := false
+    static _dimControls := Map()
 
     ; Cached GDI pen objects to avoid repeated CreatePen/DeleteObject calls
     static _borderPen    := 0
@@ -233,7 +234,13 @@ class ThemeHelper {
         myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
         ctrl := myGui.Add("Text", "w" width, text)
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        this.MarkDim(ctrl)
         return ctrl
+    }
+
+    static MarkDim(ctrl) {
+        if IsObject(ctrl)
+            this._dimControls[ctrl.Hwnd] := true
     }
 
     static AddStatusDot(myGui, color := "") {
@@ -272,6 +279,7 @@ class ThemeHelper {
         for cref, brush in this._brushCache {
             DllCall("gdi32\DeleteObject", "ptr", brush)
         }
+        this._dimControls := Map()
         this._brushCache := Map()
     }
 }

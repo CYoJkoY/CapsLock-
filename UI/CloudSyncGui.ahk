@@ -39,7 +39,8 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.StyleCheckBox(enabled)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-    myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_PROVIDER", "Provider"))
+    providerLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_PROVIDER", "Provider"))
+    ThemeHelper.MarkDim(providerLabel)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     provider := myGui.Add(
