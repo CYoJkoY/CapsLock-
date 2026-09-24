@@ -56,9 +56,6 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleComboBox(provider)
 
-    provider.GetPos(, &providerY, , &providerH)
-    providerAreaY := providerY + providerH + 12
-
     ; --- Provider-specific fields ---
     gistTargetLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_TARGET", "Target") " (Gist ID; leave blank to create automatically)")
     gistTarget := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
@@ -69,23 +66,23 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.StyleEdit(gistToken)
 
     repoOwnerLabel := myGui.AddText("x16 y+12 w300", Lang("GUI_CLOUD_SYNC_GITHUB_OWNER", "GitHub owner"))
-    repoNameLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_REPOSITORY", "Repository"))
+    repoNameLabel  := myGui.AddText("x326 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_REPOSITORY", "Repository"))
 
     repoOwner := myGui.Add("Edit", "x16 y+6 w300 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoOwner)
-    repoName := myGui.Add("Edit", "x+10 yp w310 r1 " ThemeHelper.GetEditOptions())
+    repoName := myGui.Add("Edit", "x326 yp w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoName)
 
     repoBranchLabel := myGui.AddText("x16 y+8 w300", Lang("GUI_CLOUD_SYNC_GITHUB_BRANCH", "Branch"))
-    repoPathLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_PATH", "Path"))
+    repoPathLabel   := myGui.AddText("x326 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_PATH", "Path"))
 
     repoBranch := myGui.Add("Edit", "x16 y+6 w300 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoBranch)
-    repoPath := myGui.Add("Edit", "x+10 yp w310 r1 " ThemeHelper.GetEditOptions())
+    repoPath := myGui.Add("Edit", "x326 yp w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoPath)
 
     repoTokenLabel := myGui.AddText("x16 y+8 w620", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
-    repoToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
+    repoToken := myGui.Add("Edit", "Password x16 y+6 w620 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoToken)
 
     googleClientLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_GOOGLE_CLIENT_ID", "Google OAuth client ID"))
@@ -145,20 +142,21 @@ ShowCloudSyncSettings(*) {
 
     autoSync := myGui.Add(
         "CheckBox",
-        "w620 y+12 " ThemeHelper.GetCheckBoxOptions(),
+        "x16 y+12 w380 " ThemeHelper.GetCheckBoxOptions(),
         Lang("GUI_CLOUD_SYNC_AUTO", "Enable automatic synchronization")
     )
     ThemeHelper.StyleCheckBox(autoSync)
 
     interval := myGui.Add(
         "Edit",
-        "w90 r1 x+10 yp " ThemeHelper.GetEditOptions(),
+        "x406 yp w90 r1 " ThemeHelper.GetEditOptions(),
         String(AppState.CloudSyncInterval)
     )
     ThemeHelper.StyleEdit(interval)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-    minutesLabel := myGui.AddText("x+8 yp+3", Lang("GUI_CLOUD_SYNC_MINUTES", "minutes"))
+    minutesLabel := myGui.AddText("x504 yp+3", Lang("GUI_CLOUD_SYNC_MINUTES", "minutes"))
+    ThemeHelper.MarkDim(minutesLabel)
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     status := myGui.Add(
@@ -176,34 +174,34 @@ ShowCloudSyncSettings(*) {
 
     saveBtn := ThemeHelper.AddButton(
         myGui,
-        "Default w100 y+14",
+        "Default x16 y+14 w90 h30",
         "✓ " Lang("GUI_SAVE", "Save"),
         "primary"
     )
     connectBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w120",
+        "x114 yp w100 h30",
         Lang("GUI_CLOUD_SYNC_CONNECT", "Connect")
     )
     syncBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w110",
+        "x222 yp w95 h30",
         "☁ " Lang("GUI_CLOUD_SYNC_SYNC_NOW", "Sync now")
     )
     resetBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w90",
+        "x325 yp w80 h30",
         Lang("GUI_CLOUD_SYNC_RESET", "Reset"),
         "danger"
     )
     disconnectBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w100",
+        "x413 yp w95 h30",
         Lang("GUI_CLOUD_SYNC_DISCONNECT", "Disconnect")
     )
     closeBtn := ThemeHelper.AddButton(
         myGui,
-        "x+8 w90",
+        "x516 yp w80 h30",
         Lang("GUI_FULL_CLOSE", "Close")
     )
 
@@ -261,36 +259,51 @@ ShowCloudSyncSettings(*) {
         14, 6,   12,      12, 6,   14
     ]
 
-    ; Sample the in-row relative offset (must be done before any Move, and only once)
+    ; ---- geometry bootstrap ----
+    ; AHK only finalizes control geometry (especially auto-wrapped Text heights)
+    ; after the window exists, so create it hidden once before measuring.
+    myGui.Show("w660 h600 Hide")
+    WinGetPos(, , , &outerH, "ahk_id " myGui.Hwnd)
+    myGui.GetClientPos(, , , &clientH)
+    chromeH := outerH - clientH        ; title bar + borders
+
+    provider.GetPos(, &providerY, , &providerH)
+    providerAreaY := providerY + providerH + 12
+
+    ; Sample in-row offsets AND control heights once, now that the window exists.
     rowOffsets := []
+    rowHeights := []
     for row in rows {
         offsets := []
+        heights := []
         row[1].GetPos(, &baseY)
         for ctrl in row {
-            ctrl.GetPos(, &cy)
+            ctrl.GetPos(, &cy, , &ch)
             offsets.Push(cy - baseY)
+            heights.Push(ch)
         }
         rowOffsets.Push(offsets)
+        rowHeights.Push(heights)
     }
 
     Reflow(rows, gaps, startY) {
         y := startY
         for i, row in rows {
             visible := false
-            for ctrl in row {
+            for ctrl in row
                 if ctrl.Visible {
                     visible := true
                     break
                 }
-            }
             if !visible
                 continue
+
             y += gaps[i]
             bottom := y
             for j, ctrl in row {
-                ctrl.GetPos(&cx, &cy, &cw, &ch)
-                ctrl.Move(cx, y + rowOffsets[i][j], cw, ch)
-                bottom := Max(bottom, y + rowOffsets[i][j] + ch)
+                ctrl.GetPos(&cx, &cy, &cw)
+                ctrl.Move(cx, y + rowOffsets[i][j], cw, rowHeights[i][j])
+                bottom := Max(bottom, y + rowOffsets[i][j] + rowHeights[i][j])
             }
             y := bottom
         }
@@ -330,8 +343,9 @@ ShowCloudSyncSettings(*) {
         }
 
         contentBottom := Reflow(rows, gaps, providerAreaY)
-        maxH := A_ScreenHeight - 120
-        myGui.Show("w660 h" Min(contentBottom + 16, maxH) (recenter ? " Center" : ""))
+        winH := contentBottom + 16 + chromeH
+        maxH := A_ScreenHeight - 40
+        myGui.Show("w660 h" Min(winH, maxH) (recenter ? " Center" : ""))
     }
 
     LoadFields() {
@@ -482,6 +496,7 @@ ShowCloudSyncSettings(*) {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_AUTH_FAILED", "Cloud Sync connection failed."), 2200)
 
         status.Text := CloudSyncCoordinator.GetStatusText()
+        ProviderFields()
         lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
             ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
@@ -496,6 +511,7 @@ ShowCloudSyncSettings(*) {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention."), 2400)
 
         status.Text := CloudSyncCoordinator.GetStatusText()
+        ProviderFields()
         lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
             ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
@@ -515,6 +531,7 @@ ShowCloudSyncSettings(*) {
         CloudSyncCoordinator.ResetProvider()
         LoadFields()
         status.Text := CloudSyncCoordinator.GetStatusText()
+        ProviderFields()
         lastSuccess.Text := Lang("GUI_CLOUD_SYNC_LAST_SUCCESS", "Last successful synchronization")
             ": " (AppState.CloudSyncLastSuccess != "" ? AppState.CloudSyncLastSuccess : "—")
     }
