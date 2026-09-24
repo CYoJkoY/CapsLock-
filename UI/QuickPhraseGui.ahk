@@ -358,7 +358,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     if normalVariables.Length > 0
         normalRows := Integer((normalVariables.Length + 1) / 2)
 
-    normalRowH := 78
+    ; Row budget: label 18 + gap 6 + input 62 + row spacing 14 = 100
+    LABEL_H := 18
+    EDIT_H := 62
+    ROW_GAP := 14
+    normalRowH := LABEL_H + 6 + EDIT_H + ROW_GAP
     ; Every variable can contain structured/multiline text (for example YAML).
     ; Keep the compact two-column layout, but make each input a true multiline
     ; Edit control so pasted line breaks are preserved.
@@ -367,12 +371,14 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     if etxtName != "" {
         etxtLabelY := normalBottomY + 8
-        etxtEditY := etxtLabelY + 18
-        previewY := etxtEditY + 96 + 10
+        etxtEditY := etxtLabelY + LABEL_H + 6
+        etxtEditH := 96
+        previewY := etxtEditY + etxtEditH + 16
     } else {
         etxtLabelY := 0
         etxtEditY := 0
-        previewY := 102 + normalRows * normalRowH
+        etxtEditH := 0
+        previewY := normalBottomY + 16
     }
 
     myGui := Gui(
@@ -435,10 +441,10 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         editControl := myGui.Add(
             "Edit",
             "x" x
-            " y" (y + 18)
+            " y" (y + LABEL_H + 6)
             " w300"
-            " r3 "
-            normalEditOptions,
+            " h" EDIT_H
+            " " normalEditOptions,
             ""
         )
 
@@ -474,7 +480,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "x16"
             " y" etxtEditY
             " w640"
-            " r5"
+            " h"
             " VScroll"
             " WantReturn "
             ThemeHelper.GetEditOptions(),
@@ -491,10 +497,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         controls.Push(etxtControl)
     }
 
-    myGui.SetFont(
-        "s9 c" AppState.THEME_FG_DIM,
-        AppState.THEME_FONT
-    )
+    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
 
     myGui.Add(
         "Text",
@@ -611,9 +614,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     ; Gui.Show() activates the variable-input window.
     ; The original external target is restored only by the final paste path.
-    myGui.Show(
-        "w680 h" (previewY + 185)
-    )
+    myGui.Show("w680 h" Min(previewY + 200, A_ScreenHeight - 120))
 
     if (
         variables.Length > 0

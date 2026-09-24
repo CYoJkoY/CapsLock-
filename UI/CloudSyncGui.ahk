@@ -33,10 +33,10 @@ ShowCloudSyncSettings(*) {
 
     enabled := myGui.Add(
         "CheckBox",
-        "w620 y+12 c" AppState.THEME_FG,
+        "w620 y+12 " ThemeHelper.GetCheckBoxOptions(),
         Lang("GUI_CLOUD_SYNC_ENABLE", "Enable Cloud Sync")
     )
-    enabled.Value := AppState.CloudSyncEnabled ? 1 : 0
+    ThemeHelper.StyleCheckBox(enabled)
 
     myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
     myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_PROVIDER", "Provider"))
@@ -44,7 +44,7 @@ ShowCloudSyncSettings(*) {
 
     provider := myGui.Add(
         "ComboBox",
-        "w620 y+6 Choose1 " ThemeHelper.GetEditOptions(),
+        "w620 y+6 Choose1 c" AppState.THEME_FG,
         [
             "GitHub Gist",
             "GitHub Private Repository",
@@ -55,6 +55,9 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleComboBox(provider)
 
+    provider.GetPos(, &providerY, , &providerH)
+    providerAreaY := providerY + providerH + 12
+
     ; --- Provider-specific fields ---
     gistTargetLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_TARGET", "Target") " (Gist ID; leave blank to create automatically)")
     gistTarget := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
@@ -64,23 +67,23 @@ ShowCloudSyncSettings(*) {
     gistToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(gistToken)
 
-    repoOwnerLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_GITHUB_OWNER", "GitHub owner"))
-    repoOwner := myGui.Add("Edit", "w300 r1 y+6 " ThemeHelper.GetEditOptions())
-    ThemeHelper.StyleEdit(repoOwner)
-
+    repoOwnerLabel := myGui.AddText("x16 y+12 w300", Lang("GUI_CLOUD_SYNC_GITHUB_OWNER", "GitHub owner"))
     repoNameLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_REPOSITORY", "Repository"))
-    repoName := myGui.Add("Edit", "x+10 yp+20 w310 r1 " ThemeHelper.GetEditOptions())
+
+    repoOwner := myGui.Add("Edit", "x16 y+6 w300 r1 " ThemeHelper.GetEditOptions())
+    ThemeHelper.StyleEdit(repoOwner)
+    repoName := myGui.Add("Edit", "x+10 yp w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoName)
 
-    repoBranchLabel := myGui.AddText("x0 y+8 w300", Lang("GUI_CLOUD_SYNC_GITHUB_BRANCH", "Branch"))
-    repoBranch := myGui.Add("Edit", "w300 r1 y+6 " ThemeHelper.GetEditOptions())
-    ThemeHelper.StyleEdit(repoBranch)
-
+    repoBranchLabel := myGui.AddText("x16 y+8 w300", Lang("GUI_CLOUD_SYNC_GITHUB_BRANCH", "Branch"))
     repoPathLabel := myGui.AddText("x+10 yp w310", Lang("GUI_CLOUD_SYNC_GITHUB_PATH", "Path"))
-    repoPath := myGui.Add("Edit", "x+10 yp+20 w310 r1 " ThemeHelper.GetEditOptions())
+
+    repoBranch := myGui.Add("Edit", "x16 y+6 w300 r1 " ThemeHelper.GetEditOptions())
+    ThemeHelper.StyleEdit(repoBranch)
+    repoPath := myGui.Add("Edit", "x+10 yp w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoPath)
 
-    repoTokenLabel := myGui.AddText("x0 y+8 w620", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
+    repoTokenLabel := myGui.AddText("x16 y+8 w620", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
     repoToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoToken)
 
@@ -141,10 +144,10 @@ ShowCloudSyncSettings(*) {
 
     autoSync := myGui.Add(
         "CheckBox",
-        "w400 y+12 c" AppState.THEME_FG,
+        "w620 y+12 " ThemeHelper.GetCheckBoxOptions(),
         Lang("GUI_CLOUD_SYNC_AUTO", "Enable automatic synchronization")
     )
-    autoSync.Value := AppState.CloudSyncAutoEnabled ? 1 : 0
+    ThemeHelper.StyleCheckBox(autoSync)
 
     interval := myGui.Add(
         "Edit",
@@ -203,79 +206,131 @@ ShowCloudSyncSettings(*) {
         Lang("GUI_FULL_CLOSE", "Close")
     )
 
-    ProviderFields() {
-        all := [
-            gistTargetLabel, gistTarget,
-            gistTokenLabel, gistToken,
-            repoOwnerLabel, repoOwner,
-            repoNameLabel, repoName,
-            repoBranchLabel, repoBranch,
-            repoPathLabel, repoPath,
-            repoTokenLabel, repoToken,
-            googleClientLabel, googleClient,
-            googleTargetLabel, googleTarget,
-            googleAuthorize,
-            oneDriveClientLabel, oneDriveClient,
-            oneDriveTenantLabel, oneDriveTenant,
-            oneDrivePathLabel, oneDrivePath,
-            oneDriveAuthorize,
-            webdavUrlLabel, webdavUrl,
-            webdavPathLabel, webdavPath,
-            webdavUserLabel, webdavUser,
-            webdavPasswordLabel, webdavPassword
-        ]
+    allProviderCtrls := [
+        gistTargetLabel, gistTarget,
+        gistTokenLabel, gistToken,
+        repoOwnerLabel, repoOwner,
+        repoNameLabel, repoName,
+        repoBranchLabel, repoBranch,
+        repoPathLabel, repoPath,
+        repoTokenLabel, repoToken,
+        googleClientLabel, googleClient,
+        googleTargetLabel, googleTarget,
+        googleAuthorize,
+        oneDriveClientLabel, oneDriveClient,
+        oneDriveTenantLabel, oneDriveTenant,
+        oneDrivePathLabel, oneDrivePath,
+        oneDriveAuthorize,
+        webdavUrlLabel, webdavUrl,
+        webdavPathLabel, webdavPath,
+        webdavUserLabel, webdavUser,
+        webdavPasswordLabel, webdavPassword
+    ]
 
-        for ctrl in all
+    ; One element = one "row"; controls within a row share the same baseline y
+    rows := [
+        [gistTargetLabel], [gistTarget],
+        [gistTokenLabel], [gistToken],
+        [repoOwnerLabel, repoNameLabel], [repoOwner, repoName],
+        [repoBranchLabel, repoPathLabel], [repoBranch, repoPath],
+        [repoTokenLabel], [repoToken],
+        [googleClientLabel], [googleClient],
+        [googleTargetLabel], [googleTarget],
+        [googleAuthorize],
+        [oneDriveClientLabel], [oneDriveClient],
+        [oneDriveTenantLabel], [oneDriveTenant],
+        [oneDrivePathLabel], [oneDrivePath],
+        [oneDriveAuthorize],
+        [webdavUrlLabel], [webdavUrl],
+        [webdavPathLabel], [webdavPath],
+        [webdavUserLabel], [webdavUser],
+        [webdavPasswordLabel], [webdavPassword],
+        [deviceLabel], [device],
+        [autoSync, interval, minutesLabel],
+        [status], [lastSuccess],
+        [saveBtn, connectBtn, syncBtn, resetBtn, disconnectBtn, closeBtn]
+    ]
+
+    ; Per-row "gap from the previous row", one-to-one withrows
+    gaps := [
+        12, 6,   12, 6,   12, 6,   10, 6,   10, 6,
+        12, 6,   10, 6,   12,
+        12, 6,   10, 6,   10, 6,   12,
+        12, 6,   10, 6,   10, 6,   10, 6,
+        14, 6,   12,      12, 6,   14
+    ]
+
+    ; Sample the in-row relative offset (must be done before any Move, and only once)
+    rowOffsets := []
+    for row in rows {
+        offsets := []
+        row[1].GetPos(, &baseY)
+        for ctrl in row {
+            ctrl.GetPos(, &cy)
+            offsets.Push(cy - baseY)
+        }
+        rowOffsets.Push(offsets)
+    }
+
+    Reflow(rows, gaps, startY) {
+        y := startY
+        for i, row in rows {
+            visible := false
+            for ctrl in row {
+                if ctrl.Visible {
+                    visible := true
+                    break
+                }
+            }
+            if !visible
+                continue
+            y += gaps[i]
+            bottom := y
+            for j, ctrl in row {
+                ctrl.GetPos(&cx, &cy, &cw, &ch)
+                ctrl.Move(cx, y + rowOffsets[i][j], cw, ch)
+                bottom := Max(bottom, y + rowOffsets[i][j] + ch)
+            }
+            y := bottom
+        }
+        return y
+    }
+
+    ProviderFields(recenter := false) {
+        for ctrl in allProviderCtrls
             ctrl.Visible := false
 
         switch provider.Text {
             case "GitHub Gist":
-                for ctrl in [
-                    gistTargetLabel, gistTarget,
-                    gistTokenLabel, gistToken
-                ]
+                for ctrl in [gistTargetLabel, gistTarget, gistTokenLabel, gistToken]
                     ctrl.Visible := true
-
             case "GitHub Private Repository":
                 for ctrl in [
-                    repoOwnerLabel, repoOwner,
-                    repoNameLabel, repoName,
-                    repoBranchLabel, repoBranch,
-                    repoPathLabel, repoPath,
+                    repoOwnerLabel, repoOwner, repoNameLabel, repoName,
+                    repoBranchLabel, repoBranch, repoPathLabel, repoPath,
                     repoTokenLabel, repoToken
                 ]
                     ctrl.Visible := true
-
             case "Google Drive":
-                for ctrl in [
-                    googleClientLabel, googleClient,
-                    googleTargetLabel, googleTarget,
-                    googleAuthorize
-                ]
+                for ctrl in [googleClientLabel, googleClient, googleTargetLabel, googleTarget, googleAuthorize]
                     ctrl.Visible := true
-
             case "OneDrive":
                 for ctrl in [
-                    oneDriveClientLabel, oneDriveClient,
-                    oneDriveTenantLabel, oneDriveTenant,
-                    oneDrivePathLabel, oneDrivePath,
-                    oneDriveAuthorize
+                    oneDriveClientLabel, oneDriveClient, oneDriveTenantLabel,
+                    oneDriveTenant, oneDrivePathLabel, oneDrivePath, oneDriveAuthorize
                 ]
                     ctrl.Visible := true
-
             case "WebDAV":
                 for ctrl in [
-                    webdavUrlLabel, webdavUrl,
-                    webdavPathLabel, webdavPath,
-                    webdavUserLabel, webdavUser,
-                    webdavPasswordLabel, webdavPassword
+                    webdavUrlLabel, webdavUrl, webdavPathLabel, webdavPath,
+                    webdavUserLabel, webdavUser, webdavPasswordLabel, webdavPassword
                 ]
                     ctrl.Visible := true
         }
 
-        saveBtn.GetPos(, &saveY)
-        myGui.Show("w660 h" (saveY + 72) " Hide")
-        myGui.Show("w660 AutoSize Center")
+        contentBottom := Reflow(rows, gaps, providerAreaY)
+        maxH := A_ScreenHeight - 120
+        myGui.Show("w660 h" Min(contentBottom + 16, maxH) (recenter ? " Center" : ""))
     }
 
     LoadFields() {
@@ -514,7 +569,6 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
 
     LoadFields()
-    ProviderFields()
-    myGui.Show("w660 h760 Center")
+    ProviderFields(true)
     provider.Focus()
 }

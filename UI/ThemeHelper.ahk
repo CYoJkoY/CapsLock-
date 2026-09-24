@@ -138,6 +138,14 @@ class ThemeHelper {
         try ctrl.Redraw()
     }
 
+    static StyleCheckBox(ctrl) {
+        if !IsObject(ctrl)
+            return
+
+        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_Explorer", "ptr", 0)
+        try ctrl.Redraw()
+    }
+
     static ApplyImmersiveDarkMode(hwnd) {
         static DWMWA_USE_IMMERSIVE_DARK_MODE := 20
         static DWMWA_BORDER_COLOR := 34
@@ -203,7 +211,8 @@ class ThemeHelper {
     }
 
     static GetCheckBoxOptions(extra := "") {
-        return "c" AppState.THEME_FG . (extra ? " " extra : "")
+        return "Background" AppState.THEME_BG
+                . " c" AppState.THEME_FG . (extra ? " " extra : "")
     }
 
     static AddSeparator(myGui, width := 600, posY := "") {
@@ -340,8 +349,12 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
 }
 
 _ThemeHelper_CtlColorStatic(wParam, lParam, msg, hwnd) {
-    DllCall("gdi32\SetTextColor", "ptr", wParam,
-            "uint", ThemeHelper.RgbToColorRef(AppState.THEME_FG))
+    txtRef := ThemeHelper.RgbToColorRef(
+        ThemeHelper._dimControls.Has(lParam) 
+        ? AppState.THEME_FG_DIM 
+        : AppState.THEME_FG
+    )
+    DllCall("gdi32\SetTextColor", "ptr", wParam, "uint", txtRef)
     bgCref := ThemeHelper.RgbToColorRef(AppState.THEME_BG)
     DllCall("gdi32\SetBkColor", "ptr", wParam, "uint", bgCref)
 
