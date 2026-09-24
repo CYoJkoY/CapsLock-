@@ -306,6 +306,11 @@ ShowCloudSyncSettings(*) {
         return y
     }
 
+    SetRedraw(on) {
+        try DllCall("user32\SendMessage", "ptr", myGui.Hwnd,
+            "uint", 0x000B, "ptr", on ? 1 : 0, "ptr", 0, "ptr")
+    }
+
     RepaintGui() {
         static RDW_INVALIDATE  := 0x0001
         static RDW_ERASE       := 0x0004
@@ -321,56 +326,48 @@ ShowCloudSyncSettings(*) {
     }
 
     ProviderFields(recenter := false) {
-        SendMessage(0x000B, 0, 0, , "ahk_id " myGui.Hwnd)   ; WM_SETREDRAW off
+        SetRedraw(false)  ; WM_SETREDRAW off
 
-        for ctrl in allProviderCtrls
-            ctrl.Visible := false
+        try {
+            for ctrl in allProviderCtrls
+                ctrl.Visible := false
 
-        switch provider.Text {
-            case "GitHub Gist":
-                for ctrl in [gistTargetLabel, gistTarget, gistTokenLabel, gistToken]
-                    ctrl.Visible := true
-            case "GitHub Private Repository":
-                for ctrl in [
-                    repoOwnerLabel, repoOwner, repoNameLabel, repoName,
-                    repoBranchLabel, repoBranch, repoPathLabel, repoPath,
-                    repoTokenLabel, repoToken
-                ]
-                    ctrl.Visible := true
-            case "Google Drive":
-                for ctrl in [googleClientLabel, googleClient, googleTargetLabel, googleTarget, googleAuthorize]
-                    ctrl.Visible := true
-            case "OneDrive":
-                for ctrl in [
-                    oneDriveClientLabel, oneDriveClient, oneDriveTenantLabel,
-                    oneDriveTenant, oneDrivePathLabel, oneDrivePath, oneDriveAuthorize
-                ]
-                    ctrl.Visible := true
-            case "WebDAV":
-                for ctrl in [
-                    webdavUrlLabel, webdavUrl, webdavPathLabel, webdavPath,
-                    webdavUserLabel, webdavUser, webdavPasswordLabel, webdavPassword
-                ]
-                    ctrl.Visible := true
-        }
-
-        contentBottom := Reflow(rows, gaps, providerAreaY)
-        winH := Max(contentBottom + 16, 260)
-        maxH := A_ScreenHeight - 40
-        myGui.Show("w660 h" Min(winH, maxH) (recenter ? " Center" : ""))
-
-        SendMessage(0x000B, 1, 0, , "ahk_id " myGui.Hwnd)   ; WM_SETREDRAW on
-
-        for ctrl in allProviderCtrls {
-            if !ctrl.Visible
-                continue
-            switch ctrl.Type {
-                case "Edit", "ComboBox": ThemeHelper.StyleEdit(ctrl)
-                case "Button":           ThemeHelper.StyleButton(ctrl)
+            switch provider.Text {
+                case "GitHub Gist":
+                    for ctrl in [gistTargetLabel, gistTarget, gistTokenLabel, gistToken]
+                        ctrl.Visible := true
+                case "GitHub Private Repository":
+                    for ctrl in [
+                        repoOwnerLabel, repoOwner, repoNameLabel, repoName,
+                        repoBranchLabel, repoBranch, repoPathLabel, repoPath,
+                        repoTokenLabel, repoToken
+                    ]
+                        ctrl.Visible := true
+                case "Google Drive":
+                    for ctrl in [googleClientLabel, googleClient, googleTargetLabel, googleTarget, googleAuthorize]
+                        ctrl.Visible := true
+                case "OneDrive":
+                    for ctrl in [
+                        oneDriveClientLabel, oneDriveClient, oneDriveTenantLabel,
+                        oneDriveTenant, oneDrivePathLabel, oneDrivePath, oneDriveAuthorize
+                    ]
+                        ctrl.Visible := true
+                case "WebDAV":
+                    for ctrl in [
+                        webdavUrlLabel, webdavUrl, webdavPathLabel, webdavPath,
+                        webdavUserLabel, webdavUser, webdavPasswordLabel, webdavPassword
+                    ]
+                        ctrl.Visible := true
             }
-        }
 
-        RepaintGui()
+            contentBottom := Reflow(rows, gaps, providerAreaY)
+            winH := Max(contentBottom + 16, 260)
+            maxH := A_ScreenHeight - 40
+            myGui.Show("w660 h" Min(winH, maxH) (recenter ? " Center" : ""))
+        } finally {
+            SetRedraw(true)
+            RepaintGui()
+        }
     }
 
     LoadFields() {
