@@ -111,6 +111,16 @@ class AppState {
     static WindowHoleAllowedClasses := []
     static WindowHoleExcludedClasses := []
 
+    ; --- Window Switcher ---
+    static WindowSwitcherShowIcons := true
+    static WindowSwitcherIconSize := 24
+    static WindowSwitcherDensity := "normal"
+    static WindowSwitcherShowProcess := true
+    static WindowSwitcherHighlightRow := true
+
+    static WindowSwitcherIconSizes := [16, 20, 24, 32]
+    static WindowSwitcherDensities := ["compact", "normal", "spacious"]
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"

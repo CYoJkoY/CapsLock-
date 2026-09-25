@@ -205,10 +205,16 @@ class ThemeHelper {
                 . (extra ? " " extra : "")
     }
 
-    static GetLVOptions(extra := "") {
+    ; ListView options without grid lines. Used where rows are separated by
+    ; custom drawing instead, which keeps dense lists easier to scan.
+    static GetLVOptionsPlain(extra := "") {
         return "Background" AppState.THEME_CONTROL_BG
-                . " c" AppState.THEME_FG . " Grid"
+                . " c" AppState.THEME_FG
                 . (extra ? " " extra : "")
+    }
+
+    static GetLVOptions(extra := "") {
+        return this.GetLVOptionsPlain("Grid" . (extra ? " " extra : ""))
     }
 
     static GetCheckBoxOptions(extra := "") {

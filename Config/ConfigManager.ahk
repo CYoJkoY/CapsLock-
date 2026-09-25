@@ -120,6 +120,27 @@ class ConfigManager {
             AppState.WindowHoleAllowedClasses := allowedClasses ? StrSplit(allowedClasses, "|") : []
             AppState.WindowHoleExcludedClasses := excludedClasses ? StrSplit(excludedClasses, "|") : []
 
+            ; ---- Window Switcher ----
+            AppState.WindowSwitcherShowIcons :=
+                IniRead(cfg, "WindowSwitcher", "showIcons", "1") == "1"
+
+            iconSizeText := IniRead(cfg, "WindowSwitcher", "iconSize", "24")
+            AppState.WindowSwitcherIconSize := IsNumber(iconSizeText)
+                ? _ClampToAllowed(Integer(iconSizeText), AppState.WindowSwitcherIconSizes, 24)
+                : 24
+
+            density := StrLower(Trim(IniRead(cfg, "WindowSwitcher", "density", "normal")))
+            AppState.WindowSwitcherDensity := _IsAllowedValue(
+                density,
+                AppState.WindowSwitcherDensities
+            ) ? density : "normal"
+
+            AppState.WindowSwitcherShowProcess :=
+                IniRead(cfg, "WindowSwitcher", "showProcess", "1") == "1"
+
+            AppState.WindowSwitcherHighlightRow :=
+                IniRead(cfg, "WindowSwitcher", "highlightRow", "1") == "1"
+
             if !_IsPandocFormatSupported(AppState.PandocOutputFormat) {
                 AppState.PandocOutputFormat := "docx"
                 IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
@@ -165,6 +186,13 @@ class ConfigManager {
             ignoreStr := Join(AppState.IgnorePatterns, "|")
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
 
+            ; ---- Window Switcher ----
+            IniWrite(AppState.WindowSwitcherShowIcons ? "1" : "0", cfg, "WindowSwitcher", "showIcons")
+            IniWrite(AppState.WindowSwitcherIconSize, cfg, "WindowSwitcher", "iconSize")
+            IniWrite(AppState.WindowSwitcherDensity, cfg, "WindowSwitcher", "density")
+            IniWrite(AppState.WindowSwitcherShowProcess ? "1" : "0", cfg, "WindowSwitcher", "showProcess")
+            IniWrite(AppState.WindowSwitcherHighlightRow ? "1" : "0", cfg, "WindowSwitcher", "highlightRow")
+
             ; ---- Cloud Sync ----
             IniWrite(AppState.CloudSyncEnabled ? "1" : "0", cfg, "CloudSync", "enabled")
             IniWrite(AppState.CloudSyncProvider, cfg, "CloudSync", "provider")
@@ -192,6 +220,36 @@ class ConfigManager {
         if markCloudSyncDirty && !AppState.CloudSyncApplying
             CloudSyncCoordinator.MarkLocalChanged()
     }
+}
+
+_IsAllowedValue(value, allowed) {
+    for candidate in allowed {
+        if candidate == value
+            return true
+    }
+    return false
+}
+
+; Keeps numeric settings on one of the offered values, falling back to the
+; default when the stored value is out of range or was edited by hand.
+_ClampToAllowed(value, allowed, defaultValue) {
+    if _IsAllowedValue(value, allowed)
+        return value
+
+    nearest := defaultValue
+    bestDistance := 0
+    found := false
+
+    for candidate in allowed {
+        distance := Abs(candidate - value)
+        if !found || distance < bestDistance {
+            nearest := candidate
+            bestDistance := distance
+            found := true
+        }
+    }
+
+    return nearest
 }
 
 _IsPandocFormatSupported(format) {

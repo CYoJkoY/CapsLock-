@@ -30,6 +30,33 @@ QuickPhraseHotkeyAvailable() {
         && !QuickPhraseUiActive()
 }
 
+; True while the switcher's search box owns keyboard focus. Defined here so the
+; hotkey variants below resolve it at load time; the switcher GUI itself is only
+; touched at runtime.
+WindowSwitcherSearchFocused() {
+    try {
+        if !IsObject(WindowSwitcherGui.Instance)
+            return false
+
+        if !WindowSwitcherGui.Instance.HasProp("SearchBox")
+            return false
+
+        return DllCall("user32\GetFocus", "Ptr")
+            == WindowSwitcherGui.Instance.SearchBox.Hwnd
+    } catch
+        return false
+}
+
+; --- Window switcher (CapsLock + L) keyboard navigation ---
+; Scoped to the switcher's search box so arrow keys move the selection while
+; typing, without interfering with any other window or GUI.
+#HotIf WindowSwitcherSearchFocused()
+    Up:: WindowSwitcherGui.MoveSelection( -1 )
+    Down:: WindowSwitcherGui.MoveSelection( 1 )
+    PgUp:: WindowSwitcherGui.MoveSelection( -5 )
+    PgDn:: WindowSwitcherGui.MoveSelection( 5 )
+#HotIf
+
 #HotIf GetKeyState( "CapsLock", "P" )
     j:: JumpToLine()
     k:: TerminateProcessByPid()
