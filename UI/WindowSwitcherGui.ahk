@@ -20,8 +20,10 @@ class WindowSwitcherGui {
     static _imageList := 0
     static _notifyHooked := false
     static _dcBrush := 0
-    static _glyphFont := 0
     static _cursorHooked := false
+    ; Row index (0-based) whose close strip is under the pointer, or -1.
+    static _hoverRow := -1
+    static _penCache := Map()
 
     ; --- Presentation helpers ---------------------------------------------
 
@@ -116,12 +118,13 @@ class WindowSwitcherGui {
         ; buffering keeps filtering from flickering.
         this.ApplyListStyles(list)
 
-        ; The last columns are kept narrower than the control so the per-row
-        ; close button drawn at the right edge never overlaps text.
+        ; Columns occupy exactly ContentWidth, leaving a strip on the right for
+        ; the per-row close button. The strip is deliberately wider than a
+        ; vertical scrollbar so the button is never painted underneath one.
         list.ModifyCol(1, 196)
-        list.ModifyCol(2, showProcess ? 284 : 412)
+        list.ModifyCol(2, showProcess ? 270 : 399)
         if showProcess
-            list.ModifyCol(3, 132)
+            list.ModifyCol(3, 129)
 
         ThemeHelper.StyleListView(list)
 
@@ -160,6 +163,10 @@ class WindowSwitcherGui {
             "x+8 w90",
             "✕ " Lang("GUI_FULL_CLOSE", "Close")
         )
+
+        ; Theme colours may have changed since the last session.
+        this.ReleasePens()
+        this._hoverRow := -1
 
         myGui.SearchBox := search
         myGui.ListView := list
@@ -315,12 +322,24 @@ class WindowSwitcherGui {
         this.UpdateStatus()
     }
 
-    ; Width of the clickable strip reserved for the per-row close button.
-    static CloseHitWidth() => 30
+    ; --- Per-row close button ---------------------------------------------
 
-    ; True when the pointer is inside the close strip of the given control.
-    ; Only the horizontal position is checked: the row itself comes from the
-    ; ListView click notification.
+    ; Columns occupy exactly ContentWidth (GUI units). The remaining strip on
+    ; the right belongs to the close button and is wider than a scrollbar.
+    static ContentWidth := 595
+    static CloseStripWidth := 30
+
+    ; GDI and cursor positions are in physical pixels, while control sizes are
+    ; in GUI units, so everything below converts explicitly.
+    static PxFactor() => (A_ScreenDPI ? A_ScreenDPI : 96) / 96
+
+    static ContentRightPx() => Round(this.ContentWidth * this.PxFactor())
+
+    static StripWidthPx() => Round(this.CloseStripWidth * this.PxFactor())
+
+    ; True when the pointer is inside the close strip. The row itself comes
+    ; from the ListView click notification, so only the horizontal band plus a
+    ; vertical sanity check are needed here.
     static IsOverCloseStrip() {
         myGui := this.Instance
 
@@ -338,6 +357,7 @@ class WindowSwitcherGui {
 
         x := NumGet(pt, 0, "Int")
         y := NumGet(pt, 4, "Int")
+
         width := 0
         height := 0
 
@@ -346,13 +366,62 @@ class WindowSwitcherGui {
         catch
             return false
 
-        if width <= 0 || height <= 0
+        widthPx := Round(width * this.PxFactor())
+        heightPx := Round(height * this.PxFactor())
+
+        if widthPx <= 0 || heightPx <= 0
             return false
 
-        if (y < 0) || (y > height)
+        if (y < 0) || (y > heightPx)
             return false
 
-        return (x >= width - this.CloseHitWidth()) && (x <= width)
+        right := this.ContentRightPx()
+
+        return (x >= right - this.StripWidthPx()) && (x <= right)
+    }
+
+    ; Row under the pointer, 0-based, or -1. Used for hover feedback only.
+    static HitTestRow() {
+        myGui := this.Instance
+
+        if !IsObject(myGui) || !myGui.HasProp("ListView")
+            return -1
+
+        lv := myGui.ListView
+
+        pt := Buffer(8, 0)
+        if !DllCall("user32\GetCursorPos", "Ptr", pt)
+            return -1
+
+        if !DllCall("user32\ScreenToClient", "Ptr", lv.Hwnd, "Ptr", pt)
+            return -1
+
+        ; LVHITTESTINFO: POINT pt, UINT flags, int iItem, int iSubItem
+        hti := Buffer(20, 0)
+        NumPut("Int", NumGet(pt, 0, "Int"), hti, 0)
+        NumPut("Int", NumGet(pt, 4, "Int"), hti, 4)
+
+        try
+            SendMessage(0x1012, 0, hti.Ptr, , "ahk_id " lv.Hwnd)   ; LVM_HITTEST
+        catch
+            return -1
+
+        return NumGet(hti, 12, "Int")
+    }
+
+    ; Refreshes the hover row. Returns true when it changed, so callers know
+    ; whether a repaint is needed. Never repaint from inside a paint cycle.
+    static UpdateHoverRow() {
+        row := -1
+
+        if this.IsOverCloseStrip()
+            row := this.HitTestRow()
+
+        if row == this._hoverRow
+            return false
+
+        this._hoverRow := row
+        return true
     }
 
     static OnRowClick(row) {
@@ -837,9 +906,6 @@ class WindowSwitcherGui {
         if !IsObject(myGui) || !myGui.HasProp("ListView")
             return ""
 
-        if !AppState.WindowSwitcherHighlightRow
-            return ""
-
         lvHwnd := myGui.ListView.Hwnd
 
         if NumGet(lParam + 0, "Ptr") != lvHwnd
@@ -853,25 +919,39 @@ class WindowSwitcherGui {
         stageOff := hdrSize
         hdcOff := (A_PtrSize == 8) ? hdrSize + 8 : hdrSize + 4
         rcOff := hdcOff + A_PtrSize
-        stateOff := rcOff + 16 + A_PtrSize
+        itemSpecOff := rcOff + 16
+        stateOff := itemSpecOff + A_PtrSize
         clrTextOff := stateOff + 4 + (A_PtrSize == 8 ? 4 : 0) + A_PtrSize
 
         stage := NumGet(lParam + stageOff, "UInt")
 
-        if stage == 1                                ; CDDS_PREPAINT
+        ; One paint cycle: recalibrate the hover row here rather than
+        ; invalidating, since invalidating during a paint would loop forever.
+        if stage == 1 {                              ; CDDS_PREPAINT
+            this.UpdateHoverRow()
             return 0x20                              ; CDRF_NOTIFYITEMDRAW
+        }
 
+        ; The close button is painted after the row, independent of whether row
+        ; highlighting is enabled.
         if stage == 0x10002 {                        ; CDDS_ITEMPOSTPAINT
             this.DrawCloseGlyph(
                 NumGet(lParam + hdcOff, "Ptr"),
                 lParam + rcOff,
-                (NumGet(lParam + stateOff, "UInt") & 0x0001) ? true : false
+                (NumGet(lParam + stateOff, "UInt") & 0x0001) ? true : false,
+                NumGet(lParam + itemSpecOff, "Ptr")
             )
             return ""
         }
 
         if stage != 0x10001                          ; CDDS_ITEMPREPAINT
             return ""
+
+        ; Row highlighting is optional. When it is off the control paints the
+        ; row itself and only the post-paint pass is requested, so the close
+        ; button stays available.
+        if !AppState.WindowSwitcherHighlightRow
+            return 0x10                              ; CDRF_NOTIFYPOSTPAINT
 
         hdc := NumGet(lParam + hdcOff, "Ptr")
         rcPtr := lParam + rcOff
@@ -935,84 +1015,86 @@ class WindowSwitcherGui {
 
     ; --- Per-row close button ---------------------------------------------
 
-    ; A small "✕" drawn at the right edge of every row. It is painted after the
-    ; row so it sits above the background, and the clickable strip is handled
-    ; by IsOverCloseStrip().
-    static DrawCloseGlyph(hdc, rcPtr, selected) {
+    ; A small "x" drawn with two GDI lines inside the reserved strip. Drawing
+    ; it with lines rather than a glyph character means it never depends on a
+    ; specific font containing U+2715, which is what made it invisible on some
+    ; systems. It is painted in the post-paint stage, so it sits above the
+    ; finished row.
+    static DrawCloseGlyph(hdc, rcPtr, selected, rowIndex) {
         if !hdc
             return
 
-        left := NumGet(rcPtr + 0, "Int")
         top := NumGet(rcPtr + 4, "Int")
-        right := NumGet(rcPtr + 8, "Int")
         bottom := NumGet(rcPtr + 12, "Int")
 
-        if right - left < this.CloseHitWidth()
+        if bottom - top < 8
             return
 
-        box := Buffer(16, 0)
-        NumPut("Int", right - this.CloseHitWidth(), box, 0)
-        NumPut("Int", top, box, 4)
-        NumPut("Int", right - 2, box, 8)
-        NumPut("Int", bottom, box, 12)
+        right := this.ContentRightPx()
+        strip := this.StripWidthPx()
+
+        cx := right - Round(strip / 2)
+        cy := (top + bottom) // 2
+
+        ; Keep the glyph proportional to the row height, which follows the
+        ; configured row density.
+        r := Round((bottom - top) * 0.17)
+        if r < 3
+            r := 3
+        else if r > 6
+            r := 6
+
+        hot := (rowIndex == this._hoverRow) && this.IsOverCloseStrip()
 
         cref := this.Cref(
-            selected ? AppState.THEME_FG_DIM : AppState.THEME_FG_MUTED
+            hot ? AppState.THEME_DANGER
+                : (selected ? AppState.THEME_FG_DIM : AppState.THEME_FG_MUTED)
         )
 
-        DllCall("gdi32\SetTextColor", "Ptr", hdc, "UInt", cref)
-        DllCall("gdi32\SetBkMode", "Ptr", hdc, "Int", 1)   ; TRANSPARENT
+        hPen := this.EnsureClosePen(cref, hot)
+        if !hPen
+            return
 
-        hFont := this.EnsureGlyphFont()
-        old := 0
+        old := DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", hPen, "Ptr")
 
-        if hFont
-            old := DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", hFont, "Ptr")
+        DllCall("gdi32\MoveToEx", "Ptr", hdc, "Int", cx - r, "Int", cy - r, "Ptr", 0)
+        DllCall("gdi32\LineTo",   "Ptr", hdc, "Int", cx + r, "Int", cy + r)
+        DllCall("gdi32\MoveToEx", "Ptr", hdc, "Int", cx + r, "Int", cy - r, "Ptr", 0)
+        DllCall("gdi32\LineTo",   "Ptr", hdc, "Int", cx - r, "Int", cy + r)
 
-        DllCall(
-            "user32\DrawTextW",
-            "Ptr",  hdc,
-            "WStr", "✕",
-            "Int",  -1,
-            "Ptr",  box,
-            "UInt", 0x25   ; DT_CENTER | DT_VCENTER | DT_SINGLELINE
-        )
-
-        if old
-            DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", old, "Ptr")
+        DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", old, "Ptr")
     }
 
-    ; One shared font for the glyph. Segoe UI Symbol ships with Windows and
-    ; includes U+2715, so no fallback handling is needed.
-    static EnsureGlyphFont() {
-        if this._glyphFont
-            return this._glyphFont
+    ; Pens are cached per colour and width. The set is tiny (idle / selected /
+    ; hover) so it is not worth creating and deleting them on every repaint.
+    static EnsureClosePen(cref, thick) {
+        key := cref "|" (thick ? 1 : 0)
 
-        hFont := 0
+        if this._penCache.Has(key)
+            return this._penCache[key]
+
+        hPen := 0
         try
-            hFont := DllCall(
-                "gdi32\CreateFontW",
-                "Int",  12,
-                "Int",  0,
-                "Int",  0,
-                "Int",  0,
-                "Int",  400,        ; FW_NORMAL
-                "UInt", 0,          ; italic
-                "UInt", 0,          ; underline
-                "UInt", 0,          ; strikeout
-                "UInt", 1,          ; DEFAULT_CHARSET
-                "UInt", 0,          ; OUT_DEFAULT_PRECIS
-                "UInt", 0,          ; CLIP_DEFAULT_PRECIS
-                "UInt", 0,          ; DEFAULT_QUALITY
-                "UInt", 0,          ; DEFAULT_PITCH
-                "WStr", "Segoe UI Symbol",
+            hPen := DllCall(
+                "gdi32\CreatePen",
+                "Int",  0,                    ; PS_SOLID
+                "Int",  thick ? 2 : 1,
+                "UInt", cref,
                 "Ptr"
             )
 
-        if hFont
-            this._glyphFont := hFont
+        if hPen
+            this._penCache[key] := hPen
 
-        return hFont
+        return hPen
+    }
+
+    static ReleasePens() {
+        for key, hPen in this._penCache {
+            if hPen
+                try DllCall("gdi32\DeleteObject", "Ptr", hPen)
+        }
+        this._penCache := Map()
     }
 
     static Cref(colorStr) => ThemeHelper.RgbToColorRef(colorStr)
@@ -1026,6 +1108,20 @@ class WindowSwitcherGui {
 _WindowSwitcherSetCursor(wParam, lParam, msg, hwnd) {
     if !WindowSwitcherGui.IsOverCloseStrip()
         return ""
+
+    ; Repaint only when the pointer crosses into another row's strip, so the
+    ; hover colour updates without repainting on every mouse move.
+    if WindowSwitcherGui.UpdateHoverRow() {
+        try
+            DllCall(
+                "user32\InvalidateRect",
+                "Ptr", WindowSwitcherGui.Instance.ListView.Hwnd,
+                "Ptr", 0,
+                "Int", 0
+            )
+        catch
+            return ""
+    }
 
     try {
         hCursor := DllCall("user32\LoadCursor", "Ptr", 0, "Ptr", 32649, "Ptr")   ; IDC_HAND
