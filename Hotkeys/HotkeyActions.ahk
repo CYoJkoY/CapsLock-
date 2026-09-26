@@ -35,19 +35,24 @@ ChangeCaseOfLastCopy() {
         SetCapsLockState( "AlwaysOn" )
 }
 
-; --- CapsLock + W / S and their Shift variants ----------------------------
+; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------
 ;
-; The W and S keys reach these handlers through wildcard hotkeys, because a
-; separate "+w" / "+s" binding next to the stacked "w / 8 / Numpad8" and
-; "s / 2 / Numpad2" definitions is never registered: the stacked head owns the
-; key and the Shift variant is dropped. Resolving the modifier state here keeps
-; one reliable entry point per key.
+; Every key of the two groups reaches these handlers through a wildcard hotkey,
+; because a separate "+w" / "+8" / "+s" / "+2" binding next to the stacked
+; "w / 8 / Numpad8" and "s / 2 / Numpad2" definitions is never registered: the
+; stacked head owns the key and the Shift variant is dropped. Resolving the
+; modifier state here keeps one reliable entry point per key.
+;
+;   CapsLock + W / 8 / Num8             maximize / restore
+;   CapsLock + Shift + W / 8 / Num8     borderless fullscreen
+;   CapsLock + S / 2 / Num2             minimize
+;   CapsLock + Shift + S / 2 / Num2     hide to tray
 ;
 ; Ctrl / Alt / Win combinations belong to the active window (Ctrl + S saves,
 ; Ctrl + W closes a tab), so they are forwarded untouched.
 
 WindowWildcardMaximize() {
-    if ForwardModifierKey( "w" )
+    if ForwardModifierKey( WildcardForwardKey( "w" ) )
         return
 
     if GetKeyState( "Shift", "P" ) {
@@ -59,7 +64,10 @@ WindowWildcardMaximize() {
 }
 
 WindowWildcardMinimize() {
-    if ForwardModifierKey( "s" )
+    ToolTip(A_ThisHotkey " | shift=" GetKeyState("Shift","P"))
+    SetTimer(() => ToolTip(), -2000)
+
+    if ForwardModifierKey( WildcardForwardKey( "s" ) )
         return
 
     if GetKeyState( "Shift", "P" ) {
@@ -68,6 +76,26 @@ WindowWildcardMinimize() {
     }
 
     WinMinimize( "A" )
+}
+
+; Bare key name of the wildcard hotkey that is currently running. One handler
+; serves "w / 8 / Numpad8" and "s / 2 / Numpad2", so the key that has to be
+; re-sent when a Ctrl / Alt / Win combination is forwarded can only come from
+; A_ThisHotkey ("*w", "*8", "*Numpad8", ...): the wildcard prefix and any
+; modifier symbols are stripped, and fallback keeps the handler usable when it
+; is called outside a hotkey (for example from the built-in reference).
+WildcardForwardKey( fallback ) {
+    name := ""
+
+    try
+        name := A_ThisHotkey
+    catch {
+    }
+
+    name := RegExReplace( name, "^[*$~]+" )
+    name := RegExReplace( name, "^[<>]*[\^!+#]*" )
+
+    return name == "" ? fallback : name
 }
 
 ToggleMaximizeActive() {

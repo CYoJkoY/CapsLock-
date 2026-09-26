@@ -64,7 +64,6 @@ WindowSwitcherSearchFocused() {
 
 #HotIf CapsLockHotkeysAvailable()
 
-
     +Left:: Send( "^+{Left}" )
     +Right:: Send( "^+{Right}" )
     +Up:: Send( "+{Home}" )
@@ -72,12 +71,12 @@ WindowSwitcherSearchFocused() {
 
     Space:: Send( "^{Left}^+{Right}" )
 
-    ~a:: Send( "{Backspace}" )
-    ~d:: Send( "{Delete}" )
-    ~+a:: Send( "^{Backspace}" )
-    ~+d:: Send( "^{Delete}" )
-    ~Backspace:: Send( "{Home}+{End}{Delete}" )
-    ~Delete:: Send( "{Home}+{End}{Delete}" )
+    a:: Send( "{Backspace}" )
+    d:: Send( "{Delete}" )
+    +a:: Send( "^{Backspace}" )
+    +d:: Send( "^{Delete}" )
+    Backspace:: Send( "{Home}+{End}{Delete}" )
+    Delete:: Send( "{Home}+{End}{Delete}" )
 
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
@@ -115,24 +114,24 @@ WindowSwitcherSearchFocused() {
 
 #HotIf CapsLockHotkeysAvailable()
 
-    ; --- Maximize / restore: CapsLock + W / 8 / Num8 ------------------------
-    ; CapsLock + Shift + W toggles borderless fullscreen.
-    ;
-    ; "w" is registered as a wildcard hotkey rather than as a bare "w" plus a
-    ; separate "+w": the bare key here heads the stacked "w / 8 / Numpad8"
-    ; definition, and a stacked head owns its key, so a later "+w" variant in
-    ; the same context is never registered. The wildcard entry point resolves
-    ; the modifier state in the handler instead.
-    *w:: WindowWildcardMaximize()
+    ; --- Maximize / restore ---
+    w::
     8::
     Numpad8:: ToggleMaximizeActive()
 
-    ; --- Minimize: CapsLock + S / 2 / Num2 ---------------------------------
-    ; CapsLock + Shift + S hides the active window to the tray.
-    ; Same reasoning as "w" above.
-    *s:: WindowWildcardMinimize()
+    ; --- Minimize ---
+    s::
     2::
     Numpad2:: WinMinimize( "A" )
+
+    ; --- Shift variants ---
+    +w::
+    +8::
+    +Numpad8:: WindowFullScreen.Toggle()
+
+    +s::
+    +2::
+    +Numpad2:: TrayHider.HideActive()
 
     c:: CopyAsPlainTextAndAddToHistory()
 

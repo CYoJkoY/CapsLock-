@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Borderless fullscreen for the active window (CapsLock + Shift + W).
+; Borderless fullscreen for the active window (CapsLock + Shift + W / 8).
 ;
 ; The window frame (title bar, system menu buttons and the resizable border)
 ; is removed and the window is resized to the full rectangle of the monitor it
@@ -13,7 +13,7 @@
 ;   - maximized state
 ;   - whether the window was already top-most
 ;
-; Pressing CapsLock + Shift + W again restores that recorded state, so the
+; Pressing CapsLock + Shift + W / 8 again restores that recorded state, so the
 ; switch is fully reversible. Sessions are dropped automatically when the
 ; window is closed, and every session is restored when the script exits.
 ; ---------------------------------------------------------------------------
