@@ -114,31 +114,23 @@ WindowSwitcherSearchFocused() {
 
 #HotIf CapsLockHotkeysAvailable()
 
-    ; --- Maximize / restore: CapsLock + W / 8 / Num8 ------------------------
-    ; CapsLock + Shift + W / 8 / Num8 toggles borderless fullscreen.
-    ;
-    ; All three keys are registered as wildcard hotkeys that share one handler,
-    ; instead of a bare "w / 8 / Numpad8" definition plus separate "+w" / "+8"
-    ; variants: the bare key heads the stacked definition and owns its key, so a
-    ; later "+w" variant in the same #HotIf context is never registered and the
-    ; Shift action silently does nothing. Resolving the modifier state inside the
-    ; handler keeps one reliable entry point per key, and it also lets the
-    ; handler forward Ctrl / Alt / Win combinations to the active window.
-    *w:: WindowWildcardMaximize()
-    +w:: WindowFullScreen.Toggle()
-    *8:: WindowWildcardMaximize()
-    +8:: WindowFullScreen.Toggle()
-    *Numpad8:: WindowWildcardMaximize()
+    ; --- Maximize / restore ---
+    w::
+    8::
+    Numpad8:: ToggleMaximizeActive()
+
+    ; --- Minimize ---
+    s::
+    2::
+    Numpad2:: WinMinimize( "A" )
+
+    ; --- Shift variants ---
+    +w::
+    +8::
     +Numpad8:: WindowFullScreen.Toggle()
 
-    ; --- Minimize: CapsLock + S / 2 / Num2 ---------------------------------
-    ; CapsLock + Shift + S / 2 / Num2 hides the active window to the tray.
-    ; Same reasoning as "w" above.
-    *s:: WindowWildcardMinimize()
-    +s:: TrayHider.HideActive()
-    *2:: WindowWildcardMinimize()
-    +2:: TrayHider.HideActive()
-    *Numpad2:: WindowWildcardMinimize()
+    +s::
+    +2::
     +Numpad2:: TrayHider.HideActive()
 
     c:: CopyAsPlainTextAndAddToHistory()

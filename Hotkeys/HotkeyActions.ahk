@@ -64,6 +64,9 @@ WindowWildcardMaximize() {
 }
 
 WindowWildcardMinimize() {
+    ToolTip(A_ThisHotkey " | shift=" GetKeyState("Shift","P"))
+    SetTimer(() => ToolTip(), -2000)
+
     if ForwardModifierKey( WildcardForwardKey( "s" ) )
         return
 
