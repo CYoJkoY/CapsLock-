@@ -20,6 +20,8 @@ class WindowSwitcherGui {
     static _imageList := 0
     static _notifyHooked := false
     static _dcBrush := 0
+    static _glyphFont := 0
+    static _cursorHooked := false
 
     ; --- Presentation helpers ---------------------------------------------
 
@@ -114,10 +116,12 @@ class WindowSwitcherGui {
         ; buffering keeps filtering from flickering.
         this.ApplyListStyles(list)
 
-        list.ModifyCol(1, 200)
-        list.ModifyCol(2, showProcess ? 300 : 440)
+        ; The last columns are kept narrower than the control so the per-row
+        ; close button drawn at the right edge never overlaps text.
+        list.ModifyCol(1, 196)
+        list.ModifyCol(2, showProcess ? 284 : 412)
         if showProcess
-            list.ModifyCol(3, 140)
+            list.ModifyCol(3, 132)
 
         ThemeHelper.StyleListView(list)
 
@@ -143,6 +147,14 @@ class WindowSwitcherGui {
             "primary"
         )
 
+        ; Closes the selected window itself (the switcher stays open so several
+        ; windows can be closed in one pass).
+        closeWinBtn := ThemeHelper.AddButton(
+            myGui,
+            "x+8 w120",
+            "✕ " Lang("GUI_WINDOW_SWITCHER_CLOSE_WIN", "Close window")
+        )
+
         closeBtn := ThemeHelper.AddButton(
             myGui,
             "x+8 w90",
@@ -162,8 +174,13 @@ class WindowSwitcherGui {
         )
 
         list.OnEvent(
+            "Click",
+            (ctrl, row) => WindowSwitcherGui.OnRowClick(row)
+        )
+
+        list.OnEvent(
             "DoubleClick",
-            (*) => WindowSwitcherGui.ActivateSelected()
+            (ctrl, row) => WindowSwitcherGui.OnRowDoubleClick(row)
         )
 
         list.OnEvent(
@@ -174,6 +191,11 @@ class WindowSwitcherGui {
         activateBtn.OnEvent(
             "Click",
             (*) => WindowSwitcherGui.ActivateSelected()
+        )
+
+        closeWinBtn.OnEvent(
+            "Click",
+            (*) => WindowSwitcherGui.CloseSelectedWindow()
         )
 
         closeBtn.OnEvent(
@@ -221,7 +243,7 @@ class WindowSwitcherGui {
             )
     }
 
-    static Refresh(refreshWindows := true) {
+    static Refresh(refreshWindows := true, keepRow := 0) {
         myGui := this.Instance
 
         if !IsObject(myGui) || !IsObject(myGui.ListView)
@@ -280,10 +302,219 @@ class WindowSwitcherGui {
         try
             DllCall("user32\InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
 
-        if visible.Length > 0
-            lv.Modify(1, "Select Focus")
+        if visible.Length == 0 {
+            this.UpdateStatus()
+            return
+        }
+
+        ; After closing a row the selection stays where it was, so consecutive
+        ; closes do not jump back to the top of the list.
+        target := (keepRow > 0) ? Min(keepRow, visible.Length) : 1
+        lv.Modify(target, "Select Focus")
 
         this.UpdateStatus()
+    }
+
+    ; Width of the clickable strip reserved for the per-row close button.
+    static CloseHitWidth() => 30
+
+    ; True when the pointer is inside the close strip of the given control.
+    ; Only the horizontal position is checked: the row itself comes from the
+    ; ListView click notification.
+    static IsOverCloseStrip() {
+        myGui := this.Instance
+
+        if !IsObject(myGui) || !myGui.HasProp("ListView")
+            return false
+
+        lv := myGui.ListView
+
+        pt := Buffer(8, 0)
+        if !DllCall("user32\GetCursorPos", "Ptr", pt)
+            return false
+
+        if !DllCall("user32\ScreenToClient", "Ptr", lv.Hwnd, "Ptr", pt)
+            return false
+
+        x := NumGet(pt, 0, "Int")
+        y := NumGet(pt, 4, "Int")
+        width := 0
+        height := 0
+
+        try
+            lv.GetPos(, , &width, &height)
+        catch
+            return false
+
+        if width <= 0 || height <= 0
+            return false
+
+        if (y < 0) || (y > height)
+            return false
+
+        return (x >= width - this.CloseHitWidth()) && (x <= width)
+    }
+
+    static OnRowClick(row) {
+        if this.IsOverCloseStrip() {
+            this.CloseWindowAt(row)
+            return
+        }
+    }
+
+    static OnRowDoubleClick(row) {
+        ; Double-clicking the close button must not activate the window.
+        if this.IsOverCloseStrip() {
+            this.CloseWindowAt(row)
+            return
+        }
+
+        this.ActivateSelected()
+    }
+
+    ; --- Closing windows ---------------------------------------------------
+
+    static CloseSelectedWindow() {
+        myGui := this.Instance
+
+        if !IsObject(myGui)
+            return
+
+        row := myGui.ListView.GetNext(0, "Focused")
+        if !row
+            row := myGui.ListView.GetNext(0)
+
+        if !row {
+            ShowToolTip(
+                Lang("GUI_WINDOW_SWITCHER_EMPTY", "No matching windows found."),
+                1600
+            )
+            return
+        }
+
+        this.CloseWindowAt(row)
+    }
+
+    ; Closes the window behind a row: a graceful WM_CLOSE first, and a
+    ; confirmed process termination only when the window refuses to close.
+    static CloseWindowAt(row) {
+        myGui := this.Instance
+
+        if !IsObject(myGui)
+            return
+
+        if !row || !myGui.HasProp("VisibleWindows") || row > myGui.VisibleWindows.Length
+            return
+
+        entry := myGui.VisibleWindows[row]
+        hwnd := entry.hwnd
+        label := entry.display != "" ? entry.display : entry.process
+
+        if !WinExist("ahk_id " hwnd) {
+            this.Refresh(true, row)
+            return
+        }
+
+        posted := false
+        try {
+            DllCall(
+                "user32\PostMessage",
+                "Ptr",  hwnd,
+                "UInt", 0x0010,   ; WM_CLOSE
+                "Ptr",  0,
+                "Ptr",  0
+            )
+            posted := true
+        } catch
+            posted := false
+
+        if !posted {
+            this.ReportCloseFailure()
+            return
+        }
+
+        ; Give the application a moment to shut down on its own terms.
+        closed := false
+        Loop 20 {
+            Sleep(50)
+            if !WinExist("ahk_id " hwnd) {
+                closed := true
+                break
+            }
+        }
+
+        if closed {
+            this.Refresh(true, row)
+            ShowToolTip(
+                Lang("MSG_WS_WINDOW_CLOSED", "Closed: {1}.", label),
+                1600
+            )
+            return
+        }
+
+        ; Still open: ask before ending the process, because forced termination
+        ; can discard unsaved work.
+        guiHwnd := myGui.Hwnd
+        try
+            WinSetAlwaysOnTop(0, "ahk_id " guiHwnd)
+
+        answer := ""
+        try
+            answer := MsgBox(
+                Lang(
+                    "MSG_WS_FORCE_CONFIRM",
+                    "{1} did not close. End its process? Unsaved work may be lost.",
+                    label
+                ),
+                Lang("MSG_CONFIRM"),
+                "YesNo Icon! 256"   ; 256 = default button 2 (No)
+            )
+        catch
+            answer := "No"
+
+        try
+            WinSetAlwaysOnTop(1, "ahk_id " guiHwnd)
+
+        if answer != "Yes" {
+            ShowToolTip(
+                Lang("MSG_WS_CLOSE_NO_RESPONSE", "{1} did not respond to the close request.", label),
+                2200
+            )
+            return
+        }
+
+        ended := false
+        try {
+            ProcessClose(entry.pid)
+            ended := true
+        } catch
+            ended := false
+
+        if !ended {
+            try {
+                WinKill("ahk_id " hwnd)
+                ended := true
+            } catch
+                ended := false
+        }
+
+        Sleep(80)
+        this.Refresh(true, row)
+
+        if ended {
+            ShowToolTip(
+                Lang("MSG_WS_FORCE_CLOSED", "{1} was ended forcefully.", label),
+                2000
+            )
+        } else
+            this.ReportCloseFailure()
+    }
+
+    static ReportCloseFailure() {
+        ShowToolTip(
+            Lang("MSG_WS_CLOSE_FAILED", "The selected window could not be closed."),
+            2200
+        )
     }
 
     ; Resolves (and caches) the image-list index for one window so repeated
@@ -587,6 +818,11 @@ class WindowSwitcherGui {
             OnMessage(0x004E, _WindowSwitcherNotify)   ; WM_NOTIFY
             this._notifyHooked := true
         }
+
+        if !this._cursorHooked {
+            OnMessage(0x0020, _WindowSwitcherSetCursor)   ; WM_SETCURSOR
+            this._cursorHooked := true
+        }
     }
 
     ; Owner-drawn row background: a stronger surface for the selected row plus
@@ -624,6 +860,15 @@ class WindowSwitcherGui {
 
         if stage == 1                                ; CDDS_PREPAINT
             return 0x20                              ; CDRF_NOTIFYITEMDRAW
+
+        if stage == 0x10002 {                        ; CDDS_ITEMPOSTPAINT
+            this.DrawCloseGlyph(
+                NumGet(lParam + hdcOff, "Ptr"),
+                lParam + rcOff,
+                (NumGet(lParam + stateOff, "UInt") & 0x0001) ? true : false
+            )
+            return ""
+        }
 
         if stage != 0x10001                          ; CDDS_ITEMPREPAINT
             return ""
@@ -683,7 +928,91 @@ class WindowSwitcherGui {
         )
         NumPut("UInt", 0xFFFFFFFF, lParam + clrTextOff + 4)   ; CLR_NONE
 
-        return 0x2   ; CDRF_NEWFONT
+        ; Ask for a post-paint pass as well, which is where the per-row close
+        ; button is drawn on top of the finished row.
+        return 0x2 | 0x10   ; CDRF_NEWFONT | CDRF_NOTIFYPOSTPAINT
+    }
+
+    ; --- Per-row close button ---------------------------------------------
+
+    ; A small "✕" drawn at the right edge of every row. It is painted after the
+    ; row so it sits above the background, and the clickable strip is handled
+    ; by IsOverCloseStrip().
+    static DrawCloseGlyph(hdc, rcPtr, selected) {
+        if !hdc
+            return
+
+        left := NumGet(rcPtr + 0, "Int")
+        top := NumGet(rcPtr + 4, "Int")
+        right := NumGet(rcPtr + 8, "Int")
+        bottom := NumGet(rcPtr + 12, "Int")
+
+        if right - left < this.CloseHitWidth()
+            return
+
+        box := Buffer(16, 0)
+        NumPut("Int", right - this.CloseHitWidth(), box, 0)
+        NumPut("Int", top, box, 4)
+        NumPut("Int", right - 2, box, 8)
+        NumPut("Int", bottom, box, 12)
+
+        cref := this.Cref(
+            selected ? AppState.THEME_FG_DIM : AppState.THEME_FG_MUTED
+        )
+
+        DllCall("gdi32\SetTextColor", "Ptr", hdc, "UInt", cref)
+        DllCall("gdi32\SetBkMode", "Ptr", hdc, "Int", 1)   ; TRANSPARENT
+
+        hFont := this.EnsureGlyphFont()
+        old := 0
+
+        if hFont
+            old := DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", hFont, "Ptr")
+
+        DllCall(
+            "user32\DrawTextW",
+            "Ptr",  hdc,
+            "WStr", "✕",
+            "Int",  -1,
+            "Ptr",  box,
+            "UInt", 0x25   ; DT_CENTER | DT_VCENTER | DT_SINGLELINE
+        )
+
+        if old
+            DllCall("gdi32\SelectObject", "Ptr", hdc, "Ptr", old, "Ptr")
+    }
+
+    ; One shared font for the glyph. Segoe UI Symbol ships with Windows and
+    ; includes U+2715, so no fallback handling is needed.
+    static EnsureGlyphFont() {
+        if this._glyphFont
+            return this._glyphFont
+
+        hFont := 0
+        try
+            hFont := DllCall(
+                "gdi32\CreateFontW",
+                "Int",  12,
+                "Int",  0,
+                "Int",  0,
+                "Int",  0,
+                "Int",  400,        ; FW_NORMAL
+                "UInt", 0,          ; italic
+                "UInt", 0,          ; underline
+                "UInt", 0,          ; strikeout
+                "UInt", 1,          ; DEFAULT_CHARSET
+                "UInt", 0,          ; OUT_DEFAULT_PRECIS
+                "UInt", 0,          ; CLIP_DEFAULT_PRECIS
+                "UInt", 0,          ; DEFAULT_QUALITY
+                "UInt", 0,          ; DEFAULT_PITCH
+                "WStr", "Segoe UI Symbol",
+                "Ptr"
+            )
+
+        if hFont
+            this._glyphFont := hFont
+
+        return hFont
     }
 
     static Cref(colorStr) => ThemeHelper.RgbToColorRef(colorStr)
@@ -692,6 +1021,24 @@ class WindowSwitcherGui {
 ; WM_NOTIFY is shared by every control, so an empty return value is used for
 ; anything unrelated: that lets AutoHotkey keep dispatching ListView events for
 ; this and every other GUI.
+; Shows the hand cursor while the pointer is over the per-row close strip, so
+; the strip reads as a button without needing a hover repaint.
+_WindowSwitcherSetCursor(wParam, lParam, msg, hwnd) {
+    if !WindowSwitcherGui.IsOverCloseStrip()
+        return ""
+
+    try {
+        hCursor := DllCall("user32\LoadCursor", "Ptr", 0, "Ptr", 32649, "Ptr")   ; IDC_HAND
+        if hCursor {
+            DllCall("user32\SetCursor", "Ptr", hCursor)
+            return 1
+        }
+    } catch
+        return ""
+
+    return ""
+}
+
 _WindowSwitcherNotify(wParam, lParam, msg, hwnd) {
     result := ""
 
