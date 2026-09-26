@@ -59,6 +59,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\ThemeHelper.ahk"
+#Include "UI\WindowIcons.ahk"
 #Include "UI\WindowSwitcherGui.ahk"
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"

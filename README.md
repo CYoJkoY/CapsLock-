@@ -173,6 +173,11 @@ CapsLock also acts as a compact window-control layer:
 - `S`, `2`, and `Num2` minimize the active window.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
+- `L` opens a searchable window switcher that lists application icons, window titles, and process names.
+
+The switcher stays keyboard-first: type to filter, use `Up` / `Down` / `PageUp` / `PageDown` to move through results, and press `Enter` or double-click to activate. Its presentation is configurable from the tray: application icons, icon size, row density, the process column, and selected-row highlighting.
+
+Windows can also be closed from the switcher: a small close button sits at the right edge of every row, and the bottom bar offers the same action for the selected row. Closing uses a graceful `WM_CLOSE` first; if the window does not respond, the switcher asks before ending the process, so unsaved work is not discarded silently.
 
 ### Document conversion
 
@@ -255,6 +260,7 @@ Important configuration areas include:
 | `[QuickPhrase]` | Quick Phrase enable/disable state |
 | `[Pandoc]` | Pandoc path and output format |
 | `[WindowHole]` | Diameter, shape, activation, update interval, fallback, executable/class rules |
+| `[WindowSwitcher]` | Application icons, icon size, row density, process column, selected-row highlight |
 | `[Ignore]` | Gitignore-style path/file patterns |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
@@ -293,6 +299,10 @@ Window Hole diameter      360 px
 Window Hole shape         circle
 Window Hole activation    hold
 Window Hole fallback      enabled
+Window switcher icons     enabled
+Window switcher icon      24 px
+Window switcher density   normal
+Window switcher process   shown
 ```
 
 The interface language is initialized by the language system and may be persisted in `[General]`.

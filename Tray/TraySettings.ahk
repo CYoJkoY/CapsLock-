@@ -442,6 +442,83 @@ SaveWindowHoleRules(allowExeText, excludeExeText, allowClassText, excludeClassTe
     )
 }
 
+; --- Window Switcher appearance (CapsLock + L) ---
+
+SetWindowSwitcherIconSize(size, *) {
+    if !_IsAllowedValue(size, AppState.WindowSwitcherIconSizes)
+        return
+
+    AppState.WindowSwitcherIconSize := size
+    ConfigManager.Save()
+
+    ShowToolTip(
+        Lang("MSG_WS_ICON_SIZE_SET", "Window switcher icon size: {1} px.", size),
+        1800
+    )
+}
+
+SetWindowSwitcherDensity(mode, *) {
+    mode := StrLower(mode)
+    if !_IsAllowedValue(mode, AppState.WindowSwitcherDensities)
+        return
+
+    AppState.WindowSwitcherDensity := mode
+    ConfigManager.Save()
+
+    labels := Map(
+        "compact", Lang("MENU_WS_DENSITY_COMPACT", "Compact"),
+        "normal", Lang("MENU_WS_DENSITY_NORMAL", "Normal"),
+        "spacious", Lang("MENU_WS_DENSITY_SPACIOUS", "Spacious")
+    )
+
+    ShowToolTip(
+        Lang("MSG_WS_DENSITY_SET", "Window switcher row density: {1}.", labels[mode]),
+        1800
+    )
+}
+
+ToggleWindowSwitcherIcons(*) {
+    AppState.WindowSwitcherShowIcons := !AppState.WindowSwitcherShowIcons
+    ConfigManager.Save()
+
+    key := AppState.WindowSwitcherShowIcons
+        ? "MSG_WS_ICONS_ENABLED"
+        : "MSG_WS_ICONS_DISABLED"
+    fallback := AppState.WindowSwitcherShowIcons
+        ? "The window switcher shows application icons."
+        : "The window switcher hides application icons."
+
+    ShowToolTip(Lang(key, fallback), 1800)
+}
+
+ToggleWindowSwitcherProcessColumn(*) {
+    AppState.WindowSwitcherShowProcess := !AppState.WindowSwitcherShowProcess
+    ConfigManager.Save()
+
+    key := AppState.WindowSwitcherShowProcess
+        ? "MSG_WS_PROCESS_ENABLED"
+        : "MSG_WS_PROCESS_DISABLED"
+    fallback := AppState.WindowSwitcherShowProcess
+        ? "The window switcher shows the process column."
+        : "The window switcher hides the process column."
+
+    ShowToolTip(Lang(key, fallback), 1800)
+}
+
+ToggleWindowSwitcherHighlightRow(*) {
+    AppState.WindowSwitcherHighlightRow := !AppState.WindowSwitcherHighlightRow
+    ConfigManager.Save()
+
+    key := AppState.WindowSwitcherHighlightRow
+        ? "MSG_WS_HIGHLIGHT_ENABLED"
+        : "MSG_WS_HIGHLIGHT_DISABLED"
+    fallback := AppState.WindowSwitcherHighlightRow
+        ? "The window switcher highlights the selected row."
+        : "The window switcher uses the default row highlight."
+
+    ShowToolTip(Lang(key, fallback), 1800)
+}
+
 _ParseWindowHoleRuleList(text) {
     result := []
     seen := Map()

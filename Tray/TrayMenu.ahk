@@ -170,6 +170,58 @@ BuildTrayMenuItems() {
         children: windowHoleChildren
     })
 
+    ; --- Window Switcher settings (sub-menu) ---
+    wsChildren := []
+
+    wsIconsPrefix := AppState.WindowSwitcherShowIcons ? "● " : "○ "
+    wsChildren.Push({
+        label: wsIconsPrefix . Lang("MENU_WS_ICONS", "Show application icons"),
+        callback: (*) => ToggleWindowSwitcherIcons()
+    })
+
+    wsIconSizeChildren := []
+    for size in AppState.WindowSwitcherIconSizes {
+        wsIconSizeChildren.Push({
+            label: (AppState.WindowSwitcherIconSize == size ? "● " : "○ ")
+                . Lang("MENU_WS_ICON_SIZE_PX", "{1} px", size),
+            callback: SetWindowSwitcherIconSize.Bind(size)
+        })
+    }
+    wsChildren.Push({
+        label: "🖼 " Lang("MENU_WS_ICON_SIZE", "Icon size"),
+        children: wsIconSizeChildren
+    })
+
+    wsDensityChildren := []
+    for mode in AppState.WindowSwitcherDensities {
+        wsDensityChildren.Push({
+            label: (AppState.WindowSwitcherDensity == mode ? "● " : "○ ")
+                . Lang("MENU_WS_DENSITY_" . StrUpper(mode), mode),
+            callback: SetWindowSwitcherDensity.Bind(mode)
+        })
+    }
+    wsChildren.Push({
+        label: "📏 " Lang("MENU_WS_DENSITY", "Row density"),
+        children: wsDensityChildren
+    })
+
+    wsChildren.Push({
+        label: (AppState.WindowSwitcherShowProcess ? "● " : "○ ")
+            . Lang("MENU_WS_PROCESS", "Show process column"),
+        callback: (*) => ToggleWindowSwitcherProcessColumn()
+    })
+
+    wsChildren.Push({
+        label: (AppState.WindowSwitcherHighlightRow ? "● " : "○ ")
+            . Lang("MENU_WS_HIGHLIGHT", "Highlight selected row"),
+        callback: (*) => ToggleWindowSwitcherHighlightRow()
+    })
+
+    items.Push({
+        label: "🪟 " Lang("MENU_WINDOW_SWITCHER", "Window Switcher"),
+        children: wsChildren
+    })
+
     ; --- Language (sub-menu) ---
     langChildren := []
     currentLang := Language.GetCurrent()
