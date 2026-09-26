@@ -123,16 +123,22 @@ WindowSwitcherSearchFocused() {
     ; definition, and a stacked head owns its key, so a later "+w" variant in
     ; the same context is never registered. The wildcard entry point resolves
     ; the modifier state in the handler instead.
-    *w:: WindowWildcardMaximize()
-    8::
+    w:: ToggleMaximizeActive()
+    +w:: WindowFullScreen.Toggle()
+    8:: ToggleMaximizeActive()
+    +8:: WindowFullScreen.Toggle()
     Numpad8:: ToggleMaximizeActive()
+    +Numpad8:: WindowFullScreen.Toggle()
 
     ; --- Minimize: CapsLock + S / 2 / Num2 ---------------------------------
     ; CapsLock + Shift + S hides the active window to the tray.
     ; Same reasoning as "w" above.
-    *s:: WindowWildcardMinimize()
-    2::
+    s:: WinMinimize( "A" )
+    +s:: TrayHider.HideActive()
+    2:: WinMinimize( "A" )
+    +2:: TrayHider.HideActive()
     Numpad2:: WinMinimize( "A" )
+    +Numpad2:: TrayHider.HideActive()
 
     c:: CopyAsPlainTextAndAddToHistory()
 
