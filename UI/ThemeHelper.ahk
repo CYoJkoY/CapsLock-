@@ -24,6 +24,35 @@ class ThemeHelper {
     static _borderPenRef := 0
     static _focusPenRef  := 0
 
+    ; True while the dark palette is active. Shared helpers use this instead of
+    ; hard-coding dark-only behaviour so both themes stay consistent.
+    static IsDark() => Theme.IsDark()
+
+    ; Maps a semantic uxtheme role to the class name used by the active theme.
+    ; Returns an empty string for the light theme, which restores the system
+    ; (light) rendering instead of forcing the DarkMode_* classes.
+    static ThemeClass(role) {
+        if !this.IsDark()
+            return ""
+
+        switch role {
+            case "explorer":  return "DarkMode_Explorer"
+            case "cfd":       return "DarkMode_CFD"
+            case "itemsview": return "DarkMode_ItemsView"
+            default:          return "DarkMode_Explorer"
+        }
+    }
+
+    ; Applies (or clears) a uxtheme class on a window/control.
+    static _SetWindowTheme(hwnd, themeClass) {
+        if (themeClass == "") {
+            ; Empty strings restore the default system theme.
+            try DllCall("uxtheme\SetWindowTheme", "ptr", hwnd, "wstr", "", "wstr", "")
+        } else {
+            try DllCall("uxtheme\SetWindowTheme", "ptr", hwnd, "wstr", themeClass, "ptr", 0)
+        }
+    }
+
     static StyleGui(myGui, variant := "default") {
         myGui.BackColor := AppState.THEME_BG
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
@@ -31,9 +60,11 @@ class ThemeHelper {
         myGui.MarginY := 16
     }
 
-    static StyleButton(ctrl, bgColor := "") {
+    static StyleButton(ctrl, bgColor := "", fgColor := "") {
         if (bgColor = "")
             bgColor := this.ButtonColor("secondary")
+        if (fgColor == "")
+            fgColor := AppState.THEME_FG
 
         hwnd := ctrl.Hwnd
 
@@ -51,7 +82,7 @@ class ThemeHelper {
             this._bgBrushRef := DllCall("gdi32\CreateSolidBrush",
                 "uint", this.RgbToColorRef(AppState.THEME_BG), "ptr")
 
-        this._btnData[hwnd] := { cref: cref, text: ctrl.Text }
+        this._btnData[hwnd] := { cref: cref, fgRef: this.RgbToColorRef(fgColor), text: ctrl.Text }
 
         if !this._hooked {
             OnMessage(0x002B, _ThemeHelper_DrawItem)
@@ -78,6 +109,15 @@ class ThemeHelper {
         }
     }
 
+    ; Foreground for owner-drawn buttons. Accent-filled buttons use the
+    ; dedicated on-accent colour so both themes keep readable contrast.
+    static ButtonTextColor(style := "secondary") {
+        switch style {
+            case "primary", "danger": return AppState.THEME_ON_ACCENT
+            default:                  return AppState.THEME_FG
+        }
+    }
+
     static RgbToColorRef(colorStr) {
         rgb := Integer(colorStr)
         return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
@@ -92,9 +132,12 @@ class ThemeHelper {
             g := Integer(g * 0.7)
             b := Integer(b * 0.7)
         } else if (state & _ODS_HOTLIGHT) {
-            r := Integer(Min(r * 1.15, 255))
-            g := Integer(Min(g * 1.15, 255))
-            b := Integer(Min(b * 1.15, 255))
+            ; Light up on dark surfaces, shade down on light surfaces so the
+            ; hover state stays visible in both palettes.
+            factor := this.IsDark() ? 1.15 : 0.94
+            r := Integer(Min(r * factor, 255))
+            g := Integer(Min(g * factor, 255))
+            b := Integer(Min(b * factor, 255))
         }
         return ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF)
     }
@@ -103,7 +146,7 @@ class ThemeHelper {
         this.StyleScrollbar(ctrl)
         headerHwnd := SendMessage(0x101F, 0, 0, ctrl.Hwnd)
         if headerHwnd
-            try DllCall("uxtheme\SetWindowTheme", "ptr", headerHwnd, "wstr", "DarkMode_ItemsView", "ptr", 0)
+            this._SetWindowTheme(headerHwnd, this.ThemeClass("itemsview"))
         ctrl.Redraw()
     }
 
@@ -111,7 +154,7 @@ class ThemeHelper {
         if !IsObject(ctrl)
             return
 
-        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_Explorer", "ptr", 0)
+        this._SetWindowTheme(ctrl.Hwnd, this.ThemeClass("explorer"))
         try ctrl.Redraw()
     }
 
@@ -122,10 +165,11 @@ class ThemeHelper {
         ; Edit controls without scrollbars use the dark Edit theme. When a
         ; native scrollbar is present, use the Explorer dark theme so the
         ; scrollbar does not fall back to the light system appearance.
+        ; The light theme clears both and uses the system appearance.
         style := DllCall("GetWindowLongPtr", "ptr", ctrl.Hwnd, "int", -16, "ptr")
-        themeClass := (style & 0x00300000) ? "DarkMode_Explorer" : "DarkMode_CFD"
+        role := (style & 0x00300000) ? "explorer" : "cfd"
 
-        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", themeClass, "ptr", 0)
+        this._SetWindowTheme(ctrl.Hwnd, this.ThemeClass(role))
         try ctrl.Redraw()
     }
 
@@ -133,9 +177,9 @@ class ThemeHelper {
         if !IsObject(ctrl)
             return
 
-        ; Apply the same dark visual family to the ComboBox and its native
-        ; drop-down instead of inheriting the light system theme.
-        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_CFD", "ptr", 0)
+        ; Apply the same visual family to the ComboBox and its native
+        ; drop-down instead of inheriting the contrasting system theme.
+        this._SetWindowTheme(ctrl.Hwnd, this.ThemeClass("cfd"))
         try ctrl.Redraw()
     }
 
@@ -143,21 +187,33 @@ class ThemeHelper {
         if !IsObject(ctrl)
             return
 
-        try DllCall("uxtheme\SetWindowTheme", "ptr", ctrl.Hwnd, "wstr", "DarkMode_Explorer", "ptr", 0)
+        this._SetWindowTheme(ctrl.Hwnd, this.ThemeClass("explorer"))
         try ctrl.Redraw()
     }
 
-    static ApplyImmersiveDarkMode(hwnd) {
+    ; Applies the active theme to a window's DWM chrome.
+    ;
+    ; The DWM transition is disabled first: without it a transient window can
+    ; be composited with the default (white) surface during its first frames.
+    static ApplyWindowTheme(hwnd) {
         static DWMWA_USE_IMMERSIVE_DARK_MODE := 20
         static DWMWA_BORDER_COLOR := 34
         static DWMWA_CAPTION_COLOR := 35
         static DWMWA_TEXT_COLOR := 36
+        static DWMWA_TRANSITIONS_FORCEDISABLED := 3
 
         try DllCall(
             "dwmapi\DwmSetWindowAttribute",
             "ptr", hwnd,
-            "int", DWMWA_USE_IMMERSIVE_DARK_MODE,
+            "int", DWMWA_TRANSITIONS_FORCEDISABLED,
             "int*", 1,
+            "int", 4
+        )
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_USE_IMMERSIVE_DARK_MODE,
+            "int*", this.IsDark() ? 1 : 0,
             "int", 4
         )
         try DllCall(
@@ -183,15 +239,18 @@ class ThemeHelper {
         )
     }
 
+    ; Compatibility alias for call sites written before the Light theme.
+    static ApplyImmersiveDarkMode(hwnd) => this.ApplyWindowTheme(hwnd)
+
     static AddButton(myGui, options, label, style := "secondary") {
         btn := myGui.Add("Button", options " " this.GetButtonOptions(style), label)
-        this.StyleButton(btn, this.ButtonColor(style))
+        this.StyleButton(btn, this.ButtonColor(style), this.ButtonTextColor(style))
         return btn
     }
 
     static GetButtonOptions(style := "secondary", extra := "") {
         return "Background" this.ButtonColor(style)
-                . " c" AppState.THEME_FG
+                . " c" this.ButtonTextColor(style)
                 . (extra ? " " extra : "")
     }
 
@@ -287,6 +346,15 @@ class ThemeHelper {
         }
         this._dimControls := Map()
         this._brushCache := Map()
+        this._fgColorRef := 0
+        this._bgBrushRef := 0
+    }
+
+    ; Drop everything derived from the previously active palette. Buttons and
+    ; text caches are rebuilt lazily with the new colours.
+    static RefreshThemeResources() {
+        this.ReleaseResources()
+        this._btnData := Map()
     }
 }
 
@@ -346,7 +414,7 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
 
     txtColor := (itemState & _ODS_DISABLED)
         ? ThemeHelper.RgbToColorRef(AppState.THEME_FG_MUTED)
-        : ThemeHelper._fgColorRef
+        : (data.HasProp("fgRef") && data.fgRef ? data.fgRef : ThemeHelper._fgColorRef)
 
     DllCall("gdi32\SetTextColor", "ptr", hdc, "uint", txtColor)
     DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)

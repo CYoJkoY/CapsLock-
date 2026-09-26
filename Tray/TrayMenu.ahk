@@ -232,6 +232,19 @@ BuildTrayMenuItems() {
     }
     items.Push({ label: "🌐 " Lang("MENU_LANGUAGE"), children: langChildren })
 
+    ; --- Theme (sub-menu) ---
+    themeChildren := []
+    for mode in Theme.Modes {
+        themeChildren.Push({
+            label: (mode == Theme.Current ? "● " : "○ ") . "🎨 " . Theme.Label(mode),
+            callback: SetTheme.Bind(mode)
+        })
+    }
+    items.Push({
+        label: "🌓 " Lang("MENU_THEME", "Theme"),
+        children: themeChildren
+    })
+
     ; --- Hotkey reference (same overlay as CapsLock + H / F1) ---
     items.Push({ label: "⌨️ " Lang("MENU_CHEATSHEET"), callback: (*) => OpenCheatsheetFromTray() })
 

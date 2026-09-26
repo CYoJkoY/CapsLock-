@@ -84,7 +84,7 @@ class HotkeyReferenceGui {
         this.statusBar := status
         this.searchIcon := searchIcon
 
-        ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w672 h560")
         this.Refresh()
     }

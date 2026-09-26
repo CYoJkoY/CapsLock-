@@ -58,6 +58,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\Cheatsheet.ahk"
 #Include "UI\OSD.ahk"
 #Include "UI\PreviewGui.ahk"
+#Include "UI\Theme.ahk"
 #Include "UI\ThemeHelper.ahk"
 #Include "UI\WindowIcons.ahk"
 #Include "UI\WindowSwitcherGui.ahk"
@@ -80,6 +81,7 @@ Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLoca
 
 Language.Load()
 ConfigManager.Load()
+Theme.Init()
 HistoryManager.Load()
 QuickPhraseStore.Load()
 CloudSyncIdentity.Initialize()
