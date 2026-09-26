@@ -22,6 +22,7 @@
 > **Design thesis:** CapsLock is not replaced. It becomes a modifier layer for related actions, while a double press keeps native CapsLock available.
 
 <a name="readme-overview"></a>
+
 ## <img src="assets/readme/icons/overview.svg" width="20" height="20" alt=""> Overview
 
 CapsLock Extended is a local Windows productivity utility written in **AutoHotkey v2**. Hold `CapsLock` and use a compact set of combinations for text navigation, selection, editing, clipboard workflows, window management, browser-tab navigation, Quick Phrases, Window Hole, and document conversion.
@@ -47,43 +48,44 @@ CapsLock
 AutoHotkey v1 is not supported.
 
 <a name="readme-features"></a>
+
 ## <img src="assets/readme/icons/features.svg" width="20" height="20" alt=""> Features
 
 ### Shortcut layer
 
 All bindings below use `CapsLock` as the modifier unless noted otherwise.
 
-| Category | Shortcut | Action |
-| :--- | :--- | :--- |
-| Native | `CapsLock ×2` | Toggle the native CapsLock state |
-| Navigation | `J` | Jump to a specified line |
-| Selection | `Shift + Left / Right` | Extend selection by word |
-| Selection | `Shift + Up / Down` | Extend selection to line start / end |
-| Selection | `Space` | Select the current word |
-| Editing | `A / D` | Delete one character backward / forward |
-| Editing | `Shift + A / Shift + D` | Delete one word backward / forward |
-| Editing | `Backspace / Delete` | Delete the current line |
-| Clipboard | `C` | Copy as plain text and add it to history |
-| Clipboard | `V` | Paste using the current paste mode |
-| Clipboard | `Shift + V` | Open the clipboard history menu |
-| Clipboard | `F` | Change the case of the last copied text and paste it |
-| Quick Phrase | `Shift + P` | Open the Quick Phrase selector |
-| Documents | `P` | Convert clipboard file paths with Pandoc |
-| Files | `Alt + Q` | Open the temporary folder used by file workflows |
-| Window | `T` | Toggle always-on-top with OSD feedback |
-| Window | `K` | Terminate a process by PID after confirmation |
-| Window | `L` | Search and activate an open window |
-| Window | `W / 8 / Num8` | Maximize / restore |
-| Window | `S / 2 / Num2` | Minimize |
-| Window | `Shift + W` | Toggle borderless fullscreen |
-| Window | `Shift + S` | Hide the active window to the tray |
-| Window | `Left Button` | Increase active-window opacity |
-| Window | `Right Button` | Decrease active-window opacity |
-| Window | `Middle Button` | Toggle 10% / 100% ghost mode |
-| Window Hole | `X` | Activate Window Hole according to the configured activation mode |
-| Window Hole | `X`, then `1` | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
-| Browser tabs | `Q / E` | Previous / next browser tab |
-| Help | `H / F1` | Open the built-in hotkey reference |
+| Category     | Shortcut                | Action                                                                                                        |
+| :----------- | :---------------------- | :------------------------------------------------------------------------------------------------------------ |
+| Native       | `CapsLock ×2`           | Toggle the native CapsLock state                                                                              |
+| Navigation   | `J`                     | Jump to a specified line                                                                                      |
+| Selection    | `Shift + Left / Right`  | Extend selection by word                                                                                      |
+| Selection    | `Shift + Up / Down`     | Extend selection to line start / end                                                                          |
+| Selection    | `Space`                 | Select the current word                                                                                       |
+| Editing      | `A / D`                 | Delete one character backward / forward                                                                       |
+| Editing      | `Shift + A / Shift + D` | Delete one word backward / forward                                                                            |
+| Editing      | `Backspace / Delete`    | Delete the current line                                                                                       |
+| Clipboard    | `C`                     | Copy as plain text and add it to history                                                                      |
+| Clipboard    | `V`                     | Paste using the current paste mode                                                                            |
+| Clipboard    | `Shift + V`             | Open the clipboard history menu                                                                               |
+| Clipboard    | `F`                     | Change the case of the last copied text and paste it                                                          |
+| Quick Phrase | `Shift + P`             | Open the Quick Phrase selector                                                                                |
+| Documents    | `P`                     | Convert clipboard file paths with Pandoc                                                                      |
+| Files        | `Alt + Q`               | Open the temporary folder used by file workflows                                                              |
+| Window       | `T`                     | Toggle always-on-top with OSD feedback                                                                        |
+| Window       | `K`                     | Terminate a process by PID after confirmation                                                                 |
+| Window       | `L`                     | Search and activate an open window                                                                            |
+| Window       | `W / 8 / Num8`          | Maximize / restore                                                                                            |
+| Window       | `S / 2 / Num2`          | Minimize                                                                                                      |
+| Window       | `Shift + W / 8 / Num8`  | Toggle borderless fullscreen                                                                                  |
+| Window       | `Shift + S / 2 / Num2`  | Hide the active window to the tray                                                                            |
+| Window       | `Left Button`           | Increase active-window opacity                                                                                |
+| Window       | `Right Button`          | Decrease active-window opacity                                                                                |
+| Window       | `Middle Button`         | Toggle 10% / 100% ghost mode                                                                                  |
+| Window Hole  | `X`                     | Activate Window Hole according to the configured activation mode                                              |
+| Window Hole  | `X`, then `1`           | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
+| Browser tabs | `Q / E`                 | Previous / next browser tab                                                                                   |
+| Help         | `H / F1`                | Open the built-in hotkey reference                                                                            |
 
 The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
 
@@ -156,13 +158,13 @@ The current implementation uses a native Win32 window region rather than a visua
 
 The default Window Hole settings are:
 
-| Setting | Default |
-| :--- | :--- |
-| Diameter | `360 px` |
-| Shape | `circle` |
-| Activation | `hold` |
-| Fallback minimize | enabled |
-| Update interval | `30 ms` |
+| Setting           | Default  |
+| :---------------- | :------- |
+| Diameter          | `360 px` |
+| Shape             | `circle` |
+| Activation        | `hold`   |
+| Fallback minimize | enabled  |
+| Update interval   | `30 ms`  |
 
 Releasing the mode restores the affected windows to their captured visual and window state.
 
@@ -173,8 +175,8 @@ CapsLock also acts as a compact window-control layer:
 - `T` toggles always-on-top and reports the state through OSD and sound feedback.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
-- `Shift + W` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing it again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
-- `Shift + S` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under **Hidden windows** in the CapsLock- tray menu, where one click restores a window and **Restore all hidden windows** brings every hidden window back.
+- `Shift + W`, `Shift + 8`, and `Shift + Num8` remove the window frame and resize the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same combination again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
+- `Shift + S`, `Shift + 2`, and `Shift + Num2` hide the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under **Hidden windows** in the CapsLock- tray menu, where one click restores a window and **Restore all hidden windows** brings every hidden window back.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.
@@ -211,23 +213,24 @@ Language selection is available from the tray. Translation caches are generated 
 
 Two interface themes ship with the application and are selectable from the tray settings:
 
-| Theme | Notes |
-| :--- | :--- |
-| Dark | Default. Existing dark appearance. |
+| Theme | Notes                                                                                               |
+| :---- | :-------------------------------------------------------------------------------------------------- |
+| Dark  | Default. Existing dark appearance.                                                                  |
 | Light | Low-glare light palette: main surfaces stay in the `#F2F3F5`–`#F6F7F9` range instead of pure white. |
 
 Both themes are defined by a single palette each, so shared UI surfaces (tray menus and submenus, OSD, Quick Phrase UI, settings windows, headers, and transient surfaces) follow the selected theme without per-window colours. Open windows pick up a newly selected theme the next time they are opened.
 
 <a name="readme-quick-start"></a>
+
 ## <img src="assets/readme/icons/installation.svg" width="20" height="20" alt=""> Quick Start &amp; Configuration
 
 ### Download a release
 
 Download the latest executable from [GitHub Releases](https://github.com/CYoJkoY/CapsLock-/releases).
 
-| Artifact | Target |
-| :--- | :--- |
-| `CapsLock-.exe` | Windows x64 |
+| Artifact            | Target      |
+| :------------------ | :---------- |
+| `CapsLock-.exe`     | Windows x64 |
 | `CapsLock-_x86.exe` | Windows x86 |
 
 Release builds are produced by GitHub Actions from version tags matching `v*.*.*`.
@@ -268,17 +271,17 @@ The application creates this directory automatically. Cloud Sync remains opt-in;
 
 Important configuration areas include:
 
-| Area | Purpose |
-| :--- | :--- |
-| `[Cleanup]` | Delete mode, delete delay, cleanup interval |
-| `[History]` | Clipboard history limit |
-| `[General]` | Paste mode, auto-clean, language |
-| `[QuickPhrase]` | Quick Phrase enable/disable state |
-| `[Pandoc]` | Pandoc path and output format |
-| `[WindowHole]` | Diameter, shape, activation, update interval, fallback, executable/class rules |
+| Area               | Purpose                                                                           |
+| :----------------- | :-------------------------------------------------------------------------------- |
+| `[Cleanup]`        | Delete mode, delete delay, cleanup interval                                       |
+| `[History]`        | Clipboard history limit                                                           |
+| `[General]`        | Paste mode, auto-clean, language                                                  |
+| `[QuickPhrase]`    | Quick Phrase enable/disable state                                                 |
+| `[Pandoc]`         | Pandoc path and output format                                                     |
+| `[WindowHole]`     | Diameter, shape, activation, update interval, fallback, executable/class rules    |
 | `[WindowSwitcher]` | Application icons, icon size, row density, process column, selected-row highlight |
-| `[UI]` | Interface theme (`dark` / `light`) |
-| `[Ignore]` | Gitignore-style path/file patterns |
+| `[UI]`             | Interface theme (`dark` / `light`)                                                |
+| `[Ignore]`         | Gitignore-style path/file patterns                                                |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
 
@@ -334,6 +337,7 @@ The history persistence layer applies a fixed XOR-based transform. This is **obf
 For stronger protection, rely on Windows storage protections such as BitLocker or EFS around the relevant data rather than treating the built-in transform as a cryptographic boundary.
 
 <a name="readme-development"></a>
+
 ## <img src="assets/readme/icons/development.svg" width="20" height="20" alt=""> Development &amp; Status
 
 ### Project structure
@@ -364,16 +368,16 @@ The entry script wires the project modules together and initializes language, co
 
 The main functional boundaries are:
 
-| Directory | Responsibility |
-| :--- | :--- |
-| `Config/` | Persistent application state and configuration |
-| `Core/` | Clipboard, file, cleanup, Pandoc, Quick Phrase, Window Hole, and window utilities |
-| `History/` | Clipboard history storage and interfaces |
-| `Hotkeys/` | User-facing keyboard bindings and action routing |
-| `Tray/` | Tray menus and settings |
-| `UI/` | Theme palettes, OSD, Quick Phrase UI, preview, and shared theme helpers |
-| `Utils/` | Language and shared utility functions |
-| `scripts/` | Build-time helper scripts |
+| Directory  | Responsibility                                                                    |
+| :--------- | :-------------------------------------------------------------------------------- |
+| `Config/`  | Persistent application state and configuration                                    |
+| `Core/`    | Clipboard, file, cleanup, Pandoc, Quick Phrase, Window Hole, and window utilities |
+| `History/` | Clipboard history storage and interfaces                                          |
+| `Hotkeys/` | User-facing keyboard bindings and action routing                                  |
+| `Tray/`    | Tray menus and settings                                                           |
+| `UI/`      | Theme palettes, OSD, Quick Phrase UI, preview, and shared theme helpers           |
+| `Utils/`   | Language and shared utility functions                                             |
+| `scripts/` | Build-time helper scripts                                                         |
 
 ### Architecture
 
@@ -405,10 +409,10 @@ Release compilation currently uses **AutoHotkey v2.0.27** through the configured
 
 The current implementation is centered on local Windows productivity workflows. Two larger features are explicitly planned but **not part of the shipped feature set yet**:
 
-| Roadmap item | Status |
-| :--- | :--- |
-| [Custom low-glare light theme](https://github.com/CYoJkoY/CapsLock-/issues/41) | Planned |
-| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42) | In progress |
+| Roadmap item                                                                   | Status      |
+| :----------------------------------------------------------------------------- | :---------- |
+| [Custom low-glare light theme](https://github.com/CYoJkoY/CapsLock-/issues/41) | Planned     |
+| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42)          | In progress |
 
 Cloud Sync is intended to remain optional; normal local use should not depend on a hosted CapsLock service.
 
@@ -429,6 +433,7 @@ built-in reference UI + README shortcut table
 ```
 
 <a name="readme-support"></a>
+
 ## <img src="assets/readme/icons/architecture.svg" width="20" height="20" alt=""> Support &amp; License
 
 ### Support

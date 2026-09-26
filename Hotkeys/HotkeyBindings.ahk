@@ -64,7 +64,6 @@ WindowSwitcherSearchFocused() {
 
 #HotIf CapsLockHotkeysAvailable()
 
-
     +Left:: Send( "^+{Left}" )
     +Right:: Send( "^+{Right}" )
     +Up:: Send( "+{Home}" )
@@ -72,12 +71,12 @@ WindowSwitcherSearchFocused() {
 
     Space:: Send( "^{Left}^+{Right}" )
 
-    ~a:: Send( "{Backspace}" )
-    ~d:: Send( "{Delete}" )
-    ~+a:: Send( "^{Backspace}" )
-    ~+d:: Send( "^{Delete}" )
-    ~Backspace:: Send( "{Home}+{End}{Delete}" )
-    ~Delete:: Send( "{Home}+{End}{Delete}" )
+    a:: Send( "{Backspace}" )
+    d:: Send( "{Delete}" )
+    +a:: Send( "^{Backspace}" )
+    +d:: Send( "^{Delete}" )
+    Backspace:: Send( "{Home}+{End}{Delete}" )
+    Delete:: Send( "{Home}+{End}{Delete}" )
 
     q:: Send( "^{PgUp}" )
     e:: Send( "^{PgDn}" )
@@ -116,28 +115,30 @@ WindowSwitcherSearchFocused() {
 #HotIf CapsLockHotkeysAvailable()
 
     ; --- Maximize / restore: CapsLock + W / 8 / Num8 ------------------------
-    ; CapsLock + Shift + W toggles borderless fullscreen.
+    ; CapsLock + Shift + W / 8 / Num8 toggles borderless fullscreen.
     ;
-    ; "w" is registered as a wildcard hotkey rather than as a bare "w" plus a
-    ; separate "+w": the bare key here heads the stacked "w / 8 / Numpad8"
-    ; definition, and a stacked head owns its key, so a later "+w" variant in
-    ; the same context is never registered. The wildcard entry point resolves
-    ; the modifier state in the handler instead.
-    w:: ToggleMaximizeActive()
+    ; All three keys are registered as wildcard hotkeys that share one handler,
+    ; instead of a bare "w / 8 / Numpad8" definition plus separate "+w" / "+8"
+    ; variants: the bare key heads the stacked definition and owns its key, so a
+    ; later "+w" variant in the same #HotIf context is never registered and the
+    ; Shift action silently does nothing. Resolving the modifier state inside the
+    ; handler keeps one reliable entry point per key, and it also lets the
+    ; handler forward Ctrl / Alt / Win combinations to the active window.
+    *w:: WindowWildcardMaximize()
     +w:: WindowFullScreen.Toggle()
-    8:: ToggleMaximizeActive()
+    *8:: WindowWildcardMaximize()
     +8:: WindowFullScreen.Toggle()
-    Numpad8:: ToggleMaximizeActive()
+    *Numpad8:: WindowWildcardMaximize()
     +Numpad8:: WindowFullScreen.Toggle()
 
     ; --- Minimize: CapsLock + S / 2 / Num2 ---------------------------------
-    ; CapsLock + Shift + S hides the active window to the tray.
+    ; CapsLock + Shift + S / 2 / Num2 hides the active window to the tray.
     ; Same reasoning as "w" above.
-    s:: WinMinimize( "A" )
+    *s:: WindowWildcardMinimize()
     +s:: TrayHider.HideActive()
-    2:: WinMinimize( "A" )
+    *2:: WindowWildcardMinimize()
     +2:: TrayHider.HideActive()
-    Numpad2:: WinMinimize( "A" )
+    *Numpad2:: WindowWildcardMinimize()
     +Numpad2:: TrayHider.HideActive()
 
     c:: CopyAsPlainTextAndAddToHistory()
