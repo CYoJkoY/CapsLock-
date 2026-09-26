@@ -222,6 +222,10 @@ BuildTrayMenuItems() {
         children: wsChildren
     })
 
+    ; --- Hidden windows (CapsLock + Shift + S) ---
+    hiddenLabel := "🫥 " Lang("MENU_HIDDEN_WINDOWS", "Hidden windows") . " (" . TrayHider.Count() . ")"
+    items.Push({ label: hiddenLabel, children: TrayHider.MenuItems() })
+
     ; --- Language (sub-menu) ---
     langChildren := []
     currentLang := Language.GetCurrent()
@@ -260,10 +264,28 @@ BuildTrayMenuItems() {
     items.Push({ isSep: true })
 
     ; --- Reload / Exit ---
-    items.Push({ label: "🔄 " Lang("MENU_RELOAD"), callback: (*) => Reload() })
-    items.Push({ label: "❌ " Lang("MENU_EXIT"),   callback: (*) => ExitApp() })
+    ; Both actions restore everything first so no window is left hidden or
+    ; frameless when the script goes away.
+    items.Push({ label: "🔄 " Lang("MENU_RELOAD"), callback: (*) => ReloadWithRestore() })
+    items.Push({ label: "❌ " Lang("MENU_EXIT"),   callback: (*) => ExitWithRestore() })
 
     return items
+}
+
+; Undo every window-level change made by CapsLock + Shift + W / Shift + S.
+RestoreManagedWindows() {
+    WindowFullScreen.RestoreAll( true )
+    TrayHider.RestoreAll( true )
+}
+
+ReloadWithRestore(*) {
+    RestoreManagedWindows()
+    Reload()
+}
+
+ExitWithRestore(*) {
+    RestoreManagedWindows()
+    ExitApp()
 }
 
 RefreshImStatus() {

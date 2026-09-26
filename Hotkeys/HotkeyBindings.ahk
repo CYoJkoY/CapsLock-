@@ -128,6 +128,12 @@ WindowSwitcherSearchFocused() {
     2::
     Numpad2:: WinMinimize( "A" )
 
+    ; --- Borderless fullscreen: reversible, state is restored on a second press ---
+    +w:: WindowFullScreen.Toggle()
+
+    ; --- Hide the active window to the tray; restore it from the tray menu ---
+    +s:: TrayHider.HideActive()
+
     c:: CopyAsPlainTextAndAddToHistory()
 
     v:: PasteWithCurrentMode()

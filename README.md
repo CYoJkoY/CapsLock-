@@ -75,6 +75,8 @@ All bindings below use `CapsLock` as the modifier unless noted otherwise.
 | Window | `L` | Search and activate an open window |
 | Window | `W / 8 / Num8` | Maximize / restore |
 | Window | `S / 2 / Num2` | Minimize |
+| Window | `Shift + W` | Toggle borderless fullscreen |
+| Window | `Shift + S` | Hide the active window to the tray |
 | Window | `Left Button` | Increase active-window opacity |
 | Window | `Right Button` | Decrease active-window opacity |
 | Window | `Middle Button` | Toggle 10% / 100% ghost mode |
@@ -171,9 +173,12 @@ CapsLock also acts as a compact window-control layer:
 - `T` toggles always-on-top and reports the state through OSD and sound feedback.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
+- `Shift + W` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing it again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
+- `Shift + S` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under **Hidden windows** in the CapsLock- tray menu, where one click restores a window and **Restore all hidden windows** brings every hidden window back.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.
+- Both window modes are undone automatically when CapsLock- exits or reloads, so a window is never left frameless or unreachable.
 
 The switcher stays keyboard-first: type to filter, use `Up` / `Down` / `PageUp` / `PageDown` to move through results, and press `Enter` or double-click to activate. Its presentation is configurable from the tray: application icons, icon size, row density, the process column, and selected-row highlighting.
 

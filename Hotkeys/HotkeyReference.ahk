@@ -46,6 +46,8 @@ class HotkeyReference {
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + L", desc: "CHEAT_ACT_WINDOW_SWITCH", action: ((*) => WindowSwitcherGui.Show()) },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + W / 8", desc: "CHEAT_ACT_MAXIMIZE", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + S / 2", desc: "CHEAT_ACT_MINIMIZE", action: "" },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Shift + W", desc: "CHEAT_ACT_BORDERLESS", action: ((*) => WindowFullScreen.Toggle()) },
+            { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Shift + S", desc: "CHEAT_ACT_HIDE_TRAY", action: ((*) => TrayHider.HideActive()) },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Left / Right Button", desc: "CHEAT_ACT_OPACITY", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + Middle Button", desc: "CHEAT_ACT_GHOST", action: "" },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + X", desc: "CHEAT_ACT_WINDOW_HOLE", action: ((*) => WindowHole.Toggle()) },
