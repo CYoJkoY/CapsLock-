@@ -15,6 +15,10 @@ SetDeleteMode(mode) {
     SetTimer(() => ToolTip(), -2000)
 }
 
+SetTheme(mode, *) {
+    Theme.Set(mode)
+}
+
 SetMaxHistory(*) {
     input := DarkInputDialog.Show(
         Lang("INPUT_MAX_HISTORY_PROMPT"),
@@ -136,7 +140,7 @@ SetIgnorePatterns(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show()
 }
 
@@ -228,7 +232,7 @@ SetPandocOutput(*) {
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }
 
@@ -423,7 +427,7 @@ SetWindowHoleRules(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }
 

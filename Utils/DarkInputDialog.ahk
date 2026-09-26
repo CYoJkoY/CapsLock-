@@ -41,7 +41,7 @@ class DarkInputDialog {
         myGui.OnEvent("Escape", OnCancel)
         myGui.OnEvent("Close", OnCancel)
 
-        ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("AutoSize Center")
         editCtrl.Focus()
 

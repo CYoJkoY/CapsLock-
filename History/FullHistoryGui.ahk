@@ -110,7 +110,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     myGui.StatusBar := statusBar
 
     AppState.FullHistoryGui := myGui
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h580")
     RefreshFullHistoryList()
 }

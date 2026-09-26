@@ -37,6 +37,6 @@ ShowPreviewGui(text) {
     ))
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w640 h480")
 }

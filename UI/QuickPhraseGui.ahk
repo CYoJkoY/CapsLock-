@@ -60,7 +60,7 @@ ShowQuickPhraseSelector() {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseSelector(myGui))
 
     AppState.QuickPhraseGui := myGui
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h470")
     search.Focus()
     QuickPhraseRefreshSelector(myGui)
@@ -609,7 +609,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         Cancel
     )
 
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     AppState.QuickPhraseVariableGui := myGui
 
     ; Gui.Show() activates the variable-input window.
@@ -971,7 +971,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
     AppState.QuickPhraseManagerGui := myGui
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w740 h590")
     search.Focus()
     QuickPhraseRefreshManager(myGui)
@@ -1133,7 +1133,7 @@ ShowQuickPhraseEditor(id := 0) {
     myGui.OnEvent("Escape", Cancel)
     myGui.OnEvent("Close", Cancel)
 
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h560")
     nameEdit.Focus()
     WinWaitClose("ahk_id " myGui.Hwnd)

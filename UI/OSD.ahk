@@ -50,7 +50,7 @@ class OSD {
             posX := (A_ScreenWidth - ow) // 2
             posY := topMargin
 
-            ThemeHelper.ApplyImmersiveDarkMode(savedHwnd)
+            ThemeHelper.ApplyWindowTheme(savedHwnd)
             myOSD.Show("x" posX " y" posY " NoActivate")
 
             this.currentOSD := myOSD

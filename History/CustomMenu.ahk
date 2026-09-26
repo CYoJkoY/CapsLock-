@@ -300,7 +300,7 @@ class CustomMenu {
         if this.outsideTimer == ""
             this.outsideTimer := ObjBindMethod(this, "CheckOutsideSurface")
 
-        ThemeHelper.ApplyImmersiveDarkMode(this.menuHwnd)
+        ThemeHelper.ApplyWindowTheme(this.menuHwnd)
         myGui.Show("x" posX " y" posY " w" menuW " h" menuH " NoActivate")
         this.RepositionShownWindow(this.menuHwnd, monIdx)
 
@@ -540,7 +540,7 @@ class CustomMenu {
         ; Keep parent entry highlighted while sub-menu is open
         this.SetHover(parentEntry, true)
 
-        ThemeHelper.ApplyImmersiveDarkMode(this.subMenuHwnd)
+        ThemeHelper.ApplyWindowTheme(this.subMenuHwnd)
         subMyGui.Show("x" subX " y" subY " w" subMenuW " h" subTotalH " NoActivate")
         this.RepositionShownWindow(this.subMenuHwnd, monIdx)
     }
@@ -703,7 +703,7 @@ class CustomMenu {
 
         this.SetHover(parentEntry, true)
 
-        ThemeHelper.ApplyImmersiveDarkMode(this.nestedSubMenuHwnd)
+        ThemeHelper.ApplyWindowTheme(this.nestedSubMenuHwnd)
         nestedGui.Show(
             "x" nestedX " y" nestedY
             " w" nestedMenuW " h" nestedTotalH " NoActivate"

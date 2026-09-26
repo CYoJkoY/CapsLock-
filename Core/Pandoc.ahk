@@ -83,7 +83,7 @@ ConvertWithPandoc() {
         progressGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
         progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG, 0)
-        ThemeHelper.ApplyImmersiveDarkMode(progressGui.Hwnd)
+        ThemeHelper.ApplyWindowTheme(progressGui.Hwnd)
         progressGui.Show("AutoSize Center")
     }
 

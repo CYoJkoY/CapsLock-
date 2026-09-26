@@ -607,7 +607,7 @@ ShowCloudSyncSettings(*) {
     myGui.OnEvent("Escape", CloseSettings)
     myGui.OnEvent("Close", CloseSettings)
 
-    ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+    ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
 
     LoadFields()
     ProviderFields(true)

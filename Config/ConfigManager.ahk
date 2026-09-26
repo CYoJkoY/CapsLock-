@@ -27,6 +27,7 @@ class ConfigManager {
             AppState.AutoCleanEnabled  := IniRead(cfg, "General",   "autoClean",      "0") == "1"
             AppState.MaxHistoryItems   := Integer(IniRead(cfg, "General", "maxHistoryItems", "500"))
             AppState.QuickPhraseEnabled := IniRead(cfg, "QuickPhrase", "enabled", "1") == "1"
+            AppState.ThemeMode := StrLower(Trim(IniRead(cfg, "UI", "theme", "dark")))
             AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
 
@@ -166,6 +167,7 @@ class ConfigManager {
             IniWrite(AppState.AutoCleanEnabled ? "1" : "0", cfg, "General", "autoClean")
             IniWrite(AppState.MaxHistoryItems,    cfg, "General",   "maxHistoryItems")
             IniWrite(AppState.QuickPhraseEnabled ? "1" : "0", cfg, "QuickPhrase", "enabled")
+            IniWrite(AppState.ThemeMode, cfg, "UI", "theme")
             IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
             IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
 

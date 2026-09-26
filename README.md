@@ -202,6 +202,17 @@ pl · es · pt · de · tr · it
 
 Language selection is available from the tray. Translation caches are generated locally from `lang.csv`.
 
+### Theme
+
+Two interface themes ship with the application and are selectable from the tray settings:
+
+| Theme | Notes |
+| :--- | :--- |
+| Dark | Default. Existing dark appearance. |
+| Light | Low-glare light palette: main surfaces stay in the `#F2F3F5`–`#F6F7F9` range instead of pure white. |
+
+Both themes are defined by a single palette each, so shared UI surfaces (tray menus and submenus, OSD, Quick Phrase UI, settings windows, headers, and transient surfaces) follow the selected theme without per-window colours. Open windows pick up a newly selected theme the next time they are opened.
+
 <a name="readme-quick-start"></a>
 ## <img src="assets/readme/icons/installation.svg" width="20" height="20" alt=""> Quick Start &amp; Configuration
 
@@ -261,6 +272,7 @@ Important configuration areas include:
 | `[Pandoc]` | Pandoc path and output format |
 | `[WindowHole]` | Diameter, shape, activation, update interval, fallback, executable/class rules |
 | `[WindowSwitcher]` | Application icons, icon size, row density, process column, selected-row highlight |
+| `[UI]` | Interface theme (`dark` / `light`) |
 | `[Ignore]` | Gitignore-style path/file patterns |
 
 Most settings are intentionally exposed through the tray rather than requiring manual INI editing.
@@ -303,9 +315,10 @@ Window switcher icons     enabled
 Window switcher icon      24 px
 Window switcher density   normal
 Window switcher process   shown
+Theme                    dark
 ```
 
-The interface language is initialized by the language system and may be persisted in `[General]`.
+The interface language is initialized by the language system and may be persisted in `[General]`. The theme is persisted in `[UI]`.
 
 ### Security and privacy
 
@@ -353,7 +366,7 @@ The main functional boundaries are:
 | `History/` | Clipboard history storage and interfaces |
 | `Hotkeys/` | User-facing keyboard bindings and action routing |
 | `Tray/` | Tray menus and settings |
-| `UI/` | OSD, Quick Phrase UI, preview, and shared theme helpers |
+| `UI/` | Theme palettes, OSD, Quick Phrase UI, preview, and shared theme helpers |
 | `Utils/` | Language and shared utility functions |
 | `scripts/` | Build-time helper scripts |
 

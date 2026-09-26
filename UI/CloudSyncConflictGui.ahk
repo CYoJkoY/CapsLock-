@@ -74,7 +74,7 @@ class CloudSyncConflictGui {
         myGui.OnEvent("Escape", (*) => myGui.Destroy())
         myGui.OnEvent("Close", (*) => myGui.Destroy())
 
-        ThemeHelper.ApplyImmersiveDarkMode(myGui.Hwnd)
+        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w560 AutoSize Center")
     }
 }
