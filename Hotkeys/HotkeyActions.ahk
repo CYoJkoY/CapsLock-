@@ -35,6 +35,80 @@ ChangeCaseOfLastCopy() {
         SetCapsLockState( "AlwaysOn" )
 }
 
+; --- CapsLock + W / S and their Shift variants ----------------------------
+;
+; The W and S keys reach these handlers through wildcard hotkeys, because a
+; separate "+w" / "+s" binding next to the stacked "w / 8 / Numpad8" and
+; "s / 2 / Numpad2" definitions is never registered: the stacked head owns the
+; key and the Shift variant is dropped. Resolving the modifier state here keeps
+; one reliable entry point per key.
+;
+; Ctrl / Alt / Win combinations belong to the active window (Ctrl + S saves,
+; Ctrl + W closes a tab), so they are forwarded untouched.
+
+WindowWildcardMaximize() {
+    if ForwardModifierKey( "w" )
+        return
+
+    if GetKeyState( "Shift", "P" ) {
+        WindowFullScreen.Toggle()
+        return
+    }
+
+    ToggleMaximizeActive()
+}
+
+WindowWildcardMinimize() {
+    if ForwardModifierKey( "s" )
+        return
+
+    if GetKeyState( "Shift", "P" ) {
+        TrayHider.HideActive()
+        return
+    }
+
+    WinMinimize( "A" )
+}
+
+ToggleMaximizeActive() {
+    if WinGetMinMax( "A" ) == 1
+        WinRestore( "A" )
+    else
+        WinMaximize( "A" )
+}
+
+; True when Ctrl / Alt / Win is held. The keystroke is not part of the
+; CapsLock layer in that case, so it is re-sent to the active window.
+;
+; The Win key has no neutral name in AutoHotkey v2: GetKeyState() accepts
+; "Ctrl", "Alt" and "Shift" as neutral modifiers, but only "LWin" / "RWin" for
+; the Windows key. Passing the bare Win name throws "Parameter #1 of
+; GetKeyState is invalid", so both physical keys are queried individually.
+ForwardModifierKey( key ) {
+    if !AnyModifierHeld()
+        return false
+
+    Send( "{Blind}{" key "}" )
+    return true
+}
+
+; Ctrl / Alt / Win state, tolerant of naming differences between AutoHotkey
+; builds. Each query is guarded, so an unsupported name degrades to "not held"
+; instead of throwing inside a hotkey handler.
+AnyModifierHeld() {
+    static neutralNames := [ "Ctrl", "Alt", "LWin", "RWin" ]
+
+    for name in neutralNames {
+        try {
+            if GetKeyState( name, "P" )
+                return true
+        } catch {
+        }
+    }
+
+    return false
+}
+
 ; Open the folder that holds the temporary files created by file workflows.
 ; The folder is created on demand and an OSD hint reports how many
 ; temporary files are currently waiting for cleanup.

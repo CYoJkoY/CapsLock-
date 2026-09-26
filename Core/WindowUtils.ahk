@@ -34,14 +34,25 @@ WindowIsOwnProcess( hwnd ) {
         return false
     if hwnd == A_ScriptHwnd
         return true
+
+    pid := 0
     try
-        return WinGetPID( "ahk_id " hwnd ) == ProcessExist()
+        pid := WinGetPID( "ahk_id " hwnd )
     catch
         return false
+
+    if !pid
+        return false
+
+    return pid == DllCall( "kernel32\GetCurrentProcessId", "UInt" )
 }
 
 ; True when hwnd can safely be restyled or hidden. The shell surfaces (desktop,
 ; taskbar) and windows that belong to CapsLock- are excluded.
+;
+; Only IsWindow() is used for the liveness check. WinExist() is deliberately
+; avoided here: it reports 0 for hidden windows unless DetectHiddenWindows is
+; on, which would reject exactly the hidden windows this helper has to manage.
 WindowIsManageable( hwnd ) {
     if !WindowHandleAlive( hwnd )
         return false
@@ -49,20 +60,20 @@ WindowIsManageable( hwnd ) {
     if WindowIsOwnProcess( hwnd )
         return false
 
-    try {
-        if !WinExist( "ahk_id " hwnd )
-            return false
-
+    className := ""
+    try
         className := WinGetClass( "ahk_id " hwnd )
+    catch
+        className := ""
 
+    if className != "" {
         for blockedClass in [ "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd" ] {
             if className == blockedClass
                 return false
         }
+    }
 
-        return true
-    } catch
-        return false
+    return true
 }
 
 ; Window title that never fails; used for tray labels and OSD hints.
@@ -88,6 +99,26 @@ WindowSafeProcessName( hwnd ) {
         name := ""
 
     return name
+}
+
+; True while hwnd is currently visible. Read from the window style rather than
+; from WinGetStyle() so a hidden window is reported correctly regardless of
+; DetectHiddenWindows.
+WindowIsVisible( hwnd ) {
+    if !WindowHandleAlive( hwnd )
+        return false
+
+    try {
+        style := DllCall(
+            "user32\GetWindowLongPtrW",
+            "Ptr", hwnd,
+            "Int", -16, ; GWL_STYLE
+            "Ptr"
+        )
+
+        return ( style & 0x10000000 ) != 0 ; WS_VISIBLE
+    } catch
+        return false
 }
 
 ; Process id that never fails; 0 for protected or already closed windows.

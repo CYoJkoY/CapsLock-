@@ -21,6 +21,7 @@ Failures := 0
 root := A_ScriptDir "\.."
 
 bindings := ReadFile( root "\Hotkeys\HotkeyBindings.ahk" )
+actions := ReadFile( root "\Hotkeys\HotkeyActions.ahk" )
 reference := ReadFile( root "\Hotkeys\HotkeyReference.ahk" )
 trayMenu := ReadFile( root "\Tray\TrayMenu.ahk" )
 main := ReadFile( root "\CapsLock-.ahk" )
@@ -35,20 +36,71 @@ Check( InStr( main, "Core\TrayHider.ahk" ) != 0, "main script includes TrayHider
 Check( InStr( main, "RestoreManagedWindows" ) != 0, "exit handler restores managed windows" )
 
 ; --- The two new bindings -------------------------------------------------
+;
+; W and S must be wildcard hotkeys. A bare "w"/"s" heading a stacked
+; definition owns its key, so a separate "+w"/"+s" variant in the same #HotIf
+; context is never registered and the Shift action silently does nothing.
+; These checks lock that failure mode down.
 
 Check(
-    InStr( bindings, "+w:: WindowFullScreen.Toggle()" ) != 0,
-    "CapsLock + Shift + W is bound to WindowFullScreen.Toggle()"
+    InStr( bindings, "*w:: WindowWildcardMaximize()" ) != 0,
+    "CapsLock + W is a wildcard hotkey routed through WindowWildcardMaximize()"
 )
 Check(
-    InStr( bindings, "+s:: TrayHider.HideActive()" ) != 0,
-    "CapsLock + Shift + S is bound to TrayHider.HideActive()"
+    InStr( bindings, "*s:: WindowWildcardMinimize()" ) != 0,
+    "CapsLock + S is a wildcard hotkey routed through WindowWildcardMinimize()"
+)
+Check(
+    InStr( bindings, "+w::" ) == 0 && InStr( bindings, "+s::" ) == 0,
+    "no separate +w / +s variant can be shadowed by a stacked head"
+)
+Check(
+    InStr( actions, "WindowWildcardMinimize()" ) != 0
+    && InStr( actions, "TrayHider.HideActive()" ) != 0,
+    "Shift + S reaches TrayHider.HideActive()"
+)
+Check(
+    InStr( actions, "WindowWildcardMaximize()" ) != 0
+    && InStr( actions, "WindowFullScreen.Toggle()" ) != 0,
+    "Shift + W reaches WindowFullScreen.Toggle()"
+)
+Check(
+    InStr( actions, "ForwardModifierKey(" ) != 0
+    && InStr( actions, "AnyModifierHeld(" ) != 0,
+    "Ctrl / Alt / Win combinations are forwarded to the active window"
+)
+
+; GetKeyState() has no neutral Win name in AutoHotkey v2 — passing it throws
+; "Parameter #1 of GetKeyState is invalid", which surfaces as a broken hotkey.
+; Only Ctrl, Alt, Shift and the explicit LWin / RWin names are valid.
+;
+; Each GetKeyState literal is validated against that allow-list so an invalid
+; key name can never reach a running build again.
+invalidKeyNames := ""
+scanPos := 1
+
+while RegExMatch( actions, "O)GetKeyState\(\s*`"([A-Za-z]+)`"\s*,", &km, scanPos ) {
+    scanPos := km.Pos + km.Len
+
+    if !ValueInList( km[ 1 ], [ "Ctrl", "Alt", "Shift", "LWin", "RWin", "CapsLock", "LButton", "RButton", "MButton" ] )
+        invalidKeyNames .= ( invalidKeyNames == "" ? "" : ", " ) . km[ 1 ]
+}
+
+Check( invalidKeyNames == "", "GetKeyState key names are valid (" invalidKeyNames ")" )
+
+; A bare quoted Win token anywhere in the handler file is the same bug: it can
+; only ever be a key name, and there is no such key.
+quote := Chr( 34 )
+
+Check(
+    !InStr( actions, quote "Win" quote ),
+    "no bare Win key name is used anywhere in the hotkey actions"
 )
 
 ; --- Existing CapsLock + W / CapsLock + S behaviour is untouched ----------
 
 Check(
-    InStr( bindings, "Numpad8::" ) != 0 && InStr( bindings, "WinMaximize" ) != 0,
+    InStr( bindings, "Numpad8:: ToggleMaximizeActive()" ) != 0,
     "CapsLock + W / 8 / Num8 still maximizes and restores"
 )
 Check(
@@ -56,8 +108,8 @@ Check(
     "CapsLock + S / 2 / Num2 still minimizes"
 )
 Check(
-    InStr( bindings, "+w:: WinMaximize" ) == 0 && InStr( bindings, "+s:: WinMinimize" ) == 0,
-    "no Shift variant overwrote the plain W / S actions"
+    InStr( actions, "ToggleMaximizeActive()" ) != 0,
+    "maximize / restore logic moved into a reusable handler"
 )
 
 ; --- Built-in reference ---------------------------------------------------
@@ -189,4 +241,13 @@ Check( ok, label ) {
 
     FileAppend( "FAIL  " label "`n", "*" )
     Failures += 1
+}
+
+ValueInList( value, list ) {
+    for entry in list {
+        if entry == value
+            return true
+    }
+
+    return false
 }

@@ -51,6 +51,18 @@ class TrayHider {
             return
         }
 
+        ; WinHide() is a best-effort request: protected and container windows
+        ; can ignore it. Confirm the window really disappeared before it is
+        ; listed as hidden, otherwise the entry would look restored while the
+        ; window is still on screen.
+        if WindowIsVisible( hwnd ) {
+            ShowToolTip(
+                Lang( "MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden." ),
+                1800
+            )
+            return
+        }
+
         this.Items[ hwnd ] := info
         this.StartWatcher()
 
