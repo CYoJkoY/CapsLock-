@@ -16,6 +16,17 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Hotkeys\PasteHandler.ahk"
 #Include "Hotkeys\HotkeyReference.ahk"
 
+#Include "Utils\Language.ahk"
+#Include "Utils\ResourceSound.ahk"
+#Include "Utils\MethodsUtils.ahk"
+#Include "Utils\DarkInputDialog.ahk"
+#Include "Utils\Json.ahk"
+#Include "Utils\Hash.ahk"
+#Include "Utils\Base64.ahk"
+#Include "Utils\Random.ahk"
+#Include "Utils\HttpClient.ahk"
+#Include "Utils\SecureStorage.ahk"
+
 #Include "Core\QuickPhraseStore.ahk"
 #Include "Core\CloudSyncIdentity.ahk"
 #Include "Core\CloudSyncCredentials.ahk"
@@ -67,17 +78,6 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
-
-#Include "Utils\Language.ahk"
-#Include "Utils\ResourceSound.ahk"
-#Include "Utils\MethodsUtils.ahk"
-#Include "Utils\DarkInputDialog.ahk"
-#Include "Utils\Json.ahk"
-#Include "Utils\Hash.ahk"
-#Include "Utils\Base64.ahk"
-#Include "Utils\Random.ahk"
-#Include "Utils\HttpClient.ahk"
-#Include "Utils\SecureStorage.ahk"
 
 Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
 

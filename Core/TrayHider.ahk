@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Hide-to-tray for the active window (CapsLock + Shift + S).
+; Hide-to-tray for the active window (CapsLock + Shift + S / 2).
 ;
 ; The active window is hidden with WinHide(), which removes it from the desktop
 ; and from the taskbar while the application keeps running. Hidden windows are

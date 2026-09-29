@@ -31,6 +31,10 @@ class AppState {
     static MenuPosY := 0
     static ImageMagickExe := ""
 
+    ; --- Shift Layer ---
+    static ShiftLayerActive := false
+    static ShiftLayerTimer := ""
+
     ; --- Language ---
     static CurrentLanguage := ""
 
@@ -45,31 +49,31 @@ class AppState {
     static MAX_FULL_HISTORY_DISPLAY := 50
 
     ; --- UI Theme ---
-    static THEME_BG            := "0x14141D"
-    static THEME_SURFACE       := "0x1B1B27"
-    static THEME_ELEVATED      := "0x232332"
-    static THEME_CONTROL_BG    := "0x282838"
+    static THEME_BG := "0x14141D"
+    static THEME_SURFACE := "0x1B1B27"
+    static THEME_ELEVATED := "0x232332"
+    static THEME_CONTROL_BG := "0x282838"
     static THEME_CONTROL_HOVER := "0x33334A"
-    static THEME_BORDER        := "0x3A3A52"
+    static THEME_BORDER := "0x3A3A52"
 
-    static THEME_FG            := "0xB0B4CC"
-    static THEME_FG_DIM        := "0x8088A0"
-    static THEME_FG_MUTED      := "0x5E6478"
+    static THEME_FG := "0xB0B4CC"
+    static THEME_FG_DIM := "0x8088A0"
+    static THEME_FG_MUTED := "0x5E6478"
 
-    static THEME_ACCENT        := "0x5B86C9"
-    static THEME_ACCENT_DARK   := "0x3A5A8C"
-    static THEME_ACCENT_GLOW   := "0x82A8E0"
+    static THEME_ACCENT := "0x5B86C9"
+    static THEME_ACCENT_DARK := "0x3A5A8C"
+    static THEME_ACCENT_GLOW := "0x82A8E0"
 
-    static THEME_SUCCESS       := "0x6FA572"
-    static THEME_WARNING       := "0xC4A95E"
-    static THEME_DANGER        := "0xC06070"
+    static THEME_SUCCESS := "0x6FA572"
+    static THEME_WARNING := "0xC4A95E"
+    static THEME_DANGER := "0xC06070"
 
     ; Foreground used on accent-filled surfaces (primary / danger buttons).
-    static THEME_ON_ACCENT     := "0xB0B4CC"
+    static THEME_ON_ACCENT := "0xB0B4CC"
 
-    static THEME_FONT          := "Segoe UI"
-    static THEME_FONT_MONO     := "Cascadia Code"
-    static THEME_RADIUS        := 8
+    static THEME_FONT := "Segoe UI"
+    static THEME_FONT_MONO := "Cascadia Code"
+    static THEME_RADIUS := 8
 
     ; --- Theme Palettes ---
     ; The single source of truth for both themes. AppState.THEME_* above holds
@@ -81,54 +85,46 @@ class AppState {
     ; GDI COLORREF (0xBBGGRR) when talking to the Win32 API.
     static THEME_PALETTES := Map(
         "dark", Map(
-            "THEME_BG",            "0x14141D",
-            "THEME_SURFACE",       "0x1B1B27",
-            "THEME_ELEVATED",      "0x232332",
-            "THEME_CONTROL_BG",    "0x282838",
+            "THEME_BG", "0x14141D",
+            "THEME_SURFACE", "0x1B1B27",
+            "THEME_ELEVATED", "0x232332",
+            "THEME_CONTROL_BG", "0x282838",
             "THEME_CONTROL_HOVER", "0x33334A",
-            "THEME_BORDER",        "0x3A3A52",
-
-            "THEME_FG",            "0xB0B4CC",
-            "THEME_FG_DIM",        "0x8088A0",
-            "THEME_FG_MUTED",      "0x5E6478",
-
-            "THEME_ACCENT",        "0x5B86C9",
-            "THEME_ACCENT_DARK",   "0x3A5A8C",
-            "THEME_ACCENT_GLOW",   "0x82A8E0",
-
-            "THEME_SUCCESS",       "0x6FA572",
-            "THEME_WARNING",       "0xC4A95E",
-            "THEME_DANGER",        "0xC06070",
-
-            "THEME_ON_ACCENT",     "0xB0B4CC"
+            "THEME_BORDER", "0x3A3A52",
+            "THEME_FG", "0xB0B4CC",
+            "THEME_FG_DIM", "0x8088A0",
+            "THEME_FG_MUTED", "0x5E6478",
+            "THEME_ACCENT", "0x5B86C9",
+            "THEME_ACCENT_DARK", "0x3A5A8C",
+            "THEME_ACCENT_GLOW", "0x82A8E0",
+            "THEME_SUCCESS", "0x6FA572",
+            "THEME_WARNING", "0xC4A95E",
+            "THEME_DANGER", "0xC06070",
+            "THEME_ON_ACCENT", "0xB0B4CC"
         ),
         "light", Map(
             ; Low-glare light palette: main surfaces stay in the
             ; #F2F3F5 - #F6F7F9 range instead of pure white, while text and
             ; accents are darkened to preserve readable contrast.
-            "THEME_BG",            "0xF2F3F5",
-            "THEME_SURFACE",       "0xF6F7F9",
-            "THEME_ELEVATED",      "0xE9EBEF",
-            "THEME_CONTROL_BG",    "0xFAFBFC",
+            "THEME_BG", "0xF2F3F5",
+            "THEME_SURFACE", "0xF6F7F9",
+            "THEME_ELEVATED", "0xE9EBEF",
+            "THEME_CONTROL_BG", "0xFAFBFC",
             "THEME_CONTROL_HOVER", "0xE4E7EC",
-            "THEME_BORDER",        "0xCBD1DA",
-
-            "THEME_FG",            "0x2A2F38",
-            "THEME_FG_DIM",        "0x4C545F",
-            "THEME_FG_MUTED",      "0x666E7A",
-
-            "THEME_ACCENT",        "0x2C5FB5",
-            "THEME_ACCENT_DARK",   "0x24508F",
-            "THEME_ACCENT_GLOW",   "0x1F4E9C",
-
-            "THEME_SUCCESS",       "0x2E7D4F",
-            "THEME_WARNING",       "0x9A6B12",
-            "THEME_DANGER",        "0xC0364A",
-
+            "THEME_BORDER", "0xCBD1DA",
+            "THEME_FG", "0x2A2F38",
+            "THEME_FG_DIM", "0x4C545F",
+            "THEME_FG_MUTED", "0x666E7A",
+            "THEME_ACCENT", "0x2C5FB5",
+            "THEME_ACCENT_DARK", "0x24508F",
+            "THEME_ACCENT_GLOW", "0x1F4E9C",
+            "THEME_SUCCESS", "0x2E7D4F",
+            "THEME_WARNING", "0x9A6B12",
+            "THEME_DANGER", "0xC0364A",
             ; Text drawn on accent-filled surfaces. Pure white is fine here:
             ; the low-glare requirement applies to large surfaces, not to
             ; glyphs sitting on a saturated button.
-            "THEME_ON_ACCENT",     "0xFFFFFF"
+            "THEME_ON_ACCENT", "0xFFFFFF"
         )
     )
 

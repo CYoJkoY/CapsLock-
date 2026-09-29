@@ -11,7 +11,7 @@ AdjustOpacity( step ) {
     WinSetTransparent( newVal, hwnd )
 }
 
-; --- Shared guards for the window-level hotkeys (Shift + W / Shift + S) ----
+; --- Shared guards for the window-level hotkeys (Shift + W / 8, Shift + S / 2) ---
 ; These helpers are used by both borderless fullscreen and hide-to-tray so the
 ; two features reject exactly the same set of windows.
 
