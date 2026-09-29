@@ -55,37 +55,39 @@ AutoHotkey v1 is not supported.
 
 All bindings below use `CapsLock` as the modifier unless noted otherwise.
 
-| Category     | Shortcut                | Action                                                                                                        |
-| :----------- | :---------------------- | :------------------------------------------------------------------------------------------------------------ |
-| Native       | `CapsLock ×2`           | Toggle the native CapsLock state                                                                              |
-| Navigation   | `J`                     | Jump to a specified line                                                                                      |
-| Selection    | `Shift + Left / Right`  | Extend selection by word                                                                                      |
-| Selection    | `Shift + Up / Down`     | Extend selection to line start / end                                                                          |
-| Selection    | `Space`                 | Select the current word                                                                                       |
-| Editing      | `A / D`                 | Delete one character backward / forward                                                                       |
-| Editing      | `Shift + A / Shift + D` | Delete one word backward / forward                                                                            |
-| Editing      | `Backspace / Delete`    | Delete the current line                                                                                       |
-| Clipboard    | `C`                     | Copy as plain text and add it to history                                                                      |
-| Clipboard    | `V`                     | Paste using the current paste mode                                                                            |
-| Clipboard    | `Shift + V`             | Open the clipboard history menu                                                                               |
-| Clipboard    | `F`                     | Change the case of the last copied text and paste it                                                          |
-| Quick Phrase | `Shift + P`             | Open the Quick Phrase selector                                                                                |
-| Documents    | `P`                     | Convert clipboard file paths with Pandoc                                                                      |
-| Files        | `Alt + Q`               | Open the temporary folder used by file workflows                                                              |
-| Window       | `T`                     | Toggle always-on-top with OSD feedback                                                                        |
-| Window       | `K`                     | Terminate a process by PID after confirmation                                                                 |
-| Window       | `L`                     | Search and activate an open window                                                                            |
-| Window       | `W / 8 / Num8`          | Maximize / restore                                                                                            |
-| Window       | `S / 2 / Num2`          | Minimize                                                                                                      |
-| Window       | `Shift + W / 8 / Num8`  | Toggle borderless fullscreen                                                                                  |
-| Window       | `Shift + S / 2 / Num2`  | Hide the active window to the tray                                                                            |
-| Window       | `Left Button`           | Increase active-window opacity                                                                                |
-| Window       | `Right Button`          | Decrease active-window opacity                                                                                |
-| Window       | `Middle Button`         | Toggle 10% / 100% ghost mode                                                                                  |
-| Window Hole  | `X`                     | Activate Window Hole according to the configured activation mode                                              |
-| Window Hole  | `X`, then `1`           | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
-| Browser tabs | `Q / E`                 | Previous / next browser tab                                                                                   |
-| Help         | `H / F1`                | Open the built-in hotkey reference                                                                            |
+Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigger: press `CapsLock + Shift` first to arm the layer, then press the target key within 2 seconds.
+
+| Category     | Shortcut                   | Action                                                                                                        |
+| :----------- | :------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| Native       | `CapsLock ×2`              | Toggle the native CapsLock state                                                                              |
+| Navigation   | `J`                        | Jump to a specified line                                                                                      |
+| Selection    | `Shift + Left / Right`     | Extend selection by word                                                                                      |
+| Selection    | `Shift + Up / Down`        | Extend selection to line start / end                                                                          |
+| Selection    | `Space`                    | Select the current word                                                                                       |
+| Editing      | `A / D`                    | Delete one character backward / forward                                                                       |
+| Editing      | `Shift + A / Shift + D`    | Delete one word backward / forward                                                                            |
+| Editing      | `Backspace / Delete`       | Delete the current line                                                                                       |
+| Clipboard    | `C`                        | Copy as plain text and add it to history                                                                      |
+| Clipboard    | `V`                        | Paste using the current paste mode                                                                            |
+| Clipboard    | `Shift + V`                | Open the clipboard history menu                                                                               |
+| Clipboard    | `F`                        | Change the case of the last copied text and paste it                                                          |
+| Quick Phrase | `Shift + P`                | Open the Quick Phrase selector                                                                                |
+| Documents    | `P`                        | Convert clipboard file paths with Pandoc                                                                      |
+| Files        | `Alt + Q`                  | Open the temporary folder used by file workflows                                                              |
+| Window       | `T`                        | Toggle always-on-top with OSD feedback                                                                        |
+| Window       | `K`                        | Terminate a process by PID after confirmation                                                                 |
+| Window       | `L`                        | Search and activate an open window                                                                            |
+| Window       | `W / 8 / Num8`             | Maximize / restore                                                                                            |
+| Window       | `S / 2 / Num2`             | Minimize                                                                                                      |
+| Window       | `Shift, then W / 8 / Num8` | Toggle borderless fullscreen                                                                                  |
+| Window       | `Shift, then S / 2 / Num2` | Hide the active window to the tray                                                                            |
+| Window       | `Left Button`              | Increase active-window opacity                                                                                |
+| Window       | `Right Button`             | Decrease active-window opacity                                                                                |
+| Window       | `Middle Button`            | Toggle 10% / 100% ghost mode                                                                                  |
+| Window Hole  | `X`                        | Activate Window Hole according to the configured activation mode                                              |
+| Window Hole  | `X`, then `1`              | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
+| Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
+| Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
 The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
 
@@ -175,8 +177,9 @@ CapsLock also acts as a compact window-control layer:
 - `T` toggles always-on-top and reports the state through OSD and sound feedback.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
-- `Shift + W`, `Shift + 8`, and `Shift + Num8` remove the window frame and resize the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same combination again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
-- `Shift + S`, `Shift + 2`, and `Shift + Num2` hide the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under **Hidden windows** in the CapsLock- tray menu, where one click restores a window and **Restore all hidden windows** brings every hidden window back.
+- `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
+- `Shift`, then `S`, `2`, or `Num2` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under Hidden windows in the CapsLock- tray menu, where one click restores a window and Restore all hidden windows brings every hidden window back.
+- Both shift-layer actions use a sequential trigger: press and hold `CapsLock + Shift` to activate the shift layer (a 2-second window), then press the target key. This avoids key-conflict issues on certain keyboard layouts where simultaneous `CapsLock + Shift + letter` combinations could not be detected reliably.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.

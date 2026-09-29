@@ -1,5 +1,26 @@
 #Requires AutoHotkey v2.0
 
+; ---------------------------------------------------------------------------
+; Shift Layer — sequential trigger state management
+;
+; Activated by CapsLock + Shift. Lasts 2000ms before auto-expiry.
+; While active, the next S / W / 2 / 8 press executes the Shift-layer
+; action (hide-to-tray / borderless fullscreen) instead of the default
+; minimize / maximize.
+; ---------------------------------------------------------------------------
+ActivateShiftLayer(*) {
+    AppState.ShiftLayerActive := true
+    if AppState.ShiftLayerTimer != ""
+        SetTimer(AppState.ShiftLayerTimer, 0)
+    AppState.ShiftLayerTimer := ObjBindMethod(DeactivateShiftLayer)
+    SetTimer(AppState.ShiftLayerTimer, -2000)
+}
+
+DeactivateShiftLayer(*) {
+    AppState.ShiftLayerActive := false
+    AppState.ShiftLayerTimer := ""
+}
+
 CopyAsPlainTextAndAddToHistory() {
     AppState.IgnoreNextClipChange := true
     text := ClipboardHelper.CopyAsPlainText()
@@ -53,7 +74,8 @@ ChangeCaseOfLastCopy() {
 WindowWildcardMaximize() {
     if ForwardModifierKey(WildcardForwardKey("w"))
         return
-    if GetKeyState("Shift", "P") {
+    if AppState.ShiftLayerActive {
+        AppState.ShiftLayerActive := false
         WindowFullScreen.Toggle()
         return
     }
@@ -63,7 +85,8 @@ WindowWildcardMaximize() {
 WindowWildcardMinimize() {
     if ForwardModifierKey(WildcardForwardKey("s"))
         return
-    if GetKeyState("Shift", "P") {
+    if AppState.ShiftLayerActive {
+        AppState.ShiftLayerActive := false
         TrayHider.HideActive()
         return
     }

@@ -1,105 +1,106 @@
 #Requires AutoHotkey v2.0
 
 *CapsLock:: {
-if !( A_PriorKey = "CapsLock" )
-return
-if ( A_TimeSincePriorHotkey > 300 || A_TimeSincePriorHotkey < 50 )
-return
-if GetKeyState( "CapsLock", "T" )
-SetCapsLockState( "AlwaysOff" )
-else
-SetCapsLockState( "AlwaysOn" )
+    if !(A_PriorKey = "CapsLock")
+        return
+    if (A_TimeSincePriorHotkey > 300 || A_TimeSincePriorHotkey < 50)
+        return
+    if GetKeyState("CapsLock", "T")
+        SetCapsLockState("AlwaysOff")
+    else
+        SetCapsLockState("AlwaysOn")
 }
 
 CapsLockHotkeysAvailable() {
-return GetKeyState( "CapsLock", "P" ) && !AppState.QuickPhraseTransactionActive
+    return GetKeyState("CapsLock", "P") && !AppState.QuickPhraseTransactionActive
 }
 
 QuickPhraseUiActive() {
-if AppState.QuickPhraseTransactionActive
-return true
-return IsObject(AppState.QuickPhraseGui)
+    if AppState.QuickPhraseTransactionActive
+        return true
+    return IsObject(AppState.QuickPhraseGui)
     || IsObject(AppState.QuickPhraseVariableGui)
     || IsObject(AppState.QuickPhraseManagerGui)
 }
 
 QuickPhraseHotkeyAvailable() {
-return CapsLockHotkeysAvailable()
-&& !QuickPhraseUiActive()
+    return CapsLockHotkeysAvailable()
+    && !QuickPhraseUiActive()
 }
 
 ; True while the switcher's search box owns keyboard focus. Defined here so the
 ; hotkey variants below resolve it at load time; the switcher GUI itself is only
 ; touched at runtime.
 WindowSwitcherSearchFocused() {
-try {
-if !IsObject(WindowSwitcherGui.Instance)
-return false
-    if !WindowSwitcherGui.Instance.HasProp("SearchBox")
-        return false
-    return DllCall("user32\GetFocus", "Ptr")
+    try {
+        if !IsObject(WindowSwitcherGui.Instance)
+            return false
+        if !WindowSwitcherGui.Instance.HasProp("SearchBox")
+            return false
+        return DllCall("user32\GetFocus", "Ptr")
         == WindowSwitcherGui.Instance.SearchBox.Hwnd
-} catch
-    return false
+    } catch
+        return false
 }
 
 ; --- Window switcher (CapsLock + L) keyboard navigation ---
 ; Scoped to the switcher's search box so arrow keys move the selection while
 ; typing, without interfering with any other window or GUI.
 #HotIf WindowSwitcherSearchFocused()
-Up:: WindowSwitcherGui.MoveSelection( -1 )
-Down:: WindowSwitcherGui.MoveSelection( 1 )
-PgUp:: WindowSwitcherGui.MoveSelection( -5 )
-PgDn:: WindowSwitcherGui.MoveSelection( 5 )
+Up:: WindowSwitcherGui.MoveSelection(-1)
+Down:: WindowSwitcherGui.MoveSelection(1)
+PgUp:: WindowSwitcherGui.MoveSelection(-5)
+PgDn:: WindowSwitcherGui.MoveSelection(5)
 #HotIf
 
-#HotIf GetKeyState( "CapsLock", "P" )
+#HotIf GetKeyState("CapsLock", "P")
 j:: JumpToLine()
 k:: TerminateProcessByPid()
 #HotIf
 
 #HotIf CapsLockHotkeysAvailable()
-+Left:: Send( "^+{Left}" )
-+Right:: Send( "^+{Right}" )
-+Up:: Send( "+{Home}" )
-+Down:: Send( "+{End}" )
-Space:: Send( "^{Left}^+{Right}" )
-a:: Send( "{Backspace}" )
-d:: Send( "{Delete}" )
-+a:: Send( "^{Backspace}" )
-+d:: Send( "^{Delete}" )
-Backspace:: Send( "{Home}+{End}{Delete}" )
-Delete:: Send( "{Home}+{End}{Delete}" )
-q:: Send( "^{PgUp}" )
-e:: Send( "^{PgDn}" )
+~Shift:: ActivateShiftLayer()
++Left:: Send("^+{Left}")
++Right:: Send("^+{Right}")
++Up:: Send("+{Home}")
++Down:: Send("+{End}")
+Space:: Send("^{Left}^+{Right}")
+a:: Send("{Backspace}")
+d:: Send("{Delete}")
++a:: Send("^{Backspace}")
++d:: Send("^{Delete}")
+Backspace:: Send("{Home}+{End}{Delete}")
+Delete:: Send("{Home}+{End}{Delete}")
+q:: Send("^{PgUp}")
+e:: Send("^{PgDn}")
 
 #HotIf CapsLockHotkeysAvailable() && !WindowHole.IsActive()
 LButton:: {
-     AdjustOpacity( 20 )
-     if KeyWait( "LButton", "T0.3" )
-         return
-     while GetKeyState( "LButton", "P" ) {
-         AdjustOpacity( 5 )
-         Sleep( 50 )
-     }
- }
- RButton:: {
-     AdjustOpacity( -20 )
-     if KeyWait( "RButton", "T0.3" )
-         return
-     while GetKeyState( "RButton", "P" ) {
-         AdjustOpacity( -5 )
-         Sleep( 50 )
-     }
- }
- MButton:: {
-     hwnd := WinExist( "A" )
-     current := WinGetTransparent( hwnd )
-     if current == "" || current == 255
-         WinSetTransparent( 10, hwnd )
-     else
-         WinSetTransparent( 255, hwnd )
- }
+    AdjustOpacity(20)
+    if KeyWait("LButton", "T0.3")
+        return
+    while GetKeyState("LButton", "P") {
+        AdjustOpacity(5)
+        Sleep(50)
+    }
+}
+RButton:: {
+    AdjustOpacity(-20)
+    if KeyWait("RButton", "T0.3")
+        return
+    while GetKeyState("RButton", "P") {
+        AdjustOpacity(-5)
+        Sleep(50)
+    }
+}
+MButton:: {
+    hwnd := WinExist("A")
+    current := WinGetTransparent(hwnd)
+    if current == "" || current == 255
+        WinSetTransparent(10, hwnd)
+    else
+        WinSetTransparent(255, hwnd)
+}
 
 #HotIf CapsLockHotkeysAvailable()
 ; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------
