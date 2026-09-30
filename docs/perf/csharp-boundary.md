@@ -2,11 +2,15 @@
 
 **Status: boundary prototyped, baseline harness ready, no measurements yet.**
 
+CI is green: `AutoHotkey64.exe /Validate` passes on the whole script,
+`scripts\HotkeyRegression.ahk` passes all of its checks, and
+`src\CapsLockSharp\` compiles. No benchmark has been run, **every result
+table below is empty**, and the boundary itself has never been exercised —
+which is the whole reason the tables exist.
+
 This document exists so that moving *anything* out of AutoHotkey is a measured
-decision. **Every result table below is empty on purpose.** The harness has
-never been run against a real Windows host, so nothing here is a number — do
-not fill the tables in from memory, from another machine, or from a build that
-is not the one being evaluated.
+decision. Do not fill the tables in from memory, from another machine, or from
+a build that is not the one being evaluated.
 
 ---
 
@@ -311,9 +315,13 @@ cheap and keeps the project honest about whether it still compiles.
 
 ## 9. Known gaps
 
-* **Nothing here has been executed.** No AutoHotkey, no PowerShell and no
-  .NET SDK exist in the environment this was written in. The C# compiles by
-  inspection only, and the AHK is lint-clean but unrun.
+* **What has run, and what has not.** `AutoHotkey64.exe /Validate` passes on
+  the whole script and `scripts\HotkeyRegression.ahk` passes all of its
+  checks, both on a real Windows runner. `src\CapsLockSharp\` compiles in
+  CI. What has **not** run anywhere is `scripts\perf\CapsLockProfile.ahk`:
+  it needs a real Windows desktop, so every table in §5 and §6 is empty until
+  someone runs it. The C# services have never been called from AutoHotkey, so
+  the boundary itself is unproven — no measurement, no migration.
 * **The C# implementations are ports, not proven equals.** `IgnoreMatcher`
   replaces `PathMatchSpecW` with compiled .NET regexes; the semantics of
   Windows glob matching are close but not identical, and the equivalence tests
