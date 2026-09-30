@@ -461,6 +461,12 @@ artifacts changes until the measurements in
 That document deliberately carries no results: it is a harness, and the numbers
 have to be produced on real hardware.
 
+Data-heavy services may eventually move behind a C# boundary (AHK#) while every
+hotkey and input path stays in AutoHotkey. The harness for that decision, and the
+baseline tables that have to be filled in before any service migrates, live in
+[`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md). Nothing is enabled
+by default.
+
 ### Project status
 
 The current implementation is centered on local Windows productivity workflows. Two larger features are explicitly planned but **not part of the shipped feature set yet**:

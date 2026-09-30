@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 class ConfigManager {
     static Load() {
@@ -30,6 +30,7 @@ class ConfigManager {
             AppState.ThemeMode := StrLower(Trim(IniRead(cfg, "UI", "theme", "dark")))
             AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
+            AppState.ServiceBackend    := StrLower(Trim(IniRead(cfg, "Services", "Backend", "ahk")))
 
             ; ---- Cloud Sync ----
             AppState.CloudSyncEnabled :=
@@ -244,6 +245,7 @@ class ConfigManager {
             IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
             IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
             IniWrite(AppState.ImageMagickExe,     cfg, "ImageMagick", "Path")
+            IniWrite(AppState.ServiceBackend,     cfg, "Services", "Backend")
 
             ; ---- Window Hole ----
             IniWrite(AppState.WindowHoleDiameter, cfg, "WindowHole", "diameter")

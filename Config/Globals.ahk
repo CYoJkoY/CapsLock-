@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 class AppState {
     ; --- Core Data ---
@@ -30,6 +30,11 @@ class AppState {
     static MenuPosX := 0
     static MenuPosY := 0
     static ImageMagickExe := ""
+
+    ; --- C# service boundary (issue #12) ---
+    ; "ahk" (default) or "csharp". Read by Services.Configure(); the CLR
+    ; is never booted unless this is "csharp".
+    static ServiceBackend := "ahk"
 
     ; --- Shift Layer ---
     static ShiftLayerActive := false

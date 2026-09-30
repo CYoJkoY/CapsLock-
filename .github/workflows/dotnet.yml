@@ -1,0 +1,53 @@
+name: Build .NET services
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/CapsLockSharp/**'
+      - '.github/workflows/dotnet.yml'
+  pull_request:
+    paths:
+      - 'src/CapsLockSharp/**'
+      - '.github/workflows/dotnet.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build CapsLockSharp (netstandard2.0, AnyCPU)
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o build\dotnet --nologo
+
+      - name: Report what was produced
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath 'build\dotnet\CapsLockSharp.dll')) {
+            throw 'CapsLockSharp.dll was not produced.'
+          }
+          Get-Item build\dotnet\CapsLockSharp.dll |
+            Select-Object Name, Length, LastWriteTimeUtc |
+            Format-List
+
+      - name: Upload the assembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapsLockSharp-netstandard2.0
+          path: build\dotnet\CapsLockSharp.dll
+          if-no-files-found: error

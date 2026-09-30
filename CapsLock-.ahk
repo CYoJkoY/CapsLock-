@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 Persistent()
 
@@ -60,6 +60,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\Zoom.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
+#Include "Core\Services.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
@@ -88,6 +89,7 @@ Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLoca
 
 Language.Load()
 ConfigManager.Load()
+Services.Configure()
 Theme.Init()
 HistoryManager.Load()
 QuickPhraseStore.Load()
