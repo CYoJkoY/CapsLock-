@@ -170,6 +170,58 @@ BuildTrayMenuItems() {
         children: windowHoleChildren
     })
 
+    ; --- Spotlight settings (sub-menu) ---
+    spotlightChildren := []
+    spotlightChildren.Push({
+        label: "📏 " Lang("MENU_SPOTLIGHT_RADIUS", "Clear radius"),
+        callback: (*) => SetSpotlightRadius()
+    })
+    spotlightChildren.Push({
+        label: "🌫 " Lang("MENU_SPOTLIGHT_SOFTNESS", "Edge softness"),
+        callback: (*) => SetSpotlightSoftness()
+    })
+    spotlightChildren.Push({
+        label: "🌙 " Lang("MENU_SPOTLIGHT_DARKNESS", "Dim opacity"),
+        callback: (*) => SetSpotlightDarkness()
+    })
+
+    spotlightShapeChildren := []
+    for shape in AppState.SpotlightShapes {
+        spotlightShapeChildren.Push({
+            label: (AppState.SpotlightShape == shape ? "● " : "○ ")
+                . Lang("MENU_SPOTLIGHT_SHAPE_" . StrUpper(shape), shape),
+            callback: SetSpotlightShape.Bind(shape)
+        })
+    }
+    spotlightChildren.Push({
+        label: "◇ " Lang("MENU_SPOTLIGHT_SHAPE", "Spotlight shape"),
+        children: spotlightShapeChildren
+    })
+
+    spotlightActivationChildren := []
+    for mode in AppState.SpotlightActivations {
+        spotlightActivationChildren.Push({
+            label: (AppState.SpotlightActivation == mode ? "● " : "○ ")
+                . Lang("MENU_SPOTLIGHT_ACTIVATION_" . StrUpper(mode), mode),
+            callback: SetSpotlightActivation.Bind(mode)
+        })
+    }
+    spotlightChildren.Push({
+        label: "⌨️ " Lang("MENU_SPOTLIGHT_ACTIVATION", "Activation"),
+        children: spotlightActivationChildren
+    })
+
+    spotlightChildren.Push({ isSep: true })
+    spotlightChildren.Push({
+        label: (Spotlight.IsActive() ? "■ " : "▶ ") . Lang("MENU_SPOTLIGHT_TOGGLE", "Turn spotlight on / off"),
+        callback: (*) => Spotlight.Toggle()
+    })
+
+    items.Push({
+        label: "🔦 " Lang("MENU_SPOTLIGHT", "Spotlight"),
+        children: spotlightChildren
+    })
+
     ; --- Always-on-top indicator (sub-menu) ---
     ; Lists every window that currently carries a pin badge, so the pinned
     ; state stays visible even when the badge itself is off screen (minimized

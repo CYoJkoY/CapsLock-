@@ -53,6 +53,8 @@ class HotkeyReference {
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + X", desc: "CHEAT_ACT_WINDOW_HOLE", action: ((*) => WindowHole.Toggle()) },
             { cat: "CHEAT_CAT_WINDOW", keys: "CapsLock + X, then 1", desc: "CHEAT_ACT_WINDOW_HOLE_SECOND", action: "" },
 
+            { cat: "CHEAT_CAT_VISUAL", keys: "CapsLock + O", desc: "CHEAT_ACT_SPOTLIGHT", action: ((*) => Spotlight.Toggle()) },
+
             { cat: "CHEAT_CAT_TABS", keys: "CapsLock + Q / E", desc: "CHEAT_ACT_TAB_PREV_NEXT", action: "" },
 
             { cat: "CHEAT_CAT_HELP", keys: "CapsLock + H / F1", desc: "CHEAT_ACT_CHEATSHEET", action: "" }

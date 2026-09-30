@@ -446,6 +446,102 @@ SaveWindowHoleRules(allowExeText, excludeExeText, allowClassText, excludeClassTe
     )
 }
 
+; --- Spotlight (CapsLock + O) ---
+;
+; Every setter writes the value, persists it, and then asks the running
+; effect to re-apply itself so a change is visible immediately without having
+; to restart the spotlight.
+
+SetSpotlightRadius(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_RADIUS_PROMPT", "Clear radius in pixels (40-900)."),
+        Lang("INPUT_SPOTLIGHT_RADIUS_TITLE", "Spotlight radius"),
+        AppState.SpotlightRadius
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 40, 900)
+    AppState.SpotlightRadius := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_RADIUS_SET", "Spotlight radius: {1} px.", value), 1800)
+}
+
+SetSpotlightSoftness(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_SOFTNESS_PROMPT", "Edge softness in pixels (0-250, 0 = hard edge)."),
+        Lang("INPUT_SPOTLIGHT_SOFTNESS_TITLE", "Spotlight edge softness"),
+        AppState.SpotlightSoftness
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 0, 250)
+    AppState.SpotlightSoftness := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_SOFTNESS_SET", "Spotlight edge softness: {1} px.", value), 1800)
+}
+
+SetSpotlightDarkness(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_DARKNESS_PROMPT", "Dim opacity in percent (5-95)."),
+        Lang("INPUT_SPOTLIGHT_DARKNESS_TITLE", "Spotlight dim opacity"),
+        AppState.SpotlightDarkness
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 5, 95)
+    AppState.SpotlightDarkness := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_DARKNESS_SET", "Spotlight dim opacity: {1}%.", value), 1800)
+}
+
+SetSpotlightShape(shape, *) {
+    shape := StrLower(shape)
+    if !_IsAllowedValue(shape, AppState.SpotlightShapes)
+        return
+
+    AppState.SpotlightShape := shape
+    ConfigManager.Save()
+    Spotlight.Refresh()
+
+    labels := Map(
+        "circle",  Lang("MENU_SPOTLIGHT_SHAPE_CIRCLE", "Circle"),
+        "rounded", Lang("MENU_SPOTLIGHT_SHAPE_ROUNDED", "Rounded rectangle"),
+        "square",  Lang("MENU_SPOTLIGHT_SHAPE_SQUARE", "Square")
+    )
+
+    ShowToolTip(
+        Lang("MSG_SPOTLIGHT_SHAPE_SET", "Spotlight shape: {1}.", labels[shape]),
+        1800
+    )
+}
+
+SetSpotlightActivation(mode, *) {
+    mode := StrLower(mode)
+    if !_IsAllowedValue(mode, AppState.SpotlightActivations)
+        return
+
+    AppState.SpotlightActivation := mode
+    ConfigManager.Save()
+
+    key := mode == "hold"
+        ? "MSG_SPOTLIGHT_ACTIVATION_HOLD"
+        : "MSG_SPOTLIGHT_ACTIVATION_TOGGLE"
+    fallback := mode == "hold"
+        ? "Spotlight stays on while O is held."
+        : "Spotlight toggles on and off with O."
+
+    ShowToolTip(Lang(key, fallback), 2000)
+}
+
 ; --- Always-on-top indicator (CapsLock + T) ---
 
 ; Master switch for the persistent pin badge. Toggling it on also picks up

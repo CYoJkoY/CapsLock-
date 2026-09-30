@@ -54,6 +54,8 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\WindowUtils.ahk"
 #Include "Core\WindowFullScreen.ahk"
 #Include "Core\TrayHider.ahk"
+#Include "Core\CursorFx.ahk"
+#Include "Core\Spotlight.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
 
@@ -102,6 +104,7 @@ OnClipboardChange(ClipboardChanged)
 OnExit((*) => (
     CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
+    Spotlight.Stop(),
     PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),

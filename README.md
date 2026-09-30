@@ -86,6 +86,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Window       | `Middle Button`            | Toggle 10% / 100% ghost mode                                                                                  |
 | Window Hole  | `X`                        | Activate Window Hole according to the configured activation mode                                              |
 | Window Hole  | `X`, then `1`              | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
+| Screen       | `O`                        | Spotlight: dim everything except the area around the cursor                                                    |
 | Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
@@ -169,6 +170,23 @@ The default Window Hole settings are:
 | Update interval   | `30 ms`  |
 
 Releasing the mode restores the affected windows to their captured visual and window state.
+
+### Spotlight
+
+`CapsLock + O` turns Spotlight on and off (or holds it while the key is down, depending on the
+configured activation mode). It draws a screen-sized translucent layer over every monitor and keeps a
+clear region centred on the physical cursor, so the area you are pointing at stays bright while the
+rest of the desktop remains readable through the dim layer.
+
+- The clear region follows the cursor continuously and works across monitors.
+- Radius, edge softness, dim opacity, shape (circle / rounded rectangle / square), and activation mode
+  are configurable from the Spotlight sub-menu in the tray.
+- Softness `0` gives a hard edge. Any other value feathers the boundary; the gradient is pre-rendered
+  once per configuration change and then only moved, so a soft edge does not cost extra per frame.
+- Both overlay windows are click-through and cannot take focus, so mouse and keyboard input keeps
+  reaching the applications underneath. No window below the overlay is modified, and turning the
+  effect off simply removes the overlays.
+- Spotlight and Dynamic Zoom cover the same pixels, so starting one stops the other.
 
 ### Window and tab controls
 

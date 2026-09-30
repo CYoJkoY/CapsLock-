@@ -187,6 +187,17 @@ class AppState {
     ; pinned state is only visible for the lifetime of the OSD toast.
     static AlwaysOnTopIndicator := true
 
+    ; --- Spotlight (CapsLock + O) ---
+    static SpotlightRadius := 180          ; clear radius in px (40 - 900)
+    static SpotlightSoftness := 60         ; feather width in px (0 - 250)
+    static SpotlightDarkness := 55         ; dim opacity in % (5 - 95)
+    static SpotlightShape := "circle"      ; circle | rounded | square
+    static SpotlightActivation := "toggle" ; hold | toggle
+    static SpotlightUpdateInterval := 16   ; cursor tracking period in ms
+
+    static SpotlightShapes := ["circle", "rounded", "square"]
+    static SpotlightActivations := ["hold", "toggle"]
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"
