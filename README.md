@@ -74,7 +74,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Quick Phrase | `Shift + P`                | Open the Quick Phrase selector                                                                                |
 | Documents    | `P`                        | Convert clipboard file paths with Pandoc                                                                      |
 | Files        | `Alt + Q`                  | Open the temporary folder used by file workflows                                                              |
-| Window       | `T`                        | Toggle always-on-top with OSD feedback                                                                        |
+| Window       | `T`                        | Toggle always-on-top with a persistent pin badge                                                              |
 | Window       | `K`                        | Terminate a process by PID after confirmation                                                                 |
 | Window       | `L`                        | Search and activate an open window                                                                            |
 | Window       | `W / 8 / Num8`             | Maximize / restore                                                                                            |
@@ -86,6 +86,8 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Window       | `Middle Button`            | Toggle 10% / 100% ghost mode                                                                                  |
 | Window Hole  | `X`                        | Activate Window Hole according to the configured activation mode                                              |
 | Window Hole  | `X`, then `1`              | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
+| Screen       | `O`                        | Spotlight: dim everything except the area around the cursor                                                    |
+| Screen       | `Z`                        | Dynamic Zoom: magnify the live desktop around the cursor                                                       |
 | Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
@@ -170,11 +172,56 @@ The default Window Hole settings are:
 
 Releasing the mode restores the affected windows to their captured visual and window state.
 
+### Spotlight
+
+`CapsLock + O` turns Spotlight on and off (or holds it while the key is down, depending on the
+configured activation mode). It draws a screen-sized translucent layer over every monitor and keeps a
+clear region centred on the physical cursor, so the area you are pointing at stays bright while the
+rest of the desktop remains readable through the dim layer.
+
+- The clear region follows the cursor continuously and works across monitors.
+- Radius, edge softness, dim opacity, shape (circle / rounded rectangle / square), and activation mode
+  are configurable from the Spotlight sub-menu in the tray.
+- Softness `0` gives a hard edge. Any other value feathers the boundary; the gradient is pre-rendered
+  once per configuration change and then only moved, so a soft edge does not cost extra per frame.
+- Both overlay windows are click-through and cannot take focus, so mouse and keyboard input keeps
+  reaching the applications underneath. No window below the overlay is modified, and turning the
+  effect off simply removes the overlays.
+- Spotlight and Dynamic Zoom cover the same pixels, so starting one stops the other.
+
+### Dynamic Zoom
+
+`CapsLock + Z` magnifies the desktop around the physical cursor into a lens that follows it.
+
+- The lens shows a **live** view of the desktop, not a screenshot, so video, animation, scrolling text
+  and anything else that changes keeps updating while the cursor is still.
+- Magnification, lens size, lens shape (circle / rounded rectangle / square), border width, activation
+  mode (hold / toggle), and whether input passes through the lens are all configurable from the
+  Dynamic Zoom sub-menu in the tray.
+- By default the lens is click-through, so the applications underneath keep receiving mouse and
+  keyboard input normally. Turning that off gives the lens a real window that accepts input instead.
+- The lens never takes a copy of the screen, so turning it off cannot leave a stale frame behind and
+  no window underneath is modified.
+- Dynamic Zoom and Spotlight cover the same pixels, so starting one stops the other.
+
+**Implementation note.** Dynamic Zoom uses the Windows Magnification API rather than a
+`GetDC(NULL)` + `StretchBlt` capture loop. The source rectangle is centred on the cursor and the lens
+is centred on the cursor, so a plain screen capture would sample the lens window itself and feed it
+straight back into the lens. The Magnification API is a live view onto the composed desktop and can
+exclude the effect's own windows via `MagSetWindowFilterList()`, which removes the feedback loop,
+lets the compositor do the scaling, and means an idle cursor costs nothing. It requires Windows 8 or
+later; on older systems the effect reports that it is unavailable instead of starting.
+
 ### Window and tab controls
 
 CapsLock also acts as a compact window-control layer:
 
-- `T` toggles always-on-top and reports the state through OSD and sound feedback.
+- `T` toggles always-on-top and reports the state through OSD and sound feedback. A pinned window also keeps a
+  small click-through pin badge on its title bar, so the pinned and unpinned states stay distinguishable after the
+  toast disappears. The badge follows the window when it moves, resizes, is minimized, or is dragged to another
+  monitor, is scaled to the window's DPI, and disappears on its own if anything else clears the top-most style.
+  Pinned windows are also listed under Always-on-top in the tray menu, where a click unpins one; the badge itself
+  can be turned off from the same sub-menu.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
 - `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
@@ -406,7 +453,19 @@ The repository includes GitHub Actions for:
 - source/build validation through `.github/workflows/test.yml`;
 - tagged x86/x64 release builds through `.github/workflows/release.yml`.
 
-Release compilation currently uses **AutoHotkey v2.0.27** through the configured AHK build action.
+Release compilation currently uses **AutoHotkey v2.0.28** through the configured AHK build action.
+
+An alternative release compiler is under evaluation. Nothing about the shipped
+artifacts changes until the measurements in
+[`docs/build/compiler-evaluation.md`](docs/build/compiler-evaluation.md) justify it.
+That document deliberately carries no results: it is a harness, and the numbers
+have to be produced on real hardware.
+
+Data-heavy services may eventually move behind a C# boundary (AHK#) while every
+hotkey and input path stays in AutoHotkey. The harness for that decision, and the
+baseline tables that have to be filled in before any service migrates, live in
+[`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md). Nothing is enabled
+by default.
 
 ### Project status
 

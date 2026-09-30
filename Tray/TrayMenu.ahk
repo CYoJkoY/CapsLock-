@@ -170,6 +170,150 @@ BuildTrayMenuItems() {
         children: windowHoleChildren
     })
 
+    ; --- Dynamic Zoom settings (sub-menu) ---
+    zoomChildren := []
+    zoomChildren.Push({
+        label: "🔍 " Lang("MENU_ZOOM_FACTOR", "Magnification"),
+        callback: (*) => SetZoomFactor()
+    })
+    zoomChildren.Push({
+        label: "📏 " Lang("MENU_ZOOM_LENS", "Lens size"),
+        callback: (*) => SetZoomLensSize()
+    })
+    zoomChildren.Push({
+        label: "🖼 " Lang("MENU_ZOOM_BORDER", "Lens border"),
+        callback: (*) => SetZoomBorderWidth()
+    })
+
+    zoomShapeChildren := []
+    for shape in AppState.ZoomShapes {
+        zoomShapeChildren.Push({
+            label: (AppState.ZoomShape == shape ? "● " : "○ ")
+                . Lang("MENU_ZOOM_SHAPE_" . StrUpper(shape), shape),
+            callback: SetZoomShape.Bind(shape)
+        })
+    }
+    zoomChildren.Push({
+        label: "◇ " Lang("MENU_ZOOM_SHAPE", "Lens shape"),
+        children: zoomShapeChildren
+    })
+
+    zoomActivationChildren := []
+    for mode in AppState.ZoomActivations {
+        zoomActivationChildren.Push({
+            label: (AppState.ZoomActivation == mode ? "● " : "○ ")
+                . Lang("MENU_ZOOM_ACTIVATION_" . StrUpper(mode), mode),
+            callback: SetZoomActivation.Bind(mode)
+        })
+    }
+    zoomChildren.Push({
+        label: "⌨️ " Lang("MENU_ZOOM_ACTIVATION", "Activation"),
+        children: zoomActivationChildren
+    })
+
+    zoomChildren.Push({
+        label: (AppState.ZoomClickThrough ? "● " : "○ ")
+            . Lang("MENU_ZOOM_CLICK_THROUGH", "Let input reach the desktop"),
+        callback: (*) => ToggleZoomClickThrough()
+    })
+
+    zoomChildren.Push({ isSep: true })
+    zoomChildren.Push({
+        label: (Zoom.IsActive() ? "■ " : "▶ ") . Lang("MENU_ZOOM_TOGGLE", "Turn zoom on / off"),
+        callback: (*) => Zoom.Toggle()
+    })
+
+    items.Push({
+        label: "🔎 " Lang("MENU_ZOOM", "Dynamic Zoom"),
+        children: zoomChildren
+    })
+
+    ; --- Spotlight settings (sub-menu) ---
+    spotlightChildren := []
+    spotlightChildren.Push({
+        label: "📏 " Lang("MENU_SPOTLIGHT_RADIUS", "Clear radius"),
+        callback: (*) => SetSpotlightRadius()
+    })
+    spotlightChildren.Push({
+        label: "🌫 " Lang("MENU_SPOTLIGHT_SOFTNESS", "Edge softness"),
+        callback: (*) => SetSpotlightSoftness()
+    })
+    spotlightChildren.Push({
+        label: "🌙 " Lang("MENU_SPOTLIGHT_DARKNESS", "Dim opacity"),
+        callback: (*) => SetSpotlightDarkness()
+    })
+
+    spotlightShapeChildren := []
+    for shape in AppState.SpotlightShapes {
+        spotlightShapeChildren.Push({
+            label: (AppState.SpotlightShape == shape ? "● " : "○ ")
+                . Lang("MENU_SPOTLIGHT_SHAPE_" . StrUpper(shape), shape),
+            callback: SetSpotlightShape.Bind(shape)
+        })
+    }
+    spotlightChildren.Push({
+        label: "◇ " Lang("MENU_SPOTLIGHT_SHAPE", "Spotlight shape"),
+        children: spotlightShapeChildren
+    })
+
+    spotlightActivationChildren := []
+    for mode in AppState.SpotlightActivations {
+        spotlightActivationChildren.Push({
+            label: (AppState.SpotlightActivation == mode ? "● " : "○ ")
+                . Lang("MENU_SPOTLIGHT_ACTIVATION_" . StrUpper(mode), mode),
+            callback: SetSpotlightActivation.Bind(mode)
+        })
+    }
+    spotlightChildren.Push({
+        label: "⌨️ " Lang("MENU_SPOTLIGHT_ACTIVATION", "Activation"),
+        children: spotlightActivationChildren
+    })
+
+    spotlightChildren.Push({ isSep: true })
+    spotlightChildren.Push({
+        label: (Spotlight.IsActive() ? "■ " : "▶ ") . Lang("MENU_SPOTLIGHT_TOGGLE", "Turn spotlight on / off"),
+        callback: (*) => Spotlight.Toggle()
+    })
+
+    items.Push({
+        label: "🔦 " Lang("MENU_SPOTLIGHT", "Spotlight"),
+        children: spotlightChildren
+    })
+
+    ; --- Always-on-top indicator (sub-menu) ---
+    ; Lists every window that currently carries a pin badge, so the pinned
+    ; state stays visible even when the badge itself is off screen (minimized
+    ; windows, or windows on a disconnected monitor).
+    topmostChildren := []
+
+    indicatorPrefix := AppState.AlwaysOnTopIndicator ? "● " : "○ "
+    topmostChildren.Push({
+        label: indicatorPrefix . Lang("MENU_TOPMOST_INDICATOR", "Show pin badge on pinned windows"),
+        callback: (*) => ToggleAlwaysOnTopIndicator()
+    })
+
+    pinned := PinIndicator.PinnedWindows()
+    if pinned.Length > 0 {
+        topmostChildren.Push({ isSep: true })
+        for hwnd in pinned {
+            topmostChildren.Push({
+                label: "📌 " . PinIndicator.MenuLabel(hwnd),
+                callback: PinIndicator.UnpinFromMenu.Bind(hwnd)
+            })
+        }
+    } else {
+        topmostChildren.Push({ isSep: true })
+        ; No callback: a read-only row that simply reports the empty state.
+        topmostChildren.Push({
+            label: "· " Lang("MENU_TOPMOST_NONE", "No pinned windows")
+        })
+    }
+
+    items.Push({
+        label: "📌 " Lang("MENU_TOPMOST", "Always-on-top"),
+        children: topmostChildren
+    })
+
     ; --- Window Switcher settings (sub-menu) ---
     wsChildren := []
 

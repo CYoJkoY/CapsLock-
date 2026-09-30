@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 Persistent()
 
@@ -26,6 +26,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\Random.ahk"
 #Include "Utils\HttpClient.ahk"
 #Include "Utils\SecureStorage.ahk"
+#Include "Utils\TaskbarOrder.ahk"
 
 #Include "Core\QuickPhraseStore.ahk"
 #Include "Core\CloudSyncIdentity.ahk"
@@ -54,8 +55,12 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\WindowUtils.ahk"
 #Include "Core\WindowFullScreen.ahk"
 #Include "Core\TrayHider.ahk"
+#Include "Core\CursorFx.ahk"
+#Include "Core\Spotlight.ahk"
+#Include "Core\Zoom.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
+#Include "Core\Services.ahk"
 
 #Include "History\HistoryStorage.ahk"
 #Include "History\HistoryMenu.ahk"
@@ -70,6 +75,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 
 #Include "UI\Cheatsheet.ahk"
 #Include "UI\OSD.ahk"
+#Include "UI\PinIndicator.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\Theme.ahk"
 #Include "UI\ThemeHelper.ahk"
@@ -83,6 +89,7 @@ Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLoca
 
 Language.Load()
 ConfigManager.Load()
+Services.Configure()
 Theme.Init()
 HistoryManager.Load()
 QuickPhraseStore.Load()
@@ -90,6 +97,7 @@ CloudSyncIdentity.Initialize()
 CloudSyncState.Initialize()
 CloudSyncCoordinator.Initialize()
 FileHelper.BuildIgnoreRegexes()
+PinIndicator.Init()
 
 if AppState.AutoCleanEnabled
     SetTimer(AutoCleanHistory, 60000)
@@ -100,6 +108,9 @@ OnClipboardChange(ClipboardChanged)
 OnExit((*) => (
     CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
+    Spotlight.Stop(),
+    Zoom.Stop(),
+    PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()

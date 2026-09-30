@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 class AppState {
     ; --- Core Data ---
@@ -30,6 +30,11 @@ class AppState {
     static MenuPosX := 0
     static MenuPosY := 0
     static ImageMagickExe := ""
+
+    ; --- C# service boundary (issue #12) ---
+    ; "ahk" (default) or "csharp". Read by Services.Configure(); the CLR
+    ; is never booted unless this is "csharp".
+    static ServiceBackend := "ahk"
 
     ; --- Shift Layer ---
     static ShiftLayerActive := false
@@ -181,6 +186,34 @@ class AppState {
 
     static WindowSwitcherIconSizes := [16, 20, 24, 32]
     static WindowSwitcherDensities := ["compact", "normal", "spacious"]
+
+    ; --- Always-on-top indicator ---
+    ; Persistent pin badge on every pinned window (CapsLock + T). Without it the
+    ; pinned state is only visible for the lifetime of the OSD toast.
+    static AlwaysOnTopIndicator := true
+
+    ; --- Spotlight (CapsLock + O) ---
+    static SpotlightRadius := 180          ; clear radius in px (40 - 900)
+    static SpotlightSoftness := 60         ; feather width in px (0 - 250)
+    static SpotlightDarkness := 55         ; dim opacity in % (5 - 95)
+    static SpotlightShape := "circle"      ; circle | rounded | square
+    static SpotlightActivation := "toggle" ; hold | toggle
+    static SpotlightUpdateInterval := 16   ; cursor tracking period in ms
+
+    static SpotlightShapes := ["circle", "rounded", "square"]
+    static SpotlightActivations := ["hold", "toggle"]
+
+    ; --- Dynamic Zoom (CapsLock + Z) ---
+    static ZoomFactor := 3                 ; magnification factor (2 - 16)
+    static ZoomLensSize := 360             ; lens edge length in px (120 - 900)
+    static ZoomBorderWidth := 3            ; lens border in px (0 - 12, 0 = none)
+    static ZoomShape := "circle"           ; circle | rounded | square
+    static ZoomActivation := "toggle"      ; hold | toggle
+    static ZoomUpdateInterval := 16        ; cursor tracking period in ms
+    static ZoomClickThrough := true        ; input reaches the desktop underneath
+
+    static ZoomShapes := ["circle", "rounded", "square"]
+    static ZoomActivations := ["hold", "toggle"]
 
     ; --- Pandoc Settings ---
     static PandocExe := ""

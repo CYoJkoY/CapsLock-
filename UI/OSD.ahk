@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 
 class OSD {
     static currentOSD := ""
@@ -65,10 +65,39 @@ class OSD {
         }
     }
 
+    ; Always-on-top confirmation.
+    ;
+    ; The toast is transient, so it names the window it acted on and uses two
+    ; clearly different presentations for the two states (accent vs. muted,
+    ; pinned vs. unpinned wording). The persistent part of the state lives in
+    ; PinIndicator; this only has to be unambiguous while it is on screen.
     static ShowTopMostOSD(targetHwnd, isOnTop) {
-        text := isOnTop ? "📌 " Lang("UI_ALWAYS_TOP") : "📌 " Lang("UI_UNPINNED")
+        text := isOnTop
+            ? "📌 " Lang("UI_ALWAYS_TOP") . "  ·  " . this._WindowLabel(targetHwnd)
+            : "○ " Lang("UI_UNPINNED") . "  ·  " . this._WindowLabel(targetHwnd)
         mytype := isOnTop ? "success" : "info"
         this.ShowNotification(text, 1500, mytype)
+    }
+
+    ; Window title for OSD text, clipped so a long title cannot stretch the
+    ; toast across the whole screen.
+    static _WindowLabel(targetHwnd) {
+        if !targetHwnd
+            return ""
+
+        title := ""
+        try
+            title := WinGetTitle("ahk_id " targetHwnd)
+        catch
+            title := ""
+
+        if title == ""
+            return ""
+
+        if StrLen(title) > 38
+            title := SubStr(title, 1, 37) "…"
+
+        return title
     }
 
     static DestroyOSD(savedHwnd) {

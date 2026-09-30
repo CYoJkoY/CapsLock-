@@ -132,6 +132,8 @@ f:: ChangeCaseOfLastCopy()
 t:: ToggleAlwaysOnTopWithOSD()
 p:: ConvertWithPandoc()
 l:: WindowSwitcherGui.Show()
+o:: Spotlight.HandleDown()
+z:: Zoom.HandleDown()
 x:: WindowHole.HandleXDown()
 ; --- Files: open the temp folder used by file-oriented paste ---
 !q:: OpenTempFolder()
@@ -140,9 +142,12 @@ h::
 F1:: HotkeyReferenceGui.Toggle()
 #HotIf
 
-; X-up is intentionally global so releasing X still stops hold mode even
-; when CapsLock is released first. The tilde keeps the key-up event visible.
+; X-up, O-up and Z-up are intentionally global so releasing the key still stops hold
+; mode even when CapsLock is released first. The tilde keeps the key-up event
+; visible to the active application.
 ~x up:: WindowHole.HandleXUp()
+~o up:: Spotlight.HandleUp()
+~z up:: Zoom.HandleUp()
 
 #HotIf QuickPhraseHotkeyAvailable() && AppState.QuickPhraseEnabled
 +p:: QuickPhraseHandleHotkey()

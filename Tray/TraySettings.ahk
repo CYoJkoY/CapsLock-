@@ -446,6 +446,228 @@ SaveWindowHoleRules(allowExeText, excludeExeText, allowClassText, excludeClassTe
     )
 }
 
+; --- Dynamic Zoom (CapsLock + Z) ---
+
+SetZoomFactor(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_ZOOM_FACTOR_PROMPT", "Magnification factor (2-16)."),
+        Lang("INPUT_ZOOM_FACTOR_TITLE", "Zoom factor"),
+        AppState.ZoomFactor
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 2, 16)
+    AppState.ZoomFactor := value
+    ConfigManager.Save()
+    Zoom.Refresh()
+    ShowToolTip(Lang("MSG_ZOOM_FACTOR_SET", "Zoom factor: {1}x.", value), 1800)
+}
+
+SetZoomLensSize(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_ZOOM_LENS_PROMPT", "Lens size in pixels (120-900)."),
+        Lang("INPUT_ZOOM_LENS_TITLE", "Zoom lens size"),
+        AppState.ZoomLensSize
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 120, 900)
+    AppState.ZoomLensSize := value
+    ConfigManager.Save()
+    Zoom.Refresh()
+    ShowToolTip(Lang("MSG_ZOOM_LENS_SET", "Zoom lens size: {1} px.", value), 1800)
+}
+
+SetZoomBorderWidth(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_ZOOM_BORDER_PROMPT", "Lens border width in pixels (0-12, 0 = no border)."),
+        Lang("INPUT_ZOOM_BORDER_TITLE", "Zoom lens border"),
+        AppState.ZoomBorderWidth
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 0, 12)
+    AppState.ZoomBorderWidth := value
+    ConfigManager.Save()
+    Zoom.Refresh()
+    ShowToolTip(Lang("MSG_ZOOM_BORDER_SET", "Zoom lens border: {1} px.", value), 1800)
+}
+
+SetZoomShape(shape, *) {
+    shape := StrLower(shape)
+    if !_IsAllowedValue(shape, AppState.ZoomShapes)
+        return
+
+    AppState.ZoomShape := shape
+    ConfigManager.Save()
+    Zoom.Refresh()
+
+    labels := Map(
+        "circle",  Lang("MENU_ZOOM_SHAPE_CIRCLE", "Circle"),
+        "rounded", Lang("MENU_ZOOM_SHAPE_ROUNDED", "Rounded rectangle"),
+        "square",  Lang("MENU_ZOOM_SHAPE_SQUARE", "Square")
+    )
+
+    ShowToolTip(
+        Lang("MSG_ZOOM_SHAPE_SET", "Zoom lens shape: {1}.", labels[shape]),
+        1800
+    )
+}
+
+SetZoomActivation(mode, *) {
+    mode := StrLower(mode)
+    if !_IsAllowedValue(mode, AppState.ZoomActivations)
+        return
+
+    AppState.ZoomActivation := mode
+    ConfigManager.Save()
+
+    key := mode == "hold"
+        ? "MSG_ZOOM_ACTIVATION_HOLD"
+        : "MSG_ZOOM_ACTIVATION_TOGGLE"
+    fallback := mode == "hold"
+        ? "Zoom stays on while Z is held."
+        : "Zoom toggles on and off with Z."
+
+    ShowToolTip(Lang(key, fallback), 2000)
+}
+
+ToggleZoomClickThrough(*) {
+    AppState.ZoomClickThrough := !AppState.ZoomClickThrough
+    ConfigManager.Save()
+    Zoom.Refresh()
+
+    key := AppState.ZoomClickThrough
+        ? "MSG_ZOOM_CLICK_THROUGH_ON"
+        : "MSG_ZOOM_CLICK_THROUGH_OFF"
+    fallback := AppState.ZoomClickThrough
+        ? "The lens lets input reach the desktop underneath."
+        : "The lens accepts input instead of passing it through."
+
+    ShowToolTip(Lang(key, fallback), 2200)
+}
+
+; --- Spotlight (CapsLock + O) ---
+;
+; Every setter writes the value, persists it, and then asks the running
+; effect to re-apply itself so a change is visible immediately without having
+; to restart the spotlight.
+
+SetSpotlightRadius(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_RADIUS_PROMPT", "Clear radius in pixels (40-900)."),
+        Lang("INPUT_SPOTLIGHT_RADIUS_TITLE", "Spotlight radius"),
+        AppState.SpotlightRadius
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 40, 900)
+    AppState.SpotlightRadius := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_RADIUS_SET", "Spotlight radius: {1} px.", value), 1800)
+}
+
+SetSpotlightSoftness(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_SOFTNESS_PROMPT", "Edge softness in pixels (0-250, 0 = hard edge)."),
+        Lang("INPUT_SPOTLIGHT_SOFTNESS_TITLE", "Spotlight edge softness"),
+        AppState.SpotlightSoftness
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 0, 250)
+    AppState.SpotlightSoftness := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_SOFTNESS_SET", "Spotlight edge softness: {1} px.", value), 1800)
+}
+
+SetSpotlightDarkness(*) {
+    input := DarkInputDialog.Show(
+        Lang("INPUT_SPOTLIGHT_DARKNESS_PROMPT", "Dim opacity in percent (5-95)."),
+        Lang("INPUT_SPOTLIGHT_DARKNESS_TITLE", "Spotlight dim opacity"),
+        AppState.SpotlightDarkness
+    )
+
+    if input.Result != "OK" || !IsNumber(input.Value)
+        return
+
+    value := Clamp(Integer(input.Value), 5, 95)
+    AppState.SpotlightDarkness := value
+    ConfigManager.Save()
+    Spotlight.Refresh()
+    ShowToolTip(Lang("MSG_SPOTLIGHT_DARKNESS_SET", "Spotlight dim opacity: {1}%.", value), 1800)
+}
+
+SetSpotlightShape(shape, *) {
+    shape := StrLower(shape)
+    if !_IsAllowedValue(shape, AppState.SpotlightShapes)
+        return
+
+    AppState.SpotlightShape := shape
+    ConfigManager.Save()
+    Spotlight.Refresh()
+
+    labels := Map(
+        "circle",  Lang("MENU_SPOTLIGHT_SHAPE_CIRCLE", "Circle"),
+        "rounded", Lang("MENU_SPOTLIGHT_SHAPE_ROUNDED", "Rounded rectangle"),
+        "square",  Lang("MENU_SPOTLIGHT_SHAPE_SQUARE", "Square")
+    )
+
+    ShowToolTip(
+        Lang("MSG_SPOTLIGHT_SHAPE_SET", "Spotlight shape: {1}.", labels[shape]),
+        1800
+    )
+}
+
+SetSpotlightActivation(mode, *) {
+    mode := StrLower(mode)
+    if !_IsAllowedValue(mode, AppState.SpotlightActivations)
+        return
+
+    AppState.SpotlightActivation := mode
+    ConfigManager.Save()
+
+    key := mode == "hold"
+        ? "MSG_SPOTLIGHT_ACTIVATION_HOLD"
+        : "MSG_SPOTLIGHT_ACTIVATION_TOGGLE"
+    fallback := mode == "hold"
+        ? "Spotlight stays on while O is held."
+        : "Spotlight toggles on and off with O."
+
+    ShowToolTip(Lang(key, fallback), 2000)
+}
+
+; --- Always-on-top indicator (CapsLock + T) ---
+
+; Master switch for the persistent pin badge. Toggling it on also picks up
+; windows that were pinned while it was disabled, so the indicator never
+; starts out out of sync with the real topmost state.
+ToggleAlwaysOnTopIndicator(*) {
+    next := !AppState.AlwaysOnTopIndicator
+    PinIndicator.SetEnabled(next)
+
+    key := next
+        ? "MSG_TOPMOST_INDICATOR_ENABLED"
+        : "MSG_TOPMOST_INDICATOR_DISABLED"
+    fallback := next
+        ? "Pinned windows show a pin badge."
+        : "Pinned windows no longer show a pin badge."
+
+    ShowToolTip(Lang(key, fallback), 2200)
+}
+
 ; --- Window Switcher appearance (CapsLock + L) ---
 
 SetWindowSwitcherIconSize(size, *) {
