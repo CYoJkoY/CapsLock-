@@ -486,9 +486,9 @@ class Zoom {
         if !exclude.Length
             return false
 
-        buffer := Buffer(exclude.Length * A_PtrSize, 0)
+        excludeBuffer := Buffer(exclude.Length * A_PtrSize, 0)
         for index, hwnd in exclude
-            NumPut("Ptr", hwnd, buffer, (index - 1) * A_PtrSize)
+            NumPut("Ptr", hwnd, excludeBuffer, (index - 1) * A_PtrSize)
 
         try
             return DllCall(
@@ -496,7 +496,7 @@ class Zoom {
                 "Ptr", this.MagHwnd,
                 "UInt", this.MW_FILTERMODE_EXCLUDE,
                 "Int", exclude.Length,
-                "Ptr", buffer.Ptr,
+                "Ptr", excludeBuffer.Ptr,
                 "Int"
             ) != 0
         catch
