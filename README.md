@@ -74,7 +74,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Quick Phrase | `Shift + P`                | Open the Quick Phrase selector                                                                                |
 | Documents    | `P`                        | Convert clipboard file paths with Pandoc                                                                      |
 | Files        | `Alt + Q`                  | Open the temporary folder used by file workflows                                                              |
-| Window       | `T`                        | Toggle always-on-top with OSD feedback                                                                        |
+| Window       | `T`                        | Toggle always-on-top with a persistent pin badge                                                              |
 | Window       | `K`                        | Terminate a process by PID after confirmation                                                                 |
 | Window       | `L`                        | Search and activate an open window                                                                            |
 | Window       | `W / 8 / Num8`             | Maximize / restore                                                                                            |
@@ -174,7 +174,12 @@ Releasing the mode restores the affected windows to their captured visual and wi
 
 CapsLock also acts as a compact window-control layer:
 
-- `T` toggles always-on-top and reports the state through OSD and sound feedback.
+- `T` toggles always-on-top and reports the state through OSD and sound feedback. A pinned window also keeps a
+  small click-through pin badge on its title bar, so the pinned and unpinned states stay distinguishable after the
+  toast disappears. The badge follows the window when it moves, resizes, is minimized, or is dragged to another
+  monitor, is scaled to the window's DPI, and disappears on its own if anything else clears the top-most style.
+  Pinned windows are also listed under Always-on-top in the tray menu, where a click unpins one; the badge itself
+  can be turned off from the same sub-menu.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
 - `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.

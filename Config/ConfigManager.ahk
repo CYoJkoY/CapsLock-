@@ -121,6 +121,10 @@ class ConfigManager {
             AppState.WindowHoleAllowedClasses := allowedClasses ? StrSplit(allowedClasses, "|") : []
             AppState.WindowHoleExcludedClasses := excludedClasses ? StrSplit(excludedClasses, "|") : []
 
+            ; ---- Always-on-top indicator ----
+            AppState.AlwaysOnTopIndicator :=
+                IniRead(cfg, "Window", "topmostIndicator", "1") == "1"
+
             ; ---- Window Switcher ----
             AppState.WindowSwitcherShowIcons :=
                 IniRead(cfg, "WindowSwitcher", "showIcons", "1") == "1"
@@ -187,6 +191,9 @@ class ConfigManager {
 
             ignoreStr := Join(AppState.IgnorePatterns, "|")
             IniWrite(ignoreStr, cfg, "Ignore", "Rules")
+
+            ; ---- Always-on-top indicator ----
+            IniWrite(AppState.AlwaysOnTopIndicator ? "1" : "0", cfg, "Window", "topmostIndicator")
 
             ; ---- Window Switcher ----
             IniWrite(AppState.WindowSwitcherShowIcons ? "1" : "0", cfg, "WindowSwitcher", "showIcons")

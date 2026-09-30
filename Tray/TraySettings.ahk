@@ -446,6 +446,25 @@ SaveWindowHoleRules(allowExeText, excludeExeText, allowClassText, excludeClassTe
     )
 }
 
+; --- Always-on-top indicator (CapsLock + T) ---
+
+; Master switch for the persistent pin badge. Toggling it on also picks up
+; windows that were pinned while it was disabled, so the indicator never
+; starts out out of sync with the real topmost state.
+ToggleAlwaysOnTopIndicator(*) {
+    next := !AppState.AlwaysOnTopIndicator
+    PinIndicator.SetEnabled(next)
+
+    key := next
+        ? "MSG_TOPMOST_INDICATOR_ENABLED"
+        : "MSG_TOPMOST_INDICATOR_DISABLED"
+    fallback := next
+        ? "Pinned windows show a pin badge."
+        : "Pinned windows no longer show a pin badge."
+
+    ShowToolTip(Lang(key, fallback), 2200)
+}
+
 ; --- Window Switcher appearance (CapsLock + L) ---
 
 SetWindowSwitcherIconSize(size, *) {

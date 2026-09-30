@@ -191,12 +191,20 @@ FocusExistingExplorerWindow(dir) {
 
 ToggleAlwaysOnTopWithOSD() {
     hwnd := WinExist("A")
-    WinSetAlwaysOnTop(-1, hwnd)
-    isOnTop := WinGetExStyle(hwnd) & 0x8
+    if !hwnd
+        return
+
+    WinSetAlwaysOnTop(-1, "ahk_id " hwnd)
+    isOnTop := PinIndicator.IsTopmost(hwnd)
+
     if isOnTop
         SoundHelper.PlayResource("SND_ON")
     else
         SoundHelper.PlayResource("SND_OFF")
+
+    ; Keep the persistent pin badge in step with the style that was just
+    ; applied. Refresh() also drops the badge when the window was unpinned.
+    PinIndicator.Refresh(hwnd)
     OSD.ShowTopMostOSD(hwnd, isOnTop)
 }
 

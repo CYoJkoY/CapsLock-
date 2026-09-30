@@ -182,6 +182,11 @@ class AppState {
     static WindowSwitcherIconSizes := [16, 20, 24, 32]
     static WindowSwitcherDensities := ["compact", "normal", "spacious"]
 
+    ; --- Always-on-top indicator ---
+    ; Persistent pin badge on every pinned window (CapsLock + T). Without it the
+    ; pinned state is only visible for the lifetime of the OSD toast.
+    static AlwaysOnTopIndicator := true
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"

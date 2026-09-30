@@ -70,6 +70,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 
 #Include "UI\Cheatsheet.ahk"
 #Include "UI\OSD.ahk"
+#Include "UI\PinIndicator.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\Theme.ahk"
 #Include "UI\ThemeHelper.ahk"
@@ -90,6 +91,7 @@ CloudSyncIdentity.Initialize()
 CloudSyncState.Initialize()
 CloudSyncCoordinator.Initialize()
 FileHelper.BuildIgnoreRegexes()
+PinIndicator.Init()
 
 if AppState.AutoCleanEnabled
     SetTimer(AutoCleanHistory, 60000)
@@ -100,6 +102,7 @@ OnClipboardChange(ClipboardChanged)
 OnExit((*) => (
     CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
+    PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),
     CleanupManager.OnExit()

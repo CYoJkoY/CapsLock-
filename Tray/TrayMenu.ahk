@@ -170,6 +170,40 @@ BuildTrayMenuItems() {
         children: windowHoleChildren
     })
 
+    ; --- Always-on-top indicator (sub-menu) ---
+    ; Lists every window that currently carries a pin badge, so the pinned
+    ; state stays visible even when the badge itself is off screen (minimized
+    ; windows, or windows on a disconnected monitor).
+    topmostChildren := []
+
+    indicatorPrefix := AppState.AlwaysOnTopIndicator ? "● " : "○ "
+    topmostChildren.Push({
+        label: indicatorPrefix . Lang("MENU_TOPMOST_INDICATOR", "Show pin badge on pinned windows"),
+        callback: (*) => ToggleAlwaysOnTopIndicator()
+    })
+
+    pinned := PinIndicator.PinnedWindows()
+    if pinned.Length > 0 {
+        topmostChildren.Push({ isSep: true })
+        for hwnd in pinned {
+            topmostChildren.Push({
+                label: "📌 " . PinIndicator.MenuLabel(hwnd),
+                callback: PinIndicator.UnpinFromMenu.Bind(hwnd)
+            })
+        }
+    } else {
+        topmostChildren.Push({ isSep: true })
+        ; No callback: a read-only row that simply reports the empty state.
+        topmostChildren.Push({
+            label: "· " Lang("MENU_TOPMOST_NONE", "No pinned windows")
+        })
+    }
+
+    items.Push({
+        label: "📌 " Lang("MENU_TOPMOST", "Always-on-top"),
+        children: topmostChildren
+    })
+
     ; --- Window Switcher settings (sub-menu) ---
     wsChildren := []
 

@@ -113,6 +113,10 @@ class Theme {
         if IsObject(OSD.currentOSD)
             try OSD.DestroyOSD(OSD.currentHwnd)
 
+        ; Pin badges cache their colours at creation time, so they are rebuilt
+        ; with the new palette instead of keeping the old one.
+        try PinIndicator.RefreshTheme()
+
         ShowToolTip(
             Lang(mode == this.Light ? "MSG_THEME_LIGHT_SET" : "MSG_THEME_DARK_SET",
                 mode == this.Light ? "Light theme enabled." : "Dark theme enabled.")
