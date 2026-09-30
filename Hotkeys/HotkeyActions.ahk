@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
 ; Shift Layer — sequential trigger state management
@@ -30,30 +30,30 @@ CopyAsPlainTextAndAddToHistory() {
 }
 
 ChangeCaseOfLastCopy() {
-    source := (AppState.LastManualClipboard != " ") ? AppState.LastManualClipboard : A_Clipboard
-    if source == " " {
-        ToolTip(Lang("MSG_NO_TEXT "))
+    source := (AppState.LastManualClipboard != "") ? AppState.LastManualClipboard : A_Clipboard
+    if source == "" {
+        ToolTip(Lang("MSG_NO_TEXT"))
         SetTimer(() => ToolTip(), -1500)
         return
     }
-    if !RegExMatch(source, "[a-zA-Z] ", &match) {
-        ToolTip(Lang("MSG_NO_ENGLISH_LETTERS "))
+    if !RegExMatch(source, "[a-zA-Z]", &match) {
+        ToolTip(Lang("MSG_NO_ENGLISH_LETTERS"))
         SetTimer(() => ToolTip(), -1500)
         return
     }
     firstChar := match[0]
-    newText := (firstChar ~= "[A-Z] ") ? StrLower(source) : StrUpper(source)
-    prevCaps := GetKeyState("CapsLock ", "T ")
+    newText := (firstChar ~= "[A-Z]") ? StrLower(source) : StrUpper(source)
+    prevCaps := GetKeyState("CapsLock", "T")
     if prevCaps
-        SetCapsLockState("AlwaysOff ")
+        SetCapsLockState("AlwaysOff")
     AppState.IgnoreNextClipChange := true
     A_Clipboard := newText
-    Send("^v ")
+    Send("^v")
     Sleep(200)
     AppState.IgnoreNextClipChange := true
     A_Clipboard := source
     if prevCaps
-        SetCapsLockState("AlwaysOn ")
+        SetCapsLockState("AlwaysOn")
 }
 
 ; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------

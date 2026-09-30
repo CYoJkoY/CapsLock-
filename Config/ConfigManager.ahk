@@ -243,6 +243,7 @@ class ConfigManager {
             IniWrite(AppState.ThemeMode, cfg, "UI", "theme")
             IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
             IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
+            IniWrite(AppState.ImageMagickExe,     cfg, "ImageMagick", "Path")
 
             ; ---- Window Hole ----
             IniWrite(AppState.WindowHoleDiameter, cfg, "WindowHole", "diameter")
