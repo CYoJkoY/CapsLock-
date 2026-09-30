@@ -7,7 +7,7 @@
 _ResolveClipboardSource(text) {
     ; Only scan recent entries to keep the lookup fast
     scanCount := Min(AppState.History.Length, 20)
-    Loop scanCount {
+    loop scanCount {
         item := AppState.History[A_Index]
         if item["text"] == text
             return item["source"]
@@ -23,7 +23,12 @@ _ResolveClipboardSource(text) {
 PasteWithCurrentMode() {
     CapturePasteTarget()
 
+    if A_Clipboard == "" {
+        ClipWait(1)
+    }
+
     target := A_Clipboard
+
     if target == "" {
         ShowToolTip(Lang("MSG_CLIPBOARD_EMPTY"), 2000)
         return
@@ -66,7 +71,7 @@ PasteWithCurrentMode() {
         AppState.IgnoreNextClipChange := true
         A_Clipboard := Join(validLines, "`n")
         pdfPath := ProcessImagePathsToPDF()
-    
+
         AppState.IgnoreNextClipChange := true
         A_Clipboard := original
 
