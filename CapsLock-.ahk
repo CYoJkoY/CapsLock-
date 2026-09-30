@@ -26,6 +26,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Utils\Random.ahk"
 #Include "Utils\HttpClient.ahk"
 #Include "Utils\SecureStorage.ahk"
+#Include "Utils\TaskbarOrder.ahk"
 
 #Include "Core\QuickPhraseStore.ahk"
 #Include "Core\CloudSyncIdentity.ahk"
