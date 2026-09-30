@@ -158,6 +158,42 @@ class ConfigManager {
                 8, 100
             )
 
+            ; ---- Dynamic Zoom ----
+            AppState.ZoomFactor := Clamp(
+                IsNumber(IniRead(cfg, "Zoom", "factor", "3"))
+                    ? Integer(IniRead(cfg, "Zoom", "factor", "3")) : 3,
+                2, 16
+            )
+
+            AppState.ZoomLensSize := Clamp(
+                IsNumber(IniRead(cfg, "Zoom", "lensSize", "360"))
+                    ? Integer(IniRead(cfg, "Zoom", "lensSize", "360")) : 360,
+                120, 900
+            )
+
+            AppState.ZoomBorderWidth := Clamp(
+                IsNumber(IniRead(cfg, "Zoom", "borderWidth", "3"))
+                    ? Integer(IniRead(cfg, "Zoom", "borderWidth", "3")) : 3,
+                0, 12
+            )
+
+            zoomShape := StrLower(Trim(IniRead(cfg, "Zoom", "shape", "circle")))
+            AppState.ZoomShape := _IsAllowedValue(zoomShape, AppState.ZoomShapes)
+                ? zoomShape : "circle"
+
+            zoomActivation := StrLower(Trim(IniRead(cfg, "Zoom", "activation", "toggle")))
+            AppState.ZoomActivation := _IsAllowedValue(zoomActivation, AppState.ZoomActivations)
+                ? zoomActivation : "toggle"
+
+            AppState.ZoomUpdateInterval := Clamp(
+                IsNumber(IniRead(cfg, "Zoom", "updateInterval", "16"))
+                    ? Integer(IniRead(cfg, "Zoom", "updateInterval", "16")) : 16,
+                8, 100
+            )
+
+            AppState.ZoomClickThrough :=
+                IniRead(cfg, "Zoom", "clickThrough", "1") == "1"
+
             ; ---- Window Switcher ----
             AppState.WindowSwitcherShowIcons :=
                 IniRead(cfg, "WindowSwitcher", "showIcons", "1") == "1"
@@ -235,6 +271,15 @@ class ConfigManager {
             IniWrite(AppState.SpotlightShape, cfg, "Spotlight", "shape")
             IniWrite(AppState.SpotlightActivation, cfg, "Spotlight", "activation")
             IniWrite(AppState.SpotlightUpdateInterval, cfg, "Spotlight", "updateInterval")
+
+            ; ---- Dynamic Zoom ----
+            IniWrite(AppState.ZoomFactor, cfg, "Zoom", "factor")
+            IniWrite(AppState.ZoomLensSize, cfg, "Zoom", "lensSize")
+            IniWrite(AppState.ZoomBorderWidth, cfg, "Zoom", "borderWidth")
+            IniWrite(AppState.ZoomShape, cfg, "Zoom", "shape")
+            IniWrite(AppState.ZoomActivation, cfg, "Zoom", "activation")
+            IniWrite(AppState.ZoomUpdateInterval, cfg, "Zoom", "updateInterval")
+            IniWrite(AppState.ZoomClickThrough ? "1" : "0", cfg, "Zoom", "clickThrough")
 
             ; ---- Window Switcher ----
             IniWrite(AppState.WindowSwitcherShowIcons ? "1" : "0", cfg, "WindowSwitcher", "showIcons")

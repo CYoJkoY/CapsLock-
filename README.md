@@ -87,6 +87,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Window Hole  | `X`                        | Activate Window Hole according to the configured activation mode                                              |
 | Window Hole  | `X`, then `1`              | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
 | Screen       | `O`                        | Spotlight: dim everything except the area around the cursor                                                    |
+| Screen       | `Z`                        | Dynamic Zoom: magnify the live desktop around the cursor                                                       |
 | Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
@@ -187,6 +188,29 @@ rest of the desktop remains readable through the dim layer.
   reaching the applications underneath. No window below the overlay is modified, and turning the
   effect off simply removes the overlays.
 - Spotlight and Dynamic Zoom cover the same pixels, so starting one stops the other.
+
+### Dynamic Zoom
+
+`CapsLock + Z` magnifies the desktop around the physical cursor into a lens that follows it.
+
+- The lens shows a **live** view of the desktop, not a screenshot, so video, animation, scrolling text
+  and anything else that changes keeps updating while the cursor is still.
+- Magnification, lens size, lens shape (circle / rounded rectangle / square), border width, activation
+  mode (hold / toggle), and whether input passes through the lens are all configurable from the
+  Dynamic Zoom sub-menu in the tray.
+- By default the lens is click-through, so the applications underneath keep receiving mouse and
+  keyboard input normally. Turning that off gives the lens a real window that accepts input instead.
+- The lens never takes a copy of the screen, so turning it off cannot leave a stale frame behind and
+  no window underneath is modified.
+- Dynamic Zoom and Spotlight cover the same pixels, so starting one stops the other.
+
+**Implementation note.** Dynamic Zoom uses the Windows Magnification API rather than a
+`GetDC(NULL)` + `StretchBlt` capture loop. The source rectangle is centred on the cursor and the lens
+is centred on the cursor, so a plain screen capture would sample the lens window itself and feed it
+straight back into the lens. The Magnification API is a live view onto the composed desktop and can
+exclude the effect's own windows via `MagSetWindowFilterList()`, which removes the feedback loop,
+lets the compositor do the scaling, and means an idle cursor costs nothing. It requires Windows 8 or
+later; on older systems the effect reports that it is unavailable instead of starting.
 
 ### Window and tab controls
 

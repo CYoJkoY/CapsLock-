@@ -56,6 +56,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\TrayHider.ahk"
 #Include "Core\CursorFx.ahk"
 #Include "Core\Spotlight.ahk"
+#Include "Core\Zoom.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
 
@@ -105,6 +106,7 @@ OnExit((*) => (
     CloudSyncCoordinator.Shutdown(),
     WindowHole.Stop(),
     Spotlight.Stop(),
+    Zoom.Stop(),
     PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),

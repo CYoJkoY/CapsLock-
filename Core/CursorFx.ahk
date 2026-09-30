@@ -75,10 +75,14 @@ class CursorFx {
     ;   WS_EX_NOACTIVATE  - showing the window does not activate it;
     ;   -DPIScale         - coordinates are physical pixels, matching the
     ;                       values returned by CursorPos() and VirtualScreen().
-    static CreateOverlay(extra := "") {
+    ; "clickThrough" adds WS_EX_TRANSPARENT. Effects that offer an explicit
+    ; interaction mode pass false so the overlay can receive input instead.
+    static CreateOverlay(extra := "", clickThrough := true) {
         options := "-DPIScale +AlwaysOnTop -Caption +ToolWindow"
-            . " +E0x" Format("{:x}", this.EX_TRANSPARENT)
             . " +E0x" Format("{:x}", this.EX_NOACTIVATE)
+
+        if clickThrough
+            options .= " +E0x" Format("{:x}", this.EX_TRANSPARENT)
 
         if (extra != "")
             options .= " " extra

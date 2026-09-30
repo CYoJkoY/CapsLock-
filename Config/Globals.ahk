@@ -198,6 +198,18 @@ class AppState {
     static SpotlightShapes := ["circle", "rounded", "square"]
     static SpotlightActivations := ["hold", "toggle"]
 
+    ; --- Dynamic Zoom (CapsLock + Z) ---
+    static ZoomFactor := 3                 ; magnification factor (2 - 16)
+    static ZoomLensSize := 360             ; lens edge length in px (120 - 900)
+    static ZoomBorderWidth := 3            ; lens border in px (0 - 12, 0 = none)
+    static ZoomShape := "circle"           ; circle | rounded | square
+    static ZoomActivation := "toggle"      ; hold | toggle
+    static ZoomUpdateInterval := 16        ; cursor tracking period in ms
+    static ZoomClickThrough := true        ; input reaches the desktop underneath
+
+    static ZoomShapes := ["circle", "rounded", "square"]
+    static ZoomActivations := ["hold", "toggle"]
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"

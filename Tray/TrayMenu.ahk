@@ -170,6 +170,64 @@ BuildTrayMenuItems() {
         children: windowHoleChildren
     })
 
+    ; --- Dynamic Zoom settings (sub-menu) ---
+    zoomChildren := []
+    zoomChildren.Push({
+        label: "🔍 " Lang("MENU_ZOOM_FACTOR", "Magnification"),
+        callback: (*) => SetZoomFactor()
+    })
+    zoomChildren.Push({
+        label: "📏 " Lang("MENU_ZOOM_LENS", "Lens size"),
+        callback: (*) => SetZoomLensSize()
+    })
+    zoomChildren.Push({
+        label: "🖼 " Lang("MENU_ZOOM_BORDER", "Lens border"),
+        callback: (*) => SetZoomBorderWidth()
+    })
+
+    zoomShapeChildren := []
+    for shape in AppState.ZoomShapes {
+        zoomShapeChildren.Push({
+            label: (AppState.ZoomShape == shape ? "● " : "○ ")
+                . Lang("MENU_ZOOM_SHAPE_" . StrUpper(shape), shape),
+            callback: SetZoomShape.Bind(shape)
+        })
+    }
+    zoomChildren.Push({
+        label: "◇ " Lang("MENU_ZOOM_SHAPE", "Lens shape"),
+        children: zoomShapeChildren
+    })
+
+    zoomActivationChildren := []
+    for mode in AppState.ZoomActivations {
+        zoomActivationChildren.Push({
+            label: (AppState.ZoomActivation == mode ? "● " : "○ ")
+                . Lang("MENU_ZOOM_ACTIVATION_" . StrUpper(mode), mode),
+            callback: SetZoomActivation.Bind(mode)
+        })
+    }
+    zoomChildren.Push({
+        label: "⌨️ " Lang("MENU_ZOOM_ACTIVATION", "Activation"),
+        children: zoomActivationChildren
+    })
+
+    zoomChildren.Push({
+        label: (AppState.ZoomClickThrough ? "● " : "○ ")
+            . Lang("MENU_ZOOM_CLICK_THROUGH", "Let input reach the desktop"),
+        callback: (*) => ToggleZoomClickThrough()
+    })
+
+    zoomChildren.Push({ isSep: true })
+    zoomChildren.Push({
+        label: (Zoom.IsActive() ? "■ " : "▶ ") . Lang("MENU_ZOOM_TOGGLE", "Turn zoom on / off"),
+        callback: (*) => Zoom.Toggle()
+    })
+
+    items.Push({
+        label: "🔎 " Lang("MENU_ZOOM", "Dynamic Zoom"),
+        children: zoomChildren
+    })
+
     ; --- Spotlight settings (sub-menu) ---
     spotlightChildren := []
     spotlightChildren.Push({
