@@ -453,7 +453,13 @@ The repository includes GitHub Actions for:
 - source/build validation through `.github/workflows/test.yml`;
 - tagged x86/x64 release builds through `.github/workflows/release.yml`.
 
-Release compilation currently uses **AutoHotkey v2.0.27** through the configured AHK build action.
+Release compilation currently uses **AutoHotkey v2.0.28** through the configured AHK build action.
+
+An alternative release compiler is under evaluation. Nothing about the shipped
+artifacts changes until the measurements in
+[`docs/build/compiler-evaluation.md`](docs/build/compiler-evaluation.md) justify it.
+That document deliberately carries no results: it is a harness, and the numbers
+have to be produced on real hardware.
 
 ### Project status
 
