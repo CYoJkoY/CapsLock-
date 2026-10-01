@@ -137,9 +137,11 @@ z:: Zoom.HandleDown()
 x:: WindowHole.HandleXDown()
 ; --- Files: open the temp folder used by file-oriented paste ---
 !q:: OpenTempFolder()
-; --- Help: built-in hotkey reference ---
+; --- Help: built-in hotkey reference & Settings Center ---
 h::
 F1:: HotkeyReferenceGui.Toggle()
+,::
+i:: SettingsGui.Toggle()
 #HotIf
 
 ; X-up, O-up and Z-up are intentionally global so releasing the key still stops hold

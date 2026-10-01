@@ -110,6 +110,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     myGui.StatusBar := statusBar
 
     AppState.FullHistoryGui := myGui
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h580")
     RefreshFullHistoryList()

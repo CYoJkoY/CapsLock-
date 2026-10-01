@@ -1,6 +1,11 @@
 #Requires AutoHotkey v2.0
 
 TrayMsgHandler(wParam, lParam, msg, hwnd) {
+    if (lParam == 0x203) {
+        ; Double-click on tray icon opens the dedicated Settings GUI directly.
+        ShowSettingsGui()
+        return
+    }
     if (lParam == 0x205) {
         msgPos := DllCall("GetMessagePos", "UInt")
         x := msgPos & 0xFFFF
@@ -27,241 +32,49 @@ ShowTrayCustomMenu(x, y) {
     CustomMenu.ShowWithItems(x, y, items, true)
 }
 
+; Streamlined Tray Menu:
+; All detailed configuration now lives in the dedicated Google-style
+; Settings Center (SettingsGui), while the tray menu surfaces the primary
+; Settings entry and high-frequency quick actions.
 BuildTrayMenuItems() {
     items := []
 
-    ; --- ImageMagick status ---
-    exe := AppState.ImageMagickExe
-    valid := exe != "" && InStr(StrLower(exe), "magick.exe") && FileExist(exe)
-    imLabel := valid
-        ? "📦 " Lang("MENU_IM_STATUS_SET")
-        : "📦 " Lang("MENU_IM_STATUS_NOTSET")
-    items.Push({ label: imLabel, callback: (*) => SetImPath() })
-
-    ; --- Pandoc settings (sub-menu) ---
-    pandocChildren := []
-    pandocChildren.Push({ label: "📁 " Lang("MENU_PANDOC_PATH"), callback: (*) => SetPandocPath() })
-    pandocChildren.Push({ label: "📤 " Lang("MENU_PANDOC_OUTPUT", , AppState.PandocOutputFormat), callback: (*) => SetPandocOutput() })
-
-    pandocValid := AppState.PandocExe != "" && FileExist(AppState.PandocExe)
-    pandocLabel := pandocValid
-        ? "📄 " Lang("MENU_PANDOC_STATUS_SET")
-        : "📄 " Lang("MENU_PANDOC_STATUS_NOTSET")
-    items.Push({ label: pandocLabel, children: pandocChildren })
-
-    items.Push({ isSep: true })
-
-    ; --- Open temp folder ---
-    items.Push({ label: "📂 " Lang("MENU_OPEN_TEMP"), callback: (*) => Run("explore " A_Temp) })
-
-    items.Push({ isSep: true })
-
-    ; --- Cleanup settings (sub-menu) ---
-    cleanupChildren := []
-    dm := AppState.DeleteMode
-    cleanupChildren.Push({ label: (dm == 1 ? "● " : "○ ") . Lang("MENU_MODE1"), callback: (*) => SetDeleteMode(1) })
-    cleanupChildren.Push({ label: (dm == 2 ? "● " : "○ ") . Lang("MENU_MODE2"), callback: (*) => SetDeleteMode(2) })
-    cleanupChildren.Push({ label: (dm == 3 ? "● " : "○ ") . Lang("MENU_MODE3"), callback: (*) => SetDeleteMode(3) })
-    cleanupChildren.Push({ label: "⏱️ " Lang("MENU_SET_DELAY"),   callback: (*) => SetDeleteDelay() })
-    cleanupChildren.Push({ label: "🔄 " Lang("MENU_SET_INTERVAL"), callback: (*) => SetCleanupInterval() })
-    items.Push({ label: "🧹 " Lang("MENU_CLEANUP_SETTINGS"), children: cleanupChildren })
-
-    ; --- History & Paste settings (sub-menu) ---
-    historyChildren := []
-    historyChildren.Push({ label: "📝 " Lang("MENU_MAX_HISTORY"), callback: (*) => SetMaxHistory() })
-    pm := AppState.PasteMode
-    historyChildren.Push({ label: (pm == 1 ? "● " : "○ ") . Lang("MENU_PASTE_FILE"), callback: (*) => SetPasteMode(1) })
-    historyChildren.Push({ label: (pm == 2 ? "● " : "○ ") . Lang("MENU_PASTE_TEXT"), callback: (*) => SetPasteMode(2) })
-    historyChildren.Push({ label: "🚫 " Lang("MENU_IGNORE_RULES"), callback: (*) => SetIgnorePatterns() })
-    items.Push({ label: "📋 " Lang("MENU_HISTORY_PASTE"), children: historyChildren })
-
-    ; --- Quick Phrases (sub-menu) ---
-    quickPhraseChildren := []
-    quickPhrasePrefix := AppState.QuickPhraseEnabled ? "● " : "○ "
-    quickPhraseChildren.Push({
-        label: quickPhrasePrefix . Lang("MENU_QUICK_PHRASE_ENABLE", "Enable shortcut"),
-        callback: (*) => ToggleQuickPhraseEnabled()
+    ; --- Primary entry: Dedicated Settings Center ---
+    items.Push({
+        label: "⚙️ " . Lang("MENU_SETTINGS"),
+        callback: (*) => ShowSettingsGui()
     })
-    quickPhraseChildren.Push({
-        label: "📝 " Lang("MENU_QUICK_PHRASE_MANAGE", "Manage phrases..."),
+
+    items.Push({ isSep: true })
+
+    ; --- High-frequency quick actions ---
+    items.Push({
+        label: "📋 " . Lang("GUI_FULL_TITLE"),
+        callback: (*) => ShowFullHistoryGui()
+    })
+
+    items.Push({
+        label: "💬 " . Lang("MENU_QUICK_PHRASE_MANAGE"),
         callback: (*) => ShowQuickPhraseManager()
     })
+
     items.Push({
-        label: "💬 " Lang("MENU_QUICK_PHRASE", "Quick Phrases"),
-        children: quickPhraseChildren
-    })
-
-    ; --- Cloud Sync settings (sub-menu) ---
-    cloudSyncChildren := []
-    cloudSyncChildren.Push({
-        label: (AppState.CloudSyncEnabled ? "● " : "○ ")
-            . Lang("MENU_CLOUD_SYNC_ENABLE", "Enable synchronization"),
-        callback: (*) => ToggleCloudSync()
-    })
-    cloudSyncChildren.Push({
-        label: "⚙️ " Lang("MENU_CLOUD_SYNC_SETTINGS", "Cloud Sync Settings..."),
-        callback: (*) => ShowCloudSyncSettings()
-    })
-    cloudSyncChildren.Push({
-        label: "☁ " Lang("MENU_CLOUD_SYNC_NOW", "Sync now"),
-        callback: (*) => CloudSyncCoordinator.SyncNow()
-    })
-    cloudSyncChildren.Push({
-        label: "🔌 " Lang("MENU_CLOUD_SYNC_DISCONNECT", "Disconnect"),
-        callback: (*) => CloudSyncCoordinator.Disconnect()
-    })
-    items.Push({
-        label: "☁ " Lang("MENU_CLOUD_SYNC", "Cloud Sync"),
-        children: cloudSyncChildren
-    })
-
-    ; --- Window Hole settings (sub-menu) ---
-    windowHoleChildren := []
-    windowHoleChildren.Push({
-        label: "📏 " Lang("MENU_WINDOW_HOLE_SIZE", "Hole size"),
-        callback: (*) => SetWindowHoleDiameter()
-    })
-
-    shapeChildren := []
-    shapeChildren.Push({
-        label: (AppState.WindowHoleShape == "circle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_CIRCLE", "Circle"),
-        callback: (*) => SetWindowHoleShape("circle")
-    })
-    shapeChildren.Push({
-        label: (AppState.WindowHoleShape == "rounded" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_ROUNDED", "Rounded rectangle"),
-        callback: (*) => SetWindowHoleShape("rounded")
-    })
-    shapeChildren.Push({
-        label: (AppState.WindowHoleShape == "square" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_SHAPE_SQUARE", "Square"),
-        callback: (*) => SetWindowHoleShape("square")
-    })
-    windowHoleChildren.Push({
-        label: "◇ " Lang("MENU_WINDOW_HOLE_SHAPE", "Hole shape"),
-        children: shapeChildren
-    })
-
-    activationChildren := []
-    activationChildren.Push({
-        label: (AppState.WindowHoleActivation == "hold" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_HOLD", "Hold X"),
-        callback: (*) => SetWindowHoleActivation("hold")
-    })
-    activationChildren.Push({
-        label: (AppState.WindowHoleActivation == "toggle" ? "● " : "○ ") . Lang("MENU_WINDOW_HOLE_TOGGLE", "Toggle with X"),
-        callback: (*) => SetWindowHoleActivation("toggle")
-    })
-    windowHoleChildren.Push({
-        label: "⌨️ " Lang("MENU_WINDOW_HOLE_ACTIVATION", "Activation"),
-        children: activationChildren
-    })
-
-    fallbackPrefix := AppState.WindowHoleFallbackToMinimize ? "● " : "○ "
-    windowHoleChildren.Push({
-        label: fallbackPrefix . Lang("MENU_WINDOW_HOLE_FALLBACK", "Minimize incompatible windows"),
-        callback: (*) => ToggleWindowHoleFallback()
-    })
-
-    windowHoleChildren.Push({
-        label: "⚙️ " Lang("MENU_WINDOW_HOLE_RULES", "Window rules"),
-        callback: (*) => SetWindowHoleRules()
+        label: "☁ " . Lang("MENU_CLOUD_SYNC_NOW"),
+        callback: (*) => (AppState.CloudSyncEnabled ? CloudSyncCoordinator.SyncNow() : ShowCloudSyncSettings())
     })
 
     items.Push({
-        label: "◉ " Lang("MENU_WINDOW_HOLE", "Window Hole"),
-        children: windowHoleChildren
+        label: "⌨️ " . Lang("MENU_CHEATSHEET"),
+        callback: (*) => OpenCheatsheetFromTray()
     })
 
-    ; --- Dynamic Zoom settings (sub-menu) ---
-    zoomChildren := []
-    zoomChildren.Push({
-        label: "🔍 " Lang("MENU_ZOOM_FACTOR", "Magnification"),
-        callback: (*) => SetZoomFactor()
-    })
+    items.Push({ isSep: true })
 
-    zoomActivationChildren := []
-    for mode in AppState.ZoomActivations {
-        zoomActivationChildren.Push({
-            label: (AppState.ZoomActivation == mode ? "● " : "○ ")
-                . Lang("MENU_ZOOM_ACTIVATION_" . StrUpper(mode), mode),
-            callback: SetZoomActivation.Bind(mode)
-        })
-    }
-    zoomChildren.Push({
-        label: "⌨️ " Lang("MENU_ZOOM_ACTIVATION", "Activation"),
-        children: zoomActivationChildren
-    })
-
-    zoomChildren.Push({ isSep: true })
-    zoomChildren.Push({
-        label: (Zoom.IsActive() ? "■ " : "▶ ") . Lang("MENU_ZOOM_TOGGLE", "Turn zoom on / off"),
-        callback: (*) => Zoom.Toggle()
-    })
-
-    items.Push({
-        label: "🔎 " Lang("MENU_ZOOM", "Dynamic Zoom"),
-        children: zoomChildren
-    })
-
-    ; --- Spotlight settings (sub-menu) ---
-    spotlightChildren := []
-    spotlightChildren.Push({
-        label: "📏 " Lang("MENU_SPOTLIGHT_RADIUS", "Clear radius"),
-        callback: (*) => SetSpotlightRadius()
-    })
-    spotlightChildren.Push({
-        label: "🌫 " Lang("MENU_SPOTLIGHT_SOFTNESS", "Edge softness"),
-        callback: (*) => SetSpotlightSoftness()
-    })
-    spotlightChildren.Push({
-        label: "🌙 " Lang("MENU_SPOTLIGHT_DARKNESS", "Dim opacity"),
-        callback: (*) => SetSpotlightDarkness()
-    })
-
-    spotlightShapeChildren := []
-    for shape in AppState.SpotlightShapes {
-        spotlightShapeChildren.Push({
-            label: (AppState.SpotlightShape == shape ? "● " : "○ ")
-                . Lang("MENU_SPOTLIGHT_SHAPE_" . StrUpper(shape), shape),
-            callback: SetSpotlightShape.Bind(shape)
-        })
-    }
-    spotlightChildren.Push({
-        label: "◇ " Lang("MENU_SPOTLIGHT_SHAPE", "Spotlight shape"),
-        children: spotlightShapeChildren
-    })
-
-    spotlightActivationChildren := []
-    for mode in AppState.SpotlightActivations {
-        spotlightActivationChildren.Push({
-            label: (AppState.SpotlightActivation == mode ? "● " : "○ ")
-                . Lang("MENU_SPOTLIGHT_ACTIVATION_" . StrUpper(mode), mode),
-            callback: SetSpotlightActivation.Bind(mode)
-        })
-    }
-    spotlightChildren.Push({
-        label: "⌨️ " Lang("MENU_SPOTLIGHT_ACTIVATION", "Activation"),
-        children: spotlightActivationChildren
-    })
-
-    spotlightChildren.Push({ isSep: true })
-    spotlightChildren.Push({
-        label: (Spotlight.IsActive() ? "■ " : "▶ ") . Lang("MENU_SPOTLIGHT_TOGGLE", "Turn spotlight on / off"),
-        callback: (*) => Spotlight.Toggle()
-    })
-
-    items.Push({
-        label: "🔦 " Lang("MENU_SPOTLIGHT", "Spotlight"),
-        children: spotlightChildren
-    })
-
-    ; --- Always-on-top indicator (sub-menu) ---
-    ; Lists every window that currently carries a pin badge, so the pinned
-    ; state stays visible even when the badge itself is off screen (minimized
-    ; windows, or windows on a disconnected monitor).
+    ; --- Always-on-top pinned windows (quick unpin / badge toggle) ---
     topmostChildren := []
-
     indicatorPrefix := AppState.AlwaysOnTopIndicator ? "● " : "○ "
     topmostChildren.Push({
-        label: indicatorPrefix . Lang("MENU_TOPMOST_INDICATOR", "Show pin badge on pinned windows"),
+        label: indicatorPrefix . Lang("MENU_TOPMOST_INDICATOR"),
         callback: (*) => ToggleAlwaysOnTopIndicator()
     })
 
@@ -276,84 +89,21 @@ BuildTrayMenuItems() {
         }
     } else {
         topmostChildren.Push({ isSep: true })
-        ; No callback: a read-only row that simply reports the empty state.
         topmostChildren.Push({
-            label: "· " Lang("MENU_TOPMOST_NONE", "No pinned windows")
+            label: "· " . Lang("MENU_TOPMOST_NONE")
         })
     }
 
     items.Push({
-        label: "📌 " Lang("MENU_TOPMOST", "Always-on-top"),
+        label: "📌 " . Lang("MENU_TOPMOST") . " (" . pinned.Length . ")",
         children: topmostChildren
     })
 
-    ; --- Window Switcher settings (sub-menu) ---
-    wsChildren := []
-
-    wsIconsPrefix := AppState.WindowSwitcherShowIcons ? "● " : "○ "
-    wsChildren.Push({
-        label: wsIconsPrefix . Lang("MENU_WS_ICONS", "Show application icons"),
-        callback: (*) => ToggleWindowSwitcherIcons()
-    })
-
-    wsIconSizeChildren := []
-    for size in AppState.WindowSwitcherIconSizes {
-        wsIconSizeChildren.Push({
-            label: (AppState.WindowSwitcherIconSize == size ? "● " : "○ ")
-                . Lang("MENU_WS_ICON_SIZE_PX", "{1} px", size),
-            callback: SetWindowSwitcherIconSize.Bind(size)
-        })
-    }
-    wsChildren.Push({
-        label: "🖼 " Lang("MENU_WS_ICON_SIZE", "Icon size"),
-        children: wsIconSizeChildren
-    })
-
-    wsDensityChildren := []
-    for mode in AppState.WindowSwitcherDensities {
-        wsDensityChildren.Push({
-            label: (AppState.WindowSwitcherDensity == mode ? "● " : "○ ")
-                . Lang("MENU_WS_DENSITY_" . StrUpper(mode), mode),
-            callback: SetWindowSwitcherDensity.Bind(mode)
-        })
-    }
-    wsChildren.Push({
-        label: "📏 " Lang("MENU_WS_DENSITY", "Row density"),
-        children: wsDensityChildren
-    })
-
-    wsChildren.Push({
-        label: (AppState.WindowSwitcherShowProcess ? "● " : "○ ")
-            . Lang("MENU_WS_PROCESS", "Show process column"),
-        callback: (*) => ToggleWindowSwitcherProcessColumn()
-    })
-
-    wsChildren.Push({
-        label: (AppState.WindowSwitcherHighlightRow ? "● " : "○ ")
-            . Lang("MENU_WS_HIGHLIGHT", "Highlight selected row"),
-        callback: (*) => ToggleWindowSwitcherHighlightRow()
-    })
-
-    items.Push({
-        label: "🪟 " Lang("MENU_WINDOW_SWITCHER", "Window Switcher"),
-        children: wsChildren
-    })
-
-    ; --- Hidden windows (CapsLock + Shift + S) ---
-    hiddenLabel := "🫥 " Lang("MENU_HIDDEN_WINDOWS", "Hidden windows") . " (" . TrayHider.Count() . ")"
+    ; --- Hidden windows restore (CapsLock + Shift + S) ---
+    hiddenLabel := "🫥 " . Lang("MENU_HIDDEN_WINDOWS") . " (" . TrayHider.Count() . ")"
     items.Push({ label: hiddenLabel, children: TrayHider.MenuItems() })
 
-    ; --- Language (sub-menu) ---
-    langChildren := []
-    currentLang := Language.GetCurrent()
-    for code in Language.GetLanguages() {
-        langDisplay := Lang("LANG_" . StrUpper(code), code)
-        prefix := (code == currentLang) ? "● " : "○ "
-        langChildren.Push({ label: prefix . "🌐 " . langDisplay, callback: SwitchLanguage.Bind(code) })
-    }
-    items.Push({ label: "🌐 " Lang("MENU_LANGUAGE"), children: langChildren })
-
-    ; --- Theme (sub-menu) ---
+    ; --- Quick Theme Switch (sub-menu) ---
     themeChildren := []
     for mode in Theme.Modes {
         themeChildren.Push({
@@ -362,29 +112,18 @@ BuildTrayMenuItems() {
         })
     }
     items.Push({
-        label: "🌓 " Lang("MENU_THEME", "Theme"),
+        label: "🌓 " . Lang("MENU_THEME") . ": " . Theme.Label(Theme.Current),
         children: themeChildren
     })
 
-    ; --- Hotkey reference (same overlay as CapsLock + H / F1) ---
-    items.Push({ label: "⌨️ " Lang("MENU_CHEATSHEET"), callback: (*) => OpenCheatsheetFromTray() })
-
     items.Push({ isSep: true })
 
-    ; --- Auto-start ---
-    autoStartEnabled := IsAutoStartEnabled()
-    items.Push({ label: (autoStartEnabled ? "✓ " : "") . "🚀 " . Lang("MENU_AUTOSTART"), callback: (*) => ToggleAutoStart() })
-
-    ; --- Rebuild language cache ---
-    items.Push({ label: "🔧 " Lang("MENU_REBUILD_LANG"), callback: (*) => RebuildLangCache() })
-
-    items.Push({ isSep: true })
+    ; --- Open temp folder ---
+    items.Push({ label: "📂 " . Lang("MENU_OPEN_TEMP"), callback: (*) => Run("explore " A_Temp) })
 
     ; --- Reload / Exit ---
-    ; Both actions restore everything first so no window is left hidden or
-    ; frameless when the script goes away.
-    items.Push({ label: "🔄 " Lang("MENU_RELOAD"), callback: (*) => ReloadWithRestore() })
-    items.Push({ label: "❌ " Lang("MENU_EXIT"),   callback: (*) => ExitWithRestore() })
+    items.Push({ label: "🔄 " . Lang("MENU_RELOAD"), callback: (*) => ReloadWithRestore() })
+    items.Push({ label: "❌ " . Lang("MENU_EXIT"),   callback: (*) => ExitWithRestore() })
 
     return items
 }

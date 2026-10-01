@@ -607,6 +607,7 @@ ShowCloudSyncSettings(*) {
     myGui.OnEvent("Escape", CloseSettings)
     myGui.OnEvent("Close", CloseSettings)
 
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 660, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
 
     LoadFields()

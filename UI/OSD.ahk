@@ -30,19 +30,21 @@ class OSD {
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
         myOSD.BackColor := AppState.THEME_SURFACE
 
-        myOSD.Add("Text", "x0 y0 w4 h60 Background" accentColor)
+        ; Left semantic status indicator bar
+        myOSD.Add("Text", "x0 y3 w4 h59 Background" accentColor)
 
         myOSD.SetFont("s16", "Segoe UI Emoji")
-        myOSD.Add("Text", "x16 y12 Background" AppState.THEME_SURFACE, icon)
+        myOSD.Add("Text", "x16 y14 Background" AppState.THEME_SURFACE, icon)
 
-        myOSD.SetFont("s11 c" AppState.THEME_FG, AppState.THEME_FONT)
-        myOSD.Add("Text", "x48 y16 Background" AppState.THEME_SURFACE, text)
+        myOSD.SetFont("s11 Bold c" AppState.THEME_FG, AppState.THEME_FONT)
+        myOSD.Add("Text", "x48 y15 Background" AppState.THEME_SURFACE, text)
 
         myOSD.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
-        myOSD.Add("Text", "x48 y38 Background" AppState.THEME_SURFACE, FormatTime(, "HH:mm:ss"))
+        myOSD.Add("Text", "x48 y39 Background" AppState.THEME_SURFACE, "CapsLock-  ·  " FormatTime(, "HH:mm:ss"))
 
         myOSD.Show("Hide")
         myOSD.GetPos(, , &ow, &oh)
+        ThemeHelper.AddGoogleAccentBar(myOSD, 0, 0, ow, 3)
         savedHwnd := myOSD.Hwnd
 
         try {

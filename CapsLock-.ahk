@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 #SingleInstance Force
 Persistent()
 
@@ -84,6 +84,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
+#Include "UI\SettingsGui.ahk"
 
 Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
 

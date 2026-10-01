@@ -224,6 +224,7 @@ class CustomMenu {
         myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         myGui.BackColor := AppState.THEME_SURFACE
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, menuW, 3)
 
         curY := topPad // 2
         for entry in this.items {
@@ -467,6 +468,7 @@ class CustomMenu {
         subMyGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         subMyGui.BackColor := AppState.THEME_SURFACE
         subMyGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        ThemeHelper.AddGoogleAccentBar(subMyGui, 0, 0, subMenuW, 3)
 
         subCurY := subTopPad // 2
         for entry in subItems {
