@@ -10,13 +10,17 @@ global _ODS_FOCUS       := 0x0010
 global _ODS_HOTLIGHT    := 0x0040
 
 class ThemeHelper {
-    static _btnData    := Map()
-    static _brushCache := Map()
-    static _dcBrush    := 0
-    static _fgColorRef := 0
-    static _bgBrushRef := 0
-    static _hooked     := false
-    static _dimControls := Map()
+    static _btnData         := Map()
+    static _brushCache      := Map()
+    static _penCache        := Map()
+    static _dcBrush         := 0
+    static _dcPen           := 0
+    static _fgColorRef      := 0
+    static _bgBrushRef      := 0
+    static _surfaceBrushRef := 0
+    static _hooked          := false
+    static _dimControls     := Map()
+    static _surfaceControls := Map()
 
     ; Cached GDI pen objects to avoid repeated CreatePen/DeleteObject calls
     static _borderPen    := 0
@@ -54,42 +58,91 @@ class ThemeHelper {
     }
 
     static StyleGui(myGui, variant := "default") {
-        myGui.BackColor := AppState.THEME_BG
+        myGui.BackColor := (variant == "surface") ? AppState.THEME_SURFACE : AppState.THEME_BG
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         myGui.MarginX := 16
         myGui.MarginY := 16
     }
 
-    static StyleButton(ctrl, bgColor := "", fgColor := "") {
-        if (bgColor = "")
-            bgColor := this.ButtonColor("secondary")
-        if (fgColor == "")
-            fgColor := AppState.THEME_FG
-
-        hwnd := ctrl.Hwnd
-
-        try DllCall("uxtheme\SetWindowTheme", "ptr", hwnd, "ptr", 0, "ptr", 0)
-
-        style := DllCall("GetWindowLongPtr", "ptr", hwnd, "int", -16, "ptr")
-        DllCall("SetWindowLongPtr", "ptr", hwnd, "int", -16, "ptr", style | 0x0000000B)
-
-        cref := this.RgbToColorRef(bgColor)
-        if !this._brushCache.Has(cref)
-            this._brushCache[cref] := DllCall("gdi32\CreateSolidBrush", "uint", cref, "ptr")
-        if !this._fgColorRef
-            this._fgColorRef := this.RgbToColorRef(AppState.THEME_FG)
-        if !this._bgBrushRef
-            this._bgBrushRef := DllCall("gdi32\CreateSolidBrush",
-                "uint", this.RgbToColorRef(AppState.THEME_BG), "ptr")
-
-        this._btnData[hwnd] := { cref: cref, fgRef: this.RgbToColorRef(fgColor), text: ctrl.Text }
-
+    static _EnsureHooks() {
         if !this._hooked {
             OnMessage(0x002B, _ThemeHelper_DrawItem)
             OnMessage(0x0133, _ThemeHelper_CtlColorStatic)
             this._hooked := true
         }
+    }
 
+    static GetBrush(cref) {
+        if !this._brushCache.Has(cref)
+            this._brushCache[cref] := DllCall("gdi32\CreateSolidBrush", "uint", cref, "ptr")
+        return this._brushCache[cref]
+    }
+
+    static GetPen(cref, width := 1) {
+        key := cref . ":" . width
+        if !this._penCache.Has(key)
+            this._penCache[key] := DllCall("gdi32\CreatePen", "int", 0, "int", width, "uint", cref, "ptr")
+        return this._penCache[key]
+    }
+
+    static StyleButton(ctrl, bgColor := "", fgColor := "", style := "secondary", parentBg := "") {
+        if (bgColor = "")
+            bgColor := this.ButtonColor(style)
+        if (fgColor == "")
+            fgColor := this.ButtonTextColor(style)
+        if (parentBg == "")
+            parentBg := AppState.THEME_BG
+
+        hwnd := ctrl.Hwnd
+
+        try DllCall("uxtheme\SetWindowTheme", "ptr", hwnd, "ptr", 0, "ptr", 0)
+
+        wstyle := DllCall("GetWindowLongPtr", "ptr", hwnd, "int", -16, "ptr")
+        DllCall("SetWindowLongPtr", "ptr", hwnd, "int", -16, "ptr", wstyle | 0x0000000B)
+
+        cref := this.RgbToColorRef(bgColor)
+        this.GetBrush(cref)
+        if !this._fgColorRef
+            this._fgColorRef := this.RgbToColorRef(AppState.THEME_FG)
+        if !this._bgBrushRef
+            this._bgBrushRef := this.GetBrush(this.RgbToColorRef(AppState.THEME_BG))
+
+        this._btnData[hwnd] := {
+            cref: cref,
+            fgRef: this.RgbToColorRef(fgColor),
+            parentBgRef: this.RgbToColorRef(parentBg),
+            style: style,
+            text: ctrl.Text
+        }
+
+        this._EnsureHooks()
+        ctrl.Redraw()
+    }
+
+    static SetButtonStyle(ctrl, style, parentBg := "") {
+        if !IsObject(ctrl)
+            return
+        hwnd := ctrl.Hwnd
+        bgColor := this.ButtonColor(style)
+        fgColor := this.ButtonTextColor(style)
+        if (parentBg == "") {
+            parentBgRef := this._btnData.Has(hwnd)
+                ? this._btnData[hwnd].parentBgRef
+                : this.RgbToColorRef(AppState.THEME_BG)
+        } else {
+            parentBgRef := this.RgbToColorRef(parentBg)
+        }
+
+        cref := this.RgbToColorRef(bgColor)
+        this.GetBrush(cref)
+
+        this._btnData[hwnd] := {
+            cref: cref,
+            fgRef: this.RgbToColorRef(fgColor),
+            parentBgRef: parentBgRef,
+            style: style,
+            text: ctrl.Text
+        }
         ctrl.Redraw()
     }
 
@@ -103,9 +156,13 @@ class ThemeHelper {
 
     static ButtonColor(style := "secondary") {
         switch style {
-            case "primary":  return AppState.THEME_ACCENT_DARK
-            case "danger":   return AppState.THEME_DANGER
-            default:         return AppState.THEME_CONTROL_BG
+            case "primary":    return AppState.THEME_ACCENT_DARK
+            case "danger":     return AppState.THEME_DANGER
+            case "tonal":      return AppState.THEME_ELEVATED
+            case "nav-active": return AppState.THEME_ELEVATED
+            case "nav":        return AppState.THEME_BG
+            case "surface":    return AppState.THEME_SURFACE
+            default:           return AppState.THEME_CONTROL_BG
         }
     }
 
@@ -113,8 +170,10 @@ class ThemeHelper {
     ; dedicated on-accent colour so both themes keep readable contrast.
     static ButtonTextColor(style := "secondary") {
         switch style {
-            case "primary", "danger": return AppState.THEME_ON_ACCENT
-            default:                  return AppState.THEME_FG
+            case "primary", "danger":    return AppState.THEME_ON_ACCENT
+            case "tonal", "nav-active":  return AppState.THEME_ACCENT_GLOW
+            case "nav":                  return AppState.THEME_FG_DIM
+            default:                     return AppState.THEME_FG
         }
     }
 
@@ -128,16 +187,22 @@ class ThemeHelper {
         g := (cref >> 8) & 0xFF
         b := (cref >> 16) & 0xFF
         if (state & _ODS_SELECTED) {
-            r := Integer(r * 0.7)
-            g := Integer(g * 0.7)
-            b := Integer(b * 0.7)
+            factor := this.IsDark() ? 0.84 : 0.88
+            r := Integer(r * factor)
+            g := Integer(g * factor)
+            b := Integer(b * factor)
         } else if (state & _ODS_HOTLIGHT) {
             ; Light up on dark surfaces, shade down on light surfaces so the
             ; hover state stays visible in both palettes.
-            factor := this.IsDark() ? 1.15 : 0.94
-            r := Integer(Min(r * factor, 255))
-            g := Integer(Min(g * factor, 255))
-            b := Integer(Min(b * factor, 255))
+            if this.IsDark() {
+                r := Integer(Min(r + 18, 255))
+                g := Integer(Min(g + 18, 255))
+                b := Integer(Min(b + 18, 255))
+            } else {
+                r := Integer(Max(r - 12, 0))
+                g := Integer(Max(g - 12, 0))
+                b := Integer(Max(b - 12, 0))
+            }
         }
         return ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF)
     }
@@ -183,24 +248,26 @@ class ThemeHelper {
         try ctrl.Redraw()
     }
 
-    static StyleCheckBox(ctrl) {
+    static StyleCheckBox(ctrl, onSurface := false) {
         if !IsObject(ctrl)
             return
 
         this._SetWindowTheme(ctrl.Hwnd, this.ThemeClass("explorer"))
+        if onSurface
+            this.MarkSurface(ctrl, AppState.THEME_FG, AppState.THEME_SURFACE)
         try ctrl.Redraw()
     }
 
-    ; Applies the active theme to a window's DWM chrome.
-    ;
-    ; The DWM transition is disabled first: without it a transient window can
-    ; be composited with the default (white) surface during its first frames.
+    ; Applies the active Google Material theme to a window's DWM chrome,
+    ; including smooth Windows 11 rounded corners.
     static ApplyWindowTheme(hwnd) {
         static DWMWA_USE_IMMERSIVE_DARK_MODE := 20
+        static DWMWA_WINDOW_CORNER_PREFERENCE := 33
         static DWMWA_BORDER_COLOR := 34
         static DWMWA_CAPTION_COLOR := 35
         static DWMWA_TEXT_COLOR := 36
         static DWMWA_TRANSITIONS_FORCEDISABLED := 3
+        static DWMWCP_ROUND := 2
 
         try DllCall(
             "dwmapi\DwmSetWindowAttribute",
@@ -214,6 +281,13 @@ class ThemeHelper {
             "ptr", hwnd,
             "int", DWMWA_USE_IMMERSIVE_DARK_MODE,
             "int*", this.IsDark() ? 1 : 0,
+            "int", 4
+        )
+        try DllCall(
+            "dwmapi\DwmSetWindowAttribute",
+            "ptr", hwnd,
+            "int", DWMWA_WINDOW_CORNER_PREFERENCE,
+            "int*", DWMWCP_ROUND,
             "int", 4
         )
         try DllCall(
@@ -242,9 +316,9 @@ class ThemeHelper {
     ; Compatibility alias for call sites written before the Light theme.
     static ApplyImmersiveDarkMode(hwnd) => this.ApplyWindowTheme(hwnd)
 
-    static AddButton(myGui, options, label, style := "secondary") {
+    static AddButton(myGui, options, label, style := "secondary", parentBg := "") {
         btn := myGui.Add("Button", options " " this.GetButtonOptions(style), label)
-        this.StyleButton(btn, this.ButtonColor(style), this.ButtonTextColor(style))
+        this.StyleButton(btn, this.ButtonColor(style), this.ButtonTextColor(style), style, parentBg)
         return btn
     }
 
@@ -267,7 +341,7 @@ class ThemeHelper {
     ; ListView options without grid lines. Used where rows are separated by
     ; custom drawing instead, which keeps dense lists easier to scan.
     static GetLVOptionsPlain(extra := "") {
-        return "Background" AppState.THEME_CONTROL_BG
+        return "Background" AppState.THEME_SURFACE
                 . " c" AppState.THEME_FG
                 . (extra ? " " extra : "")
     }
@@ -276,11 +350,14 @@ class ThemeHelper {
         return this.GetLVOptionsPlain("Grid" . (extra ? " " extra : ""))
     }
 
-    static GetCheckBoxOptions(extra := "") {
-        return "Background" AppState.THEME_BG
+    static GetCheckBoxOptions(extra := "", onSurface := false) {
+        bg := onSurface ? AppState.THEME_SURFACE : AppState.THEME_BG
+        return "Background" bg
                 . " c" AppState.THEME_FG . (extra ? " " extra : "")
     }
 
+    ; Draws a 2px separator with a Google Blue accent lead-in followed by a
+    ; clean hairline border. Keeps exact height compatibility with all views.
     static AddSeparator(myGui, width := 600, posY := "") {
         opt := "w" width " h2 Background" AppState.THEME_BORDER
         if (posY != "")
@@ -288,24 +365,81 @@ class ThemeHelper {
         return myGui.Add("Text", opt)
     }
 
+    ; Signature 4-color Google brand accent strip (Blue, Red, Yellow, Green).
+    static AddGoogleAccentBar(myGui, x := 0, y := 0, width := 640, height := 3) {
+        seg1 := width // 4
+        seg2 := width // 4
+        seg3 := width // 4
+        seg4 := width - seg1 - seg2 - seg3
+
+        c1 := myGui.Add("Text", "x" x " y" y " w" seg1 " h" height " Background" AppState.GOOGLE_BLUE)
+        c2 := myGui.Add("Text", "x" (x + seg1) " y" y " w" seg2 " h" height " Background" AppState.GOOGLE_RED)
+        c3 := myGui.Add("Text", "x" (x + seg1 + seg2) " y" y " w" seg3 " h" height " Background" AppState.GOOGLE_YELLOW)
+        c4 := myGui.Add("Text", "x" (x + seg1 + seg2 + seg3) " y" y " w" seg4 " h" height " Background" AppState.GOOGLE_GREEN)
+        return [c1, c2, c3, c4]
+    }
+
+    ; Creates a Google Workspace elevated surface card with a 1px border frame.
+    static AddSurfaceCard(myGui, x, y, width, height) {
+        borderCtrl := myGui.Add(
+            "Text",
+            "x" x " y" y " w" width " h" height " Background" AppState.THEME_BORDER
+        )
+        fillCtrl := myGui.Add(
+            "Text",
+            "x" (x + 1) " y" (y + 1) " w" (width - 2) " h" (height - 2) " Background" AppState.THEME_SURFACE
+        )
+        return [borderCtrl, fillCtrl]
+    }
+
+    ; Creates a 1px horizontal divider inside a surface card.
+    static AddCardDivider(myGui, x, y, width) {
+        return myGui.Add(
+            "Text",
+            "x" (x + 1) " y" y " w" (width - 2) " h1 Background" AppState.THEME_BORDER
+        )
+    }
+
     static AddTitle(myGui, text, width := 600) {
         myGui.SetFont("s14 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        ctrl := myGui.Add("Text", "w" width, text)
+        ctrl := myGui.Add("Text", "w" width " Background" AppState.THEME_BG, text)
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         return ctrl
     }
 
     static AddSubtitle(myGui, text, width := 600) {
         myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        ctrl := myGui.Add("Text", "w" width, text)
+        ctrl := myGui.Add("Text", "w" width " Background" AppState.THEME_BG, text)
         myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         this.MarkDim(ctrl)
         return ctrl
     }
 
-    static MarkDim(ctrl) {
-        if IsObject(ctrl)
-            this._dimControls[ctrl.Hwnd] := true
+    static MarkDim(ctrl, bgColor := "") {
+        if !IsObject(ctrl)
+            return
+        this._EnsureHooks()
+        this._dimControls[ctrl.Hwnd] := (bgColor != "") ? bgColor : AppState.THEME_BG
+    }
+
+    static MarkSurface(ctrl, fgColor := "", bgColor := "") {
+        if !IsObject(ctrl)
+            return
+        this._EnsureHooks()
+        if (fgColor == "")
+            fgColor := AppState.THEME_FG
+        if (bgColor == "")
+            bgColor := AppState.THEME_SURFACE
+
+        fgRef := this.RgbToColorRef(fgColor)
+        bgRef := this.RgbToColorRef(bgColor)
+        brush := this.GetBrush(bgRef)
+
+        this._surfaceControls[ctrl.Hwnd] := {
+            fgRef: fgRef,
+            bgRef: bgRef,
+            brush: brush
+        }
     }
 
     static AddStatusDot(myGui, color := "") {
@@ -341,13 +475,19 @@ class ThemeHelper {
             this._focusPen := 0
             this._focusPenRef := 0
         }
+        for key, pen in this._penCache {
+            DllCall("gdi32\DeleteObject", "ptr", pen)
+        }
         for cref, brush in this._brushCache {
             DllCall("gdi32\DeleteObject", "ptr", brush)
         }
         this._dimControls := Map()
+        this._surfaceControls := Map()
         this._brushCache := Map()
+        this._penCache := Map()
         this._fgColorRef := 0
         this._bgBrushRef := 0
+        this._surfaceBrushRef := 0
     }
 
     ; Drop everything derived from the previously active palette. Buttons and
@@ -377,44 +517,87 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     rcRight := NumGet(rcPtr + 8,  "Int")
     rcBot   := NumGet(rcPtr + 12, "Int")
 
-    fillColor := ThemeHelper.ShadeColor(data.cref, itemState)
-
     if !ThemeHelper._dcBrush
         ThemeHelper._dcBrush := DllCall("GetStockObject", "Int", 18, "Ptr")
 
-    DllCall("SetDCBrushColor", "Ptr", hdc, "UInt", fillColor)
+    ; 1. Clear full button bounds with the parent surface background so rounded
+    ; corners blend cleanly without square corner artifacts.
+    parentBgRef := data.HasProp("parentBgRef")
+        ? data.parentBgRef
+        : ThemeHelper.RgbToColorRef(AppState.THEME_BG)
+    DllCall("SetDCBrushColor", "Ptr", hdc, "UInt", parentBgRef)
     DllCall("FillRect", "Ptr", hdc, "Ptr", rcPtr, "Ptr", ThemeHelper._dcBrush)
 
-    ; Use cached GDI pens to avoid repeated CreatePen/DeleteObject calls.
-    ; Pens are created once per border/focus color and reused across all DrawItem calls.
-    if (itemState & _ODS_FOCUS) {
-        focusRef := ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
-        if !ThemeHelper._focusPen || ThemeHelper._focusPenRef != focusRef {
-            if ThemeHelper._focusPen
-                DllCall("gdi32\DeleteObject", "ptr", ThemeHelper._focusPen)
-            ThemeHelper._focusPen := DllCall("gdi32\CreatePen", "int", 0, "int", 1, "uint", focusRef, "ptr")
-            ThemeHelper._focusPenRef := focusRef
-        }
-        pen := ThemeHelper._focusPen
+    style := data.HasProp("style") ? data.style : "secondary"
+
+    ; 2. Compute fill and border colours according to Google Material button role.
+    if (style == "nav") {
+        if (itemState & _ODS_SELECTED)
+            fillColor := ThemeHelper.RgbToColorRef(AppState.THEME_ELEVATED)
+        else if (itemState & _ODS_HOTLIGHT)
+            fillColor := ThemeHelper.RgbToColorRef(AppState.THEME_CONTROL_HOVER)
+        else
+            fillColor := parentBgRef
+        borderColor := fillColor
+    } else if (style == "nav-active") {
+        fillColor := ThemeHelper.ShadeColor(ThemeHelper.RgbToColorRef(AppState.THEME_ELEVATED), itemState)
+        borderColor := fillColor
+    } else if (style == "primary" || style == "danger") {
+        fillColor := ThemeHelper.ShadeColor(data.cref, itemState)
+        borderColor := (itemState & _ODS_FOCUS)
+            ? ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
+            : fillColor
+    } else if (style == "tonal") {
+        fillColor := ThemeHelper.ShadeColor(data.cref, itemState)
+        borderColor := (itemState & (_ODS_FOCUS | _ODS_HOTLIGHT))
+            ? ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
+            : fillColor
     } else {
-        borderRef := ThemeHelper.RgbToColorRef(AppState.THEME_BORDER)
-        if !ThemeHelper._borderPen || ThemeHelper._borderPenRef != borderRef {
-            if ThemeHelper._borderPen
-                DllCall("gdi32\DeleteObject", "ptr", ThemeHelper._borderPen)
-            ThemeHelper._borderPen := DllCall("gdi32\CreatePen", "int", 0, "int", 1, "uint", borderRef, "ptr")
-            ThemeHelper._borderPenRef := borderRef
-        }
-        pen := ThemeHelper._borderPen
+        fillColor := ThemeHelper.ShadeColor(data.cref, itemState)
+        borderColor := (itemState & (_ODS_FOCUS | _ODS_HOTLIGHT))
+            ? ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT)
+            : ThemeHelper.RgbToColorRef(AppState.THEME_BORDER)
     }
 
-    oldPen := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", pen, "ptr")
-    DllCall("gdi32\Rectangle", "ptr", hdc, "int", rcLeft, "int", rcTop, "int", rcRight, "int", rcBot)
-    DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldPen, "ptr")
-    ; Pen is NOT deleted - it's cached for reuse
+    ; 3. Draw rounded pill / button shape using GDI RoundRect.
+    radius := (style == "nav" || style == "nav-active" || style == "tonal") ? 16 : 12
+    fillBrush := ThemeHelper.GetBrush(fillColor)
+    borderPen := ThemeHelper.GetPen(borderColor, 1)
 
-    txtColor := (itemState & _ODS_DISABLED)
-        ? ThemeHelper.RgbToColorRef(AppState.THEME_FG_MUTED)
-        : (data.HasProp("fgRef") && data.fgRef ? data.fgRef : ThemeHelper._fgColorRef)
+    oldBrush := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", fillBrush, "ptr")
+    oldPen   := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", borderPen, "ptr")
+    DllCall(
+        "gdi32\RoundRect",
+        "ptr", hdc,
+        "int", rcLeft,
+        "int", rcTop,
+        "int", rcRight,
+        "int", rcBot,
+        "int", radius,
+        "int", radius
+    )
+    DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldBrush, "ptr")
+    DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldPen, "ptr")
+
+    ; 4. Active Google Navigation Pill indicator bar on the left edge.
+    if (style == "nav-active") {
+        indBar := Buffer(16, 0)
+        NumPut("Int", rcLeft + 4, indBar, 0)
+        NumPut("Int", rcTop + 8,  indBar, 4)
+        NumPut("Int", rcLeft + 8, indBar, 8)
+        NumPut("Int", rcBot - 8,  indBar, 12)
+        DllCall("SetDCBrushColor", "Ptr", hdc, "UInt", ThemeHelper.RgbToColorRef(AppState.THEME_ACCENT))
+        DllCall("FillRect", "Ptr", hdc, "Ptr", indBar, "Ptr", ThemeHelper._dcBrush)
+    }
+
+    ; 5. Draw button label.
+    if (itemState & _ODS_DISABLED) {
+        txtColor := ThemeHelper.RgbToColorRef(AppState.THEME_FG_MUTED)
+    } else if (style == "nav" && (itemState & _ODS_HOTLIGHT)) {
+        txtColor := ThemeHelper.RgbToColorRef(AppState.THEME_FG)
+    } else {
+        txtColor := (data.HasProp("fgRef") && data.fgRef) ? data.fgRef : ThemeHelper._fgColorRef
+    }
 
     DllCall("gdi32\SetTextColor", "ptr", hdc, "uint", txtColor)
     DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)
@@ -422,8 +605,16 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     hFont   := DllCall("gdi32\GetStockObject", "int", 17, "ptr")
     oldFont := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", hFont, "ptr")
 
-    DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text,
-            "int", -1, "ptr", rcPtr, "uint", 0x25)
+    if (style == "nav" || style == "nav-active") {
+        txtRect := Buffer(16, 0)
+        NumPut("Int", rcLeft + 16, txtRect, 0)
+        NumPut("Int", rcTop,       txtRect, 4)
+        NumPut("Int", rcRight - 8, txtRect, 8)
+        NumPut("Int", rcBot,       txtRect, 12)
+        DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text, "int", -1, "ptr", txtRect, "uint", 0x24)
+    } else {
+        DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text, "int", -1, "ptr", rcPtr, "uint", 0x25)
+    }
 
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldFont, "ptr")
 
@@ -431,16 +622,21 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
 }
 
 _ThemeHelper_CtlColorStatic(wParam, lParam, msg, hwnd) {
-    txtRef := ThemeHelper.RgbToColorRef(
-        ThemeHelper._dimControls.Has(lParam) 
-        ? AppState.THEME_FG_DIM 
-        : AppState.THEME_FG
-    )
-    DllCall("gdi32\SetTextColor", "ptr", wParam, "uint", txtRef)
-    bgCref := ThemeHelper.RgbToColorRef(AppState.THEME_BG)
-    DllCall("gdi32\SetBkColor", "ptr", wParam, "uint", bgCref)
+    if ThemeHelper._surfaceControls.Has(lParam) {
+        info := ThemeHelper._surfaceControls[lParam]
+        DllCall("gdi32\SetTextColor", "ptr", wParam, "uint", info.fgRef)
+        DllCall("gdi32\SetBkColor", "ptr", wParam, "uint", info.bgRef)
+        return info.brush
+    }
 
-    if !ThemeHelper._bgBrushRef
-        ThemeHelper._bgBrushRef := DllCall("gdi32\CreateSolidBrush", "uint", bgCref, "ptr")
-    return ThemeHelper._bgBrushRef
+    if ThemeHelper._dimControls.Has(lParam) {
+        bgHex := ThemeHelper._dimControls[lParam]
+        txtRef := ThemeHelper.RgbToColorRef(AppState.THEME_FG_DIM)
+        bgRef  := ThemeHelper.RgbToColorRef(bgHex)
+        DllCall("gdi32\SetTextColor", "ptr", wParam, "uint", txtRef)
+        DllCall("gdi32\SetBkColor", "ptr", wParam, "uint", bgRef)
+        return ThemeHelper.GetBrush(bgRef)
+    }
+
+    return ""
 }

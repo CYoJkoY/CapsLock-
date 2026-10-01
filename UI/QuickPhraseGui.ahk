@@ -60,6 +60,7 @@ ShowQuickPhraseSelector() {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseSelector(myGui))
 
     AppState.QuickPhraseGui := myGui
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h470")
     search.Focus()
@@ -692,6 +693,13 @@ QuickPhraseIsInternalWindow(hwnd) {
         }
     }
 
+    if IsObject(AppState.SettingsGui) {
+        try {
+            if AppState.SettingsGui.Hwnd == hwnd
+                return true
+        }
+    }
+
     return false
 }
 
@@ -971,6 +979,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
     AppState.QuickPhraseManagerGui := myGui
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 740, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w740 h590")
     search.Focus()
@@ -1133,6 +1142,7 @@ ShowQuickPhraseEditor(id := 0) {
     myGui.OnEvent("Escape", Cancel)
     myGui.OnEvent("Close", Cancel)
 
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h560")
     nameEdit.Focus()

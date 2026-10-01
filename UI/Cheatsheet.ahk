@@ -84,6 +84,7 @@ class HotkeyReferenceGui {
         this.statusBar := status
         this.searchIcon := searchIcon
 
+        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 672, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w672 h560")
         this.Refresh()

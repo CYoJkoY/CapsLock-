@@ -230,6 +230,7 @@ class WindowSwitcherGui {
         this.Instance := myGui
         this.EnsureNotifyHook()
 
+        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 672, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
 
         myGui.Show("AutoSize")

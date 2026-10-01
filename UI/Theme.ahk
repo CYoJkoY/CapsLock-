@@ -81,6 +81,11 @@ class Theme {
             : Lang("MENU_THEME_DARK", "Dark")
     }
 
+    static Toggle() {
+        next := this.IsDark() ? this.Light : this.Dark
+        this.Set(next)
+    }
+
     ; Switch theme at runtime: persist, drop cached GDI state, and close
     ; surfaces that would otherwise keep the previous palette.
     static Set(mode) {
@@ -116,6 +121,12 @@ class Theme {
         ; Pin badges cache their colours at creation time, so they are rebuilt
         ; with the new palette instead of keeping the old one.
         try PinIndicator.RefreshTheme()
+
+        ; If the dedicated Settings GUI is open, refresh it in-place on the
+        ; active tab so theme switches are immediately visible.
+        if IsSet(SettingsGui) && SettingsGui.IsOpen() {
+            try SettingsGui.RefreshTheme()
+        }
 
         ShowToolTip(
             Lang(mode == this.Light ? "MSG_THEME_LIGHT_SET" : "MSG_THEME_DARK_SET",

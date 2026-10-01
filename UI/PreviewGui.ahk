@@ -37,6 +37,7 @@ ShowPreviewGui(text) {
     ))
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 640, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w640 h480")
 }

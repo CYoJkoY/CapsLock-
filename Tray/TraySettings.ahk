@@ -140,6 +140,7 @@ SetIgnorePatterns(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 540, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show()
 }
@@ -232,6 +233,7 @@ SetPandocOutput(*) {
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 460, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }
@@ -427,6 +429,7 @@ SetWindowHoleRules(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
+    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 620, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }

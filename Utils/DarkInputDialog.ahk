@@ -41,6 +41,7 @@ class DarkInputDialog {
         myGui.OnEvent("Escape", OnCancel)
         myGui.OnEvent("Close", OnCancel)
 
+        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, width + 12, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("AutoSize Center")
         editCtrl.Focus()

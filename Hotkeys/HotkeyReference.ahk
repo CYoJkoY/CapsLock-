@@ -89,7 +89,10 @@ class HotkeyReference {
                                                                                                                                                 action: "" }, { cat: "CHEAT_CAT_HELP",
                                                                                                                                                     keys: "CapsLock + H / F1",
                                                                                                                                                     desc: "CHEAT_ACT_CHEATSHEET",
-                                                                                                                                                    action: "" }
+                                                                                                                                                    action: "" }, { cat: "CHEAT_CAT_HELP",
+                                                                                                                                                        keys: "CapsLock + I / ,",
+                                                                                                                                                        desc: "CHEAT_ACT_SETTINGS",
+                                                                                                                                                        action: ((*) => SettingsGui.Show()) }
         ]
     }
 }
