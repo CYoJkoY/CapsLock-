@@ -87,7 +87,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Window Hole  | `X`                        | Activate Window Hole according to the configured activation mode                                              |
 | Window Hole  | `X`, then `1`              | Temporarily minimize the current focused window and reveal the next layer; repeat while Window Hole is active |
 | Screen       | `O`                        | Spotlight: dim everything except the area around the cursor                                                    |
-| Screen       | `Z`                        | Dynamic Zoom: magnify the live desktop around the cursor                                                       |
+| Screen       | `Z`                        | Dynamic Zoom: zoom the whole screen around the cursor                                                          |
 | Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
@@ -191,26 +191,34 @@ rest of the desktop remains readable through the dim layer.
 
 ### Dynamic Zoom
 
-`CapsLock + Z` magnifies the desktop around the physical cursor into a lens that follows it.
+`CapsLock + Z` turns the whole screen into a magnified view of the desktop around the physical cursor.
 
-- The lens shows a **live** view of the desktop, not a screenshot, so video, animation, scrolling text
-  and anything else that changes keeps updating while the cursor is still.
-- Magnification, lens size, lens shape (circle / rounded rectangle / square), border width, activation
-  mode (hold / toggle), and whether input passes through the lens are all configurable from the
-  Dynamic Zoom sub-menu in the tray.
-- By default the lens is click-through, so the applications underneath keep receiving mouse and
-  keyboard input normally. Turning that off gives the lens a real window that accepts input instead.
-- The lens never takes a copy of the screen, so turning it off cannot leave a stale frame behind and
-  no window underneath is modified.
+- At magnification `n` the screen shows only the `n`-th part of the desktop that surrounds the
+  pointer: the ring of content immediately around it, `n` times bigger. At the default factor of 3
+  the screen shows a third of the desktop in each direction.
+- The pointer keeps its exact position on screen and the magnified image of the desktop point under it
+  stays under it, so what you aim at is what you click. No pointer warping and no input transform are
+  involved.
+- The view shows a **live** desktop, not a screenshot, so video, animation, scrolling text and
+  anything else that changes keeps updating while the cursor is still.
+- Magnification (`2`-`16`), activation mode (hold / toggle) and the cursor tracking interval are
+  configurable from the Dynamic Zoom sub-menu in the tray.
+- The overlay is click-through and cannot take focus, so the applications underneath keep receiving
+  mouse and keyboard input normally. No window below the overlay is modified, and turning the effect
+  off simply removes the overlay.
+- The view never takes a copy of the screen, so turning it off cannot leave a stale frame behind.
 - Dynamic Zoom and Spotlight cover the same pixels, so starting one stops the other.
 
 **Implementation note.** Dynamic Zoom uses the Windows Magnification API rather than a
-`GetDC(NULL)` + `StretchBlt` capture loop. The source rectangle is centred on the cursor and the lens
-is centred on the cursor, so a plain screen capture would sample the lens window itself and feed it
-straight back into the lens. The Magnification API is a live view onto the composed desktop and can
-exclude the effect's own windows via `MagSetWindowFilterList()`, which removes the feedback loop,
-lets the compositor do the scaling, and means an idle cursor costs nothing. It requires Windows 8 or
-later; on older systems the effect reports that it is unavailable instead of starting.
+`GetDC(NULL)` + `StretchBlt` capture loop. The overlay covers the screen, so the source rectangle lies
+entirely inside the overlay: a plain screen capture would sample the overlay window itself and feed it
+straight back into the view. The Magnification API is a live view onto the composed desktop and can
+exclude the effect's own window via `MagSetWindowFilterList()`, which removes the feedback loop, lets
+the compositor do the scaling, and means an idle cursor costs nothing. A magnifier control covers the
+virtual screen and `MagSetWindowSource()` is pointed at the region to show; its top-left corner is
+pinned to the cursor (`sourceLeft = cursor - (cursor - viewLeft) / factor`) so the pointer never moves
+relative to the content underneath it. It requires Windows 8 or later; on older systems the effect
+reports that it is unavailable instead of starting.
 
 ### Window and tab controls
 
