@@ -40,7 +40,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
     Download() {
         if AppState.CloudSyncTarget == ""
-            return {exists: false}
+            return { exists: false }
 
         response := this._GetGist(AppState.CloudSyncTarget)
 
@@ -56,7 +56,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         files := gist["files"]
         if !(files is Map) || !files.Has(this.FileName)
-            return {exists: false}
+            return { exists: false }
 
         fileInfo := files[this.FileName]
         content := fileInfo.Has("content") ? String(fileInfo["content"]) : ""

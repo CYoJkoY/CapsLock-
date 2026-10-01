@@ -25,7 +25,8 @@ ConvertWithPandoc() {
 
     if (allPaths.Length == 0) {
         ShowToolTip(
-            Lang("MSG_NO_FILES_FOUND", "No valid files or folders found in clipboard. Copy file paths, then press CapsLock+P."),
+            Lang("MSG_NO_FILES_FOUND",
+                "No valid files or folders found in clipboard. Copy file paths, then press CapsLock+P."),
             2500
         )
         return
@@ -82,7 +83,8 @@ ConvertWithPandoc() {
         ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
         progressGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
         progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
-        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG, 0)
+        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG,
+            0)
         ThemeHelper.ApplyWindowTheme(progressGui.Hwnd)
         progressGui.Show("AutoSize Center")
     }

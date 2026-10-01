@@ -7,12 +7,12 @@ class CloudSyncSerializer {
     ; local values when applying.
     static MachineLocal := Map(
         "ImageMagick", Map("Path", true),
-        "Pandoc",      Map("Path", true),
-        "WindowHole",  Map(
-            "allowedExecutables",  true,
+        "Pandoc", Map("Path", true),
+        "WindowHole", Map(
+            "allowedExecutables", true,
             "excludedExecutables", true,
-            "allowedClasses",      true,
-            "excludedClasses",     true
+            "allowedClasses", true,
+            "excludedClasses", true
         )
     )
 

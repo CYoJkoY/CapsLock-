@@ -143,11 +143,11 @@ CheckIncludes(root, files) {
     for path in files {
         relative := StrReplace(path, root "\", "")
 
-        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+""([^""]+)""[ \t]*$") {
+        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+" "([^" "]+)" "[ \t]*$") {
             target := match.groups[1]
             Check(FileExist(root "\" target),
-                "include resolves: " target,
-                "referenced from " relative)
+            "include resolves: " target,
+            "referenced from " relative)
         }
     }
 }
@@ -156,11 +156,11 @@ CheckFileInstalls(root, files) {
     for path in files {
         relative := StrReplace(path, root "\", "")
 
-        for match in AllMatches(ReadText(path), "FileInstall\([ \t]*""([^""]+)""") {
+        for match in AllMatches(ReadText(path), "FileInstall\([ \t]*" "([^" "]+)" "") {
             target := match.groups[1]
             Check(FileExist(root "\" target),
-                "FileInstall source exists: " target,
-                "referenced from " relative)
+            "FileInstall source exists: " target,
+            "referenced from " relative)
         }
     }
 }
@@ -250,10 +250,10 @@ CheckLanguageKeys(root, files, languageKeys) {
 
         ; A key with leading or trailing whitespace never resolves, so Lang()
         ; falls back and the user sees the raw key.
-        for match in AllMatches(source, "Lang\([ \t]*""([ \t]*[A-Z0-9_]*[A-Z][A-Z0-9_]*[ \t])""")
+        for match in AllMatches(source, "Lang\([ \t]*" "([ \t]*[A-Z0-9_]*[A-Z][A-Z0-9_]*[ \t])" "")
             padding["'" match.groups[1] "'"] := relative
 
-        for match in AllMatches(source, "Lang\([ \t]*""([A-Z][A-Z0-9_]*)""[ \t]*([,)])") {
+        for match in AllMatches(source, "Lang\([ \t]*" "([A-Z][A-Z0-9_]*)" "[ \t]*([,)])") {
             key := match.groups[1]
             if !languageKeys.Has(key)
                 missing[key] := relative
@@ -297,13 +297,13 @@ CheckShortcutBindings(root) {
     bound := Map()
 
     for match in AllMatches(ReadText(bindingsPath),
-            "m)^[ \t]*([~*$]*[\^!+#]*[A-Za-z0-9]+)[ \t]*(?:up)?[ \t]*::") {
+    "m)^[ \t]*([~*$]*[\^!+#]*[A-Za-z0-9]+)[ \t]*(?:up)?[ \t]*::") {
         bound[NormalizeKeyName(match.groups[1])] := true
     }
 
     Check(bound.Count > 0, "hotkey bindings were parsed", "found " bound.Count)
 
-    for match in AllMatches(ReadText(referencePath), "keys:[ \t]*""([^""]+)""")
+    for match in AllMatches(ReadText(referencePath), "keys:[ \t]*" "([^" "]+)" "")
         CheckShortcut(bound, match.groups[1])
 }
 
@@ -444,14 +444,14 @@ CheckEveryFileIncluded(root, files) {
     referenced := Map()
 
     for path in files {
-        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+""([^""]+)""[ \t]*$")
+        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+" "([^" "]+)" "[ \t]*$")
             referenced[StrLower(StrReplace(match.groups[1], "/", "\"))] := true
     }
 
     orphan := []
 
     for folder in ["Config", "Core", "Hotkeys", "History", "Tray", "UI", "Utils"] {
-        Loop Files, root "\" folder "\*.ahk", "R" {
+        loop files, root "\" folder "\*.ahk", "R" {
             relative := StrReplace(A_LoopFilePath, root "\", "")
             if !referenced.Has(StrLower(relative))
                 orphan.Push(relative)
@@ -471,7 +471,7 @@ Main() {
     root := RepoRoot()
 
     files := []
-    Loop Files, root "\*.ahk", "R" {
+    loop files, root "\*.ahk", "R" {
         ; This script is a tool, not a part of the application.
         if (A_LoopFilePath == A_ScriptFullPath)
             continue

@@ -21,8 +21,8 @@
 class CursorFx {
     ; WS_EX_TRANSPARENT / WS_EX_NOACTIVATE / WS_EX_LAYERED.
     static EX_TRANSPARENT := 0x20
-    static EX_NOACTIVATE  := 0x08000000
-    static EX_LAYERED     := 0x80000
+    static EX_NOACTIVATE := 0x08000000
+    static EX_LAYERED := 0x80000
 
     ; --- Geometry ---------------------------------------------------------
 

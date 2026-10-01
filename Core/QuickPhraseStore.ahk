@@ -249,10 +249,10 @@ class QuickPhraseStore {
         if n <= 1
             return
 
-        Loop n - 1 {
+        loop n - 1 {
             swapped := false
             limit := n - A_Index
-            Loop limit {
+            loop limit {
                 left := this._phrases[A_Index]
                 right := this._phrases[A_Index + 1]
                 if right.order < left.order

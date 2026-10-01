@@ -18,11 +18,11 @@ class TrayHider {
     static Watcher := ""
 
     static HideActive() {
-        hwnd := WinExist( "A" )
+        hwnd := WinExist("A")
 
-        if !WindowIsManageable( hwnd ) {
+        if !WindowIsManageable(hwnd) {
             ShowToolTip(
-                Lang( "MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden." ),
+                Lang("MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden."),
                 1800
             )
             return
@@ -30,22 +30,22 @@ class TrayHider {
 
         ; Pressing the shortcut on an already hidden window (for example after
         ; restoring it and pressing again) is a no-op instead of an error.
-        if this.Items.Has( hwnd )
+        if this.Items.Has(hwnd)
             return
 
         ; Read the description while the window is still visible.
         info := Map(
-            "title", WindowSafeTitle( hwnd ),
-            "process", WindowSafeProcessName( hwnd ),
-            "pid", WindowSafePid( hwnd ),
-            "minimized", this.IsMinimized( hwnd )
+            "title", WindowSafeTitle(hwnd),
+            "process", WindowSafeProcessName(hwnd),
+            "pid", WindowSafePid(hwnd),
+            "minimized", this.IsMinimized(hwnd)
         )
 
         try
-            WinHide( "ahk_id " hwnd )
+            WinHide("ahk_id " hwnd)
         catch {
             ShowToolTip(
-                Lang( "MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden." ),
+                Lang("MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden."),
                 1800
             )
             return
@@ -55,15 +55,15 @@ class TrayHider {
         ; can ignore it. Confirm the window really disappeared before it is
         ; listed as hidden, otherwise the entry would look restored while the
         ; window is still on screen.
-        if WindowIsVisible( hwnd ) {
+        if WindowIsVisible(hwnd) {
             ShowToolTip(
-                Lang( "MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden." ),
+                Lang("MSG_TRAY_HIDE_UNSUPPORTED", "This window cannot be hidden."),
                 1800
             )
             return
         }
 
-        this.Items[ hwnd ] := info
+        this.Items[hwnd] := info
         this.StartWatcher()
 
         OSD.ShowNotification(
@@ -76,24 +76,24 @@ class TrayHider {
         )
     }
 
-    static Restore( hwnd, silent := false ) {
-        if !this.Items.Has( hwnd )
+    static Restore(hwnd, silent := false) {
+        if !this.Items.Has(hwnd)
             return
 
-        title := this.Items[ hwnd ][ "title" ]
-        wasMinimized := this.Items[ hwnd ][ "minimized" ]
-        this.Items.Delete( hwnd )
+        title := this.Items[hwnd]["title"]
+        wasMinimized := this.Items[hwnd]["minimized"]
+        this.Items.Delete(hwnd)
 
         restored := false
 
-        if WindowHandleAlive( hwnd ) {
+        if WindowHandleAlive(hwnd) {
             try {
-                WinShow( "ahk_id " hwnd )
+                WinShow("ahk_id " hwnd)
 
-                if wasMinimized || WinGetMinMax( "ahk_id " hwnd ) == -1
-                    WinRestore( "ahk_id " hwnd )
+                if wasMinimized || WinGetMinMax("ahk_id " hwnd) == -1
+                    WinRestore("ahk_id " hwnd)
 
-                WinActivate( "ahk_id " hwnd )
+                WinActivate("ahk_id " hwnd)
                 restored := true
             } catch {
                 restored := false
@@ -108,13 +108,13 @@ class TrayHider {
 
         if restored {
             OSD.ShowNotification(
-                "👁 " Lang( "MSG_TRAY_RESTORED", "Window restored: {1}", title ),
+                "👁 " Lang("MSG_TRAY_RESTORED", "Window restored: {1}", title),
                 1800,
                 "info"
             )
         } else {
             ShowToolTip(
-                Lang( "MSG_TRAY_WINDOW_GONE", "The hidden window is no longer available." ),
+                Lang("MSG_TRAY_WINDOW_GONE", "The hidden window is no longer available."),
                 1800
             )
         }
@@ -122,12 +122,12 @@ class TrayHider {
 
     ; Bring every hidden window back. Used by the tray menu and on exit so a
     ; running application is never left invisible.
-    static RestoreAll( silent := false ) {
+    static RestoreAll(silent := false) {
         if this.Items.Count == 0
             return
 
         for hwnd, info in this.Items.Clone()
-            this.Restore( hwnd, silent )
+            this.Restore(hwnd, silent)
     }
 
     static Count() {
@@ -143,7 +143,7 @@ class TrayHider {
 
         if this.Items.Count == 0 {
             children.Push({
-                label: "· " Lang( "MENU_HIDDEN_NONE", "No hidden windows" ),
+                label: "· " Lang("MENU_HIDDEN_NONE", "No hidden windows"),
                 callback: (*) => 0
             })
 
@@ -152,14 +152,14 @@ class TrayHider {
 
         for hwnd, info in this.Items {
             children.Push({
-                label: this.MenuLabel( info ),
-                callback: this.MakeRestoreCallback( hwnd )
+                label: this.MenuLabel(info),
+                callback: this.MakeRestoreCallback(hwnd)
             })
         }
 
         children.Push({ isSep: true })
         children.Push({
-            label: "↩ " Lang( "MENU_HIDDEN_RESTORE_ALL", "Restore all hidden windows" ),
+            label: "↩ " Lang("MENU_HIDDEN_RESTORE_ALL", "Restore all hidden windows"),
             callback: (*) => TrayHider.RestoreAll()
         })
 
@@ -168,27 +168,27 @@ class TrayHider {
 
     ; The callback is built in its own function so every row captures its own
     ; window handle instead of the loop variable.
-    static MakeRestoreCallback( hwnd ) {
-        return ((*) => TrayHider.Restore( hwnd ))
+    static MakeRestoreCallback(hwnd) {
+        return ((*) => TrayHider.Restore(hwnd))
     }
 
     ; Tray rows stay short: title (trimmed) plus the owning process.
-    static MenuLabel( info ) {
-        title := info[ "title" ]
+    static MenuLabel(info) {
+        title := info["title"]
 
-        if StrLen( title ) > 34
-            title := SubStr( title, 1, 34 ) "…"
+        if StrLen(title) > 34
+            title := SubStr(title, 1, 34) "…"
 
-        process := info[ "process" ]
+        process := info["process"]
 
-        return "🫥 " title ( process != "" ? "  (" process ")" : "" )
+        return "🫥 " title (process != "" ? "  (" process ")" : "")
     }
 
     ; --- Helpers ----------------------------------------------------------
 
-    static IsMinimized( hwnd ) {
+    static IsMinimized(hwnd) {
         try
-            return WinGetMinMax( "ahk_id " hwnd ) == -1
+            return WinGetMinMax("ahk_id " hwnd) == -1
         catch
             return false
     }
@@ -199,15 +199,15 @@ class TrayHider {
         if this.Watcher != ""
             return
 
-        this.Watcher := ObjBindMethod( this, "PruneClosedWindows" )
-        SetTimer( this.Watcher, 2000 )
+        this.Watcher := ObjBindMethod(this, "PruneClosedWindows")
+        SetTimer(this.Watcher, 2000)
     }
 
     static StopWatcher() {
         if this.Watcher == ""
             return
 
-        SetTimer( this.Watcher, 0 )
+        SetTimer(this.Watcher, 0)
         this.Watcher := ""
     }
 
@@ -220,8 +220,8 @@ class TrayHider {
         }
 
         for hwnd, info in this.Items.Clone() {
-            if !WindowHandleAlive( hwnd )
-                this.Items.Delete( hwnd )
+            if !WindowHandleAlive(hwnd)
+                this.Items.Delete(hwnd)
         }
 
         if this.Items.Count == 0

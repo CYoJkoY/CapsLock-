@@ -356,7 +356,8 @@ class GoogleOAuth {
     static _SendBrowserResponse(client, success) {
         html := success
             ? "<html><body><h2>CapsLock-</h2><p>Authorization completed. You can close this window.</p></body></html>"
-            : "<html><body><h2>CapsLock-</h2><p>Authorization failed. Return to CapsLock- and retry.</p></body></html>"
+                :
+                "<html><body><h2>CapsLock-</h2><p>Authorization failed. Return to CapsLock- and retry.</p></body></html>"
 
         body := html
         crlf := Chr(13) Chr(10)

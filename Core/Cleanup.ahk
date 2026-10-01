@@ -66,7 +66,7 @@ class CleanupManager {
         if this._batchTimer != ""
             SetTimer(this._batchTimer, 0)
 
-        Loop Files, A_Temp "\ClipTemp_*", "F"
+        loop files, A_Temp "\ClipTemp_*", "F"
             try FileDelete(A_LoopFileFullPath)
 
         for path, timeout in this._delayed.Clone()

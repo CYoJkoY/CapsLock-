@@ -18,8 +18,7 @@ class CloudSyncCoordinator {
 
         if AppState.CloudSyncEnabled
             && AppState.CloudSyncAutoEnabled
-            && AppState.CloudSyncState != "recovery-error"
-        {
+            && AppState.CloudSyncState != "recovery-error" {
             this.StartAutoSync()
         }
     }
@@ -179,7 +178,7 @@ class CloudSyncCoordinator {
             return false
         }
 
-        if !this._IsProviderConfigured() && CloudSyncCredentials.Get("webdav","username","") != "" {
+        if !this._IsProviderConfigured() && CloudSyncCredentials.Get("webdav", "username", "") != "" {
             this._SetState("not-configured")
             return false
         }
@@ -216,7 +215,9 @@ class CloudSyncCoordinator {
             ; local baseline could not be persisted.
             if localHash == remotePackage["integrity"]["contentHash"] {
                 if !this._SaveBase(remotePackage)
-                    throw Error("Remote package matches local data, but the local synchronization baseline could not be restored.")
+                    throw Error(
+                        "Remote package matches local data, but the local synchronization baseline could not be restored."
+                    )
 
                 this._SetSuccessfulSync(
                     remotePackage["revision"]["id"],
@@ -284,9 +285,8 @@ class CloudSyncCoordinator {
 
             currentRemote := provider.Download()
             if !IsObject(currentRemote)
-                || !currentRemote.Get("exists", false)
-                || currentRemote.Get("fingerprint", "") != remoteFingerprint
-            {
+            || !currentRemote.Get("exists", false)
+            || currentRemote.Get("fingerprint", "") != remoteFingerprint {
                 return false
             }
 
@@ -426,10 +426,9 @@ class CloudSyncCoordinator {
                 CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
 
             if !IsObject(currentRemote)
-                || !currentRemote.Get("exists", false)
-                || expectedFingerprint == ""
-                || currentRemote.Get("fingerprint", "") != expectedFingerprint
-            {
+            || !currentRemote.Get("exists", false)
+            || expectedFingerprint == ""
+            || currentRemote.Get("fingerprint", "") != expectedFingerprint {
                 throw Error("The remote sync target changed while the conflict was open.")
             }
 
@@ -474,10 +473,9 @@ class CloudSyncCoordinator {
                 CloudSyncState.Get("Sync", "conflictRemoteFingerprint", "")
 
             if !IsObject(currentRemote)
-                || !currentRemote.Get("exists", false)
-                || expectedFingerprint == ""
-                || currentRemote.Get("fingerprint", "") != expectedFingerprint
-            {
+            || !currentRemote.Get("exists", false)
+            || expectedFingerprint == ""
+            || currentRemote.Get("fingerprint", "") != expectedFingerprint {
                 this._SetState("conflict")
                 return false
             }
@@ -502,16 +500,16 @@ class CloudSyncCoordinator {
 
             case "github":
                 return AppState.CloudSyncGitHubOwner != ""
-                    && AppState.CloudSyncGitHubRepository != ""
-                    && CloudSyncCredentials.Get("github", "token", "") != ""
+                && AppState.CloudSyncGitHubRepository != ""
+                && CloudSyncCredentials.Get("github", "token", "") != ""
 
             case "google-drive":
                 return AppState.CloudSyncGoogleClientId != ""
-                    && CloudSyncCredentials.Get("google", "refreshToken", "") != ""
+                && CloudSyncCredentials.Get("google", "refreshToken", "") != ""
 
             case "onedrive":
                 return AppState.CloudSyncOneDriveClientId != ""
-                    && CloudSyncCredentials.Get("onedrive", "refreshToken", "") != ""
+                && CloudSyncCredentials.Get("onedrive", "refreshToken", "") != ""
 
             case "webdav":
                 return AppState.CloudSyncWebDavUrl != ""
@@ -715,7 +713,7 @@ class CloudSyncCoordinator {
         latestTime := 0
 
         try {
-            Loop Files, AppState.CloudSyncConflictDir "\*.json", "F" {
+            loop files, AppState.CloudSyncConflictDir "\*.json", "F" {
                 if A_LoopFileTimeModified > latestTime {
                     latestTime := A_LoopFileTimeModified
                     latest := A_LoopFileFullPath
@@ -753,7 +751,6 @@ class CloudSyncCoordinator {
         CloudSyncState.Set("Sync", "state", state)
     }
 }
-
 
 CloudSyncAutoSyncTimer(*) {
     CloudSyncCoordinator._AutoSyncTick()

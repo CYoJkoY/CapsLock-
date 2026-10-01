@@ -72,19 +72,19 @@
 ; ---------------------------------------------------------------------------
 class Zoom {
     ; Magnifier window styles.
-    static WS_CHILD               := 0x40000000
-    static WS_VISIBLE             := 0x10000000
-    static MW_FILTERMODE_EXCLUDE  := 0
+    static WS_CHILD := 0x40000000
+    static WS_VISIBLE := 0x10000000
+    static MW_FILTERMODE_EXCLUDE := 0
 
     ; --- Runtime state ---
-    static Active         := false
-    static HostGui        := ""
-    static MagHwnd        := 0
+    static Active := false
+    static HostGui := ""
+    static MagHwnd := 0
     static MagInitialized := false
-    static ActiveCfg      := ""
-    static TimerCallback  := ""
-    static LastX          := ""
-    static LastY          := ""
+    static ActiveCfg := ""
+    static TimerCallback := ""
+    static LastX := ""
+    static LastY := ""
 
     ; The desktop rectangle the view covers (every monitor, in physical
     ; pixels). It is re-read on every update so that a resolution change or a

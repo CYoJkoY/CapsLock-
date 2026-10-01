@@ -5,10 +5,10 @@ class CloudSyncMerger {
         conflicts := []
         mergedConfig := this._MergeMap(
             IsObject(base) && base.Has("config") ? base["config"] : Map(),
-            IsObject(localData) && localData.Has("config") ? localData["config"] : Map(),
-            IsObject(remoteData) && remoteData.Has("config") ? remoteData["config"] : Map(),
-            "config",
-            conflicts
+        IsObject(localData) && localData.Has("config") ? localData["config"] : Map(),
+        IsObject(remoteData) && remoteData.Has("config") ? remoteData["config"] : Map(),
+        "config",
+        conflicts
         )
 
         basePhrases := IsObject(base) && base.Has("quickPhrases")
@@ -142,27 +142,26 @@ class CloudSyncMerger {
         conflicts
     ) {
         if hasLocal && hasRemote && this._Equals(localValue, remoteValue)
-            return {present: true, value: localValue}
+            return { present: true, value: localValue }
 
         if this._SameState(hasBaseid, baseValue, hasLocal, localValue)
             return hasRemote
-                ? {present: true, value: remoteValue}
-                : {present: false}
+                ? { present: true, value: remoteValue }
+                    : { present: false }
 
         if this._SameState(hasBaseid, baseValue, hasRemote, remoteValue)
             return hasLocal
-                ? {present: true, value: localValue}
-                : {present: false}
+                ? { present: true, value: localValue }
+                    : { present: false }
 
-        ; A key present in base but missing from both local and remote 
+        ; A key present in base but missing from both local and remote
         ; means both sides removed it — delete it instead of raising a conflict
         if hasBaseid && !hasLocal && !hasRemote
-            return {present: false}
+            return { present: false }
 
         if hasLocal && hasRemote
             && this._CanMergeMaps(localValue, remoteValue)
-            && (!hasBaseid || (IsObject(baseValue) && baseValue is Map))
-        {
+            && (!hasBaseid || (IsObject(baseValue) && baseValue is Map)) {
             baseMap := hasBaseid && baseValue is Map ? baseValue : Map()
             nestedConflicts := []
             merged := this._MergeMap(
@@ -177,7 +176,7 @@ class CloudSyncMerger {
                 conflicts.Push(item)
 
             if nestedConflicts.Length == 0
-                return {present: true, value: merged}
+                return { present: true, value: merged }
         }
 
         conflicts.Push({
@@ -187,7 +186,7 @@ class CloudSyncMerger {
             remote: hasRemote ? remoteValue : ""
         })
 
-        return {present: hasLocal, value: localValue}
+        return { present: hasLocal, value: localValue }
     }
 
     static _SameState(hasA, valueA, hasB, valueB) {
@@ -200,9 +199,9 @@ class CloudSyncMerger {
 
     static _CanMergeMaps(valueA, valueB) {
         return IsObject(valueA)
-            && IsObject(valueB)
-            && valueA is Map
-            && valueB is Map
+        && IsObject(valueB)
+        && valueA is Map
+        && valueB is Map
     }
 
     static _Equals(valueA, valueB) {
@@ -238,9 +237,9 @@ class CloudSyncMerger {
         if n <= 1
             return
 
-        Loop n - 1 {
+        loop n - 1 {
             swapped := false
-            Loop n - A_Index {
+            loop n - A_Index {
                 left := arr[A_Index]
                 right := arr[A_Index + 1]
 
@@ -250,8 +249,7 @@ class CloudSyncMerger {
                 rightId := right.Has("id") ? Integer(right["id"]) : 0
 
                 if rightOrder < leftOrder
-                    || (rightOrder == leftOrder && rightId < leftId)
-                {
+                    || (rightOrder == leftOrder && rightId < leftId) {
                     arr[A_Index] := right
                     arr[A_Index + 1] := left
                     swapped := true
@@ -267,9 +265,9 @@ class CloudSyncMerger {
         if n <= 1
             return
 
-        Loop n - 1 {
+        loop n - 1 {
             swapped := false
-            Loop n - A_Index {
+            loop n - A_Index {
                 if StrCompare(arr[A_Index], arr[A_Index + 1]) > 0 {
                     temp := arr[A_Index]
                     arr[A_Index] := arr[A_Index + 1]

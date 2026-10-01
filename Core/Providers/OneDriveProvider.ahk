@@ -40,8 +40,8 @@ class OneDriveProvider extends CloudSyncProvider {
         metadataResponse := HttpClient.Request(
             "GET",
             "https://graph.microsoft.com/v1.0/me/drive/root:/"
-                UriEncodePath(path)
-                "?$select=id,name,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl",
+            UriEncodePath(path)
+            "?$select=id,name,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl",
             Map(
                 "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
                 "Accept", "application/json"
@@ -51,7 +51,7 @@ class OneDriveProvider extends CloudSyncProvider {
         )
 
         if metadataResponse.status == 404
-            return {exists: false}
+            return { exists: false }
 
         if !HttpClient.IsSuccess(metadataResponse)
             throw Error("OneDrive target lookup failed.")
@@ -125,7 +125,7 @@ class OneDriveProvider extends CloudSyncProvider {
             ok: true,
             fingerprint: fingerprint != ""
                 ? fingerprint
-                : package["integrity"]["contentHash"],
+                    : package["integrity"]["contentHash"],
             revision: package["revision"]["id"],
             providerRevision: result.Get("eTag", "")
         }

@@ -90,7 +90,7 @@ class ClipboardHelper {
     }
 
     static OpenClipboard() {
-        Loop 3 {
+        loop 3 {
             if DllCall("OpenClipboard", "Ptr", A_ScriptHwnd)
                 return true
 

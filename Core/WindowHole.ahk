@@ -999,11 +999,11 @@ class WindowHole {
 
         baseRegion := state.hadOriginalRegion
             ? state.originalRegion
-            : this._EnsureSurfaceBaseRegion(
-                state,
-                state.windowWidth,
-                state.windowHeight
-            )
+                : this._EnsureSurfaceBaseRegion(
+                    state,
+                    state.windowWidth,
+                    state.windowHeight
+                )
 
         if !baseRegion
             return false
@@ -1047,7 +1047,7 @@ class WindowHole {
 
         if state.hasGeometry
             && now - state.geometryLastRefreshTick
-                < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
+            < this.CHROMIUM_GEOMETRY_REFRESH_INTERVAL
             return true
 
         if !WinExist("ahk_id " hwnd)
@@ -1341,7 +1341,7 @@ class WindowHole {
             relativeY := my - wy
             baseRegion := state.hadOriginalRegion
                 ? state.originalRegion
-                : this._EnsureBaseRegion(state, ww, wh)
+                    : this._EnsureBaseRegion(state, ww, wh)
 
             if !baseRegion
                 throw Error("Could not prepare base window region.")
@@ -1373,7 +1373,7 @@ class WindowHole {
             ; synthetic click forwarding is needed for the secondary layer.
             redraw := deferRefresh
                 ? 0
-                : (state.isChromium ? 0 : 1)
+                    : (state.isChromium ? 0 : 1)
 
             applied := DllCall(
                 "SetWindowRgn",
@@ -1541,9 +1541,9 @@ class WindowHole {
 
         try {
             if IsObject(state)
-                && state.holeRegion
-                && state.holeRegionDiameter == diameter
-                && state.holeRegionShape == shape {
+            && state.holeRegion
+            && state.holeRegionDiameter == diameter
+            && state.holeRegionShape == shape {
                 offsetX := centerX - state.holeRegionX
                 offsetY := centerY - state.holeRegionY
 
@@ -1970,7 +1970,6 @@ class WindowHole {
         }
     }
 
-
     static _DiscardCapturedRegion(state) {
         if IsObject(state) && state.originalRegion {
             try DllCall("DeleteObject", "Ptr", state.originalRegion)
@@ -2110,7 +2109,7 @@ class WindowHole {
 
         try {
             return StrLower(WinGetProcessName("ahk_id " hwnd)) == "taskmgr.exe"
-                && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
+            && WinGetClass("ahk_id " hwnd) == "TaskManagerWindow"
         } catch {
             return false
         }

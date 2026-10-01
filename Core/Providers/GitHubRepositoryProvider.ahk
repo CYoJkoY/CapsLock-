@@ -53,7 +53,8 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
     }
 
     GetTarget() {
-        return AppState.CloudSyncGitHubOwner "/" AppState.CloudSyncGitHubRepository "/" AppState.CloudSyncGitHubPath "@" AppState.CloudSyncGitHubBranch
+        return AppState.CloudSyncGitHubOwner "/" AppState.CloudSyncGitHubRepository "/" AppState.CloudSyncGitHubPath "@" AppState
+            .CloudSyncGitHubBranch
     }
 
     Download() {
@@ -75,7 +76,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return {exists: false}
+            return { exists: false }
 
         if !HttpClient.IsSuccess(response)
             throw Error(this._ErrorMessage(response, "GitHub repository download failed."))
@@ -157,7 +158,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
             ok: true,
             fingerprint: fingerprint != ""
                 ? fingerprint
-                : package["integrity"]["contentHash"],
+                    : package["integrity"]["contentHash"],
             revision: package["revision"]["id"],
             providerRevision: newSha
         }

@@ -38,7 +38,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         if fileId == "" {
             fileId := this._FindFileId()
             if fileId == "" {
-                return {exists: false}
+                return { exists: false }
             }
 
             AppState.CloudSyncTarget := fileId
@@ -57,7 +57,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return {exists: false}
+            return { exists: false }
 
         if !HttpClient.IsSuccess(response)
             throw Error("Google Drive download failed. HTTP " response.status)
@@ -146,7 +146,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
             ok: true,
             fingerprint: fingerprint != ""
                 ? fingerprint
-                : package["integrity"]["contentHash"],
+                    : package["integrity"]["contentHash"],
             revision: package["revision"]["id"],
             providerRevision: IsObject(metadata)
                 ? metadata.Get("version", "")

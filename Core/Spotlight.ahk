@@ -38,28 +38,28 @@
 ; ---------------------------------------------------------------------------
 class Spotlight {
     ; --- Runtime state ---
-    static Active       := false
-    static DimGui       := ""
-    static FeatherGui   := ""
-    static ActiveCfg    := ""
+    static Active := false
+    static DimGui := ""
+    static FeatherGui := ""
+    static ActiveCfg := ""
     static TimerCallback := ""
-    static LastX        := ""
-    static LastY        := ""
+    static LastX := ""
+    static LastY := ""
 
     ; --- Cached GDI state ---
-    static HoleRegion     := 0
-    static HoleSignature  := ""
-    static HoleRegionX    := 0
-    static HoleRegionY    := 0
+    static HoleRegion := 0
+    static HoleSignature := ""
+    static HoleRegionX := 0
+    static HoleRegionY := 0
 
-    static FeatherHdc       := 0
-    static FeatherBitmap    := 0
+    static FeatherHdc := 0
+    static FeatherBitmap := 0
     static FeatherPrevBitmap := 0
     static FeatherSignature := ""
-    static FeatherSide      := 0
+    static FeatherSide := 0
 
     static BlendBuffer := ""
-    static PointZero   := ""
+    static PointZero := ""
 
     ; Corner radius of the rounded shape, as a fraction of its half-size.
     static RoundedCornerRatio := 0.45
@@ -73,7 +73,7 @@ class Spotlight {
     ; Every value is clamped here, so a hand-edited Config.ini can never put
     ; the renderer into a state it cannot draw.
     static Config() {
-        radius   := Clamp(this._Int(AppState.SpotlightRadius, 180), 40, 900)
+        radius := Clamp(this._Int(AppState.SpotlightRadius, 180), 40, 900)
         softness := Clamp(this._Int(AppState.SpotlightSoftness, 60), 0, 250)
         darkness := Clamp(this._Int(AppState.SpotlightDarkness, 55), 5, 95)
 
@@ -454,10 +454,10 @@ class Spotlight {
             ;   BlendOp = AC_SRC_OVER, SourceConstantAlpha = 255 (use the
             ;   per-pixel values), AlphaFormat = AC_SRC_ALPHA.
             blend := Buffer(8, 0)
-            NumPut("UChar", 0,   blend, 0)
-            NumPut("UChar", 0,   blend, 1)
+            NumPut("UChar", 0, blend, 0)
+            NumPut("UChar", 0, blend, 1)
             NumPut("UChar", 255, blend, 2)
-            NumPut("UChar", 1,   blend, 3)
+            NumPut("UChar", 1, blend, 3)
 
             this.BlendBuffer := blend
             this.PointZero := Buffer(8, 0)
@@ -524,12 +524,12 @@ class Spotlight {
             this._PaintFeather(pixels, side, cfg)
 
             bmi := Buffer(40, 0)
-            NumPut("UInt", 40,    bmi, 0)   ; biSize
-            NumPut("Int",  side,  bmi, 4)   ; biWidth
-            NumPut("Int",  -side, bmi, 8)   ; biHeight (negative = top-down)
-            NumPut("UShort", 1,   bmi, 12)  ; biPlanes
-            NumPut("UShort", 32,  bmi, 14)  ; biBitCount
-            NumPut("UInt", 0,     bmi, 16)  ; biCompression = BI_RGB
+            NumPut("UInt", 40, bmi, 0)   ; biSize
+            NumPut("Int", side, bmi, 4)   ; biWidth
+            NumPut("Int", -side, bmi, 8)   ; biHeight (negative = top-down)
+            NumPut("UShort", 1, bmi, 12)  ; biPlanes
+            NumPut("UShort", 32, bmi, 14)  ; biBitCount
+            NumPut("UInt", 0, bmi, 16)  ; biCompression = BI_RGB
 
             bmp := DllCall("gdi32\CreateCompatibleBitmap", "Ptr", hdc, "Int", side, "Int", side, "Ptr")
             if !bmp

@@ -80,8 +80,8 @@ class CloudSyncModel {
             return false
 
         if !package["payload"].Has("config")
-            || !package["payload"].Has("quickPhrases")
-            || !(package["payload"]["quickPhrases"] is Array)
+        || !package["payload"].Has("quickPhrases")
+        || !(package["payload"]["quickPhrases"] is Array)
             return false
 
         if !package.Has("integrity") || !(package["integrity"] is Map)

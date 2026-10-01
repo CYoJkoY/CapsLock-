@@ -43,7 +43,7 @@ class WebDavProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return {exists: false}
+            return { exists: false }
 
         if !HttpClient.IsSuccess(response)
             throw Error("WebDAV download failed. HTTP " response.status)
@@ -68,7 +68,7 @@ class WebDavProvider extends CloudSyncProvider {
         headers := this._Headers()
         if expectedRevision != "" {
             etag := Trim(expectedRevision)
-            ; RFC 7232: If-Match requires a quoted entity-tag; 
+            ; RFC 7232: If-Match requires a quoted entity-tag;
             ; quote it if the server returns one bare.
             if !InStr(etag, '"') && !InStr(etag, "W/")
                 etag := '"' etag '"'
@@ -94,7 +94,7 @@ class WebDavProvider extends CloudSyncProvider {
             ok: true,
             fingerprint: fingerprint != ""
                 ? fingerprint
-                : package["integrity"]["contentHash"],
+                    : package["integrity"]["contentHash"],
             revision: package["revision"]["id"],
             providerRevision: this._Header(response.headers, "ETag")
         }
@@ -106,7 +106,7 @@ class WebDavProvider extends CloudSyncProvider {
 
     ; WebDAV PUT doesn't create parent collections automatically,
     ; so a direct PUT to a path with subdirectories fails with 409/404.
-    ; 405 = parent collection already exists, 409 = an intermediate level is  missing 
+    ; 405 = parent collection already exists, 409 = an intermediate level is  missing
     ; — both are safe to ignore;
     ; the real outcome is decided by the following PUT.
     _EnsureParentCollection() {
@@ -135,7 +135,7 @@ class WebDavProvider extends CloudSyncProvider {
 
         encodedPath := path == ""
             ? "capslock-sync.json"
-            : UriEncodePath(path)
+                : UriEncodePath(path)
 
         return base "/" encodedPath
     }

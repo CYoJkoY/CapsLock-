@@ -3,7 +3,8 @@
 ProcessImagePathsToPDF() {
     exe := Trim(AppState.ImageMagickExe)
     if (exe == "" || !FileExist(exe)) {
-        MsgBox(Lang("MSG_IMAGEMAGICK_ERROR", "", "ImageMagick executable is not configured or no longer exists."), Lang("MSG_ERROR"), "Iconx")
+        MsgBox(Lang("MSG_IMAGEMAGICK_ERROR", "", "ImageMagick executable is not configured or no longer exists."), Lang(
+            "MSG_ERROR"), "Iconx")
         return ""
     }
 
@@ -30,7 +31,8 @@ ProcessImagePathsToPDF() {
     ThemeHelper.StyleGui(progressGui)
     ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PROCESSING_TITLE", "Creating PDF"), 360)
     ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PROCESSING_SUBTITLE", "Please wait..."), 360)
-    progressGui.Add("Text", "x16 y+8 w340 center c" AppState.THEME_FG_DIM, Lang("MSG_PROCESSING_WAIT", "Processing images..."))
+    progressGui.Add("Text", "x16 y+8 w340 center c" AppState.THEME_FG_DIM, Lang("MSG_PROCESSING_WAIT",
+        "Processing images..."))
     ThemeHelper.ApplyWindowTheme(progressGui.Hwnd)
     progressGui.Show("AutoSize Center")
 
@@ -66,13 +68,16 @@ ProcessImagePathsToPDF() {
         detail := _TrimExternalError(errorText)
         if detail != "" {
             MsgBox(
-                Lang("MSG_IMAGEMAGICK_FAILED_DETAIL", "", "ImageMagick could not create the PDF.`n`n{1}`n`nCheck the ImageMagick installation and PDF security policy.", detail),
+                Lang("MSG_IMAGEMAGICK_FAILED_DETAIL", "",
+                    "ImageMagick could not create the PDF.`n`n{1}`n`nCheck the ImageMagick installation and PDF security policy.",
+                    detail),
                 Lang("MSG_ERROR", "ImageMagick Error"),
                 "Iconx"
             )
         } else {
             MsgBox(
-                Lang("MSG_IMAGEMAGICK_FAILED", "ImageMagick could not create the PDF. Check the selected executable and its PDF support."),
+                Lang("MSG_IMAGEMAGICK_FAILED",
+                    "ImageMagick could not create the PDF. Check the selected executable and its PDF support."),
                 Lang("MSG_ERROR", "ImageMagick Error"),
                 "Iconx"
             )
@@ -81,14 +86,16 @@ ProcessImagePathsToPDF() {
     }
 
     if !FileExist(outputPdf) {
-        MsgBox(Lang("MSG_PDF_IM_NO_OUTPUT", "ImageMagick finished without creating the PDF output."), Lang("MSG_ERROR"), "Iconx")
+        MsgBox(Lang("MSG_PDF_IM_NO_OUTPUT", "ImageMagick finished without creating the PDF output."), Lang("MSG_ERROR"),
+        "Iconx")
         return ""
     }
 
     try {
         if FileGetSize(outputPdf) <= 0 {
             FileDelete(outputPdf)
-            MsgBox(Lang("MSG_PDF_IM_EMPTY_OUTPUT", "ImageMagick created an empty PDF output."), Lang("MSG_ERROR"), "Iconx")
+            MsgBox(Lang("MSG_PDF_IM_EMPTY_OUTPUT", "ImageMagick created an empty PDF output."), Lang("MSG_ERROR"),
+            "Iconx")
             return ""
         }
     } catch as err {

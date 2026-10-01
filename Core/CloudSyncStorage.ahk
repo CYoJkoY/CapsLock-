@@ -6,7 +6,7 @@ class CloudSyncStorage {
             return false
 
         stagingDir := AppState.CloudSyncDir "\staging\apply-"
-            CloudSyncModel.CreateRevisionId()
+        CloudSyncModel.CreateRevisionId()
 
         backupDir := ""
         AppState.CloudSyncApplying := true
@@ -223,7 +223,7 @@ class CloudSyncStorage {
 
             sourceDir := stagingDir "\QuickPhrases"
             if DirExist(sourceDir) {
-                Loop Files, sourceDir "\phrase-*.txt", "F"
+                loop files, sourceDir "\phrase-*.txt", "F"
                     FileCopy(A_LoopFileFullPath, AppState.QuickPhraseContentDir "\" A_LoopFileName, true)
             }
 
