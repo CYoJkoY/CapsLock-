@@ -480,6 +480,10 @@ Main() {
 
     Bench.Init()
 
+    Say("AutoHotkey " A_AhkVersion " (" ((A_PtrSize == 8) ? "64" : "32") "-bit), Windows " A_OSVersion
+        ", " EnvGet("NUMBER_OF_PROCESSORS") " logical processors")
+    Say("")
+
     ; --- command line -------------------------------------------------------
     measureClipboard := false
     outDir := A_ScriptDir "\results"

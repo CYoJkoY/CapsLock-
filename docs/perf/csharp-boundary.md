@@ -1,9 +1,11 @@
 # Optional AHK + C# performance backend
 
 **Status:** resident history indexing/search and batched ignore matching are wired
-into the real application, **opt-in only**. Windows end-to-end timing tables
-remain unmeasured. Managed-only timings are not proof of an application-level
-speedup, and adding CI checks does not mean those checks have already run.
+into the real application, **opt-in only**. The AutoHotkey checks below run for
+real on Windows CI (x64 and x86), and section 5 records the first Windows timings
+(a shared GitHub-hosted runner, not a desktop). Those timings are micro-workloads;
+they are not an application-level speedup, and desktop, whole-process and input
+latency measurements are still outstanding.
 
 ## 1. Keep the input layer native
 
@@ -20,6 +22,11 @@ No hotkey changes, workers, AHK callbacks from .NET threads, runtime C# compilat
 or new clipboard normalization are introduced. `ClipboardService.NormalizeText`
 is an explicit helper, not something silently applied to copied or stored text.
 The helper now preserves line separators and trims each line in a single pass.
+
+Single-path ignore checks (`FileHelper.ShouldIgnore`, used at paste time) are not
+in the right-hand column even with the backend enabled: section 5 shows one C#
+call costs about twice one AHK call, and the first one would start the CLR inside
+a paste hotkey. Only whole-file batches cross the bridge.
 
 The shipped default remains `[Services] Backend=ahk`. Changing the backend in the
 Settings Center applies immediately, without booting the CLR just to change a
@@ -75,6 +82,10 @@ An empty query builds indices locally without starting .NET or transferring an
 all-indices result. These display optimizations benefit the pure-AHK backend too.
 
 ### Batch file filtering, without changing ignore semantics
+
+`FileHelper.ShouldIgnore(path)` is always the AHK matcher. `Services.IgnoreMatch`
+(one path through the bridge) remains as the tested scalar entry and as a
+benchmark of per-call overhead, but nothing in the application calls it.
 
 `FileHelper.BuildIgnoreRegexes` is the **only** gitignore-style parser. It supplies
 its actual simple-glob and regex buckets to C#, once per rule edit:
@@ -159,13 +170,28 @@ dotnet run --project tests\CapsLockSharp.Tests -c Release
 # Optional managed-only diagnostic, not an AHK/COM benchmark:
 dotnet run --project tests\CapsLockSharp.Tests -c Release -- --benchmark
 
-# Actual AHK behavior and missing-backend fallback (no bridge required):
-AutoHotkey64.exe /ErrorStdOut scripts\perf\ServiceEquivalence.ahk
+# AutoHotkey is a GUI-subsystem program. Started from a console it neither waits,
+# prints its output nor reports an exit code, so run every AHK check through
+# the wrapper (see below).
+.\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegression.ahk
+# Real AHK behavior and missing-backend fallback (no bridge required):
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk
 # Require the real bridge: absence/fallback is a failure, not a skipped success.
-AutoHotkey64.exe /ErrorStdOut scripts\perf\ServiceEquivalence.ahk -CSharp
-AutoHotkey32.exe /ErrorStdOut scripts\perf\ServiceEquivalence.ahk -CSharp
-AutoHotkey64.exe /ErrorStdOut scripts\HotkeyRegression.ahk
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp'
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture x86
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk -ScriptArguments '-CSharp'
 ```
+
+`scripts\ci\Invoke-Ahk.ps1` starts AutoHotkey directly, waits for it with a timeout,
+copies stdout and stderr to the log, and fails on a non-zero exit code, a timeout
+or any load-time warning. It also injects `scripts\ci\Headless.ahk` (`/include`):
+without a `#Warn` directive AutoHotkey shows a modal MsgBox for every warning and
+for an uncaught error, which nobody can click on a build agent. Headless mode
+prints warnings to stdout and ends on an uncaught error with exit code 2. It finds
+`autohotkey\AutoHotkey64.exe` (where the CI action installs it), `AHK_EXE`, or the
+usual install folders; pass `-Executable` otherwise.
 
 Managed tests cover 10,000 deterministic randomized edits against an independent
 list reference, 5,000 randomized ASCII/Unicode search comparisons, loaded duplicates, ring growth/wraparound/eviction, malformed
@@ -176,23 +202,41 @@ and bounded rule caching. They do not substitute for Windows bridge checks.
 backend toggling, reload, add/delete/trim without resending a warm snapshot,
 case/Unicode/display search, recursive file ordering, constant-count batch
 crossings, malformed responses, boot failures, and injected post-commit failures.
-It creates only a unique temporary workspace; it does not register hotkeys,
-change the real clipboard or open a GUI.
+It also asserts that `FileHelper.ShouldIgnore` makes no C# call. It creates only a
+unique temporary workspace; it does not register hotkeys, change the real
+clipboard or open a GUI.
 
-`.github/workflows/dotnet.yml` builds the precompiled assembly, runs managed tests,
-checks the pure-AHK fallback, checks out the pinned bridge, then validates the
-application and real service boundary with **both x64 and x86 AutoHotkey**.
-`test.yml` also runs the pure-AHK fallback checks. Windows execution/CI results
-must still be inspected before accepting a migration.
+`HistoryGuiPaging.ahk` runs the real `RefreshFullHistoryList` and `OnLoadMoreClicked`
+against a real ListView in a window that is never shown, and edits history through
+the real `HistoryManager`: first page, Load More, filtering (including a query that
+matches only the collapsed preview), and that delete/add/trim while the window is
+open invalidate the incremental cache. With `-CSharp` the same scenario also runs on
+the resident index and both runs must produce identical rows. It cannot judge how
+the window looks; a visual pass is still worthwhile.
+
+`HotkeyRegression.ahk` cross-references the sources (includes, `FileInstall`, language
+keys, documented shortcuts versus bindings, config load/save symmetry). It scans only
+the application's own folders.
+
+`.github/workflows/dotnet.yml` builds the precompiled assembly, runs the managed tests,
+checks the pure-AHK fallback on x64 and x86, checks out the pinned bridge, then
+validates the application, the real service boundary and the history window with
+**both x64 and x86 AutoHotkey**, and finally runs the profile harness (below).
+`test.yml` runs `/Validate`, the hotkey regression, the pure-AHK service checks and
+the history window paging check.
 
 ## 5. Measure the complete boundary, not just a faster loop
 
 ```powershell
-AutoHotkey64.exe /ErrorStdOut scripts\perf\CapsLockProfile.ahk
-AutoHotkey64.exe /ErrorStdOut scripts\perf\CapsLockProfile.ahk -History 1000,10000,50000 -Files 20
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk -ScriptArguments '-History','1000,10000,50000','-Files','20' -TimeoutSeconds 1800
 # Optional: overwrites the real clipboard.
-AutoHotkey64.exe /ErrorStdOut scripts\perf\CapsLockProfile.ahk -Clipboard
+.\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk -ScriptArguments '-Clipboard'
 ```
+
+`-JsonMax <n>` (default 1000) bounds the JSON round-trip row: `Utils\Json.ahk` grows
+faster than linearly (about 1 s per round trip at 1,000 entries on the CI runner,
+minutes at 10,000), so larger sizes are recorded as an explicit "skipped" note.
 
 Results go to `scripts\perf\results\baseline-<timestamp>.{json,md}`. The harness
 uses identical corpus sizes and starts each backend from the same history. It
@@ -210,6 +254,7 @@ exception invalidates a C# row** instead of reporting AHK timings under a C# lab
 | `compare-history-search-*-<n>` | Raw/preview filtering and transfer/decode of matching indices |
 | `compare-ignore-match-*` | Scalar matching, useful to expose per-call overhead |
 | `compare-ignore-batch-*` | Entire file corpus, including packing/transfer/decode |
+| `compare-ignore-batch-pack-ahk`, `-unpack-ahk` | The AHK half of that crossing alone (build the request frame, decode a reply of the kept paths); no bridge |
 | `compare-file-enum-*` | Native directory walk plus the real backend's filtering |
 | `csharp-cold-boot` | One cold CLR/assembly/type initialization observation |
 
