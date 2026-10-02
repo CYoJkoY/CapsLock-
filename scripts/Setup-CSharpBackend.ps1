@@ -15,12 +15,13 @@
     without git and without Visual Studio:
 
       * the three runtime files of the pinned AHK# commit are downloaded from
-        raw.githubusercontent.com (Invoke-WebRequest -OutFile keeps the bytes
+        raw.githubusercontent.com or fallback mirrors (Invoke-WebRequest -OutFile keeps the bytes
         verbatim), unless they are already there;
       * the bridge is then checked against the SHA-256 that AHK# pins in its own
         source, because AHK# refuses to load a DLL whose digest differs - better
         to fail here with one line than at CLR boot later;
-      * the services assembly is built with the .NET SDK when it is missing.
+      * the services assembly is built with the .NET 8 SDK when it is missing
+        (with support for installing .NET 8 SDK via winget when missing).
 
     Finally it writes CSharpPayload.ahk next to CapsLock-.ahk, holding only the
     compiler directives that embed both files into the EXE. CapsLock-.ahk has
@@ -40,6 +41,9 @@
 .PARAMETER SkipAssembly
     Provision the bridge only, for example on a machine without the .NET SDK.
 
+.PARAMETER InstallDotNet8
+    Automatically attempt to install .NET 8 SDK via winget if missing.
+
 .PARAMETER NoPayloadInclude
     Leave CSharpPayload.ahk alone instead of writing it.
 
@@ -48,6 +52,9 @@
 
 .EXAMPLE
     .\scripts\Setup-CSharpBackend.ps1 -Force
+
+.EXAMPLE
+    .\scripts\Setup-CSharpBackend.ps1 -InstallDotNet8
 #>
 [CmdletBinding()]
 param(
@@ -56,6 +63,8 @@ param(
     [switch] $Force,
 
     [switch] $SkipAssembly,
+
+    [switch] $InstallDotNet8,
 
     [switch] $NoPayloadInclude
 )
@@ -85,8 +94,6 @@ function Get-Sha256 {
 }
 
 function Get-PinnedBridgeDigest {
-    # AHK# writes the digest of the committed DLL into its own source and
-    # refuses to load anything else, so that file is the authority here.
     if (-not (Test-Path -LiteralPath $bridgeAhk)) { return '' }
     $text = Get-Content -LiteralPath $bridgeAhk -Raw
     if ($text -match '(?i)AHK_SHARP_BRIDGE_SHA256[^0-9a-fA-F]*([0-9a-fA-F]{64})') {
@@ -96,25 +103,100 @@ function Get-PinnedBridgeDigest {
 }
 
 function Get-TextFile {
-    param([string] $Url, [string] $Destination, [string] $Label)
+    param(
+        [string[]] $Urls,
+        [string] $Destination,
+        [string] $Label
+    )
     Write-Host "Downloading $Label"
-    # The progress stream costs more than the transfer on Windows PowerShell 5.1.
     $previousProgress = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
+    $downloaded = $false
+    $lastError = $null
+
     try {
-        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
+        foreach ($url in $Urls) {
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing -TimeoutSec 30
+                if ((Test-Path -LiteralPath $Destination) -and (Get-Item -LiteralPath $Destination).Length -gt 0) {
+                    $downloaded = $true
+                    Unblock-File -LiteralPath $Destination -ErrorAction SilentlyContinue
+                    break
+                }
+            }
+            catch {
+                $lastError = $_
+                if (Test-Path -LiteralPath $Destination) {
+                    Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
     }
     finally {
         $ProgressPreference = $previousProgress
     }
-    if (-not (Test-Path -LiteralPath $Destination) -or (Get-Item -LiteralPath $Destination).Length -eq 0) {
-        throw "Download produced no $Label from $Url"
+
+    if (-not $downloaded) {
+        throw "Download produced no $Label. Tried URLs: $($Urls -join ', '). Last error: $lastError"
     }
 }
 
-# GitHub rejects TLS 1.0/1.1, which Windows PowerShell 5.1 still negotiates by
-# default. Tls12 exists on every supported .NET 4.x, but resolve it by name so
-# an older runtime fails here instead of at the first request.
+function Refresh-PathEnvironment {
+    try {
+        $machine = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+        $user = [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $combined = "$machine;$user"
+        if ($env:ProgramFiles) {
+            $pfDotNet = Join-Path $env:ProgramFiles 'dotnet'
+            if ((Test-Path -LiteralPath $pfDotNet) -and ($combined -notmatch [regex]::Escape($pfDotNet))) {
+                $combined = "$pfDotNet;$combined"
+            }
+        }
+        $env:PATH = $combined
+    }
+    catch {}
+}
+
+function Get-DotNetPath {
+    Refresh-PathEnvironment
+    $cmd = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return $cmd.Source
+    }
+    $candidates = @(
+        (Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'),
+        (Join-Path ${env:ProgramFiles(x86)} 'dotnet\dotnet.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe')
+    )
+    foreach ($cand in $candidates) {
+        if ($cand -and (Test-Path -LiteralPath $cand)) {
+            $dir = Split-Path -Parent $cand
+            $env:PATH = "$dir;$($env:PATH)"
+            return $cand
+        }
+    }
+    return $null
+}
+
+function Test-DotNet8Sdk {
+    param([string] $DotNetExe)
+    if (-not $DotNetExe) { return $false }
+    try {
+        $sdks = & $DotNetExe --list-sdks 2>$null
+        foreach ($line in $sdks) {
+            if ($line -match '^\s*8\.') {
+                return $true
+            }
+        }
+        $ver = & $DotNetExe --version 2>$null
+        if ($ver -match '^8\.') {
+            return $true
+        }
+    }
+    catch {}
+    return $false
+}
+
 try {
     $tls12 = [System.Net.SecurityProtocolType]::Tls12
     [System.Net.ServicePointManager]::SecurityProtocol =
@@ -129,9 +211,33 @@ catch {
 # ---------------------------------------------------------------------------
 
 $bridgeFiles = @(
-    @{ Name = 'ahk#.ahk'; Url = "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.ahk" },
-    @{ Name = 'ahk#.bridge.dll'; Url = "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.bridge.dll" },
-    @{ Name = 'build.ps1'; Url = "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/build.ps1" }
+    @{
+        Name = 'ahk#.ahk'
+        Urls = @(
+            "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.ahk",
+            "https://raw.gitmirror.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.ahk",
+            "https://ghfast.top/https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.ahk",
+            "https://cdn.jsdelivr.net/gh/owhs/AHKSharp@$BridgeCommit/lib/ahk%23.ahk"
+        )
+    },
+    @{
+        Name = 'ahk#.bridge.dll'
+        Urls = @(
+            "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.bridge.dll",
+            "https://raw.gitmirror.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.bridge.dll",
+            "https://ghfast.top/https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/ahk%23.bridge.dll",
+            "https://cdn.jsdelivr.net/gh/owhs/AHKSharp@$BridgeCommit/lib/ahk%23.bridge.dll"
+        )
+    },
+    @{
+        Name = 'build.ps1'
+        Urls = @(
+            "https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/build.ps1",
+            "https://raw.gitmirror.com/owhs/AHKSharp/$BridgeCommit/lib/build.ps1",
+            "https://ghfast.top/https://raw.githubusercontent.com/owhs/AHKSharp/$BridgeCommit/lib/build.ps1",
+            "https://cdn.jsdelivr.net/gh/owhs/AHKSharp@$BridgeCommit/lib/build.ps1"
+        )
+    }
 )
 
 if (-not (Test-Path -LiteralPath $bridgeDir)) {
@@ -144,7 +250,7 @@ foreach ($file in $bridgeFiles) {
         Write-Host "Keeping existing $($file.Name)"
         continue
     }
-    Get-TextFile -Url $file.Url -Destination $target -Label $file.Name
+    Get-TextFile -Urls $file.Urls -Destination $target -Label $file.Name
 }
 
 if (-not (Test-Path -LiteralPath $bridgeDll)) {
@@ -175,21 +281,37 @@ elseif ((Test-Path -LiteralPath $assembly) -and -not $Force) {
     Write-Host "Keeping existing CapsLockSharp.dll"
 }
 else {
-    $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+    $dotnet = Get-DotNetPath
+    $hasDotNet8 = Test-DotNet8Sdk -DotNetExe $dotnet
+
+    if (-not $hasDotNet8) {
+        $winget = Get-Command winget -ErrorAction SilentlyContinue
+        if ($winget -and ($InstallDotNet8 -or [Environment]::UserInteractive)) {
+            Write-Host 'Missing .NET 8 SDK. Installing via winget (using official winget source)...' -ForegroundColor Cyan
+            & $winget.Source install --id Microsoft.DotNet.SDK.8 --source winget --accept-source-agreements --accept-package-agreements
+            Refresh-PathEnvironment
+            $dotnet = Get-DotNetPath
+            $hasDotNet8 = Test-DotNet8Sdk -DotNetExe $dotnet
+        }
+    }
+
     if (-not $dotnet) {
-        throw 'dotnet was not found on PATH. Install the .NET 8 SDK, pass -SkipAssembly, or use the one-click setup in the Settings Center (it downloads the published assembly).'
+        throw 'dotnet was not found on PATH. Install the .NET 8 SDK, pass -InstallDotNet8 to install via winget, pass -SkipAssembly, or use one-click setup in Settings Center.'
     }
     if (-not (Test-Path -LiteralPath $project)) {
         throw "The services project is missing: $project"
     }
+
     Write-Host 'Building the services assembly (netstandard2.0, AnyCPU)'
-    & $dotnet.Source build $project -c Release --nologo -o $libDir
+    $buildOutput = & $dotnet build $project -c Release --nologo -o $libDir 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "dotnet build failed with exit code $LASTEXITCODE."
+        Write-Error "dotnet build failed with exit code $LASTEXITCODE:`n$($buildOutput -join "`n")"
+        throw "dotnet build failed with exit code $LASTEXITCODE. Hint: Ensure .NET 8 SDK is installed and functional."
     }
     if (-not (Test-Path -LiteralPath $assembly)) {
         throw "dotnet build did not produce $assembly"
     }
+    Unblock-File -LiteralPath $assembly -ErrorAction SilentlyContinue
 }
 
 # ---------------------------------------------------------------------------
@@ -200,8 +322,6 @@ if ($NoPayloadInclude) {
     Write-Host 'Leaving CSharpPayload.ahk alone (-NoPayloadInclude).'
 }
 elseif ((Test-Path -LiteralPath $assembly) -and (Test-Path -LiteralPath $bridgeDll)) {
-    # Ahk2Exe resolves AddResource paths against the script's own directory, so
-    # these stay relative to the repository root next to CapsLock-.ahk.
     $lines = @(
         '; GENERATED FILE - do not edit and do not commit.',
         ';',

@@ -47,6 +47,8 @@ class CSharpRuntime {
 
     ; Diagnostics of the last provisioning attempt, one line per step.
     static report := []
+    static lastFailureStage := ""
+    static lastFailureHint := ""
 
     static cachedDir := ""
     static relocated := false
@@ -128,12 +130,233 @@ class CSharpRuntime {
     }
 
     ; =======================================================================
+    ; Environment and .NET 8 / winget detection
+    ; =======================================================================
+
+    ; Refreshes process PATH from machine and user registry so recently
+    ; installed tools (e.g. dotnet or winget) are visible immediately.
+    static RefreshEnvironmentPath() {
+        hklmPath := ""
+        hkcuPath := ""
+        try hklmPath := RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path")
+        try hkcuPath := RegRead("HKEY_CURRENT_USER\Environment", "Path")
+        combined := hklmPath . (hklmPath != "" && hkcuPath != "" ? ";" : "") . hkcuPath
+
+        for dir in this.StandardDotNetDirs() {
+            if DirExist(dir) && !InStr(";" . combined . ";", ";" . dir . ";") {
+                combined := dir . ";" . combined
+            }
+        }
+
+        if combined != ""
+            EnvSet("PATH", combined)
+        return combined
+    }
+
+    static StandardDotNetDirs() {
+        dirs := []
+        pf := EnvGet("ProgramFiles")
+        if pf != ""
+            dirs.Push(pf "\dotnet")
+        pf86 := EnvGet("ProgramFiles(x86)")
+        if pf86 != ""
+            dirs.Push(pf86 "\dotnet")
+        pf64 := EnvGet("ProgramW6432")
+        if pf64 != ""
+            dirs.Push(pf64 "\dotnet")
+        localApp := EnvGet("LOCALAPPDATA")
+        if localApp != ""
+            dirs.Push(localApp "\Microsoft\dotnet")
+        return dirs
+    }
+
+    static GetDotNetExecutable() {
+        this.RefreshEnvironmentPath()
+
+        for dir in this.StandardDotNetDirs() {
+            candidate := dir "\dotnet.exe"
+            if FileExist(candidate)
+                return candidate
+        }
+
+        tempFile := A_Temp "\capslock_where_dotnet_" A_TickCount ".tmp"
+        try {
+            exitCode := 0
+            RunWait('cmd.exe /c "where dotnet > "' tempFile '" 2>nul"', , "Hide", &exitCode)
+            if exitCode == 0 && FileExist(tempFile) {
+                out := Trim(FileRead(tempFile, "UTF-8"))
+                FileDelete(tempFile)
+                if out != "" {
+                    firstLine := StrSplit(out, "`n", "`r")[1]
+                    if FileExist(firstLine)
+                        return firstLine
+                }
+            }
+        } catch {
+        }
+        try if FileExist(tempFile)
+            FileDelete(tempFile)
+
+        return "dotnet"
+    }
+
+    ; Detects whether .NET is installed, whether .NET 8 SDK is specifically present,
+    ; and whether .NET Framework 4.7.2+ is available for AHK# bridge.
+    static DetectDotNet8() {
+        dotnetExe := this.GetDotNetExecutable()
+        info := {
+            installed: false,
+            dotnetExe: "",
+            hasSdk8: false,
+            sdk8Version: "",
+            allSdks: [],
+            version: "",
+            hasNetFramework48: this.DetectNetFramework48()
+        }
+
+        tempFile := A_Temp "\capslock_dotnet_sdks_" A_TickCount ".tmp"
+        try {
+            exitCode := 0
+            RunWait('cmd.exe /c ""' dotnetExe '" --list-sdks > "' tempFile '" 2>&1"', , "Hide", &exitCode)
+            if FileExist(tempFile) {
+                raw := FileRead(tempFile, "UTF-8")
+                FileDelete(tempFile)
+
+                for line in StrSplit(raw, "`n", "`r") {
+                    trimmed := Trim(line)
+                    if trimmed == ""
+                        continue
+                    info.installed := true
+                    info.dotnetExe := dotnetExe
+                    info.allSdks.Push(trimmed)
+                    if RegExMatch(trimmed, "i)^8\.\d+[\.\d\w\-]*", &match) {
+                        info.hasSdk8 := true
+                        if info.sdk8Version == ""
+                            info.sdk8Version := match[0]
+                    }
+                }
+            }
+        } catch {
+        }
+        try if FileExist(tempFile)
+            FileDelete(tempFile)
+
+        if !info.hasSdk8 {
+            try {
+                tempVerFile := A_Temp "\capslock_dotnet_ver_" A_TickCount ".tmp"
+                exitCode := 0
+                RunWait('cmd.exe /c ""' dotnetExe '" --version > "' tempVerFile '" 2>&1"', , "Hide", &exitCode)
+                if FileExist(tempVerFile) {
+                    ver := Trim(FileRead(tempVerFile, "UTF-8"))
+                    FileDelete(tempVerFile)
+                    if ver != "" {
+                        info.installed := true
+                        info.dotnetExe := dotnetExe
+                        info.version := ver
+                        if RegExMatch(ver, "^8\.\d+", &match) {
+                            info.hasSdk8 := true
+                            info.sdk8Version := ver
+                        }
+                    }
+                }
+            } catch {
+            }
+            try if FileExist(tempVerFile)
+                FileDelete(tempVerFile)
+        }
+
+        return info
+    }
+
+    static DetectNetFramework48() {
+        try {
+            rel := RegRead("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full", "Release")
+            return Integer(rel) >= 461808
+        } catch {
+            return false
+        }
+    }
+
+    static DetectWinget() {
+        this.RefreshEnvironmentPath()
+
+        localApp := EnvGet("LOCALAPPDATA")
+        if localApp != "" {
+            candidate := localApp "\Microsoft\WindowsApps\winget.exe"
+            if FileExist(candidate)
+                return candidate
+        }
+
+        tempFile := A_Temp "\capslock_where_winget_" A_TickCount ".tmp"
+        try {
+            exitCode := 0
+            RunWait('cmd.exe /c "where winget > "' tempFile '" 2>nul"', , "Hide", &exitCode)
+            if exitCode == 0 && FileExist(tempFile) {
+                out := Trim(FileRead(tempFile, "UTF-8"))
+                FileDelete(tempFile)
+                if out != "" {
+                    firstLine := StrSplit(out, "`n", "`r")[1]
+                    if FileExist(firstLine)
+                        return firstLine
+                }
+            }
+        } catch {
+        }
+        try if FileExist(tempFile)
+            FileDelete(tempFile)
+
+        return "winget"
+    }
+
+    static HasWinget() {
+        wingetExe := this.DetectWinget()
+        exitCode := 0
+        try {
+            RunWait('cmd.exe /c ""' wingetExe '" --version >nul 2>&1"', , "Hide", &exitCode)
+            return exitCode == 0
+        } catch {
+            return false
+        }
+    }
+
+    ; Installs .NET 8 SDK strictly via winget source (--source winget) without Microsoft Store.
+    ; Runs with console progress so the user sees live download/install percentage.
+    static InstallDotNet8ViaWinget(onProgress := "") {
+        wingetExe := this.DetectWinget()
+
+        if IsObject(onProgress)
+            onProgress.Call(25, Lang("MSG_CSHARP_WINGET_INSTALLING"), "winget install --id Microsoft.DotNet.SDK.8 --source winget")
+
+        installCmd := '"' wingetExe '" install --id Microsoft.DotNet.SDK.8 --source winget --accept-source-agreements --accept-package-agreements'
+        consoleCmd := 'cmd.exe /c "title CapsLock- .NET 8 SDK 安装向导 && echo =================================================== && echo   CapsLock- .NET 8 SDK 安装向导 && echo   正在通过 winget 下载并安装 .NET 8 SDK，请稍候... && echo   [数据源: winget 官方源，不依赖微软商店] && echo =================================================== && echo. && ' installCmd ' && echo. && echo 安装流程已完成，窗口即将自动关闭... && timeout /t 3 >nul"'
+
+        exitCode := 0
+        try {
+            RunWait(consoleCmd, , "", &exitCode)
+        } catch as err {
+            this.report.Push("winget execution failed: " err.Message)
+            return false
+        }
+
+        this.RefreshEnvironmentPath()
+
+        dotNetInfo := this.DetectDotNet8()
+        if dotNetInfo.hasSdk8 {
+            this.report.Push("installed .NET 8 SDK (" dotNetInfo.sdk8Version ") via winget")
+            return true
+        }
+
+        this.report.Push("winget finished (exit code " exitCode "), but .NET 8 SDK was not detected")
+        return false
+    }
+
+    ; =======================================================================
     ; Provisioning
     ; =======================================================================
 
     ; Makes both runtime files exist without starting the CLR. May build or
     ; download, so it is only called by the one-click setup and the CLI.
-    static EnsureFiles() {
+    static EnsureFiles(onProgress := "") {
         this.report := []
 
         if this.HasOverride() {
@@ -141,7 +364,7 @@ class CSharpRuntime {
             return FileExist(this.AssemblyFile()) && FileExist(this.BridgeFile())
         }
 
-        ok := this.Provision()
+        ok := this.Provision(onProgress)
 
         if !FileExist(this.AssemblyFile())
             this.report.Push("missing: " this.AssemblyFile())
@@ -151,7 +374,7 @@ class CSharpRuntime {
         return ok
     }
 
-    static Provision() {
+    static Provision(onProgress := "") {
         try {
             ; Repeatable and cheap when the payload is present: only bytes that
             ; actually differ are written, and an unwritable install folder
@@ -171,9 +394,9 @@ class CSharpRuntime {
             ; An assembly built by scripts\Setup-CSharpBackend.ps1 is already at
             ; the default path and is found by the checks above.
             if !FileExist(this.AssemblyFile())
-                this.FetchAssembly()
+                this.FetchAssembly(onProgress)
             if !FileExist(this.BridgeFile())
-                this.FetchBridge()
+                this.FetchBridge(onProgress)
         } catch as err {
             this.report.Push("provisioning failed: " err.Message)
             return false
@@ -183,41 +406,85 @@ class CSharpRuntime {
 
     ; --- assembly ----------------------------------------------------------
 
-    static FetchAssembly() {
+    static FetchAssembly(onProgress := "") {
         project := A_ScriptDir "\src\CapsLockSharp\CapsLockSharp.csproj"
-        if FileExist(project) && this.BuildAssembly(project)
+        if FileExist(project) && this.BuildAssembly(project, onProgress)
             return true
 
-        ; Without the .NET SDK: the published AnyCPU assembly.
-        this.DownloadAssembly()
+        ; Without the .NET SDK or on build failure: fall back to the published AnyCPU assembly.
+        this.DownloadAssembly(onProgress)
         return FileExist(this.AssemblyFile())
     }
 
-    static BuildAssembly(project) {
+    static BuildAssembly(project, onProgress := "") {
         out := A_ScriptDir "\lib"
-        command := 'dotnet build "' project '" -c Release --nologo -v quiet -o "' out '"'
+        if !DirExist(out)
+            DirCreate(out)
+
+        dotnetExe := this.GetDotNetExecutable()
+        logFile := A_Temp "\capslock_build_" A_TickCount ".log"
+
+        if IsObject(onProgress)
+            onProgress.Call(50, Lang("MSG_CSHARP_BUILDING"), "dotnet build " project " -c Release")
+
+        command := 'cmd.exe /c ""' dotnetExe '" build "' project '" -c Release --nologo -o "' out '" > "' logFile '" 2>&1"'
         exitCode := 0
         try {
-            ; RunWait throws when dotnet is not on PATH, which is the normal
-            ; case on a machine that only runs the application.
             RunWait(command, A_ScriptDir, "Hide", &exitCode)
         } catch as err {
             this.report.Push("dotnet build unavailable: " err.Message)
+            this.lastFailureStage := "dotnet_build"
+            this.lastFailureHint := Lang("MSG_CSHARP_ERR_BUILD_FAILED") . "`n`n" . err.Message
             return false
+        }
+
+        buildOutput := ""
+        if FileExist(logFile) {
+            try buildOutput := FileRead(logFile, "UTF-8")
+            try FileDelete(logFile)
         }
 
         if exitCode != 0 {
             this.report.Push("dotnet build exited with code " exitCode)
+            errorLines := []
+            for line in StrSplit(buildOutput, "`n", "`r") {
+                trimmed := Trim(line)
+                if trimmed == ""
+                    continue
+                if InStr(trimmed, ": error ") || InStr(trimmed, "error NETSDK") || InStr(trimmed, "error CS") || InStr(trimmed, "FAILED") {
+                    errorLines.Push(trimmed)
+                    this.report.Push("  " trimmed)
+                }
+            }
+            if errorLines.Length == 0 && buildOutput != "" {
+                lines := StrSplit(buildOutput, "`n", "`r")
+                count := 0
+                Loop lines.Length {
+                    idx := lines.Length - A_Index + 1
+                    t := Trim(lines[idx])
+                    if t != "" {
+                        this.report.Push("  " t)
+                        count++
+                        if count >= 3
+                            break
+                    }
+                }
+            }
+            this.lastFailureStage := "dotnet_build"
+            this.lastFailureHint := Lang("MSG_CSHARP_ERR_BUILD_FAILED")
             return false
         }
 
         built := out "\CapsLockSharp.dll"
         if !FileExist(built) {
             this.report.Push("dotnet build produced no " built)
+            this.lastFailureStage := "dotnet_build"
+            this.lastFailureHint := "dotnet build did not produce CapsLockSharp.dll"
             return false
         }
 
-        ; A relocated target needs a copy of the freshly built assembly.
+        try FileDelete(built ":Zone.Identifier")
+
         if this.AssemblyFile() != built
             return this.CopyFile(built, this.AssemblyFile(), "CapsLockSharp.dll (built)")
 
@@ -225,42 +492,76 @@ class CSharpRuntime {
         return true
     }
 
-    static DownloadAssembly() {
-        url := "https://github.com/" this.AssemblyOwner "/" this.AssemblyRepo
-            . "/releases/latest/download/CapsLockSharp.dll"
-        this.DownloadTo(url, this.AssemblyFile(), "CapsLockSharp.dll")
+    static DownloadAssembly(onProgress := "") {
+        if IsObject(onProgress)
+            onProgress.Call(60, Lang("MSG_CSHARP_DOWNLOADING_ASSEMBLY"), "下载 CapsLockSharp.dll...")
+
+        urls := [
+            "https://github.com/" this.AssemblyOwner "/" this.AssemblyRepo "/releases/latest/download/CapsLockSharp.dll",
+            "https://ghfast.top/https://github.com/" this.AssemblyOwner "/" this.AssemblyRepo "/releases/latest/download/CapsLockSharp.dll",
+            "https://raw.gitmirror.com/" this.AssemblyOwner "/" this.AssemblyRepo "/releases/latest/download/CapsLockSharp.dll"
+        ]
+        ok := this.DownloadTo(urls, this.AssemblyFile(), "CapsLockSharp.dll")
+        if !ok {
+            this.lastFailureStage := "assembly_download"
+            this.lastFailureHint := Lang("MSG_CSHARP_ERR_BRIDGE_FAILED")
+        }
+        return ok
     }
 
     ; --- bridge ------------------------------------------------------------
 
-    static FetchBridge() {
-        ; The documented checkout location already has it (git clone or an
-        ; earlier download): copy it when the runtime location differs.
+    static FetchBridge(onProgress := "") {
         source := this.BridgeSourceDir() "\ahk#.bridge.dll"
         if this.BridgeFile() != source && FileExist(source)
             return this.CopyFile(source, this.BridgeFile(), "ahk#.bridge.dll (checkout)")
 
-        this.DownloadBridge()
+        this.DownloadBridge(onProgress)
         return FileExist(this.BridgeFile())
     }
 
     ; One pinned commit, three files: the library the entry script #Includes
     ; (used by a source run), the bridge DLL the CLR loads, and the rebuild
     ; script that keeps the folder working like a git clone.
-    static DownloadBridge() {
-        base := "https://raw.githubusercontent.com/" this.BridgeOwner "/" this.BridgeRepo
-            . "/" this.BridgeCommit "/lib/"
+    static DownloadBridge(onProgress := "") {
         dir := this.BridgeSourceDir()
+        if !DirExist(dir)
+            DirCreate(dir)
 
-        this.DownloadTo(base "ahk%23.ahk", dir "\ahk#.ahk", "ahk#.ahk")
-        this.DownloadTo(base "ahk%23.bridge.dll", dir "\ahk#.bridge.dll", "ahk#.bridge.dll")
-        this.DownloadTo(base "build.ps1", dir "\build.ps1", "build.ps1")
+        if IsObject(onProgress)
+            onProgress.Call(70, Lang("MSG_CSHARP_DOWNLOADING_BRIDGE"), "下载 AHK# 桥接组件...")
 
-        if !FileExist(dir "\ahk#.bridge.dll")
+        commit := this.BridgeCommit
+        files := ["ahk#.ahk", "ahk#.bridge.dll", "build.ps1"]
+
+        for fileName in files {
+            encodedName := (fileName == "ahk#.ahk") ? "ahk%23.ahk" : ((fileName == "ahk#.bridge.dll") ? "ahk%23.bridge.dll" : fileName)
+            targetPath := dir "\" fileName
+
+            candidateUrls := [
+                "https://raw.githubusercontent.com/" this.BridgeOwner "/" this.BridgeRepo "/" commit "/lib/" encodedName,
+                "https://raw.gitmirror.com/" this.BridgeOwner "/" this.BridgeRepo "/" commit "/lib/" encodedName,
+                "https://ghfast.top/https://raw.githubusercontent.com/" this.BridgeOwner "/" this.BridgeRepo "/" commit "/lib/" encodedName,
+                "https://cdn.jsdelivr.net/gh/" this.BridgeOwner "/" this.BridgeRepo "@" commit "/lib/" encodedName
+            ]
+
+            if !this.DownloadTo(candidateUrls, targetPath, fileName) {
+                this.lastFailureStage := "bridge_download"
+                this.lastFailureHint := Lang("MSG_CSHARP_ERR_BRIDGE_FAILED")
+                return false
+            }
+        }
+
+        if !FileExist(dir "\ahk#.bridge.dll") {
+            this.lastFailureStage := "bridge_download"
+            this.lastFailureHint := Lang("MSG_CSHARP_ERR_BRIDGE_FAILED")
             return false
+        }
 
         if !this.VerifyBridgeDigest(dir "\ahk#.ahk", dir "\ahk#.bridge.dll") {
             try FileDelete(dir "\ahk#.bridge.dll")
+            this.lastFailureStage := "bridge_verify"
+            this.lastFailureHint := "ahk#.bridge.dll SHA-256 hash mismatch with ahk#.ahk"
             return false
         }
 
@@ -284,7 +585,6 @@ class CSharpRuntime {
         }
 
         if pinned == "" {
-            ; AHK# still verifies at boot, so this is not a file failure.
             this.report.Push("bridge digest not found in ahk#.ahk (AHK# checks it at boot)")
             return true
         }
@@ -301,30 +601,38 @@ class CSharpRuntime {
 
     ; --- shared helpers ----------------------------------------------------
 
-    static DownloadTo(url, path, label) {
-        try {
-            SplitPath(path, , &dir)
-            if !DirExist(dir)
-                DirCreate(dir)
-            if FileExist(path)
-                FileDelete(path)
+    static DownloadTo(urls, path, label) {
+        if !IsObject(urls)
+            urls := [urls]
 
-            ; Download follows redirects and writes the response body verbatim.
-            Download(url, path)
+        SplitPath(path, , &dir)
+        if !DirExist(dir)
+            DirCreate(dir)
 
-            if !FileExist(path) || FileGetSize(path) == 0
-                throw Error("empty response")
-
-            this.report.Push("downloaded " label " (" FileGetSize(path) " bytes)")
-            return true
-        } catch as err {
-            this.report.Push("download failed for " label ": " err.Message)
+        lastErr := ""
+        for url in urls {
             try {
                 if FileExist(path)
                     FileDelete(path)
+
+                Download(url, path)
+
+                if FileExist(path) && FileGetSize(path) > 0 {
+                    try FileDelete(path ":Zone.Identifier")
+                    this.report.Push("downloaded " label " (" FileGetSize(path) " bytes)")
+                    return true
+                }
+            } catch as err {
+                lastErr := err.Message
             }
-            return false
         }
+
+        try {
+            if FileExist(path)
+                FileDelete(path)
+        }
+        this.report.Push("download failed for " label ": " lastErr)
+        return false
     }
 
     static CopyFile(source, target, label) {
@@ -343,6 +651,7 @@ class CSharpRuntime {
             }
 
             FileCopy(source, target)
+            try FileDelete(target ":Zone.Identifier")
             this.report.Push("wrote " label ": " target)
             return true
         } catch as err {
@@ -351,42 +660,120 @@ class CSharpRuntime {
         }
     }
 
+    ; Writes CSharpPayload.ahk in repo root so future builds will embed the payload.
+    static WritePayloadIncludeIfSourceRun() {
+        if A_IsCompiled || !FileExist(A_ScriptDir "\CapsLock-.ahk")
+            return
+
+        assembly := this.AssemblyFile()
+        bridge := this.BridgeFile()
+        if !FileExist(assembly) || !FileExist(bridge)
+            return
+
+        payloadInclude := A_ScriptDir "\CSharpPayload.ahk"
+        lines := "; GENERATED FILE - do not edit and do not commit.`n"
+            . ";`n"
+            . "; Written by Core\CSharpRuntime.ahk. These are the only lines that make`n"
+            . "; Ahk2Exe embed the C# backend into CapsLock-.exe; CapsLock-.ahk picks the file up`n"
+            . "; through `#Include *i CSharpPayload.ahk`. Delete it for a pure-AHK executable.`n"
+            . "; Core\CSharpPayload.ahk extracts both resources on first use and verifies them.`n"
+            . ";@Ahk2Exe-AddResource lib\CapsLockSharp.dll, CSHARP_DLL`n"
+            . ";@Ahk2Exe-AddResource lib\ahk#\lib\ahk#.bridge.dll, AHK_BRIDGE_DLL`n"
+        try {
+            if FileExist(payloadInclude)
+                FileDelete(payloadInclude)
+            FileAppend(lines, payloadInclude, "UTF-8")
+            this.report.Push("wrote " payloadInclude)
+        }
+    }
+
     ; =======================================================================
     ; One-click setup
     ; =======================================================================
 
-    ; The whole setup in one call, from the Settings Center button:
-    ; files -> setting -> one real managed call. Returns a Map with
-    ; ok / message / details / restartNeeded / active.
-    static Install() {
+    ; The whole setup in one call, from the Settings Center button or CLI.
+    ; Returns a Map with ok / message / hint / details / restartNeeded / active / stage.
+    static Install(interactive := false, onProgress := "") {
         result := Map(
-            "ok", false, "message", "", "details", [],
-            "restartNeeded", false, "active", false
+            "ok", false, "message", "", "hint", "", "details", [],
+            "restartNeeded", false, "active", false, "stage", ""
         )
+        this.lastFailureStage := ""
+        this.lastFailureHint := ""
+        this.report := []
 
         try {
             hasBridgeCode := Services.HaveBridge()
 
-            ; The AHK# library is #Included at compile time. An EXE built
-            ; without it can never reach the CLR, and no file on disk can add
-            ; it - say so instead of downloading anything.
             if !hasBridgeCode && A_IsCompiled {
                 result.message := Lang("MSG_CSHARP_NO_BRIDGE")
+                result.hint := "当前运行的 EXE 未在编译时打包 AHK# 桥接代码。请使用已打包 C# 核心的发行版 EXE。"
                 result.details.Push("this build has no AHK# bridge compiled in")
                 return result
             }
 
-            ensured := this.EnsureFiles()
+            ; Step 1: Detect environment (.NET 8 SDK & .NET Framework)
+            if IsObject(onProgress)
+                onProgress.Call(15, Lang("MSG_CSHARP_STEP_ENV"), "检测系统环境...")
+
+            dotNetInfo := this.DetectDotNet8()
+            if dotNetInfo.hasSdk8 {
+                this.report.Push("detected .NET 8 SDK: " dotNetInfo.sdk8Version)
+            } else if dotNetInfo.installed {
+                this.report.Push("detected dotnet, but .NET 8 SDK is missing (installed: " (dotNetInfo.allSdks.Length > 0 ? dotNetInfo.allSdks[1] : dotNetInfo.version) ")")
+            } else {
+                this.report.Push(".NET 8 SDK is not installed")
+            }
+
+            if dotNetInfo.hasNetFramework48 {
+                this.report.Push("detected .NET Framework 4.8/4.7.2+")
+            } else {
+                this.report.Push("warning: .NET Framework 4.8 release key not confirmed")
+            }
+
+            ; Step 2: Handle missing .NET 8 SDK
+            project := A_ScriptDir "\src\CapsLockSharp\CapsLockSharp.csproj"
+            if !dotNetInfo.hasSdk8 && FileExist(project) && !FileExist(this.AssemblyFile()) {
+                hasWinget := this.HasWinget()
+                shouldInstallWinget := false
+
+                if hasWinget {
+                    if interactive {
+                        promptText := Lang("MSG_CSHARP_PROMPT_WINGET_DOTNET")
+                        shouldInstallWinget := (MsgBox(promptText, Lang("MSG_CSHARP_SETUP_TITLE"), "YesNo Icon? T30") == "Yes")
+                    } else {
+                        shouldInstallWinget := true
+                    }
+                }
+
+                if shouldInstallWinget {
+                    wingetOk := this.InstallDotNet8ViaWinget(onProgress)
+                    if wingetOk {
+                        dotNetInfo := this.DetectDotNet8()
+                    } else {
+                        this.report.Push("winget installation did not complete, falling back to download route")
+                    }
+                } else if !hasWinget {
+                    this.report.Push("winget is not available on this system")
+                }
+            }
+
+            ; Step 3: Ensure files exist
+            ensured := this.EnsureFiles(onProgress)
             result.details := this.ReportLines()
 
             if !ensured {
                 result.message := Lang("MSG_CSHARP_FAILED")
+                result.stage := this.lastFailureStage
+                result.hint := this.lastFailureHint
                 return result
             }
 
+            ; Step 4: Write payload include for future builds
+            this.WritePayloadIncludeIfSourceRun()
+
+            ; Step 5: Check if restart needed (source run)
             if !hasBridgeCode {
-                ; Source run: the files are in place, but `#Include *i` was
-                ; resolved when this process started, so CS does not exist yet.
                 this.Enable()
                 result.ok := true
                 result.restartNeeded := true
@@ -395,8 +782,6 @@ class CSharpRuntime {
             }
 
             if Services.tripped {
-                ; The files are in place, but the breaker is deliberately sticky
-                ; for the whole process, so only a restart finishes the switch.
                 result.ok := true
                 result.restartNeeded := true
                 result.message := Lang("MSG_CSHARP_RESTART")
@@ -404,13 +789,22 @@ class CSharpRuntime {
                 return result
             }
 
+            ; Step 6: Enable and Verify
+            if IsObject(onProgress)
+                onProgress.Call(90, Lang("MSG_CSHARP_WORKING"), "正在验证 C# 后端服务...")
+
             this.Enable()
             if !this.Verify() {
                 result.details := this.ReportLines()
                 result.details.Push("backend: " Services.reason)
                 result.message := Lang("MSG_CSHARP_FAILED")
+                result.stage := this.lastFailureStage
+                result.hint := this.lastFailureHint
                 return result
             }
+
+            if IsObject(onProgress)
+                onProgress.Call(100, Lang("MSG_CSHARP_DONE"), "C# 后端已配置并启用！")
 
             result.ok := true
             result.active := true
@@ -418,6 +812,7 @@ class CSharpRuntime {
             return result
         } catch as err {
             result.message := Lang("MSG_CSHARP_FAILED")
+            result.hint := err.Message
             result.details.Push(err.Message)
             return result
         }
@@ -448,6 +843,8 @@ class CSharpRuntime {
         calls := Services.calls
         try {
             Services.LooksLikeFilePathList("C:\Windows\notepad.exe")
+        } catch as err {
+            this.report.Push("managed call threw: " err.Message)
         }
 
         if Services.ready && !Services.tripped && Services.calls > calls {
@@ -456,6 +853,17 @@ class CSharpRuntime {
         }
 
         this.report.Push("managed call failed: " Services.reason)
+        this.lastFailureStage := "verify"
+
+        hint := Lang("MSG_CSHARP_ERR_VERIFY_FAILED")
+        if InStr(Services.reason, "CorBindToRuntimeEx") {
+            hint .= "`n`n" . "诊断提示：CLR 启动失败。AHK# 桥接依赖 .NET Framework 4.8 或 4.7.2 运行时，请确认 Windows 已启用 .NET Framework 4.8 功能。"
+        } else if InStr(Services.reason, "hash") || InStr(Services.reason, "mismatch") {
+            hint .= "`n`n" . "诊断提示：桥接 DLL 哈希校验失败，文件可能已损坏，建议重新配置以重新下载。"
+        } else if InStr(Services.reason, "tripped") || Services.tripped {
+            hint .= "`n`n" . "诊断提示：C# 后端熔断器已被触发，需要完全退出并重新启动 CapsLock- 才能恢复。"
+        }
+        this.lastFailureHint := hint
         return false
     }
 
@@ -501,8 +909,6 @@ class CSharpRuntime {
             if value != "-probecsharp" && value != "-installcsharp"
                 continue
 
-            ; Headless.ahk is not injected into a compiled EXE, so an error
-            ; dialog here would hang an unattended run until it is killed.
             try {
                 if value == "-probecsharp"
                     return this.Probe()
@@ -523,7 +929,7 @@ class CSharpRuntime {
 
     static RunInstall() {
         this.Say("installing the C# backend")
-        result := this.Install()
+        result := this.Install(false)
         this.Say("ok=" (result["ok"] ? 1 : 0))
         this.Say("restart_needed=" (result["restartNeeded"] ? 1 : 0))
         this.Say("message=" result["message"])
@@ -549,6 +955,12 @@ class CSharpRuntime {
         this.Say("packaged_assembly_bytes=" CSharpPayload.ResourceSize(CSharpPayload.AssemblyResource))
         this.Say("packaged_bridge_bytes=" CSharpPayload.ResourceSize(CSharpPayload.BridgeResource))
 
+        dotNetInfo := this.DetectDotNet8()
+        this.Say("dotnet_installed=" (dotNetInfo.installed ? 1 : 0))
+        this.Say("dotnet_sdk8=" (dotNetInfo.hasSdk8 ? 1 : 0))
+        this.Say("dotnet_sdk8_version=" dotNetInfo.sdk8Version)
+        this.Say("winget_available=" (this.HasWinget() ? 1 : 0))
+
         ensured := this.EnsureFiles()
         this.Say("assembly=" this.AssemblyFile())
         this.Say("assembly_bytes=" (FileExist(this.AssemblyFile()) ? FileGetSize(this.AssemblyFile()) : 0))
@@ -573,9 +985,6 @@ class CSharpRuntime {
 
         this.exitCode := (packaged && !(ensured && verified)) ? 1 : 0
 
-        ; Invoke-Ahk.ps1 turns lines that start with FAIL into CI annotations,
-        ; and annotations are the only part of a run that is readable when the
-        ; job log is not. So the reason has to travel in that shape.
         if this.exitCode != 0 {
             this.Say("FAIL packaged payload unusable: files_ok=" (ensured ? 1 : 0)
                 . " managed_call_ok=" (verified ? 1 : 0)
