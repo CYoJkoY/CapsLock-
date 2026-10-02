@@ -61,6 +61,12 @@ class Services {
         try {
             if !this.HaveBridge()
                 throw Error("AHK# is not installed")
+            ; A compiled EXE carries the services and the bridge as resources.
+            ; Unpacking them is local disk work only - no network, no compiler
+            ; and still no CLR - and is skipped when an explicit path override
+            ; is in effect. Building or downloading belongs to the one-click
+            ; setup, never to a service call.
+            CSharpRuntime.ExtractPackaged()
             dll := this.assemblyPath ? this.assemblyPath : this.DefaultAssemblyPath()
             bridge := this.bridgePath ? this.bridgePath : this.DefaultBridgePath()
             if !FileExist(dll)

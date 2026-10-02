@@ -15,9 +15,7 @@ on:
       - 'UI/SettingsGui.ahk'
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
-      - 'scripts/perf/**'
-      - 'scripts/ci/**'
-      - 'scripts/HistoryGuiPaging.ahk'
+      - 'scripts/**'
       - '.github/workflows/dotnet.yml'
   pull_request:
     paths:
@@ -31,9 +29,7 @@ on:
       - 'UI/SettingsGui.ahk'
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
-      - 'scripts/perf/**'
-      - 'scripts/ci/**'
-      - 'scripts/HistoryGuiPaging.ahk'
+      - 'scripts/**'
       - '.github/workflows/dotnet.yml'
   workflow_dispatch:
 
@@ -116,4 +112,60 @@ jobs:
         with:
           name: CapsLockSharp-netstandard2.0
           path: lib\CapsLockSharp.dll
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # End-to-end packaging check.
+  #
+  # The jobs above only ever run the AHK sources. This one compiles a real EXE
+  # with the C# payload embedded and lets that EXE unpack it and make one call
+  # into the CLR, which is the only place the whole chain is exercised:
+  # generated AddResource directives -> Ahk2Exe resources -> extraction by
+  # Core\CSharpRuntime.ahk -> AHK# bridge hash check -> CLR boot -> managed call.
+  # ---------------------------------------------------------------------------
+  package:
+    name: Package the C# backend into an EXE and probe it
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # The action also installs Ahk2Exe and reports its path, so the build uses
+      # the same compiler a local `scripts\build.ps1` run finds.
+      - name: Install AutoHotkey and the script compiler
+        id: ahk
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.28'
+          compiler: 'latest'
+
+      # Provisions lib\, writes CSharpPayload.ahk, compiles with Ahk2Exe and
+      # then reads the resource directory of the result.
+      - name: Build the EXE with the packaged C# backend
+        shell: pwsh
+        run: .\scripts\build.ps1 -Architecture both -Ahk2Exe '${{ steps.ahk.outputs.ahk2Exe }}'
+
+      # -ProbeCSharp extracts the payload, starts the CLR and performs one real
+      # managed call before exiting. The wrapper waits for the process, prints
+      # its stdout and fails on a non-zero exit code.
+      - name: Probe the packaged payload (x64 and x86)
+        shell: pwsh
+        run: |
+          .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+          .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-_x86.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+
+      - name: Upload the packaged executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapsLock-packaged-exe
+          path: |
+            build\CapsLock-.exe
+            build\CapsLock-_x86.exe
           if-no-files-found: error

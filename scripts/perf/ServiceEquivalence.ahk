@@ -7,6 +7,7 @@
 #Include ..\..\Config\Globals.ahk
 #Include ..\..\Config\Encryption.ahk
 #Include ..\..\Core\Services.ahk
+#Include ..\..\Core\CSharpRuntime.ahk
 #Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
 #Include ..\..\History\HistoryStorage.ahk

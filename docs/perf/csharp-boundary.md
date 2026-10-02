@@ -126,7 +126,7 @@ committed the edit; it disables C# without applying the edit again. Missing DLLs
 are detected before invoking the bridge, and `AHKSHARP_DEV` runtime rebuilds are
 refused. Bridge hash verification stays enabled.
 
-## 3. Enable the optional backend in a source checkout
+## 3. Enable the optional backend
 
 [AHKSharp](https://github.com/owhs/AHKSharp) is not vendored. The runtime/test
 reference is pinned to commit `e3b895c7590eba47748b0ed963b7978c237d1daf`.
@@ -135,7 +135,59 @@ It hosts the Framework 4.x CLR in the AHK process; use **.NET Framework 4.7.2+
 only to build/test them, not on an end user's machine. One AnyCPU assembly serves
 both x86 and x64 hosts.
 
-From the repository root, in PowerShell:
+The boundary needs exactly two files, and every route below ends at the same
+place:
+
+```text
+lib\CapsLockSharp.dll            the precompiled services (AnyCPU)
+lib\ahk#\lib\ahk#.bridge.dll     the pinned AHK# bridge
+```
+
+`Core\CSharpRuntime.ahk` owns that provisioning. It never starts the CLR:
+`Services.Boot()` remains the only place that does, on the first service that is
+actually called.
+
+### 3.1 One click, in the Settings Center
+
+**Settings Center → General → System & Runtime → “Set Up C# Backend”**, next to
+the backend selector. The status line beside it reports `Active`, `Installed
+(backend is AHK)`, `Bundled with this build`, `Not installed`, or `Disabled after
+an error (restart to retry)`.
+
+The button runs `CSharpRuntime.Install()`, which
+
+1. makes the two files exist, in this order of preference:
+   * unpack them from the running EXE, when the build packages them (§3.3);
+   * build the assembly with the .NET SDK, when `src\CapsLockSharp` is present;
+   * download the pinned bridge (`ahk#.ahk`, `ahk#.bridge.dll`, `build.ps1`) from
+     the pinned commit and the published `CapsLockSharp.dll` from the latest
+     release, when there is no SDK. A downloaded bridge is checked against the
+     SHA-256 that AHK# pins in `ahk#.ahk` before it is kept, so a corrupt or
+     intercepted download is reported instead of failing at CLR boot;
+2. writes `[Services] Backend=csharp` and saves the configuration;
+3. performs **one real managed call** and reports success only if that call went
+   through the bridge (`Services.calls` has to increase, `Services.ready` stay
+   true and the breaker stay closed).
+
+If the install folder is not writable (`Program Files`), the files are placed in
+`%LOCALAPPDATA%\CapsLock-\lib` instead and `Services.assemblyPath` /
+`Services.bridgePath` are pointed there. Every step is listed in the result
+dialog, so a failure says which of the three routes failed and why.
+
+A **source run** needs one more step: `#Include *i lib\ahk#\lib\ahk#.ahk` is
+resolved when the process starts, so a freshly downloaded bridge only becomes
+visible after a reload. The button asks to reload right away.
+
+### 3.2 Scripted setup, or by hand
+
+```powershell
+# Downloads the pinned bridge, builds the services assembly and writes the
+# generated CSharpPayload.ahk used by the compiler (see 3.3).
+.\scripts\Setup-CSharpBackend.ps1            # add -Force to redo both
+.\scripts\Setup-CSharpBackend.ps1 -SkipAssembly   # no .NET SDK on this machine
+```
+
+The equivalent by hand, which produces the same layout:
 
 ```powershell
 git clone https://github.com/owhs/AHKSharp.git lib\ahk#
@@ -143,19 +195,55 @@ git -C lib\ahk# checkout --detach e3b895c7590eba47748b0ed963b7978c237d1daf
 dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o lib
 ```
 
-The entry script and test/profiling scripts have optional `#Include *i` directives
-for that checkout. No manual source edit is needed. Set the existing setting in
-`configs\Config.ini` (or choose C# in the Settings Center):
+Then choose C# in the Settings Center, or set the existing setting in
+`configs\Config.ini`:
 
 ```ini
 [Services]
 Backend=csharp
 ```
 
-Run `CapsLock-.ahk`, or compile it **with the bridge checkout present**. An
-already-compiled pure-AHK release cannot discover new AHK source by dropping DLLs
-beside it. Generated assemblies, bridge checkouts, `bin`/`obj`, and benchmark
+The entry script and the test/profiling scripts already carry the optional
+`#Include *i` for that checkout; no source edit is needed. Generated assemblies,
+bridge checkouts, the generated `CSharpPayload.ahk`, `bin`/`obj` and benchmark
 results are ignored by Git.
+
+Two diagnostic switches run headlessly and exit, which is also how CI checks a
+compiled EXE. `#SingleInstance Force` has already replaced a running instance by
+then, so use them while CapsLock- is not running:
+
+```powershell
+.\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -ScriptArguments '-ProbeCSharp'
+.\build\CapsLock-.exe -ProbeCSharp      # prints the packaged payload, unpacks it,
+                                          # boots the CLR, makes one managed call
+.\build\CapsLock-.exe -InstallCSharp    # the one-click setup, headlessly
+```
+
+### 3.3 Packaged into the compiled EXE
+
+`scripts\build.ps1` produces release-shaped executables with the C# backend
+inside them:
+
+```powershell
+.\scripts\build.ps1                    # x64 -> build\CapsLock-.exe
+.\scripts\build.ps1 -Architecture both # plus build\CapsLock-_x86.exe
+.\scripts\build.ps1 -SkipCSharp        # pure-AHK executable
+```
+
+`Setup-CSharpBackend.ps1` writes `CSharpPayload.ahk` next to the entry script,
+and that file holds nothing but the two `AddResource` directives that embed the
+assembly and the bridge as RCDATA resources. `CapsLock-.ahk` picks it up through
+`#Include *i CSharpPayload.ahk`, so **the same source compiles either way**: with
+the generated file present the payload is packaged, without it the build stays
+pure AHK. `scripts\ci\Test-CSharpPayload.ps1` reads the resource directory of
+the finished EXE and fails the build when a resource is missing, empty, or a
+different size than the file on disk.
+
+At runtime `CSharpRuntime.ExtractPackaged()` writes both resources next to the
+EXE - into `%LOCALAPPDATA%\CapsLock-\lib` when the install folder is read-only -
+comparing SHA-256 first, so a normal start writes nothing and an already loaded
+bridge is never deleted underneath the CLR. It is called from `Services.Boot()`
+and touches only local disk: no network, no compiler, still no CLR.
 
 `Configure`, history loading and ignore-rule preparation never start .NET. Boot
 and JIT costs are paid on the first actual C# request and must be measured
@@ -222,6 +310,12 @@ the application's own folders.
 checks the pure-AHK fallback on x64 and x86, checks out the pinned bridge, then
 validates the application, the real service boundary and the history window with
 **both x64 and x86 AutoHotkey**, and finally runs the profile harness (below).
+Its second job is the packaging check: `scripts\build.ps1` compiles x64 and x86
+executables with the payload embedded, `scripts\ci\Test-CSharpPayload.ps1` reads
+their resource directories, and each executable is then run with `-ProbeCSharp`,
+which unpacks the resources, boots the CLR and makes one managed call. That is the
+only place the whole chain - generated directives, Ahk2Exe resources, extraction,
+bridge hash check, CLR boot - is exercised end to end.
 `test.yml` runs `/Validate`, the hotkey regression, the pure-AHK service checks and
 the history window paging check.
 
@@ -340,19 +434,38 @@ it cannot remove all remaining AHK, COM, disk or GUI costs.
 
 ## 6. Release scope and remaining work
 
-The normal x86/x64 releases remain pure AHK. `dotnet.yml` uploads
-`CapsLockSharp-netstandard2.0` as an optional build artifact; `release.yml` does
-not embed or publish the bridge/services. If measurements justify shipping them,
-package **precompiled** AnyCPU services and the exact hash-matching bridge, include
-the matching AHK source at build time, and extract real DLL files before CLR boot.
-No user-side compiler, Roslyn/NuGet download or developer rebuild flag is allowed.
+The shipped x86/x64 executables now **package** the C# backend: `release.yml`
+provisions the pinned bridge and the precompiled AnyCPU services, embeds both as
+RCDATA resources through the generated `CSharpPayload.ahk`, verifies that the
+finished executables really carry them, and publishes `CapsLockSharp.dll` next to
+them (which is what the one-click setup downloads on a machine without the .NET
+SDK). Packaging follows exactly the constraints this document set for it:
+**precompiled** AnyCPU services, the exact hash-matching bridge, the matching AHK
+source included at build time, and real DLL files extracted before CLR boot. No
+user-side compiler, Roslyn/NuGet download or developer rebuild flag is involved,
+and `AHKSHARP_DEV` rebuilds are still refused by `Services.Boot()`.
+
+What did **not** change is the default: `[Services] Backend=ahk`. A packaged
+executable behaves like the pure-AHK build until someone enables the backend, and
+nothing C#-related runs at startup - the resources are unpacked on the first C#
+request, and the CLR starts then. `scripts\build.ps1 -SkipCSharp` still produces
+a pure-AHK executable from the same source, and an executable built that way says
+so instead of pretending to install a backend it cannot reach (the AHK# library is
+`#Include`d at compile time, so no file on disk can add it afterwards).
+
+The bar in section 5 still applies to *enabling C# by default*: the history
+workloads clear it on these micro-benchmarks, the ignore workloads do not, and the
+whole-process and input-latency checks have not been done. Packaging the payload
+changes what a release contains, not what the application does by default.
 
 Outstanding verification: whole-process, input-latency and idle measurements on a
-real desktop; a visual pass over the history window (`HistoryGuiPaging.ahk` checks
-its behavior, not its appearance); and PCRE/.NET regex and non-ASCII case behavior
-on Windows versions other than the CI runner's. Any unsupported generated
-expression must fail safely back to AHK. The bridge needs .NET Framework 4.7.2+
-(the CI runner has 4.8.x); older Windows 10 builds have not been tried.
+real desktop, now also with the packaged executable (a build that unpacks two DLLs
+on first use is the one that ships); a visual pass over the history window
+(`HistoryGuiPaging.ahk` checks its behavior, not its appearance); and PCRE/.NET
+regex and non-ASCII case behavior on Windows versions other than the CI runner's.
+Any unsupported generated expression must fail safely back to AHK. The bridge
+needs .NET Framework 4.7.2+ (the CI runner has 4.8.x); older Windows 10 builds
+have not been tried.
 
 Possible later work, not part of this change: JSON/large history codecs (the AHK
 `Utils\Json.ahk` round trip is superlinear, about 1.2 s for 1,000 entries, and is

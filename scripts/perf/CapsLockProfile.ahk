@@ -48,6 +48,7 @@
 #Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
 #Include ..\..\Core\Services.ahk
+#Include ..\..\Core\CSharpRuntime.ahk
 
 ; ---------------------------------------------------------------------------
 ; Timing
