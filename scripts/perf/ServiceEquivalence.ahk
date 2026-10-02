@@ -7,6 +7,7 @@
 #Include ..\..\Config\Globals.ahk
 #Include ..\..\Config\Encryption.ahk
 #Include ..\..\Core\Services.ahk
+#Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
 #Include ..\..\History\HistoryStorage.ahk
 
@@ -18,7 +19,7 @@ Check(condition, name) {
     checks++
     if !condition {
         failures++
-        FileAppend("FAIL " name "`n", "*")
+        FileAppend("FAIL " name "`n", "*", "UTF-8-RAW")
     }
 }
 
@@ -277,14 +278,14 @@ Main() {
         Check(Services.errors == before + 1, "missing backend is not retried")
     } catch as err {
         failures++
-        FileAppend("FAIL unexpected error: " err.Message "`n" err.Stack "`n", "*")
+        FileAppend("FAIL unexpected error: " err.Message "`n" err.Stack "`n", "*", "UTF-8-RAW")
     } finally {
         if HistoryManager.saveTimer
             SetTimer(HistoryManager.saveTimer, 0)
         HistoryManager.savePending := false
         DirDelete(work, true)
     }
-    FileAppend(checks " checks, " failures " failures`n", "*")
+    FileAppend(checks " checks, " failures " failures`n", "*", "UTF-8-RAW")
     ExitApp(failures ? 1 : 0)
 }
 

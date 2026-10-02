@@ -19,9 +19,11 @@
       * injects scripts\ci\Headless.ahk with /include, so load-time warnings go
         to stdout and uncaught runtime errors to stderr (exit code 2) instead of
         opening dialogs nobody can click;
-      * turns "FAIL ..." lines and a non-zero exit code into GitHub Actions
-        error annotations; and
-      * throws, so a PowerShell step stops, on a non-zero exit code or a timeout.
+      * turns "FAIL ..." lines, AutoHotkey warnings and a non-zero exit code into
+        GitHub Actions error annotations; and
+      * throws, so a PowerShell step stops, on a non-zero exit code, a timeout or
+        (unless -AllowWarnings) any load-time warning: without #Warn each of
+        those would be a modal dialog for the user.
 
     The scripts under scripts\ exit with 0 when every check passed.
 
@@ -43,6 +45,10 @@
     given, the executable is searched in the AHK_EXE environment variable's
     folder, <repo>\autohotkey (installed by holy-tao/install-autohotkey) and
     the usual AutoHotkey v2 install folders.
+
+.PARAMETER AllowWarnings
+    Do not fail when AutoHotkey reports load-time warnings (they are still
+    printed).
 
 .PARAMETER NoHeadless
     Do not inject scripts\ci\Headless.ahk (AutoHotkey's own #Warn MsgBoxes and
@@ -73,6 +79,8 @@ param(
     [string] $Architecture = 'x64',
 
     [string] $Executable = '',
+
+    [switch] $AllowWarnings,
 
     [switch] $NoHeadless,
 
@@ -187,16 +195,22 @@ if ($stderr.Trim().Length -gt 0) {
 }
 Write-Host ('--- {0}: exit code {1} after {2:N1} s ---' -f $scriptLabel, $exitCode, $watch.Elapsed.TotalSeconds)
 
-$failed = (-not $exited) -or ($exitCode -ne 0)
+$combined = @(($stdout + "`n" + $stderr) -split "\r?\n")
+$warnings = @($combined | Where-Object { $_ -match '==> Warning:' })
+$timedOut = -not $exited
+$badExit = $exited -and ($exitCode -ne 0)
+$badWarnings = (-not $AllowWarnings) -and ($warnings.Count -gt 0)
 
 # Surface failures in the PR checks UI (GitHub keeps at most 10 annotations per
-# step): the scripts print "FAIL <check>" for every failed check, and load-time
-# errors are written to stderr as "<file> (<line>) : ==> <message>".
-if ($failed) {
+# step): the scripts print "FAIL <check>" for every failed check, load-time
+# errors are written to stderr as "<file> (<line>) : ==> <message>", and
+# warnings use the same shape on stdout.
+if ($timedOut -or $badExit -or $badWarnings) {
     $annotated = 0
     $candidates = @()
     $candidates += @($stdout -split "\r?\n" | Where-Object { $_ -match '^\s*FAIL\b' })
     $candidates += @($stderr -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 })
+    $candidates += $warnings
     foreach ($line in $candidates) {
         if ($annotated -ge 8) { break }
         Write-Host ('::error::{0}: {1}' -f (ConvertTo-WorkflowData $scriptLabel), (ConvertTo-WorkflowData $line.Trim()))
@@ -208,7 +222,10 @@ if (-not $exited) {
     Write-Host "::error::$(ConvertTo-WorkflowData $scriptLabel): timed out after $TimeoutSeconds s. A dialog (for example an AutoHotkey #Warn MsgBox) may be waiting."
     throw "$scriptLabel timed out after $TimeoutSeconds s."
 }
-if ($exitCode -ne 0) {
+if ($badExit) {
     Write-Host "::error::$(ConvertTo-WorkflowData $scriptLabel): AutoHotkey exited with code $exitCode."
     throw "$scriptLabel failed with exit code $exitCode."
+}
+if ($badWarnings) {
+    throw "$scriptLabel printed $($warnings.Count) AutoHotkey warning(s); without #Warn each one would be a modal dialog. Fix them or pass -AllowWarnings."
 }
