@@ -76,8 +76,7 @@ ReadText(path) {
 }
 
 ; Returns an array of { pos, len, groups } for every match in "haystack".
-; Every needle must contain at least one capture group, because AHK only
-; returns a match object (with Pos / Len) when captures are present.
+; Callers read groups[1], so every needle needs at least one capture group.
 AllMatches(haystack, needle) {
     result := []
     position := 1
@@ -88,11 +87,12 @@ AllMatches(haystack, needle) {
             break
 
         groups := []
-        loop m.Length
+        loop m.Count
             groups.Push(m[A_Index])
 
         result.Push({ pos: m.Pos, len: m.Len, groups: groups })
-        position := m.Pos + m.Len
+        ; Always advance: an empty match must not be found again at the same spot.
+        position := m.Pos + Max(m.Len, 1)
     }
 
     return result
