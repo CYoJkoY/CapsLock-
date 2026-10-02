@@ -149,15 +149,18 @@ class FileHelper {
         return this._serviceRules
     }
 
+    ; Single-path check, used right where the user pastes. Always the AHK
+    ; matcher, even with [Services] Backend=csharp: on a GitHub-hosted Windows
+    ; runner one warm C# call cost about twice one AHK call (0.019 vs 0.009 ms),
+    ; and the first one would also start the CLR inside a paste hotkey. Only
+    ; whole-file batches (CollectFilesFromFolder, ReadMultipleFilesAsText) cross
+    ; the bridge. See docs/perf/csharp-boundary.md.
     static ShouldIgnore(filePath) {
-        if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
-            return false
-        if Services.IsEnabled()
-            return Services.IgnoreMatch(filePath)
         return this.ShouldIgnoreAhk(filePath)
     }
 
-    ; Real fallback and reference implementation. Never re-enters Services.
+    ; The AHK matcher, and the reference the C# implementation is tested
+    ; against. Never re-enters Services.
     static ShouldIgnoreAhk(filePath) {
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
             return false

@@ -162,6 +162,7 @@ gEnumRoot := ""
 gJsonText := ""
 gCounter := 0
 gTexts := []
+gKeptFrame := ""
 
 WorkloadHistoryAddNew(unused) {
     ; A genuinely new clip: backend lookup, InsertAt(1), eviction, and delta.
@@ -281,6 +282,20 @@ WorkloadIgnoreBatchCSharp(unused) {
 WorkloadIgnoreBatchAhk(unused) {
     global gPaths
     ServicesFilterFilePathsAhk(gPaths)
+}
+
+; The AHK half of the batch crossing, measured without the bridge: building the
+; request frame for the whole corpus, and decoding a reply frame holding the
+; paths that were kept. Whatever is left of compare-ignore-batch-csharp after
+; these two is the bridge call plus the C# matching itself.
+WorkloadIgnoreBatchPack(unused) {
+    global gPaths
+    Services.PackStrings(gPaths)
+}
+
+WorkloadIgnoreBatchUnpack(unused) {
+    global gKeptFrame
+    Services.UnpackStrings(gKeptFrame)
 }
 
 CancelPendingSave() {
@@ -461,7 +476,7 @@ BuildMarkdown(environment, results) {
 ; ---------------------------------------------------------------------------
 
 Main() {
-    global gEnumRoot, gPaths, gTexts, gCounter
+    global gEnumRoot, gPaths, gTexts, gCounter, gKeptFrame
 
     Bench.Init()
 
@@ -639,6 +654,11 @@ Main() {
         RecordAhk(results, "compare-ignore-match-ahk", WorkloadIgnoreMatchAhk.Bind(0), 2000, 50)
         RecordCSharp(results, "compare-ignore-batch-csharp", WorkloadIgnoreBatchCSharp.Bind(0), 100, 5)
         RecordAhk(results, "compare-ignore-batch-ahk", WorkloadIgnoreBatchAhk.Bind(0), 100, 5)
+        keptPaths := ServicesFilterFilePathsAhk(gPaths)
+        gKeptFrame := Services.PackStrings(keptPaths)
+        results["compare-ignore-batch-corpus"] := gPaths.Length " paths, " keptPaths.Length " kept"
+        RecordAhk(results, "compare-ignore-batch-pack-ahk", WorkloadIgnoreBatchPack.Bind(0), 200, 5)
+        RecordAhk(results, "compare-ignore-batch-unpack-ahk", WorkloadIgnoreBatchUnpack.Bind(0), 200, 5)
 
         for size in sizes {
             ; Each backend starts with the same corpus. Sync/compile costs are

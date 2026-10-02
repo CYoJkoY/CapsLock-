@@ -167,8 +167,13 @@ TestIgnore(work) {
     for rule in ["*.tmp", "*.txt;*.md", "*.*", "**", "file.txt", "obj", "?emp*", "**/obj/**", "**/node_modules/**",
         "^build/**", "a/**/b", "**/*.cs", "**/*.cs/", "# comment", "!keep.txt"] {
         SetRules([rule])
-        for path in paths
-            Check(FileHelper.ShouldIgnoreAhk(path) == FileHelper.ShouldIgnore(path), "ignore scalar parity " rule " / " path)
+        for path in paths {
+            Check(FileHelper.ShouldIgnoreAhk(path) == Services.IgnoreMatch(path), "ignore scalar parity " rule " / " path)
+            ; The app's single-path check never crosses the bridge (measured slower).
+            calls := Services.calls
+            Check(FileHelper.ShouldIgnore(path) == FileHelper.ShouldIgnoreAhk(path), "ShouldIgnore is the AHK matcher " rule " / " path)
+            Check(Services.calls == calls, "ShouldIgnore does not call C# " rule " / " path)
+        }
         CheckSame(ServicesFilterFilePathsAhk(paths), Services.FilterFilePaths(paths), "ignore batch parity " rule)
         Check(!Services.tripped, "ignore rules do not trip backend " rule)
     }
