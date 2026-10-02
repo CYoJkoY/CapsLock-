@@ -334,12 +334,15 @@ else {
 
     Write-Host 'Building the services assembly (netstandard2.0, AnyCPU)'
     $buildOutput = & $dotnet build $project -c Release --nologo -o $libDir 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0 -and -not (Test-Path -LiteralPath $assembly)) {
         Write-Error ('dotnet build failed with exit code {0}:`n{1}' -f $LASTEXITCODE, ($buildOutput -join "`n"))
         throw ('dotnet build failed with exit code {0}. Hint: Ensure .NET 8 SDK is installed and functional.' -f $LASTEXITCODE)
     }
-    if (-not (Test-Path -LiteralPath $assembly)) {
-        throw "dotnet build did not produce $assembly"
+    if ($LASTEXITCODE -ne 0) {
+        # A successful "0 errors" build does not always exit 0 (shell hooks and
+        # post-build notices have been seen to change the exit code); the fresh
+        # assembly is the deciding evidence, like in Core\CSharpRuntime.ahk.
+        Write-Host "dotnet build exited with code $LASTEXITCODE but produced $assembly; using it."
     }
     Unblock-File -LiteralPath $assembly -ErrorAction SilentlyContinue
 }

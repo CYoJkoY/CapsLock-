@@ -47,8 +47,11 @@ class SecureStorage {
 
         ; Write to a temp file first, then atomically replace: 
         ; a crash midway won't leave behind a half-written, corrupted credentials.dat
+        ; The explicit CP0 keeps RawWrite byte-exact (no BOM, no translation) even
+        ; if the global FileEncoding were ever changed; v2's FileOpen has no
+        ; "RAW" encoding and passing one would throw.
         tmpPath := path ".tmp"
-        myfile := FileOpen(tmpPath, "w", "RAW")
+        myfile := FileOpen(tmpPath, "w", "CP0")
         if !IsObject(myfile)
             throw Error("Could not open secure storage file.")
 
@@ -75,13 +78,16 @@ class SecureStorage {
         if !FileExist(path)
             return ""
 
-        myfile := FileOpen(path, "r", "RAW")
+        ; See Save: CP0 + RawRead is the byte-exact read; Seek(0) undoes any
+        ; leading-BOM skip so the whole encrypted blob is returned.
+        myfile := FileOpen(path, "r", "CP0")
         if !IsObject(myfile)
             return ""
 
         try {
             size := myfile.Length
             encrypted := Buffer(size, 0)
+            myfile.Seek(0)
             myfile.RawRead(encrypted, size)
             myfile.Close()
         } catch {

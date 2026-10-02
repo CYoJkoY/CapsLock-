@@ -26,9 +26,21 @@ Usage
 from __future__ import annotations
 
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Literal encoding arguments accepted by the v2 file functions, per the
+# "FileOpen"/"FileRead"/"FileAppend" documentation: UTF-8, UTF-8-RAW,
+# UTF-16, UTF-16-RAW and CP0/CPnnn. There is deliberately NO bare "RAW":
+# v1's "RAW" encoding does not exist in v2, and passing it *throws*
+# "Parameter #3 invalid" - which a swallowing catch turns into silent
+# breakage (a hash helper returning "" reads as a mismatch, for example).
+_VALID_FILE_ENCODING = re.compile(r"^(?:UTF-8|UTF-8-RAW|UTF-16|UTF-16-RAW|CP\d+)$", re.I)
+
+# Function name -> position (0-based) of the Encoding parameter in its call.
+_FILE_FUNCTIONS_WITH_ENCODING = {"FileOpen": 2, "FileRead": 1, "FileAppend": 2}
 
 
 class Issue:
@@ -210,6 +222,8 @@ def lint_text(path: str, text: str) -> list[Issue]:
         if not os.path.exists(resolved):
             issues.append(Issue(path, idx, "include", "missing include target: {}".format(target)))
 
+    issues.extend(_check_file_encodings(path, lines))
+
     return issues
 
 
@@ -241,6 +255,93 @@ def _paren_depth(code: str) -> int:
             depth -= 1
         i += 1
     return depth
+
+
+def _call_arguments(code: str, open_paren: int) -> list[str] | None:
+    """Split a function call's arguments starting at ``code[open_paren] == '('``.
+
+    Quotes, backtick escapes and nested brackets are respected. Returns None
+    when the closing parenthesis is not on the same line, so multi-line calls
+    are simply not checked (the lint is deliberately line-local).
+    """
+    depth = 0
+    args: list[str] = []
+    cur: list[str] = []
+    quote = ""
+    i = open_paren
+    n = len(code)
+    while i < n:
+        ch = code[i]
+        if quote:
+            if ch == "`":
+                i += 2
+                continue
+            if ch == quote:
+                if i + 1 < n and code[i + 1] == quote:
+                    i += 2
+                    continue
+                quote = ""
+            cur.append(ch)
+            i += 1
+            continue
+        if ch in "\"'":
+            quote = ch
+            cur.append(ch)
+            i += 1
+            continue
+        if ch == "`":
+            i += 2
+            continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+            if depth == 0:
+                args.append("".join(cur))
+                return args
+        elif ch == "," and depth == 1:
+            args.append("".join(cur))
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
+    return None
+
+
+def _check_file_encodings(path: str, lines: list[str]) -> list[Issue]:
+    """Flag literal encoding arguments the v2 file functions would reject.
+
+    ``FileOpen(path, "r", "RAW")`` is the motivating case: "RAW" is not a v2
+    encoding, so FileOpen throws, a surrounding ``catch`` swallows it, and a
+    hash helper quietly returns "" - which upstream then reports as a bogus
+    SHA-256 "mismatch". One grep turns that whole failure mode into a lint hit.
+    """
+    issues: list[Issue] = []
+    pattern = re.compile(
+        r"(?<![\w.])({})\s*\(".format("|".join(_FILE_FUNCTIONS_WITH_ENCODING))
+    )
+    for idx, raw in enumerate(lines, start=1):
+        code = _strip_comment(raw)
+        for match in pattern.finditer(code):
+            func = match.group(1)
+            args = _call_arguments(code, code.index("(", match.start()))
+            if args is None:
+                continue
+            enc_index = _FILE_FUNCTIONS_WITH_ENCODING[func]
+            if enc_index >= len(args):
+                continue
+            enc = args[enc_index].strip()
+            if len(enc) >= 2 and enc[0] == '"' and enc[-1] == '"':
+                inner = enc[1:-1]
+                if not _VALID_FILE_ENCODING.match(inner):
+                    issues.append(
+                        Issue(path, idx, "encoding",
+                              '{}: "{}" is not a valid AutoHotkey v2 file encoding '
+                              '(use CP0/CPnnn, UTF-8, UTF-8-RAW, UTF-16 or UTF-16-RAW; '
+                              'v2 has no bare "RAW")'.format(func, inner))
+                    )
+    return issues
 
 
 def iter_ahk_files(paths: list[str]) -> list[str]:

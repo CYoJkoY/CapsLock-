@@ -185,6 +185,15 @@ dialog. Failures also write a full report to
 when `LOCALAPPDATA` is unavailable), including the failing stage, exception
 location/stack, selected .NET host, and download/build diagnostics.
 
+The bridge digest report distinguishes the two ways a check can fail: a
+**mismatch** means the bytes differ from the pinned digest, and the copy is
+deleted so the next attempt re-downloads; **"could not be computed"** means
+the file exists but could not be read or hashed at that moment (a scanner may
+still own a file the download just closed), so the file is kept after a short
+retry and AHK#'s own boot-time check has the final say. Only a proven
+mismatch throws the download away - otherwise a transient lock would turn a
+perfectly valid bridge into an endless fetch-delete loop.
+
 A **source run** needs one more step: `#Include *i lib\ahk#\lib\ahk#.ahk` is
 resolved when the process starts, so a freshly downloaded bridge only becomes
 visible after a reload. The button asks to reload right away.
