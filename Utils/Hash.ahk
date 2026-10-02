@@ -280,21 +280,31 @@ Sha256BufferHex(data, size := -1) {
 ; SHA-256 of a file's raw bytes, lowercase hexadecimal text, or "" when the
 ; file cannot be read. Used to verify the AHK# bridge DLL against the digest
 ; pinned in the bridge's own source before the CLR is asked to load it.
+;
+; AutoHotkey v2 has no "RAW" file encoding: FileOpen accepts "UTF-8",
+; "UTF-8-RAW", "UTF-16", "UTF-16-RAW", "CP0" and "CPnnn", and *throws*
+; "Parameter #3 invalid" for anything else - a bare "RAW" included. Opening
+; with CP0 is safe for RawRead because it performs no encoding or EOL
+; translation; the Seek(0) matters because FileOpen skips a leading UTF BOM
+; before the first read, and the digest must cover every byte of the file.
 Sha256File(path) {
     try {
         if !FileExist(path)
             return ""
 
-        file := FileOpen(path, "r", "RAW")
-        size := file.Length
-        if size <= 0 {
-            file.Close()
-            return ""
-        }
+        file := FileOpen(path, "r", "CP0")
+        try {
+            size := file.Length
+            if size <= 0 {
+                return ""
+            }
 
-        data := Buffer(size, 0)
-        read := file.RawRead(data, size)
-        file.Close()
+            file.Seek(0)
+            data := Buffer(size, 0)
+            read := file.RawRead(data, size)
+        } finally {
+            file.Close()
+        }
 
         if read != size
             return ""

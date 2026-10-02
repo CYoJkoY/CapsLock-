@@ -51,6 +51,12 @@ class CSharpRuntime {
     static lastFailureHint := ""
     static lastReportPath := ""
 
+    ; Outcome of the last VerifyBridgeDigest call: "verified", "mismatch",
+    ; "unavailable" (the file exists but its bytes could not be hashed) or
+    ; "not-pinned" (ahk#.ahk carries no digest). Callers that must treat a
+    ; proven-bad download differently from an unreadable one read this.
+    static bridgeDigestState := ""
+
     static cachedDir := ""
     static relocated := false
 
@@ -467,8 +473,16 @@ class CSharpRuntime {
             bridgeAssembly := bridgeSource "\ahk#.bridge.dll"
             if (FileExist(bridgeLibrary) && FileExist(bridgeAssembly)
                 && !this.VerifyBridgeDigest(bridgeLibrary, bridgeAssembly)) {
-                this.report.Push("discarding an invalid existing AHK# bridge and fetching it again")
-                try FileDelete(bridgeAssembly)
+                if this.bridgeDigestState == "mismatch" {
+                    this.report.Push("discarding an invalid existing AHK# bridge and fetching it again")
+                    try FileDelete(bridgeAssembly)
+                } else {
+                    ; The bytes simply could not be hashed at this moment (a
+                    ; scanner may still own a file a fresh download produced).
+                    ; Discarding it would loop the download; keep it and let
+                    ; AHK#'s own boot-time check have another look.
+                    this.report.Push("could not hash the existing AHK# bridge; keeping it, AHK# verifies it at boot")
+                }
             }
 
             ; An assembly built by scripts\Setup-CSharpBackend.ps1 is already at
@@ -506,6 +520,18 @@ class CSharpRuntime {
 
         dotnetExe := this.GetDotNetExecutable()
         logFile := A_Temp "\capslock_build_" A_TickCount ".log"
+        built := out "\CapsLockSharp.dll"
+
+        ; A build that finishes with "0 errors" does not always exit 0 - shell
+        ; hooks and stray post-build notices have returned codes such as 18232
+        ; on real machines. Record what the output assembly looks like first so
+        ; the fresh file, not the exit code, can be the deciding evidence.
+        builtTimeBefore := ""
+        if FileExist(built) {
+            try FileDelete(built)
+            if FileExist(built)
+                builtTimeBefore := FileGetTime(built)
+        }
 
         if IsObject(onProgress)
             onProgress.Call(50, Lang("MSG_CSHARP_BUILDING"), "dotnet build " project " -c Release")
@@ -524,6 +550,14 @@ class CSharpRuntime {
         buildOutput := ""
         if FileExist(logFile) {
             try buildOutput := FileRead(logFile, "UTF-8")
+        }
+
+        builtFresh := FileExist(built)
+            && (builtTimeBefore == "" || FileGetTime(built) != builtTimeBefore)
+
+        if exitCode != 0 && builtFresh {
+            this.report.Push("dotnet build exited with code " exitCode " but produced a fresh " built "; using it")
+            exitCode := 0
         }
 
         if exitCode != 0 {
@@ -562,7 +596,6 @@ class CSharpRuntime {
         try if FileExist(logFile)
             FileDelete(logFile)
 
-        built := out "\CapsLockSharp.dll"
         if !FileExist(built) {
             this.report.Push("dotnet build produced no " built)
             this.lastFailureStage := "dotnet_build"
@@ -610,7 +643,8 @@ class CSharpRuntime {
         if this.BridgeFile() != source && FileExist(source) && FileExist(library) {
             if this.VerifyBridgeDigest(library, source)
                 return this.CopyFile(source, this.BridgeFile(), "ahk#.bridge.dll (checkout)")
-            try FileDelete(source)
+            if this.bridgeDigestState != "unavailable"
+                try FileDelete(source)
             this.report.Push("existing AHK# bridge was rejected; downloading a clean copy")
         }
 
@@ -657,8 +691,16 @@ class CSharpRuntime {
         }
 
         if !this.VerifyBridgeDigest(dir "\ahk#.ahk", dir "\ahk#.bridge.dll") {
-            try FileDelete(dir "\ahk#.bridge.dll")
             this.lastFailureStage := "bridge_verify"
+            if this.bridgeDigestState == "unavailable" {
+                ; The bytes are unproven, not proven wrong: leave the file on
+                ; disk (fetching it again would hit the same locked state), and
+                ; let AHK#'s boot-time check - and the managed verification -
+                ; make the final call.
+                this.lastFailureHint := "ahk#.bridge.dll could not be read for the SHA-256 check (the file may still be locked by antivirus); retry the setup in a moment, or run scripts\Setup-CSharpBackend.ps1."
+                return false
+            }
+            try FileDelete(dir "\ahk#.bridge.dll")
             this.lastFailureHint := "ahk#.bridge.dll SHA-256 hash mismatch with ahk#.ahk"
             return false
         }
@@ -671,8 +713,12 @@ class CSharpRuntime {
 
     ; AHK# refuses a bridge whose SHA-256 differs from the digest pinned in its
     ; own source. Check it here as well: a corrupt download then produces one
-    ; understandable line instead of a failed CLR boot.
+    ; understandable line instead of a failed CLR boot. An empty digest from
+    ; Sha256File is a *read* failure, not a differing digest, and is reported
+    ; as such (bridgeDigestState "unavailable") - retrying shortly once because
+    ; a scanner that still owns a just-downloaded file releases it quickly.
     static VerifyBridgeDigest(libraryPath, bridgePath) {
+        this.bridgeDigestState := ""
         pinned := ""
         try {
             text := FileRead(libraryPath, "UTF-8")
@@ -683,16 +729,32 @@ class CSharpRuntime {
         }
 
         if pinned == "" {
+            this.bridgeDigestState := "not-pinned"
             this.report.Push("bridge digest not found in ahk#.ahk (AHK# checks it at boot)")
             return true
         }
 
-        actual := Sha256File(bridgePath)
+        actual := ""
+        Loop 4 {
+            actual := Sha256File(bridgePath)
+            if actual != "" || !FileExist(bridgePath)
+                break
+            Sleep 250
+        }
+
+        if actual == "" {
+            this.bridgeDigestState := "unavailable"
+            this.report.Push("bridge SHA-256 could not be computed for " bridgePath " (file missing, locked or unreadable)")
+            return false
+        }
+
         if actual != pinned {
+            this.bridgeDigestState := "mismatch"
             this.report.Push("bridge SHA-256 mismatch: expected " pinned ", got " actual)
             return false
         }
 
+        this.bridgeDigestState := "verified"
         this.report.Push("bridge SHA-256 verified: " pinned)
         return true
     }

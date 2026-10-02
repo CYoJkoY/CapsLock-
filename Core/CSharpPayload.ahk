@@ -124,9 +124,10 @@ class CSharpPayload {
                 DirCreate(dir)
 
             ; RawWrite is byte-exact and writes no BOM, which is what the
-            ; history file relies on too (History\HistoryStorage.ahk). "RAW" is
-            ; a read encoding; passing it when writing is not something the
-            ; file object documents.
+            ; history file relies on too (History\HistoryStorage.ahk). The
+            ; "RAW" encoding people remember from v1 does not exist in v2 -
+            ; FileOpen only knows "UTF-8", "UTF-8-RAW", "UTF-16",
+            ; "UTF-16-RAW" and CP0/CPnnn, and throws for anything else.
             file := FileOpen(path, "w")
             file.RawWrite(data, data.Size)
             file.Close()
