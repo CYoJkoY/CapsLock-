@@ -84,7 +84,7 @@ BuildTrayMenuItems() {
         for hwnd in pinned {
             topmostChildren.Push({
                 label: "📌 " . PinIndicator.MenuLabel(hwnd),
-                callback: PinIndicator.UnpinFromMenu.Bind(hwnd)
+                callback: PinIndicator.MakeUnpinCallback(hwnd)
             })
         }
     } else {

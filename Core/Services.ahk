@@ -13,6 +13,7 @@ class Services {
     static calls := 0
     static fallbacks := 0
     static errors := 0
+    static lastError := ""
     static historyLoads := 0
     static historyDeltas := 0
 
@@ -104,9 +105,10 @@ class Services {
             this.clipboard := CS("CapsLockSharp.ClipboardService")
             this.ready := true
             this.reason := "ready"
+            this.lastError := ""
             return true
         } catch as err {
-            this.Trip("boot failed: " err.Message)
+            this.Trip("boot failed: " err.Message, err)
             return false
         }
     }
@@ -116,17 +118,48 @@ class Services {
         return IsSet(CS) && IsObject(CS)
     }
 
-    static Trip(reason) {
+    static Trip(reason, err := "") {
         this.errors++
         this.tripped := true
         this.reason := reason
+        this.lastError := IsObject(err) ? this.FormatError(err) : reason
         this.InvalidateHistory(true)
+    }
+
+    ; Keep the original managed-boundary exception for diagnostics. Dispatch
+    ; still falls back silently for normal operation, but setup/probe tools can
+    ; now explain exactly why the backend was rejected.
+    static FormatError(err) {
+        message := ""
+        what := ""
+        extra := ""
+        sourceFile := ""
+        sourceLine := ""
+        stack := ""
+        try message := err.Message
+        try what := err.What
+        try extra := err.Extra
+        try sourceFile := err.File
+        try sourceLine := err.Line
+        try stack := err.Stack
+
+        text := message != "" ? "Message: " message : ""
+        if what != ""
+            text .= (text != "" ? "`n" : "") "Operation: " what
+        if extra != ""
+            text .= (text != "" ? "`n" : "") "Extra: " extra
+        if sourceFile != "" || sourceLine != ""
+            text .= (text != "" ? "`n" : "") "Location: " sourceFile (sourceLine != "" ? " (line " sourceLine ")" : "")
+        if stack != ""
+            text .= (text != "" ? "`n" : "") "Stack:`n" stack
+        return text != "" ? text : "Unknown managed-boundary error"
     }
 
     static Status() {
         return Map(
             "backend", this.backend, "ready", this.ready,
             "tripped", this.tripped, "reason", this.reason,
+            "last_error", this.lastError,
             "calls", this.calls, "fallbacks", this.fallbacks, "errors", this.errors,
             "history_loads", this.historyLoads, "history_deltas", this.historyDeltas
         )
@@ -139,7 +172,7 @@ class Services {
                 this.calls++
                 return result
             } catch as err {
-                this.Trip("call failed: " err.Message)
+                this.Trip("call failed: " err.Message, err)
             }
         }
         this.fallbacks++
@@ -280,7 +313,7 @@ class Services {
             this.calls++
         } catch as err {
             ; AHK has already committed the edit. Never apply it a second time.
-            this.Trip("history delta failed: " err.Message)
+            this.Trip("history delta failed: " err.Message, err)
         }
     }
 

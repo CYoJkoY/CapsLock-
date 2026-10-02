@@ -180,7 +180,10 @@ The button runs `CSharpRuntime.Install()`, which
 If the install folder is not writable (`Program Files`), the files are placed in
 `%LOCALAPPDATA%\CapsLock-\lib` instead and `Services.assemblyPath` /
 `Services.bridgePath` are pointed there. Every step is listed in the result
-dialog, so a failure says which of the three routes failed and why.
+dialog. Failures also write a full report to
+`%LOCALAPPDATA%\CapsLock-\Logs\csharp-setup.log` (or the temporary folder
+when `LOCALAPPDATA` is unavailable), including the failing stage, exception
+location/stack, selected .NET host, and download/build diagnostics.
 
 A **source run** needs one more step: `#Include *i lib\ahk#\lib\ahk#.ahk` is
 resolved when the process starts, so a freshly downloaded bridge only becomes
