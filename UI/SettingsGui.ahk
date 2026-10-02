@@ -969,19 +969,27 @@ class SettingsGui {
         if !this.IsOpen()
             return
 
-        if this.controls.Has("csharpStatus")
-            this.controls["csharpStatus"].Text := Lang("MSG_CSHARP_WORKING")
+        progGui := ""
+        try {
+            if this.controls.Has("csharpStatus")
+                this.controls["csharpStatus"].Text := Lang("MSG_CSHARP_WORKING")
 
-        progGui := CSharpSetupProgressGui.Show(Lang("MSG_CSHARP_SETUP_TITLE"))
-        onProgress := (percent, statusText, logLine) => CSharpSetupProgressGui.Update(progGui, percent, statusText, logLine)
-
-        result := CSharpRuntime.Install(true, onProgress)
-
-        CSharpSetupProgressGui.Close(progGui)
+            progGui := CSharpSetupProgressGui.Show(Lang("MSG_CSHARP_SETUP_TITLE"))
+            onProgress := (percent, statusText, logLine) => CSharpSetupProgressGui.Update(progGui, percent, statusText, logLine)
+            result := CSharpRuntime.Install(true, onProgress)
+        } catch as err {
+            result := CSharpRuntime.UnexpectedInstallFailure(err)
+        } finally {
+            CSharpSetupProgressGui.Close(progGui)
+        }
 
         details := ""
         for line in result["details"]
             details .= "`n  " line
+        if result["stage"] != "" {
+            stageLabel := Lang("MSG_CSHARP_STAGE", "Stage")
+            details := "`n  " . stageLabel . ": " . result["stage"] . details
+        }
         if details != ""
             details := "`n`n" . Lang("MSG_CSHARP_DETAILS") . ":" details
 

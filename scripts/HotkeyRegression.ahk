@@ -447,6 +447,53 @@ FindClosingParen(text, start) {
 }
 
 ; ---------------------------------------------------------------------------
+; Focused regressions for the window badge, tray callback, and C# diagnostics
+; ---------------------------------------------------------------------------
+
+CheckPinAndSetupRegressions(root) {
+    pinText := ReadText(root "\UI\PinIndicator.ahk")
+    trayText := ReadText(root "\Tray\TrayMenu.ahk")
+    runtimeText := ReadText(root "\Core\CSharpRuntime.ahk")
+    settingsText := ReadText(root "\UI\SettingsGui.ahk")
+
+    Check(
+        InStr(trayText, "callback: PinIndicator.MakeUnpinCallback(hwnd)") > 0
+            && InStr(pinText, "static MakeUnpinCallback(hwnd)") > 0
+            && InStr(pinText, "=> PinIndicator.UnpinFromMenu(hwnd)") > 0,
+        "tray unpin callback captures its HWND without relying on event parameters"
+    )
+
+    updateStart := InStr(pinText, "static _UpdateBadge(hwnd)")
+    minimizedAt := updateStart ? InStr(pinText, "minimized := WinGetMinMax", false, updateStart) : 0
+    topmostAt := updateStart ? InStr(pinText, "if !this.IsTopmost(hwnd)", false, updateStart) : 0
+    Check(
+        updateStart && minimizedAt && topmostAt && minimizedAt < topmostAt,
+        "minimized pinned windows remain tracked until restore"
+    )
+    Check(
+        InStr(pinText, "IsWindowVisible") > 0 && InStr(pinText, "NoActivate") > 0,
+        "pin badge visibility is reconciled with the native window after restore"
+    )
+
+    Check(
+        InStr(runtimeText, "static CompleteInstall(result)") > 0
+            && InStr(runtimeText, "Full diagnostic log:") > 0
+            && InStr(runtimeText, "static FormatException(err)") > 0,
+        "C# setup retains exception details in a persistent diagnostic report"
+    )
+    Check(
+        InStr(runtimeText, "static DotNetCandidates()") > 0
+            && InStr(runtimeText, "this.HasDotNet8Sdk(candidate)") > 0,
+        "C# setup probes all .NET hosts before selecting an SDK"
+    )
+    Check(
+        InStr(settingsText, "CSharpRuntime.UnexpectedInstallFailure(err)") > 0
+            && InStr(settingsText, "finally") > 0,
+        "C# setup UI reports unexpected failures and closes its progress window"
+    )
+}
+
+; ---------------------------------------------------------------------------
 ; 7: every source file is reachable
 ; ---------------------------------------------------------------------------
 
@@ -502,6 +549,7 @@ Main() {
 
     CheckShortcutBindings(root)
     CheckConfigRoundTrip(root)
+    CheckPinAndSetupRegressions(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")

@@ -159,21 +159,51 @@ function Refresh-PathEnvironment {
 
 function Get-DotNetPath {
     Refresh-PathEnvironment
-    $cmd = Get-Command dotnet -ErrorAction SilentlyContinue
-    if ($cmd) {
-        return $cmd.Source
+    $candidates = @()
+    $knownPaths = @()
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramW6432)) {
+        if ($root) {
+            $knownPaths += (Join-Path $root 'dotnet\dotnet.exe')
+        }
     }
-    $candidates = @(
-        (Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'),
-        (Join-Path ${env:ProgramFiles(x86)} 'dotnet\dotnet.exe'),
-        (Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe')
-    )
+    if ($env:LOCALAPPDATA) {
+        $knownPaths += (Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe')
+    }
+
+    foreach ($cand in $knownPaths) {
+        if ($cand -and (Test-Path -LiteralPath $cand -PathType Leaf) -and $candidates -notcontains $cand) {
+            $candidates += $cand
+        }
+    }
+
+    $cmd = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -and $candidates -notcontains $cmd.Source) {
+        $candidates += $cmd.Source
+    }
+    try {
+        foreach ($cand in @(& where.exe dotnet 2>$null)) {
+            $cand = [string]$cand
+            if ($cand -and (Test-Path -LiteralPath $cand -PathType Leaf) -and $candidates -notcontains $cand) {
+                $candidates += $cand
+            }
+        }
+    }
+    catch {}
+
+    # Prefer whichever host actually has the .NET 8 SDK. This matters when a
+    # 32-bit process finds x86 dotnet.exe first but only the x64 SDK is present.
     foreach ($cand in $candidates) {
-        if ($cand -and (Test-Path -LiteralPath $cand)) {
+        if (Test-DotNet8Sdk -DotNetExe $cand) {
             $dir = Split-Path -Parent $cand
             $env:PATH = "$dir;$($env:PATH)"
             return $cand
         }
+    }
+
+    if ($candidates.Count -gt 0) {
+        $dir = Split-Path -Parent $candidates[0]
+        $env:PATH = "$dir;$($env:PATH)"
+        return $candidates[0]
     }
     return $null
 }

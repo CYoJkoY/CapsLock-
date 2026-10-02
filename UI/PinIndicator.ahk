@@ -324,17 +324,15 @@ class PinIndicator {
         if !this.Tracked.Has(hwnd)
             return
 
-        ; Window gone, or no longer topmost -> drop it. This is what keeps the
-        ; indicator synchronized with the real Windows state rather than with
-        ; the last CapsLock + T press.
-        if !WindowHandleAlive(hwnd) || !this.IsTopmost(hwnd) {
+        if !WindowHandleAlive(hwnd) {
             this.Untrack(hwnd)
             return
         }
 
-        ; Minimized windows keep WS_VISIBLE, so the iconic state has to be
-        ; checked separately. The badge is hidden, not destroyed: restoring the
-        ; window must bring it back without a re-pin.
+        ; A minimized topmost window may temporarily report a different
+        ; extended style while Windows moves it through the iconic z-order.
+        ; Keep tracking it until it is restored; otherwise one timer tick during
+        ; minimize can permanently discard the badge before the next restore.
         minimized := false
         try
             minimized := WinGetMinMax("ahk_id " hwnd) == -1
@@ -343,6 +341,13 @@ class PinIndicator {
 
         if minimized {
             this._SetBadgeVisible(hwnd, false)
+            return
+        }
+
+        ; Once the window is visible again, the actual topmost style is
+        ; authoritative. An intentional unpin still removes the badge promptly.
+        if !this.IsTopmost(hwnd) {
+            this.Untrack(hwnd)
             return
         }
 
@@ -398,17 +403,27 @@ class PinIndicator {
         if !IsObject(state.gui)
             return
 
-        if state.visible == visible
-            return
+        ; The badge is an owned popup. Windows can hide it automatically when
+        ; its owner is minimized, without updating this class's cached `visible`
+        ; flag. Reconcile against the native visibility before taking the fast
+        ; path, so a restored owner always gets its badge back.
+        nativeVisible := state.visible
+        try
+            nativeVisible := DllCall("user32\IsWindowVisible", "Ptr", state.gui.Hwnd, "Int") != 0
+        catch
+            nativeVisible := state.visible
 
-        state.visible := visible
+        if state.visible == visible && nativeVisible == visible
+            return
 
         try {
             if visible
                 state.gui.Show("NoActivate")
             else
                 state.gui.Hide()
+            state.visible := visible
         } catch {
+            ; Leave the cache unchanged so the next timer tick retries.
         }
     }
 
@@ -471,6 +486,14 @@ class PinIndicator {
     ; -----------------------------------------------------------------------
     ; Tray helpers
     ; -----------------------------------------------------------------------
+
+    ; Capture the HWND in a zero-argument closure instead of binding directly
+    ; to a class method. CustomMenu invokes submenu callbacks after closing and
+    ; destroying their controls; this form preserves the handle independently
+    ; of the menu event arguments.
+    static MakeUnpinCallback(hwnd) {
+        return ((*) => PinIndicator.UnpinFromMenu(hwnd))
+    }
 
     ; Short label for the "pinned windows" sub-menu.
     static MenuLabel(hwnd) {
