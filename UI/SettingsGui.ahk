@@ -963,8 +963,7 @@ class SettingsGui {
     ; One-click C# backend setup
     ;
     ; Provisioning can build the services assembly or download the pinned
-    ; bridge, which blocks this thread for a few seconds. The status line is
-    ; written first so the window still says what is happening.
+    ; bridge, displaying a progress dialog with live feedback.
     ; -----------------------------------------------------------------------
     static _OnCSharpSetup() {
         if !this.IsOpen()
@@ -973,7 +972,12 @@ class SettingsGui {
         if this.controls.Has("csharpStatus")
             this.controls["csharpStatus"].Text := Lang("MSG_CSHARP_WORKING")
 
-        result := CSharpRuntime.Install()
+        progGui := CSharpSetupProgressGui.Show(Lang("MSG_CSHARP_SETUP_TITLE"))
+        onProgress := (percent, statusText, logLine) => CSharpSetupProgressGui.Update(progGui, percent, statusText, logLine)
+
+        result := CSharpRuntime.Install(true, onProgress)
+
+        CSharpSetupProgressGui.Close(progGui)
 
         details := ""
         for line in result["details"]
@@ -981,8 +985,12 @@ class SettingsGui {
         if details != ""
             details := "`n`n" . Lang("MSG_CSHARP_DETAILS") . ":" details
 
+        hintSection := ""
+        if !result["ok"] && result.Has("hint") && result["hint"] != ""
+            hintSection := "`n`n💡 " . Lang("MSG_CSHARP_HINT_TITLE") . ":`n" . result["hint"]
+
         MsgBox(
-            result["message"] . details,
+            result["message"] . hintSection . details,
             Lang("MSG_CSHARP_SETUP_TITLE"),
             (result["ok"] ? "Iconi" : "Icon!") . " T30"
         )
@@ -1202,5 +1210,69 @@ class SettingsGui {
         this.pageControls := Map()
         this.controls := Map()
         AppState.SettingsGui := ""
+    }
+}
+
+class CSharpSetupProgressGui {
+    static Show(title := "") {
+        if title == ""
+            title := Lang("MSG_CSHARP_SETUP_TITLE")
+
+        width := 480
+        myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", title)
+        ThemeHelper.StyleGui(myGui)
+        ThemeHelper.AddTitle(myGui, "🔌 " . title, width - 20)
+
+        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        txtStatus := myGui.Add("Text", "w" (width - 40) " y+12 r1", Lang("MSG_CSHARP_WORKING"))
+
+        prgBar := myGui.Add("Progress", "w" (width - 40) " h18 y+8 -Smooth Range0-100 c4285F4 Background333333", 10)
+
+        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        txtDetail := myGui.Add("Text", "w" (width - 40) " y+8 r1", "")
+
+        myGui.SetFont("s9 c" AppState.THEME_FG, "Consolas")
+        edtLog := myGui.Add("Edit", "w" (width - 40) " r6 y+8 ReadOnly " . ThemeHelper.GetEditOptions(), "")
+
+        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, width + 12, 3)
+        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
+        myGui.Show("AutoSize Center")
+
+        return {
+            Gui: myGui,
+            Status: txtStatus,
+            Progress: prgBar,
+            Detail: txtDetail,
+            Log: edtLog,
+            LogLines: []
+        }
+    }
+
+    static Update(inst, percent, statusText, detailText := "") {
+        if !inst || !inst.Gui
+            return
+        try {
+            if percent >= 0
+                inst.Progress.Value := percent
+            if statusText != ""
+                inst.Status.Text := statusText
+            if detailText != "" {
+                inst.Detail.Text := detailText
+                inst.LogLines.Push(detailText)
+                if inst.LogLines.Length > 25
+                    inst.LogLines.RemoveAt(1)
+                fullText := ""
+                for line in inst.LogLines
+                    fullText .= (fullText != "" ? "`r`n" : "") . line
+                inst.Log.Value := fullText
+            }
+            Sleep(20)
+        }
+    }
+
+    static Close(inst) {
+        if !inst || !inst.Gui
+            return
+        try inst.Gui.Destroy()
     }
 }
