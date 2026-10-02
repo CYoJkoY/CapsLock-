@@ -4,8 +4,10 @@
 ; ---------------------------------------------------------------------------
 ; Performance baseline for the AHK <-> C# service boundary (issue #12).
 ;
-; Run with:
-;     AutoHotkey64.exe /ErrorStdOut scripts\perf\CapsLockProfile.ahk
+; Run with (AutoHotkey is a GUI program: a plain console launch neither waits
+; for it nor shows its output; the wrapper also gives it a timeout and fails on
+; load-time warnings):
+;     .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk
 ;
 ; This is the "establish a reproducible performance baseline" acceptance
 ; criterion. It loads the project's REAL modules -- not reimplementations --
@@ -401,7 +403,7 @@ RealisticIgnoreRules() {
 
 Say(text) {
     try
-        FileAppend(text . "`n", "*")
+        FileAppend(text . "`n", "*", "UTF-8-RAW")
     catch {
         ; stdout is unavailable when the script is launched through /Validate
     }

@@ -90,6 +90,23 @@ jobs:
             .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture $arch
           }
 
+      # Informational: shared GitHub-hosted runners are noisy and are not a
+      # desktop. The step only has to prove the harness still runs; it asserts
+      # nothing about the numbers. They are printed in the log, appended to the
+      # run summary and uploaded below.
+      - name: Windows baseline, x64 (informational)
+        shell: pwsh
+        run: |
+          .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk -TimeoutSeconds 540
+          Get-ChildItem .\scripts\perf\results\baseline-*.md | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw } | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload the baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline-windows-x64
+          path: scripts/perf/results/
+          if-no-files-found: error
+
       - name: Upload the assembly
         uses: actions/upload-artifact@v4
         with:
