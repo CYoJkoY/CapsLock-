@@ -133,7 +133,7 @@ Before measuring anything, confirm the candidate is even a valid replacement:
 | main icon present | open the exe properties, compare with `assets\CapsLock-.ico` | ☐ |
 | version resource populated | compare `(Get-Item .\CapsLock-.exe).VersionInfo` with the Ahk2Exe build — product name, version, company, copyright | ☐ |
 | loads without error | `AutoHotkey64.exe /ErrorStdOut /Validate` on the compiled script | ☐ |
-| source-level checks | `AutoHotkey64.exe /ErrorStdOut .\scripts\HotkeyRegression.ahk` | ☐ |
+| source-level checks | `.\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegression.ahk` (AutoHotkey is a GUI program: a plain console launch neither waits nor shows output) | ☐ |
 | launches and reaches idle | `scripts\benchmark\Measure-CapsLockBuild.ps1` (see §4) | ☐ |
 
 ---

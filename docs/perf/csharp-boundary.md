@@ -261,29 +261,82 @@ exception invalidates a C# row** instead of reporting AHK timings under a C# lab
 Also retained: history save/load, JSON round-trip, ignore compilation, file walk
 without rules, and opt-in clipboard round-trip baselines.
 
-### Windows results — deliberately not filled from managed-only diagnostics
+### Windows results (CI runner, not a desktop)
 
-Machine / Windows / AHK / Framework / build / power plan: **not yet recorded**.
+Measured by the "Windows baseline" step of `dotnet.yml` on a GitHub-hosted
+`windows-latest` runner: Windows 10.0.26100 (Server 2025), 4 logical processors,
+AutoHotkey 2.0.28, AHK# `e3b895c`, one harness run per architecture
+([run 36954914088](https://github.com/CYoJkoY/CapsLock-/actions/runs/36954914088)).
+The runner is a shared virtual machine: absolute times move by tens of percent from
+run to run (a 1,000-entry history add measured 0.33 to 0.49 ms across four runs),
+while the AHK/C# ratios stayed within a few percent. Read the ratios, and repeat on
+a real desktop before relying on any absolute figure.
 
-| Workload | Size | AHK p50 / p95 (ms) | C# p50 / p95 (ms) |
-| :-- | --: | :-- | :-- |
-| Real history add | 1,000 | — | — |
-| Real history add | 10,000 | — | — |
-| History search | 10,000 | — | — |
-| Ignore whole corpus | — | — | — |
-| Recursive enumeration + filtering | — | — | — |
-| Cold CLR boot (single observation) | — | n/a | — |
+p50 / p95 in ms. "Ratio" is AHK p50 divided by C# p50, so above 1 means C# is faster.
+
+| Workload (what is compared) | Size | x64 AHK | x64 C# | x64 ratio | x86 AHK | x86 C# | x86 ratio |
+| :-- | --: | :-- | :-- | --: | :-- | :-- | --: |
+| `HistoryManager.Add`, new clip (whole call) | 1,000 | 0.480 / 0.914 | 0.054 / 0.080 | 9.0× | 0.540 / 0.584 | 0.060 / 0.070 | 9.0× |
+| `HistoryManager.Add`, new clip (whole call) | 10,000 | 4.83 / 5.04 | 0.059 / 0.087 | 82× | 5.31 / 5.59 | 0.071 / 0.101 | 75× |
+| Duplicate lookup only: reverse scan vs resident index | 1,000 | 0.297 / 0.331 | 0.018 / 0.020 | 17× | 0.356 / 0.391 | 0.020 / 0.022 | 17× |
+| Duplicate lookup only: reverse scan vs resident index | 10,000 | 3.04 / 3.19 | 0.018 / 0.023 | 173× | 3.58 / 3.65 | 0.023 / 0.028 | 156× |
+| History search, sparse query | 1,000 | 2.96 / 3.01 | 0.594 / 0.636 | 5.0× | 3.38 / 3.51 | 0.817 / 0.860 | 4.1× |
+| History search, sparse query | 10,000 | 33.1 / 34.7 | 6.41 / 6.56 | 5.2× | 38.6 / 40.4 | 9.09 / 9.35 | 4.2× |
+| Naive whole-array scan (what the first prototype did) | 1,000 | 0.297 / 0.331 | 1.30 / 2.43 | 0.23× | 0.356 / 0.391 | 1.61 / 2.24 | 0.22× |
+| Naive whole-array scan (what the first prototype did) | 10,000 | 3.04 / 3.19 | 22.6 / 25.9 | 0.13× | 3.58 / 3.65 | 24.9 / 26.9 | 0.14× |
+| One-time snapshot of the history | 1,000 | — | 1.70 / 2.04 | — | — | 2.51 / 3.02 | — |
+| One-time snapshot of the history | 10,000 | — | 25.4 / 26.1 | — | — | 29.2 / 37.8 | — |
+| Ignore matching, single path | — | 0.013 / 0.014 | 0.029 / 0.038 | 0.45× | 0.014 / 0.015 | 0.034 / 0.044 | 0.42× |
+| Ignore matching, 924-path batch | — | 9.20 / 9.66 | 7.34 / 8.39 | 1.25× | 10.0 / 10.3 | 8.42 / 9.57 | 1.19× |
+| Recursive enumeration + filtering, 924 files | — | 19.99 / 20.15 | 17.22 / 18.24 | 1.16× | 21.6 / 22.0 | 18.9 / 19.6 | 1.14× |
+| Cold CLR boot (single observation) | — | n/a | 82.0 | — | n/a | 93.0 | — |
+
+What this says:
+
+- **History is where C# pays off.** The add path and the search path win by about 4×
+  to about 80× at every size and in both architectures, with a better p95 as well.
+  The reverse-scan cost grows with the history; the resident index does not.
+- **The design change mattered.** Sending the whole array on every call is 4-8×
+  *slower* than the AHK scan it replaces; keeping the text resident turns that into
+  a 17-170× win. Building the index once costs about 25-30 ms at 10,000 entries.
+- **Ignore matching is a near wash.** One warm call through the bridge costs about
+  2.2-2.4× one AHK call, so single-path checks stay in AHK. A 924-path batch is 1.2×
+  faster, the whole walk 1.15×. The matching work (`PathMatchSpecW` plus regexes) is
+  the same in both; AHK-side framing is only about 1.6 ms of the batch
+  (`compare-ignore-batch-pack-ahk` 0.66 ms plus `-unpack-ahk` 0.92 ms), so a leaner
+  wire format would not change this much.
+- **Absolute savings are small at normal history sizes.** Pure AHK adds a clip in
+  about 5 ms at 10,000 entries and filters a keystroke in about 33 ms. Both costs
+  grow roughly linearly with the history (extrapolating, about 165 ms per keystroke
+  at 50,000 entries).
+- **One-time costs** are the CLR boot (70-100 ms across the runs so far; 82 and 93 ms
+  above) and, for history, the snapshot above. They are paid on the first C#-routed
+  call, never at startup.
+- An earlier x86 run measured the enumeration at 30.7 ms for C# against 22.3 ms for
+  AHK. It had run right after the naive whole-array scan; with the enumeration
+  measured before the history workloads the same code took 21.1 ms, so the harness
+  now orders them that way. That suggests (it is not proven) that managed garbage left
+  by one workload can add around 10 ms to the next C# call. Nothing here measures
+  that inside the real application.
+
+Pure-AHK baselines on the same runner (x64, p50 ms): history save 14.1 at 1,000 and
+153 at 10,000 entries; load 14.3 and 159; `Utils\Json.ahk` round trip 1,184 at
+1,000 entries (superlinear, hence `-JsonMax`); ignore-rule compilation about 0.1;
+`FileHelper.ShouldIgnore` 0.014.
 
 Whole-process startup, idle CPU/working set, `CapsLock → Send` latency and Smart
-Paste end-to-end figures come from `scripts\benchmark\Measure-CapsLockBuild.ps1`.
-Run both backends back-to-back on the same Windows desktop, same power plan, on
-AC power, with at least three repetitions. Include sparse and dense searches and
-small histories; marshalling/JIT costs can outweigh the faster loop there.
+Paste end-to-end figures come from `scripts\benchmark\Measure-CapsLockBuild.ps1`
+and have **not** been run. Run both backends back-to-back on the same Windows
+desktop, same power plan, on AC power, with at least three repetitions. Include
+sparse and dense searches and small histories; marshalling/JIT costs can outweigh the
+faster loop there.
 
 Do not enable C# by default or change release packaging until the full workloads
 win by at least **2× at p50**, are no worse at p95, preserve input/startup behavior,
-and pass Windows equivalence/hotkey regressions. The C# ring removes a scan; it
-cannot remove all remaining AHK, COM, disk or GUI costs.
+and pass Windows equivalence/hotkey regressions. Against that bar the history
+workloads qualify on these micro-benchmarks; the ignore workloads do not, and the
+whole-process and input-latency checks have not been done. The C# ring removes a scan;
+it cannot remove all remaining AHK, COM, disk or GUI costs.
 
 ## 6. Release scope and remaining work
 
@@ -294,9 +347,13 @@ package **precompiled** AnyCPU services and the exact hash-matching bridge, incl
 the matching AHK source at build time, and extract real DLL files before CLR boot.
 No user-side compiler, Roslyn/NuGet download or developer rebuild flag is allowed.
 
-Outstanding verification: Windows bridge/Framework results, real p50/p95 and
-end-to-end/input/idle measurements, and visual GUI paging behavior. PCRE/.NET
-regex and non-ASCII case behavior must be checked on supported Windows versions;
-any unsupported generated expression must fail safely back to AHK. JSON/large
-history codecs and full file-content I/O remain possible later migrations, not
-part of this change.
+Outstanding verification: whole-process, input-latency and idle measurements on a
+real desktop; a visual pass over the history window (`HistoryGuiPaging.ahk` checks
+its behavior, not its appearance); and PCRE/.NET regex and non-ASCII case behavior
+on Windows versions other than the CI runner's. Any unsupported generated
+expression must fail safely back to AHK. The bridge needs .NET Framework 4.7.2+
+(the CI runner has 4.8.x); older Windows 10 builds have not been tried.
+
+Possible later work, not part of this change: JSON/large history codecs (the AHK
+`Utils\Json.ahk` round trip is superlinear, about 1.2 s for 1,000 entries, and is
+the reason the harness has `-JsonMax`), and full file-content I/O.
