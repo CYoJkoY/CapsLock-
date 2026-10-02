@@ -72,7 +72,7 @@ jobs:
         shell: pwsh
         run: |
           foreach ($arch in 'x64', 'x86') {
-            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -Architecture $arch
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -Architecture $arch -TimeoutSeconds 60
           }
 
       - name: Checkout AHKSharp bridge (pinned, test dependency only)
@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           foreach ($arch in 'x64', 'x86') {
-            .\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate -Architecture $arch
+            .\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate -Architecture $arch -TimeoutSeconds 60
             .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture $arch
           }
 

@@ -16,6 +16,9 @@
         example an AutoHotkey #Warn MsgBox) cannot hang the job;
       * copies stdout and stderr to the log (AutoHotkey writes load errors,
         selected by /ErrorStdOut, to stderr and FileAppend "*" output to stdout);
+      * injects scripts\ci\Headless.ahk with /include, so load-time warnings go
+        to stdout and uncaught runtime errors to stderr (exit code 2) instead of
+        opening dialogs nobody can click;
       * turns "FAIL ..." lines and a non-zero exit code into GitHub Actions
         error annotations; and
       * throws, so a PowerShell step stops, on a non-zero exit code or a timeout.
@@ -40,6 +43,10 @@
     given, the executable is searched in the AHK_EXE environment variable's
     folder, <repo>\autohotkey (installed by holy-tao/install-autohotkey) and
     the usual AutoHotkey v2 install folders.
+
+.PARAMETER NoHeadless
+    Do not inject scripts\ci\Headless.ahk (AutoHotkey's own #Warn MsgBoxes and
+    error dialogs are then used, and will hit the timeout when unattended).
 
 .PARAMETER TimeoutSeconds
     The script is killed, and the step fails, if it runs longer than this.
@@ -66,6 +73,8 @@ param(
     [string] $Architecture = 'x64',
 
     [string] $Executable = '',
+
+    [switch] $NoHeadless,
 
     [ValidateRange(1, 3600)]
     [int] $TimeoutSeconds = 120
@@ -123,6 +132,10 @@ $scriptLabel = $Script
 $arguments = [System.Collections.Generic.List[string]]::new()
 # /ErrorStdOut sends load-time errors to stderr instead of a dialog.
 $arguments.Add('/ErrorStdOut=UTF-8')
+if (-not $NoHeadless) {
+    $arguments.Add('/include')
+    $arguments.Add((Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'Headless.ahk')).ProviderPath)
+}
 if ($Validate) { $arguments.Add('/Validate') }
 $arguments.Add($scriptPath)
 foreach ($argument in $ScriptArguments) { $arguments.Add($argument) }
