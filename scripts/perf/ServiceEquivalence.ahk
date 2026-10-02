@@ -196,7 +196,9 @@ TestIgnore(work) {
     calls := Services.calls
     actual := FileHelper.CollectFilesFromFolder(root, true, ["existing"])
     CheckSame(expected, actual, "native recursive enumeration order and existing output list")
-    Check(Services.calls - calls == 2, "root check plus one batch, not one crossing per file")
+    ; The root-folder check is a single-path ShouldIgnore (AHK); the 200+ files
+    ; are filtered in one crossing.
+    Check(Services.calls - calls == 1, "one batch crossing for the whole walk, not one per file")
     Services.backend := "ahk"
     expected := FileHelper.CollectFilesFromFolder(root, false)
     Services.backend := "csharp"

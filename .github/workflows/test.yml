@@ -46,3 +46,8 @@ jobs:
         shell: pwsh
         timeout-minutes: 2
         run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -TimeoutSeconds 90
+
+      - name: History window paging checks (AHK backend)
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk -TimeoutSeconds 90
