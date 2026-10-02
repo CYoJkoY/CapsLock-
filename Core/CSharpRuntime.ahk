@@ -228,7 +228,8 @@ class CSharpRuntime {
         if dotnetExe == ""
             return false
 
-        tempFile := A_Temp "\capslock_dotnet_probe_" A_Pid "_" A_TickCount ".tmp"
+        processId := DllCall("kernel32\GetCurrentProcessId", "UInt")
+        tempFile := A_Temp "\capslock_dotnet_probe_" processId "_" A_TickCount ".tmp"
         try {
             exitCode := 0
             command := 'cmd.exe /c ""' dotnetExe '" --list-sdks > "' tempFile '" 2>&1"'
