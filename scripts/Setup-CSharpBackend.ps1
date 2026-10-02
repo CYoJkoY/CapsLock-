@@ -305,8 +305,8 @@ else {
     Write-Host 'Building the services assembly (netstandard2.0, AnyCPU)'
     $buildOutput = & $dotnet build $project -c Release --nologo -o $libDir 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "dotnet build failed with exit code $LASTEXITCODE:`n$($buildOutput -join "`n")"
-        throw "dotnet build failed with exit code $LASTEXITCODE. Hint: Ensure .NET 8 SDK is installed and functional."
+        Write-Error ('dotnet build failed with exit code {0}:`n{1}' -f $LASTEXITCODE, ($buildOutput -join "`n"))
+        throw ('dotnet build failed with exit code {0}. Hint: Ensure .NET 8 SDK is installed and functional.' -f $LASTEXITCODE)
     }
     if (-not (Test-Path -LiteralPath $assembly)) {
         throw "dotnet build did not produce $assembly"
