@@ -660,6 +660,18 @@ Main() {
         RecordAhk(results, "compare-ignore-batch-pack-ahk", WorkloadIgnoreBatchPack.Bind(0), 200, 5)
         RecordAhk(results, "compare-ignore-batch-unpack-ahk", WorkloadIgnoreBatchUnpack.Bind(0), 200, 5)
 
+        ; Measured before the history workloads on purpose. The naive
+        ; whole-array scan below makes a lot of managed/COM garbage, and an x86
+        ; enumeration that ran right after it came out about 10 ms slower than
+        ; its parts (walk + batch) add up to; that may be this contamination.
+        ; Start from a quiet heap instead.
+        RecordCSharp(results, "compare-file-enum-csharp", WorkloadEnumTree.Bind(0), 15, 2)
+        AppState.ServiceBackend := "ahk"
+        Services.Configure()
+        RecordAhk(results, "compare-file-enum-ahk", WorkloadEnumTree.Bind(0), 15, 2)
+        AppState.ServiceBackend := "csharp"
+        Services.Configure()
+
         for size in sizes {
             ; Each backend starts with the same corpus. Sync/compile costs are
             ; warmed up separately; only scalar queries/deltas cross afterwards.
@@ -686,12 +698,6 @@ Main() {
             RecordCSharp(results, "compare-history-scan-csharp-naive-" size, WorkloadHistoryScanCSharp.Bind(0), 200, 10)
         }
 
-        RecordCSharp(results, "compare-file-enum-csharp", WorkloadEnumTree.Bind(0), 15, 2)
-        AppState.ServiceBackend := "ahk"
-        Services.Configure()
-        RecordAhk(results, "compare-file-enum-ahk", WorkloadEnumTree.Bind(0), 15, 2)
-        AppState.ServiceBackend := "csharp"
-        Services.Configure()
     } else {
         Say("    C# backend unavailable: " Services.reason)
         Say("    See docs/perf/csharp-boundary.md for installing the optional backend.")
