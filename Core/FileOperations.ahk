@@ -7,6 +7,7 @@ class FileHelper {
     static _simplePatterns := []
     static _regexPatterns := []
     static _regexReady := false
+    static _serviceRules := ""
 
     static PATH_MATCH_SPEC := DllCall( "GetModuleHandle", "Str", "shlwapi", "Ptr" ) || DllCall( "LoadLibrary", "Str", "shlwapi", "Ptr" )
 
@@ -14,6 +15,7 @@ class FileHelper {
         this._simplePatterns := []
         this._regexPatterns := []
         this._regexReady := false
+        this._serviceRules := ""
 
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
             return
@@ -133,7 +135,33 @@ class FileHelper {
         return "^" result "(?:[\\/].*)?$"
     }
 
+    ; Share the AHK parser's actual output with C#, once per rule edit. This
+    ; does not load .NET and avoids two diverging gitignore implementations.
+    static ServiceRules() {
+        if !this._regexReady
+            this.BuildIgnoreRegexes()
+        if !IsObject(this._serviceRules) {
+            regexes := []
+            for entry in this._regexPatterns
+                regexes.Push(entry.regex)
+            this._serviceRules := [Services.PackStrings(this._simplePatterns), Services.PackStrings(regexes)]
+        }
+        return this._serviceRules
+    }
+
+    ; Single-path check, used right where the user pastes. Always the AHK
+    ; matcher, even with [Services] Backend=csharp: on a GitHub-hosted Windows
+    ; runner one warm C# call cost about twice one AHK call (0.019 vs 0.009 ms),
+    ; and the first one would also start the CLR inside a paste hotkey. Only
+    ; whole-file batches (CollectFilesFromFolder, ReadMultipleFilesAsText) cross
+    ; the bridge. See docs/perf/csharp-boundary.md.
     static ShouldIgnore(filePath) {
+        return this.ShouldIgnoreAhk(filePath)
+    }
+
+    ; The AHK matcher, and the reference the C# implementation is tested
+    ; against. Never re-enters Services.
+    static ShouldIgnoreAhk(filePath) {
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
             return false
 
@@ -176,11 +204,21 @@ class FileHelper {
     static ReadMultipleFilesAsText(filePaths) {
         result := ""
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        batch := Services.IsEnabled() && IsObject(AppState.IgnorePatterns) && AppState.IgnorePatterns.Length > 0
+        if batch {
+            trimmed := []
+            for path in filePaths {
+                path := Trim(path)
+                if path != ""
+                    trimmed.Push(path)
+            }
+            filePaths := Services.FilterFilePaths(trimmed)
+        }
         for idx, filePath in filePaths {
             filePath := Trim(filePath)
             if filePath == ""
                 continue
-            if this.ShouldIgnore(filePath)
+            if !batch && this.ShouldIgnoreAhk(filePath)
                 continue
             result .= this.BuildFileHeader(filePath, timestamp)
             result .= this.ReadFileContentSafe(filePath)
@@ -220,22 +258,23 @@ class FileHelper {
         if this.ShouldIgnore(folderPath)
             return fileList
 
+        ; Keep native enumeration (including its order and error handling).
+        ; C# filters one batch, not one bridge round-trip per file. Do not prune
+        ; directories, which would change the semantics of simple name globs.
+        batch := Services.IsEnabled() && IsObject(AppState.IgnorePatterns) && AppState.IgnorePatterns.Length > 0
+        candidates := batch ? [] : fileList
+        flags := recursive ? "FR" : "F"
         try {
-            if recursive {
-                ; Use native recursive file enumeration ("FR" = Files + Recurse)
-                ; This is significantly faster than manual recursive function calls
-                loop files, folderPath "\*", "FR" {
-                    if !this.ShouldIgnore(A_LoopFileFullPath)
-                        fileList.Push(A_LoopFileFullPath)
-                }
-            } else {
-                loop files, folderPath "\*", "F" {
-                    if !this.ShouldIgnore(A_LoopFileFullPath)
-                        fileList.Push(A_LoopFileFullPath)
-                }
+            loop files, folderPath "\*", flags {
+                if batch || !this.ShouldIgnoreAhk(A_LoopFileFullPath)
+                    candidates.Push(A_LoopFileFullPath)
             }
         }
 
+        if batch {
+            for path in Services.FilterFilePaths(candidates)
+                fileList.Push(path)
+        }
         return fileList
     }
 

@@ -3,10 +3,18 @@
 class HistoryManager {
     static savePending := false
     static saveTimer := ""
+    static revision := 0
+
+    ; Snapshot replacement is lazy: even Load() at startup never starts .NET.
+    static Replaced() {
+        this.revision++
+        Services.InvalidateHistory(true)
+    }
 
     static Load() {
         if AppState.MaxHistory == 0 {
             AppState.History := []
+            this.Replaced()
             return
         }
 
@@ -22,6 +30,10 @@ class HistoryManager {
 
             if count <= 0 {
                 history.Close()
+                if count == 0 {
+                    AppState.History := []
+                    this.Replaced()
+                }
                 return
             }
 
@@ -63,6 +75,7 @@ class HistoryManager {
             list.Pop()
 
         AppState.History := list
+        this.Replaced()
     }
 
     static ScheduleSave() {
@@ -134,16 +147,16 @@ class HistoryManager {
         if AppState.History.Length > 0 && AppState.History[1]["text"] == text
             return
 
-        ; Search for duplicate from the end of the list.
-        ; Reverse iteration makes RemoveAt more efficient (fewer elements to shift).
-        idx := AppState.History.Length
-        while idx > 0 {
-            if AppState.History[idx]["text"] == text {
-                AppState.History.RemoveAt(idx)
-                break
-            }
-            idx--
-        }
+        ; C# keeps a resident hash/ring index; only the candidate crosses on
+        ; warm calls. The AHK fallback retains the original reverse scan.
+        previousRevision := this.revision
+        idx := Services.HistoryFindDuplicate(text)
+        ; A timer/clipboard event may have edited history during a cold boot.
+        if previousRevision != this.revision
+            idx := ServicesHistoryFindDuplicateResidentAhk(text)
+        previousRevision := this.revision
+        if idx > 0
+            AppState.History.RemoveAt(idx)
 
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
         item := Map("time", timestamp, "source", source, "text", text)
@@ -153,18 +166,37 @@ class HistoryManager {
         while AppState.History.Length > AppState.MaxHistory
             AppState.History.Pop()
 
+        this.revision++
+        Services.HistoryAdded(text, idx, AppState.MaxHistory, previousRevision)
         this.ScheduleSave()
     }
 
     static Delete(index) {
-        if index <= AppState.History.Length {
+        if index >= 1 && index <= AppState.History.Length {
+            previousRevision := this.revision
             AppState.History.RemoveAt(index)
+            this.revision++
+            Services.HistoryDeleted(index, previousRevision)
             this.ScheduleSave()
         }
     }
 
+    ; All limit changes and auto-cleaning go through this path so the resident
+    ; index and the GUI's incremental-search cache cannot become stale.
+    static Trim(limit) {
+        limit := Max(0, Integer(limit))
+        if AppState.History.Length <= limit
+            return
+        previousRevision := this.revision
+        while AppState.History.Length > limit
+            AppState.History.Pop()
+        this.revision++
+        Services.HistoryTrimmed(limit, previousRevision)
+        this.ScheduleSave()
+    }
+
     static Get(index) {
-        if index <= AppState.History.Length
+        if index >= 1 && index <= AppState.History.Length
             return AppState.History[index]
 
         return ""

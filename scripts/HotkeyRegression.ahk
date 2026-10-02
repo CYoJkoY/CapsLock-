@@ -4,8 +4,9 @@
 ; ---------------------------------------------------------------------------
 ; Headless regression checks for CapsLock Extended.
 ;
-; Run with:
-;     AutoHotkey64.exe /ErrorStdOut scripts\HotkeyRegression.ahk
+; Run with (AutoHotkey is a GUI program: a plain console launch neither waits
+; for it, shows its output nor reports its exit code, so use the wrapper):
+;     .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegression.ahk
 ;
 ; The script exits with 0 when every check passes and with 1 when at least one
 ; fails, so it works as a CI gate. It never opens a window, never registers a
@@ -31,6 +32,13 @@
 global gChecks := 0
 global gFailures := []
 
+; The application's own source folders. Only these (plus CapsLock-.ahk) are
+; scanned: the repository root can also hold .ahk files that are not part of
+; the app - scripts\, an AHK# checkout in lib\, or the AutoHotkey install that
+; CI unpacks into .\autohotkey - and cross-checking those against the app's
+; include list would only produce noise.
+global gSourceFolders := ["Config", "Core", "Hotkeys", "History", "Tray", "UI", "Utils"]
+
 ; ---------------------------------------------------------------------------
 ; Framework
 ; ---------------------------------------------------------------------------
@@ -47,7 +55,7 @@ Check(condition, name, detail := "") {
 
 Say(text) {
     try
-        FileAppend(text . "`n", "*")
+        FileAppend(text . "`n", "*", "UTF-8-RAW")
     catch {
         ; stdout is unavailable when the script is launched through /Validate
     }
@@ -68,8 +76,7 @@ ReadText(path) {
 }
 
 ; Returns an array of { pos, len, groups } for every match in "haystack".
-; Every needle must contain at least one capture group, because AHK only
-; returns a match object (with Pos / Len) when captures are present.
+; Callers read groups[1], so every needle needs at least one capture group.
 AllMatches(haystack, needle) {
     result := []
     position := 1
@@ -80,11 +87,12 @@ AllMatches(haystack, needle) {
             break
 
         groups := []
-        loop m.Length
+        loop m.Count
             groups.Push(m[A_Index])
 
         result.Push({ pos: m.Pos, len: m.Len, groups: groups })
-        position := m.Pos + m.Len
+        ; Always advance: an empty match must not be found again at the same spot.
+        position := m.Pos + Max(m.Len, 1)
     }
 
     return result
@@ -142,10 +150,12 @@ JoinList(items) {
 CheckIncludes(root, files) {
     for path in files {
         relative := StrReplace(path, root "\", "")
+        SplitPath(path, , &directory)
 
-        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+" "([^" "]+)" "[ \t]*$") {
+        ; Relative #Include paths resolve against the including file's folder.
+        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+`"([^`"]+)`"[ \t]*$") {
             target := match.groups[1]
-            Check(FileExist(root "\" target),
+            Check(FileExist(directory "\" target),
             "include resolves: " target,
             "referenced from " relative)
         }
@@ -156,7 +166,7 @@ CheckFileInstalls(root, files) {
     for path in files {
         relative := StrReplace(path, root "\", "")
 
-        for match in AllMatches(ReadText(path), "FileInstall\([ \t]*" "([^" "]+)" "") {
+        for match in AllMatches(ReadText(path), "FileInstall\([ \t]*`"([^`"]+)`"") {
             target := match.groups[1]
             Check(FileExist(root "\" target),
             "FileInstall source exists: " target,
@@ -250,10 +260,10 @@ CheckLanguageKeys(root, files, languageKeys) {
 
         ; A key with leading or trailing whitespace never resolves, so Lang()
         ; falls back and the user sees the raw key.
-        for match in AllMatches(source, "Lang\([ \t]*" "([ \t]*[A-Z0-9_]*[A-Z][A-Z0-9_]*[ \t])" "")
+        for match in AllMatches(source, "Lang\([ \t]*`"([ \t]+[A-Z0-9_]*[A-Z][A-Z0-9_]*[ \t]*|[A-Z0-9_]*[A-Z][A-Z0-9_]*[ \t]+)`"")
             padding["'" match.groups[1] "'"] := relative
 
-        for match in AllMatches(source, "Lang\([ \t]*" "([A-Z][A-Z0-9_]*)" "[ \t]*([,)])") {
+        for match in AllMatches(source, "Lang\([ \t]*`"([A-Z][A-Z0-9_]*)`"[ \t]*([,)])") {
             key := match.groups[1]
             if !languageKeys.Has(key)
                 missing[key] := relative
@@ -303,7 +313,7 @@ CheckShortcutBindings(root) {
 
     Check(bound.Count > 0, "hotkey bindings were parsed", "found " bound.Count)
 
-    for match in AllMatches(ReadText(referencePath), "keys:[ \t]*" "([^" "]+)" "")
+    for match in AllMatches(ReadText(referencePath), "keys:[ \t]*`"([^`"]+)`"")
         CheckShortcut(bound, match.groups[1])
 }
 
@@ -444,13 +454,13 @@ CheckEveryFileIncluded(root, files) {
     referenced := Map()
 
     for path in files {
-        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+" "([^" "]+)" "[ \t]*$")
+        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+`"([^`"]+)`"[ \t]*$")
             referenced[StrLower(StrReplace(match.groups[1], "/", "\"))] := true
     }
 
     orphan := []
 
-    for folder in ["Config", "Core", "Hotkeys", "History", "Tray", "UI", "Utils"] {
+    for folder in gSourceFolders {
         loop files, root "\" folder "\*.ahk", "R" {
             relative := StrReplace(A_LoopFilePath, root "\", "")
             if !referenced.Has(StrLower(relative))
@@ -467,16 +477,20 @@ CheckEveryFileIncluded(root, files) {
 ; Entry point
 ; ---------------------------------------------------------------------------
 
+; The entry script plus every .ahk file under the project folders.
+SourceFiles(root) {
+    sources := [root "\CapsLock-.ahk"]
+    for folder in gSourceFolders {
+        loop files, root "\" folder "\*.ahk", "R"
+            sources.Push(A_LoopFilePath)
+    }
+    return sources
+}
+
 Main() {
     root := RepoRoot()
 
-    files := []
-    loop files, root "\*.ahk", "R" {
-        ; This script is a tool, not a part of the application.
-        if (A_LoopFilePath == A_ScriptFullPath)
-            continue
-        files.Push(A_LoopFilePath)
-    }
+    files := SourceFiles(root)
 
     Check(files.Length > 0, "source files were found", "root: " root)
 

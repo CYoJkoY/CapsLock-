@@ -1,4 +1,4 @@
-name: Build .NET services
+name: Build and test .NET services
 
 on:
   push:
@@ -6,10 +6,34 @@ on:
       - main
     paths:
       - 'src/CapsLockSharp/**'
+      - 'tests/CapsLockSharp.Tests/**'
+      - 'Core/Services.ahk'
+      - 'Core/FileOperations.ahk'
+      - 'History/**'
+      - 'Config/**'
+      - 'Tray/TraySettings.ahk'
+      - 'UI/SettingsGui.ahk'
+      - 'Utils/MethodsUtils.ahk'
+      - 'CapsLock-.ahk'
+      - 'scripts/perf/**'
+      - 'scripts/ci/**'
+      - 'scripts/HistoryGuiPaging.ahk'
       - '.github/workflows/dotnet.yml'
   pull_request:
     paths:
       - 'src/CapsLockSharp/**'
+      - 'tests/CapsLockSharp.Tests/**'
+      - 'Core/Services.ahk'
+      - 'Core/FileOperations.ahk'
+      - 'History/**'
+      - 'Config/**'
+      - 'Tray/TraySettings.ahk'
+      - 'UI/SettingsGui.ahk'
+      - 'Utils/MethodsUtils.ahk'
+      - 'CapsLock-.ahk'
+      - 'scripts/perf/**'
+      - 'scripts/ci/**'
+      - 'scripts/HistoryGuiPaging.ahk'
       - '.github/workflows/dotnet.yml'
   workflow_dispatch:
 
@@ -18,7 +42,7 @@ permissions:
 
 jobs:
   build:
-    name: Build CapsLockSharp (netstandard2.0, AnyCPU)
+    name: Build and verify optional C# backend (netstandard2.0, AnyCPU)
     runs-on: windows-latest
     timeout-minutes: 15
 
@@ -31,23 +55,65 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build
+      - name: Build precompiled services
         shell: pwsh
-        run: dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o build\dotnet --nologo
+        run: dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o lib --nologo
 
-      - name: Report what was produced
+      - name: Managed regression tests
+        shell: pwsh
+        run: dotnet run --project tests\CapsLockSharp.Tests -c Release -- --benchmark
+
+      - name: Install AutoHotkey
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.28'
+
+      # AutoHotkey is a GUI-subsystem program: PowerShell neither waits for it
+      # nor sets $LASTEXITCODE, so every AHK step goes through the wrapper.
+      - name: Verify pure AHK and missing-backend fallback (x64 and x86)
         shell: pwsh
         run: |
-          if (-not (Test-Path -LiteralPath 'build\dotnet\CapsLockSharp.dll')) {
-            throw 'CapsLockSharp.dll was not produced.'
+          foreach ($arch in 'x64', 'x86') {
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -Architecture $arch -TimeoutSeconds 60
           }
-          Get-Item build\dotnet\CapsLockSharp.dll |
-            Select-Object Name, Length, LastWriteTimeUtc |
-            Format-List
+
+      - name: Checkout AHKSharp bridge (pinned, test dependency only)
+        uses: actions/checkout@v4
+        with:
+          repository: owhs/AHKSharp
+          ref: e3b895c7590eba47748b0ed963b7978c237d1daf
+          path: lib/ahk#
+
+      - name: Verify real AHK-to-C# boundary (x64 and x86)
+        shell: pwsh
+        run: |
+          foreach ($arch in 'x64', 'x86') {
+            .\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate -Architecture $arch -TimeoutSeconds 60
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture $arch
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk -ScriptArguments '-CSharp' -Architecture $arch
+          }
+
+      # Informational: shared GitHub-hosted runners are noisy and are not a
+      # desktop. The step only has to prove the harness still runs; it asserts
+      # nothing about the numbers. They are printed in the log, appended to the
+      # run summary and uploaded below.
+      - name: Windows baseline, x64 and x86 (informational)
+        shell: pwsh
+        run: |
+          .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk -TimeoutSeconds 540
+          .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk -Architecture x86 -ScriptArguments '-Out', '.\scripts\perf\results\x86' -TimeoutSeconds 540
+          Get-ChildItem .\scripts\perf\results -Recurse -Filter baseline-*.md | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw } | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload the baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline-windows
+          path: scripts/perf/results/
+          if-no-files-found: error
 
       - name: Upload the assembly
         uses: actions/upload-artifact@v4
         with:
           name: CapsLockSharp-netstandard2.0
-          path: build\dotnet\CapsLockSharp.dll
+          path: lib\CapsLockSharp.dll
           if-no-files-found: error

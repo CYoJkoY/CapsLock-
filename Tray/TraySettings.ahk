@@ -39,7 +39,7 @@ SetMaxHistory(*) {
         }
         AppState.MaxHistory := 0
         ConfigManager.Save()
-        AppState.History := []
+        HistoryManager.Trim(0)
         HistoryManager.ForceSave()
         ToolTip(Lang("MSG_HISTORY_DISABLED"))
         SetTimer(() => ToolTip(), -3000)
@@ -55,8 +55,7 @@ SetMaxHistory(*) {
 
     AppState.MaxHistory := newMax
     ConfigManager.Save()
-    while AppState.History.Length > AppState.MaxHistory
-        AppState.History.Pop()
+    HistoryManager.Trim(AppState.MaxHistory)
     HistoryManager.ForceSave()
     ToolTip(Lang("MSG_HISTORY_LIMIT_SET", , newMax))
     SetTimer(() => ToolTip(), -3000)

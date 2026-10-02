@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Candidate C# services for the AHK <-> .NET boundary (issue #12).
+    Optional resident C# services for the AHK <-> .NET boundary (issue #12).
 
     TargetFramework is netstandard2.0 on purpose:
       * the AHK# bridge loads net4x first, then netstandard1.0-2.0, so a
@@ -15,8 +15,9 @@
     LangVersion is pinned so the output never depends on which compiler the
     build agent happens to have.
 
-    This project is NOT referenced by the AutoHotkey code by default. It is a
-    measurement prototype; see docs/perf/csharp-boundary.md.
+    AutoHotkey uses these services only with [Services] Backend=csharp and a
+    locally installed, pinned AHK# bridge. The default remains pure AHK;
+    see docs/perf/csharp-boundary.md for setup, tests and measurements.
   -->
 
   <PropertyGroup>

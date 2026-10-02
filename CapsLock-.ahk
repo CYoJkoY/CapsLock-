@@ -7,6 +7,9 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOn.wav, SND_ON
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
 
+; Optional, locally installed pinned bridge. Missing it keeps pure AHK usable.
+#Include *i lib\ahk#\lib\ahk#.ahk
+
 #Include "Config\Globals.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"

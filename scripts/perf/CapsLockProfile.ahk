@@ -4,8 +4,10 @@
 ; ---------------------------------------------------------------------------
 ; Performance baseline for the AHK <-> C# service boundary (issue #12).
 ;
-; Run with:
-;     AutoHotkey64.exe /ErrorStdOut scripts\perf\CapsLockProfile.ahk
+; Run with (AutoHotkey is a GUI program: a plain console launch neither waits
+; for it nor shows its output; the wrapper also gives it a timeout and fails on
+; load-time warnings):
+;     .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\CapsLockProfile.ahk
 ;
 ; This is the "establish a reproducible performance baseline" acceptance
 ; criterion. It loads the project's REAL modules -- not reimplementations --
@@ -32,12 +34,18 @@
 ;     -Out <dir>        write results somewhere else
 ;     -History <sizes>  comma separated history sizes, default 1000,10000
 ;     -Files <count>    files per generated directory, default 8
+;     -JsonMax <n>      measure the JSON round trip only up to n history
+;                       entries, default 1000. Utils\Json.ahk grows faster
+;                       than linearly (about 1.2 s per round trip at 1,000
+;                       entries on a GitHub-hosted runner, minutes at 10,000).
 ; ---------------------------------------------------------------------------
 
+#Include *i ..\..\lib\ahk#\lib\ahk#.ahk
 #Include ..\..\Config\Globals.ahk
 #Include ..\..\Config\Encryption.ahk
 #Include ..\..\Utils\Json.ahk
 #Include ..\..\History\HistoryStorage.ahk
+#Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
 #Include ..\..\Core\Services.ahk
 
@@ -153,12 +161,12 @@ gPathIndex := 0
 gEnumRoot := ""
 gJsonText := ""
 gCounter := 0
-gRulesText := ""
 gTexts := []
+gKeptFrame := ""
 
 WorkloadHistoryAddNew(unused) {
-    ; A genuinely new clip: full reverse duplicate scan, InsertAt(1), and a
-    ; Pop once MaxHistory is reached. This is the real "copy something" cost.
+    ; A genuinely new clip: backend lookup, InsertAt(1), eviction, and delta.
+    ; This measures the real "copy something" path, not just the index lookup.
     global gCounter
     gCounter++
     HistoryManager.Add("bench-unique-" gCounter "-" A_TickCount, "bench")
@@ -194,6 +202,7 @@ WorkloadIgnoreBuild(unused) {
 }
 
 WorkloadEnumTree(unused) {
+    global gEnumRoot
     FileHelper.CollectFilesFromFolder(gEnumRoot, true)
 }
 
@@ -218,11 +227,11 @@ WorkloadClipboardRoundTrip(unused) {
 ; is apples to apples.
 
 WorkloadIgnoreMatchCSharp(unused) {
-    global gPaths, gPathIndex, gRulesText
+    global gPaths, gPathIndex
     gPathIndex++
     if (gPathIndex > gPaths.Length)
         gPathIndex := 1
-    Services.IgnoreMatch(gPaths[gPathIndex], gRulesText)
+    Services.IgnoreMatch(gPaths[gPathIndex])
 }
 
 WorkloadIgnoreMatchAhk(unused) {
@@ -230,7 +239,7 @@ WorkloadIgnoreMatchAhk(unused) {
     gPathIndex++
     if (gPathIndex > gPaths.Length)
         gPathIndex := 1
-    FileHelper.ShouldIgnore(gPaths[gPathIndex])
+    FileHelper.ShouldIgnoreAhk(gPaths[gPathIndex])
 }
 
 ; NOTE: this is the NAIVE boundary. The whole array crosses into .NET on every
@@ -239,12 +248,87 @@ WorkloadIgnoreMatchAhk(unused) {
 ; what a finished HistoryService would cost.
 WorkloadHistoryScanCSharp(unused) {
     global gTexts
-    Services.HistoryFindDuplicate(gTexts, "__bench_absent__")
+    Services.historyType.FindDuplicateIndex(gTexts, "__bench_absent__")
+    Services.calls++
 }
 
 WorkloadHistoryScanAhk(unused) {
     global gTexts
     ServicesHistoryFindDuplicateAhk(gTexts, "__bench_absent__")
+}
+
+WorkloadHistorySnapshotCSharp(unused) {
+    Services.InvalidateHistory()
+    Services.SyncHistory()
+}
+
+WorkloadHistoryResidentCSharp(unused) {
+    Services.HistoryFindDuplicate("__bench_absent__")
+}
+
+WorkloadHistorySearchCSharp(unused) {
+    Services.HistorySearch("entry 17")
+}
+
+WorkloadHistorySearchAhk(unused) {
+    ServicesHistorySearchAhk("entry 17")
+}
+
+WorkloadIgnoreBatchCSharp(unused) {
+    global gPaths
+    Services.FilterFilePaths(gPaths)
+}
+
+WorkloadIgnoreBatchAhk(unused) {
+    global gPaths
+    ServicesFilterFilePathsAhk(gPaths)
+}
+
+; The AHK half of the batch crossing, measured without the bridge: building the
+; request frame for the whole corpus, and decoding a reply frame holding the
+; paths that were kept. Whatever is left of compare-ignore-batch-csharp after
+; these two is the bridge call plus the C# matching itself.
+WorkloadIgnoreBatchPack(unused) {
+    global gPaths
+    Services.PackStrings(gPaths)
+}
+
+WorkloadIgnoreBatchUnpack(unused) {
+    global gKeptFrame
+    Services.UnpackStrings(gKeptFrame)
+}
+
+CancelPendingSave() {
+    if HistoryManager.saveTimer
+        SetTimer(HistoryManager.saveTimer, 0)
+    HistoryManager.savePending := false
+}
+
+RecordAhk(results, label, fn, iterations, warmup := 1) {
+    results[label] := Bench.Measure(fn, iterations, warmup)
+    Say(FormatRow(label, results[label]))
+}
+
+RecordCSharp(results, label, fn, iterations, warmup := 1) {
+    if Services.tripped {
+        results[label] := "invalid: " Services.reason
+        Say("    " label " INVALID: " Services.reason)
+        return
+    }
+    beforeFallbacks := Services.fallbacks
+    beforeCalls := Services.calls
+    try {
+        stats := Bench.Measure(fn, iterations, warmup)
+        if Services.tripped || Services.fallbacks != beforeFallbacks || Services.calls == beforeCalls
+            throw Error("C# workload fell back or made no C# calls: " Services.reason)
+        results[label] := stats
+        Say(FormatRow(label, stats))
+    } catch as err {
+        if !Services.tripped
+            Services.Trip("benchmark failed: " err.Message)
+        results[label] := "invalid: " err.Message
+        Say("    " label " INVALID: " err.Message)
+    }
 }
 
 ; ---------------------------------------------------------------------------
@@ -291,6 +375,7 @@ FillHistory(count) {
         text := "history entry " A_Index " with a representative length so the buffer is not trivial"
         AppState.History.Push(Map("time", "2026-01-01 00:00:00", "source", "bench", "text", text))
     }
+    HistoryManager.Replaced()
 }
 
 ; Returns true when the C# backend can actually be driven from this run.
@@ -298,19 +383,15 @@ FillHistory(count) {
 ; because this script never registers a hotkey.
 TryEnableBackend() {
     try {
+        root := RegExReplace(A_ScriptDir, "\\scripts\\perf$", "")
+        Services.assemblyPath := root "\lib\CapsLockSharp.dll"
+        Services.bridgePath := root "\lib\ahk#\lib\ahk#.bridge.dll"
         AppState.ServiceBackend := "csharp"
         Services.Configure()
         return Services.Boot()
     } catch as err {
         return false
     }
-}
-
-JoinRules(rules) {
-    text := ""
-    for index, rule in rules
-        text .= (index > 1 ? "`n" : "") . rule
-    return text
 }
 
 HistoryTexts() {
@@ -342,14 +423,14 @@ RealisticIgnoreRules() {
 
 Say(text) {
     try
-        FileAppend(text . "`n", "*")
+        FileAppend(text . "`n", "*", "UTF-8-RAW")
     catch {
         ; stdout is unavailable when the script is launched through /Validate
     }
 }
 
 FormatRow(label, stats) {
-    return Format("    {1,-36} p50 {2} ms   p95 {3} ms   min {4} ms   max {5} ms   n={6}",
+    return Format("    {1:-36} p50 {2} ms   p95 {3} ms   min {4} ms   max {5} ms   n={6}",
         label, stats["p50_ms"], stats["p95_ms"], stats["min_ms"], stats["max_ms"], stats["n"])
 }
 
@@ -377,6 +458,11 @@ BuildMarkdown(environment, results) {
     }
 
     lines.Push("")
+    for key, value in results {
+        if !IsObject(value)
+            lines.Push("- ``" key "``: " value)
+    }
+    lines.Push("")
 
     text := ""
     for index, line in lines
@@ -390,15 +476,20 @@ BuildMarkdown(environment, results) {
 ; ---------------------------------------------------------------------------
 
 Main() {
-    global gEnumRoot, gPaths, gRulesText, gTexts
+    global gEnumRoot, gPaths, gTexts, gCounter, gKeptFrame
 
     Bench.Init()
+
+    Say("AutoHotkey " A_AhkVersion " (" ((A_PtrSize == 8) ? "64" : "32") "-bit), Windows " A_OSVersion
+        ", " EnvGet("NUMBER_OF_PROCESSORS") " logical processors")
+    Say("")
 
     ; --- command line -------------------------------------------------------
     measureClipboard := false
     outDir := A_ScriptDir "\results"
     sizes := [1000, 10000]
     filesPerDir := 8
+    jsonMax := 1000
 
     args := A_Args
     i := 1
@@ -421,15 +512,17 @@ Main() {
                 i++
                 if (i <= args.Length)
                     filesPerDir := Integer(args[i])
+            case "-JsonMax":
+                i++
+                if (i <= args.Length)
+                    jsonMax := Integer(args[i])
             default:
         }
         i++
     }
 
     ; --- workspace ----------------------------------------------------------
-    work := A_Temp "\CapsLockProfile"
-    if DirExist(work)
-        DirDelete(work, true)
+    work := A_Temp "\CapsLockProfile-" DllCall("GetCurrentProcessId") "-" A_TickCount
     DirCreate(work)
 
     AppState.HistoryFile := work "\ClipHistory.bin"
@@ -480,6 +573,8 @@ Main() {
         results[label] := Bench.Measure(WorkloadHistoryAddDuplicateTop.Bind(0), 200, 5)
         Say(FormatRow(label, results[label]))
 
+        CancelPendingSave()
+
         label := "history-save-" size
         results[label] := Bench.Measure(WorkloadHistorySave.Bind(0), 25, 2)
         Say(FormatRow(label, results[label]))
@@ -489,8 +584,13 @@ Main() {
         Say(FormatRow(label, results[label]))
 
         label := "json-roundtrip-" size
-        results[label] := Bench.Measure(WorkloadJsonRoundTrip.Bind(0), 10, 1)
-        Say(FormatRow(label, results[label]))
+        if (size <= jsonMax) {
+            results[label] := Bench.Measure(WorkloadJsonRoundTrip.Bind(0), 10, 1)
+            Say(FormatRow(label, results[label]))
+        } else {
+            results[label] := "skipped: " size " entries is above -JsonMax " jsonMax " (the AHK JSON round trip grows faster than linearly)"
+            Say("    " label " skipped: above -JsonMax " jsonMax)
+        }
 
         Say("")
     }
@@ -546,41 +646,68 @@ Main() {
     ; --- backend comparison -------------------------------------------------
     Say("Backend comparison, AutoHotkey vs C# ...")
 
-    gRulesText := JoinRules(AppState.IgnorePatterns)
-    gTexts := HistoryTexts()
+    bootStart := Bench.Now()
+    available := TryEnableBackend()
+    bootMs := ((Bench.Now() - bootStart) * 1000.0) / Bench.freq
 
-    if TryEnableBackend() {
-        Say("    C# backend: " Services.reason)
+    if available {
+        results["csharp-cold-boot"] := Bench.Summarize([bootMs])
+        Say("    C# backend: " Services.reason " (cold boot " Round(bootMs, 4) " ms)")
 
-        label := "compare-ignore-match-csharp"
-        results[label] := Bench.Measure(WorkloadIgnoreMatchCSharp.Bind(0), 2000, 50)
-        Say(FormatRow(label, results[label]))
+        RecordCSharp(results, "compare-ignore-match-csharp", WorkloadIgnoreMatchCSharp.Bind(0), 2000, 50)
+        RecordAhk(results, "compare-ignore-match-ahk", WorkloadIgnoreMatchAhk.Bind(0), 2000, 50)
+        RecordCSharp(results, "compare-ignore-batch-csharp", WorkloadIgnoreBatchCSharp.Bind(0), 100, 5)
+        RecordAhk(results, "compare-ignore-batch-ahk", WorkloadIgnoreBatchAhk.Bind(0), 100, 5)
+        keptPaths := ServicesFilterFilePathsAhk(gPaths)
+        gKeptFrame := Services.PackStrings(keptPaths)
+        results["compare-ignore-batch-corpus"] := gPaths.Length " paths, " keptPaths.Length " kept"
+        RecordAhk(results, "compare-ignore-batch-pack-ahk", WorkloadIgnoreBatchPack.Bind(0), 200, 5)
+        RecordAhk(results, "compare-ignore-batch-unpack-ahk", WorkloadIgnoreBatchUnpack.Bind(0), 200, 5)
 
-        label := "compare-history-scan-csharp-naive"
-        results[label] := Bench.Measure(WorkloadHistoryScanCSharp.Bind(0), 200, 10)
-        Say(FormatRow(label, results[label]))
+        ; Measured before the history workloads on purpose. The naive
+        ; whole-array scan below makes a lot of managed/COM garbage, and an x86
+        ; enumeration that ran right after it came out about 10 ms slower than
+        ; its parts (walk + batch) add up to; that may be this contamination.
+        ; Start from a quiet heap instead.
+        RecordCSharp(results, "compare-file-enum-csharp", WorkloadEnumTree.Bind(0), 15, 2)
+        AppState.ServiceBackend := "ahk"
+        Services.Configure()
+        RecordAhk(results, "compare-file-enum-ahk", WorkloadEnumTree.Bind(0), 15, 2)
+        AppState.ServiceBackend := "csharp"
+        Services.Configure()
 
-        ; Same inputs, AutoHotkey side, measured in the same run so the machine
-        ; state is identical.
-        label := "compare-ignore-match-ahk"
-        results[label] := Bench.Measure(WorkloadIgnoreMatchAhk.Bind(0), 2000, 50)
-        Say(FormatRow(label, results[label]))
+        for size in sizes {
+            ; Each backend starts with the same corpus. Sync/compile costs are
+            ; warmed up separately; only scalar queries/deltas cross afterwards.
+            AppState.ServiceBackend := "ahk"
+            Services.Configure()
+            FillHistory(size)
+            gCounter := 0
+            RecordAhk(results, "compare-history-add-new-ahk-" size, WorkloadHistoryAddNew.Bind(0), 200, 5)
+            CancelPendingSave()
+            RecordAhk(results, "compare-history-search-ahk-" size, WorkloadHistorySearchAhk.Bind(0), 100, 5)
+            gTexts := HistoryTexts()
+            RecordAhk(results, "compare-history-scan-ahk-" size, WorkloadHistoryScanAhk.Bind(0), 200, 10)
 
-        label := "compare-history-scan-ahk"
-        results[label] := Bench.Measure(WorkloadHistoryScanAhk.Bind(0), 200, 10)
-        Say(FormatRow(label, results[label]))
+            AppState.ServiceBackend := "csharp"
+            Services.Configure()
+            FillHistory(size)
+            gCounter := 0
+            RecordCSharp(results, "compare-history-snapshot-csharp-" size, WorkloadHistorySnapshotCSharp.Bind(0), 10, 1)
+            RecordCSharp(results, "compare-history-add-new-csharp-" size, WorkloadHistoryAddNew.Bind(0), 200, 5)
+            CancelPendingSave()
+            RecordCSharp(results, "compare-history-search-csharp-" size, WorkloadHistorySearchCSharp.Bind(0), 100, 5)
+            RecordCSharp(results, "compare-history-lookup-resident-csharp-" size, WorkloadHistoryResidentCSharp.Bind(0), 200, 10)
+            gTexts := HistoryTexts()
+            RecordCSharp(results, "compare-history-scan-csharp-naive-" size, WorkloadHistoryScanCSharp.Bind(0), 200, 10)
+        }
 
-        report["services"] := Services.Status()
     } else {
         Say("    C# backend unavailable: " Services.reason)
-        Say("    See docs/perf/csharp-boundary.md: AHK# is not vendored and the")
-        Say("    assembly has to be built before this comparison can run.")
-        results["compare-ignore-match-csharp"] := "skipped: C# backend unavailable"
-        results["compare-history-scan-csharp-naive"] := "skipped: C# backend unavailable"
-        results["compare-ignore-match-ahk"] := "skipped: C# backend unavailable"
-        results["compare-history-scan-ahk"] := "skipped: C# backend unavailable"
-        report["services"] := Services.Status()
+        Say("    See docs/perf/csharp-boundary.md for installing the optional backend.")
+        results["csharp-comparison"] := "skipped: " Services.reason
     }
+    report["services"] := Services.Status()
 
     Say("")
 
@@ -608,6 +735,7 @@ Main() {
     Say("")
     Say("Paste these into docs/perf/csharp-boundary.md. Do not adjust them.")
 
+    CancelPendingSave()
     if DirExist(work)
         DirDelete(work, true)
 
