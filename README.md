@@ -286,12 +286,15 @@ Both themes are defined by a single palette each, so shared UI surfaces (tray me
 
 Download the latest executable from [GitHub Releases](https://github.com/CYoJkoY/CapsLock-/releases).
 
-| Artifact            | Target      |
-| :------------------ | :---------- |
-| `CapsLock-.exe`     | Windows x64 |
-| `CapsLock-_x86.exe` | Windows x86 |
+| Artifact              | Target                                              |
+| :-------------------- | :-------------------------------------------------- |
+| `CapsLock-.exe`       | Windows x64                                         |
+| `CapsLock-_x86.exe`   | Windows x86                                         |
+| `CapsLockSharp.dll`   | Optional C# services, also embedded in both EXE      |
 
 Release builds are produced by GitHub Actions from version tags matching `v*.*.*`.
+Both executables package the optional C# backend (see below); they stay pure
+AutoHotkey until it is switched on.
 
 ### Run from source
 
@@ -312,6 +315,26 @@ Install ImageMagick and configure `magick.exe` from the tray menu when image-to-
 #### Pandoc
 
 Install Pandoc and configure `pandoc.exe` from the tray menu when document conversion is needed. The same tray submenu controls the output format.
+
+#### C# backend (optional)
+
+A resident history index, history search and batched ignore-rule filtering can run
+in .NET instead of AutoHotkey. It is **off by default** and every path keeps a real
+AutoHotkey fallback behind a circuit breaker.
+
+Turn it on with one click in **Settings Center → General → System & Runtime → “Set
+Up C# Backend”**, next to the backend selector. The button unpacks the files that
+release builds already carry (or builds/downloads them in a source checkout),
+switches the backend and then verifies the result with one real managed call. The
+status line beside it reports whether the backend is active, installed, bundled,
+or missing.
+
+Release executables contain the services assembly and the pinned AHK# bridge as
+resources and unpack them on first use, so no compiler or download is needed on an
+end-user machine. `scripts\build.ps1` reproduces such a build locally, and
+`scripts\Setup-CSharpBackend.ps1` provisions a source checkout the same way the
+one-click setup does. Setup, diagnostics and measurements:
+[`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
 
 ### Configuration files
 
@@ -459,9 +482,13 @@ This modular layout is intended to make individual features easier to change wit
 The repository includes GitHub Actions for:
 
 - source/build validation through `.github/workflows/test.yml`;
+- .NET service build/test plus a packaged-EXE probe through `.github/workflows/dotnet.yml`;
 - tagged x86/x64 release builds through `.github/workflows/release.yml`.
 
-Release compilation currently uses **AutoHotkey v2.0.28** through the configured AHK build action.
+Release compilation currently uses **AutoHotkey v2.0.28** through the configured AHK build
+action. Before compiling, the workflow provisions the optional C# backend and generates the
+compiler-directive include that embeds it, then verifies that the finished executables really
+carry both resources, so a release can never ship an executable that silently lost its payload.
 
 An alternative release compiler is under evaluation. Nothing about the shipped
 artifacts changes until the measurements in

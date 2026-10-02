@@ -46,6 +46,18 @@ jobs:
         shell: pwsh
         run: .\scripts\build_icon.ps1
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Downloads the pinned AHK# bridge, builds the AnyCPU services assembly
+      # and writes CSharpPayload.ahk, whose AddResource directives make Ahk2Exe
+      # embed both DLLs. Without it the very same source compiles pure AHK.
+      - name: Provision the C# backend payload
+        shell: pwsh
+        run: .\scripts\Setup-CSharpBackend.ps1
+
       - name: Build (x86)
         uses: benmusson/ahk2exe-action@v1
         with:
@@ -68,6 +80,14 @@ jobs:
           ahk-tag: v2.0.28
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Reads the resource directory of each finished EXE. An EXE that lost its
+      # payload would otherwise ship and silently never start the CLR.
+      - name: Verify the packaged C# payload
+        shell: pwsh
+        run: |
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-_x86.exe
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-.exe
+
       - name: Upload to Release
         # Only a tag push publishes. A workflow_dispatch run must never create
         # or overwrite a release from a branch ref.
@@ -79,6 +99,7 @@ jobs:
           files: |
             .\build\CapsLock-_x86.exe
             .\build\CapsLock-.exe
+            .\lib\CapsLockSharp.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

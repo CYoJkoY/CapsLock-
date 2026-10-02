@@ -54,6 +54,12 @@
     Do not inject scripts\ci\Headless.ahk (AutoHotkey's own #Warn MsgBoxes and
     error dialogs are then used, and will hit the timeout when unattended).
 
+.PARAMETER Compiled
+    The Script is a compiled .exe instead of a .ahk source file. /include is not
+    injected, because a compiled script carries its source as a resource and has
+    no load step the wrapper could hook into; the script itself has to report
+    failures and exit with a non-zero code.
+
 .PARAMETER TimeoutSeconds
     The script is killed, and the step fails, if it runs longer than this.
 
@@ -83,6 +89,8 @@ param(
     [switch] $AllowWarnings,
 
     [switch] $NoHeadless,
+
+    [switch] $Compiled,
 
     [ValidateRange(1, 3600)]
     [int] $TimeoutSeconds = 120
@@ -133,6 +141,8 @@ function Get-StreamText {
     return "($Name did not close within 10 s)"
 }
 
+# A compiled .exe is its own interpreter: there is nothing to look up.
+if ($Compiled -and $Executable -eq '') { $Executable = $Script }
 $exe = Find-AutoHotkey -Explicit $Executable -Arch $Architecture
 $scriptPath = (Resolve-Path -LiteralPath $Script).ProviderPath
 $scriptLabel = $Script
@@ -140,12 +150,13 @@ $scriptLabel = $Script
 $arguments = [System.Collections.Generic.List[string]]::new()
 # /ErrorStdOut sends load-time errors to stderr instead of a dialog.
 $arguments.Add('/ErrorStdOut=UTF-8')
-if (-not $NoHeadless) {
+if (-not $NoHeadless -and -not $Compiled) {
     $arguments.Add('/include')
     $arguments.Add((Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'Headless.ahk')).ProviderPath)
 }
 if ($Validate) { $arguments.Add('/Validate') }
-$arguments.Add($scriptPath)
+# A compiled exe takes no script path; its arguments are the script's own.
+if (-not $Compiled) { $arguments.Add($scriptPath) }
 foreach ($argument in $ScriptArguments) { $arguments.Add($argument) }
 
 $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -215,6 +226,19 @@ if ($timedOut -or $badExit -or $badWarnings) {
         if ($annotated -ge 8) { break }
         Write-Host ('::error::{0}: {1}' -f (ConvertTo-WorkflowData $scriptLabel), (ConvertTo-WorkflowData $line.Trim()))
         $annotated++
+    }
+
+    if ($annotated -eq 0) {
+        # Nothing matched those shapes - a compiled EXE reporting its own
+        # failure through a CLI switch, for instance. Annotations are the only
+        # part of a run that stays readable when the job log cannot be
+        # downloaded, so fall back to the tail of stdout rather than reporting
+        # an exit code with no reason attached.
+        $tail = @($stdout -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 } | Select-Object -Last 8)
+        foreach ($line in $tail) {
+            Write-Host ('::error::{0}: {1}' -f (ConvertTo-WorkflowData $scriptLabel), (ConvertTo-WorkflowData $line.Trim()))
+            $annotated++
+        }
     }
 }
 

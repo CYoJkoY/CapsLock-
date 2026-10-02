@@ -15,9 +15,7 @@ on:
       - 'UI/SettingsGui.ahk'
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
-      - 'scripts/perf/**'
-      - 'scripts/ci/**'
-      - 'scripts/HistoryGuiPaging.ahk'
+      - 'scripts/**'
       - '.github/workflows/dotnet.yml'
   pull_request:
     paths:
@@ -31,9 +29,7 @@ on:
       - 'UI/SettingsGui.ahk'
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
-      - 'scripts/perf/**'
-      - 'scripts/ci/**'
-      - 'scripts/HistoryGuiPaging.ahk'
+      - 'scripts/**'
       - '.github/workflows/dotnet.yml'
   workflow_dispatch:
 
@@ -116,4 +112,99 @@ jobs:
         with:
           name: CapsLockSharp-netstandard2.0
           path: lib\CapsLockSharp.dll
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # End-to-end packaging check.
+  #
+  # The jobs above only ever run the AHK sources. This one compiles a real EXE
+  # with the C# payload embedded and lets that EXE unpack it and make one call
+  # into the CLR, which is the only place the whole chain is exercised:
+  # generated AddResource directives -> Ahk2Exe resources -> extraction by
+  # Core\CSharpRuntime.ahk -> AHK# bridge hash check -> CLR boot -> managed call.
+  # ---------------------------------------------------------------------------
+  package:
+    name: Package the C# backend into an EXE and probe it
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Provision and compile exactly the way release.yml does, because the
+      # point of this job is to prove the artifact that actually ships - not a
+      # second build route that only CI takes. Setup-CSharpBackend downloads the
+      # pinned bridge, builds the AnyCPU assembly and writes CSharpPayload.ahk,
+      # whose AddResource directives make Ahk2Exe embed both DLLs.
+      # Failures are re-announced as ::error:: annotations: a sandboxed `gh`
+      # session can read annotations but not job logs.
+      - name: Provision the C# backend payload
+        shell: pwsh
+        run: |
+          try {
+            .\scripts\Setup-CSharpBackend.ps1
+          }
+          catch {
+            Write-Host ('::error::Setup-CSharpBackend.ps1: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
+            throw
+          }
+
+      - name: Build (x64)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-.exe
+          icon: .\assets\CapsLock-.ico
+          target: x64
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (x86)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-_x86.exe
+          icon: .\assets\CapsLock-.ico
+          target: x86
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Reads the resource directory of each executable. This is the check that
+      # proves the generated AddResource directives reached the compiler.
+      - name: Verify the packaged C# payload
+        shell: pwsh
+        run: |
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-.exe
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-_x86.exe
+
+      # -ProbeCSharp extracts the payload, starts the CLR and performs one real
+      # managed call before exiting. The wrapper waits for the process, prints
+      # its stdout and fails on a non-zero exit code.
+      - name: Probe the packaged payload (x64 and x86)
+        shell: pwsh
+        run: |
+          try {
+            .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+            .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-_x86.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+          }
+          catch {
+            Write-Host ('::error::probe: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
+            throw
+          }
+
+      - name: Upload the packaged executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapsLock-packaged-exe
+          path: |
+            build\CapsLock-.exe
+            build\CapsLock-_x86.exe
           if-no-files-found: error

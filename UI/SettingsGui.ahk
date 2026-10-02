@@ -349,7 +349,7 @@ class SettingsGui {
 
         ; Section 2: System & Runtime
         this._AddSectionTitle(myGui, p, cx, 264, Lang("SET_SEC_SYSTEM"))
-        this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 288, cw, 184))
+        this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 288, cw, 216))
 
         ; Row 1: AutoStart
         chkAutoStart := this._AddCardCheckBox(
@@ -371,17 +371,32 @@ class SettingsGui {
         )
         this.controls["serviceBackend"] := cboBackend
 
-        this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 404, cw))
+        ; Row 2b: one-click C# backend setup. The combo above only selects a
+        ; backend; this provisions the two files the boundary needs (embedded
+        ; in a release EXE, built or downloaded in a source checkout) and
+        ; verifies the result with one real managed call.
+        btnCSharp := this._AddCardButton(
+            myGui, p, cx + 18, 392, 220, 30,
+            "🔌 " . Lang("SET_BTN_CSHARP_SETUP")
+        )
+        btnCSharp.OnEvent("Click", (*) => this._OnCSharpSetup())
+        this.controls["csharpSetup"] := btnCSharp
+
+        this.controls["csharpStatus"] := this._AddCardLabel(
+            myGui, p, cx + 250, 397, 354, CSharpRuntime.StatusText(), true
+        )
+
+        this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 436, cw))
 
         ; Row 3: Quick System Folders
         btnOpenTemp := this._AddCardButton(
-            myGui, p, cx + 18, 420, 220, 32,
+            myGui, p, cx + 18, 452, 220, 32,
             "📂 " . Lang("MENU_OPEN_TEMP")
         )
         btnOpenTemp.OnEvent("Click", (*) => OpenTempFolder())
 
         btnOpenCfg := this._AddCardButton(
-            myGui, p, cx + 250, 420, 220, 32,
+            myGui, p, cx + 250, 452, 220, 32,
             "📁 " . Lang("SET_BTN_OPEN_CONFIG")
         )
         btnOpenCfg.OnEvent("Click", (*) => Run("explore " . A_ScriptDir . "\configs"))
@@ -944,6 +959,63 @@ class SettingsGui {
         }
     }
 
+    ; -----------------------------------------------------------------------
+    ; One-click C# backend setup
+    ;
+    ; Provisioning can build the services assembly or download the pinned
+    ; bridge, which blocks this thread for a few seconds. The status line is
+    ; written first so the window still says what is happening.
+    ; -----------------------------------------------------------------------
+    static _OnCSharpSetup() {
+        if !this.IsOpen()
+            return
+
+        if this.controls.Has("csharpStatus")
+            this.controls["csharpStatus"].Text := Lang("MSG_CSHARP_WORKING")
+
+        result := CSharpRuntime.Install()
+
+        details := ""
+        for line in result["details"]
+            details .= "`n  " line
+        if details != ""
+            details := "`n`n" . Lang("MSG_CSHARP_DETAILS") . ":" details
+
+        MsgBox(
+            result["message"] . details,
+            Lang("MSG_CSHARP_SETUP_TITLE"),
+            (result["ok"] ? "Iconi" : "Icon!") . " T30"
+        )
+
+        this._RefreshCSharpStatus()
+
+        if !result["ok"]
+            return
+
+        if result["active"] {
+            if this.controls.Has("serviceBackend")
+                this.controls["serviceBackend"].Value := 2
+            OSD.ShowNotification(Lang("MSG_CSHARP_DONE"), 1800, "success")
+            return
+        }
+
+        ; A source run only picks the newly provisioned bridge up through
+        ; `#Include *i`, which is resolved when the process starts.
+        if result["restartNeeded"] && !A_IsCompiled {
+            if MsgBox(
+                Lang("MSG_CSHARP_RELOAD_CONFIRM"),
+                Lang("MSG_CSHARP_SETUP_TITLE"),
+                "YesNo Icon? T30"
+            ) == "Yes"
+                Reload()
+        }
+    }
+
+    static _RefreshCSharpStatus() {
+        if this.controls.Has("csharpStatus")
+            this.controls["csharpStatus"].Text := CSharpRuntime.StatusText()
+    }
+
     static ApplyAll(silent := false) {
         if !this.IsOpen()
             return
@@ -960,6 +1032,7 @@ class SettingsGui {
         if c.Has("serviceBackend") {
             AppState.ServiceBackend := (c["serviceBackend"].Value == 2) ? "csharp" : "ahk"
             Services.Configure()
+            this._RefreshCSharpStatus()
         }
 
         ; --- 2. Clipboard & History ---

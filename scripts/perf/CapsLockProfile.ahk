@@ -47,6 +47,8 @@
 #Include ..\..\History\HistoryStorage.ahk
 #Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
+#Include ..\..\Utils\Hash.ahk
+#Include ..\..\Core\CSharpPayload.ahk
 #Include ..\..\Core\Services.ahk
 
 ; ---------------------------------------------------------------------------
