@@ -69,8 +69,8 @@ class CSharpRuntime {
             this.targetDir := primary
         } else {
             this.relocated := true
-            local := EnvGet("LOCALAPPDATA")
-            this.targetDir := (local != "" ? local : A_Temp) "\CapsLock-\lib"
+            perUser := EnvGet("LOCALAPPDATA")
+            this.targetDir := (perUser != "" ? perUser : A_Temp) "\CapsLock-\lib"
         }
         return this.targetDir
     }

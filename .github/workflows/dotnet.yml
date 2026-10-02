@@ -146,11 +146,31 @@ jobs:
           version: '2.0.28'
           compiler: 'latest'
 
-      # Provisions lib\, writes CSharpPayload.ahk, compiles with Ahk2Exe and
-      # then reads the resource directory of the result.
+      # Provisions lib\, writes CSharpPayload.ahk and compiles with Ahk2Exe.
+      # The compiler and both base files come from the installer's own outputs,
+      # so nothing about the layout is guessed. Failures are re-announced as
+      # ::error:: annotations because only those survive without a job log.
       - name: Build the EXE with the packaged C# backend
         shell: pwsh
-        run: .\scripts\build.ps1 -Architecture both -Ahk2Exe '${{ steps.ahk.outputs.ahk2Exe }}'
+        run: |
+          try {
+            .\scripts\build.ps1 -Architecture both -SkipPayloadVerify `
+              -Ahk2Exe '${{ steps.ahk.outputs.ahk2Exe }}' `
+              -Base64 '${{ steps.ahk.outputs.ahk64 }}' `
+              -Base32 '${{ steps.ahk.outputs.ahk32 }}'
+          }
+          catch {
+            Write-Host ('::error::build.ps1: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
+            throw
+          }
+
+      # Reads the resource directory of each executable. This is the check that
+      # proves the generated AddResource directives reached the compiler.
+      - name: Verify the packaged C# payload
+        shell: pwsh
+        run: |
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-.exe
+          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-_x86.exe
 
       # -ProbeCSharp extracts the payload, starts the CLR and performs one real
       # managed call before exiting. The wrapper waits for the process, prints
@@ -158,8 +178,14 @@ jobs:
       - name: Probe the packaged payload (x64 and x86)
         shell: pwsh
         run: |
-          .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
-          .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-_x86.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+          try {
+            .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+            .\scripts\ci\Invoke-Ahk.ps1 .\build\CapsLock-_x86.exe -Compiled -ScriptArguments '-ProbeCSharp' -TimeoutSeconds 180
+          }
+          catch {
+            Write-Host ('::error::probe: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
+            throw
+          }
 
       - name: Upload the packaged executables
         uses: actions/upload-artifact@v4

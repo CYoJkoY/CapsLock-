@@ -19,6 +19,10 @@
     (or into %LOCALAPPDATA%\CapsLock- when the install folder is read-only) and
     Services.Boot() starts the CLR on the first C# request only.
 
+    Every failure is echoed as a GitHub Actions ::error:: annotation as well as
+    an exception, so an unattended run says what broke instead of only exiting
+    non-zero.
+
 .PARAMETER Architecture
     x64 (default), x86, or both - the same layout the release workflow ships.
 
@@ -28,12 +32,20 @@
 .PARAMETER SkipCSharp
     Build a pure-AHK executable and remove any generated payload include.
 
+.PARAMETER SkipPayloadVerify
+    Compile only; do not inspect the finished executables.
+
 .PARAMETER RebuildIcon
     Regenerate assets\CapsLock-.ico first (needs ImageMagick). The committed ICO
     is used otherwise, so a build machine without ImageMagick still works.
 
 .PARAMETER Ahk2Exe
     Explicit path to Ahk2Exe.exe. Searched for otherwise.
+
+.PARAMETER Base64
+.PARAMETER Base32
+    Explicit base files (.bin or AutoHotkey<bitness>.exe). CI passes the paths
+    its AutoHotkey installer reported, which removes any guesswork.
 
 .EXAMPLE
     .\scripts\build.ps1
@@ -53,9 +65,15 @@ param(
 
     [switch] $SkipCSharp,
 
+    [switch] $SkipPayloadVerify,
+
     [switch] $RebuildIcon,
 
-    [string] $Ahk2Exe = ''
+    [string] $Ahk2Exe = '',
+
+    [string] $Base64 = '',
+
+    [string] $Base32 = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,45 +89,37 @@ if (-not (Test-Path -LiteralPath $OutDir)) {
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 }
 
-function Find-Ahk2Exe {
-    param([string] $Explicit)
-
-    if ($Explicit) {
-        if (-not (Test-Path -LiteralPath $Explicit -PathType Leaf)) {
-            throw "Ahk2Exe.exe not found: $Explicit"
-        }
-        return (Resolve-Path -LiteralPath $Explicit).ProviderPath
-    }
-
-    $folders = @()
-    if ($env:AHK_EXE) { $folders += (Split-Path -Parent $env:AHK_EXE) }
-    $folders += (Join-Path $repoRoot 'autohotkey')          # where CI unpacks it
-    foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
-        if ($base) {
-            $folders += (Join-Path $base 'AutoHotkey')
-            $folders += (Join-Path $base 'Programs\AutoHotkey')
-        }
-    }
-
-    foreach ($folder in $folders) {
-        $candidate = Join-Path $folder 'Compiler\Ahk2Exe.exe'
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            return (Resolve-Path -LiteralPath $candidate).ProviderPath
-        }
-    }
-    throw 'Ahk2Exe.exe was not found. Install the AutoHotkey compiler (the v2 Dash offers it), or pass -Ahk2Exe.'
+function Fail {
+    param([string] $Message)
+    # GitHub keeps annotations even when the raw job log is unavailable, so a
+    # failure has to say what it was in the annotation, not only in the log.
+    Write-Host ('::error::{0}' -f ($Message -replace "`r?`n", ' | '))
+    throw $Message
 }
 
 function Get-BaseFile {
-    param([string] $Ahk2ExePath, [string] $Arch)
+    param([string] $Arch)
 
     $bits = if ($Arch -eq 'x64') { 64 } else { 32 }
 
-    # The base file may sit in the compiler folder (the shipped
-    # "Unicode <bits>-bit.bin") or be one of the interpreters in an install, so
-    # look through every AutoHotkey location this repository knows about.
-    $compilerDir = Split-Path -Parent $Ahk2ExePath
-    $roots = @($compilerDir, (Split-Path -Parent $compilerDir))
+    # An explicit path always wins; that is what CI passes.
+    $explicit = if ($Arch -eq 'x64') { $Base64 } else { $Base32 }
+    if ($explicit) {
+        if (-not (Test-Path -LiteralPath $explicit -PathType Leaf)) {
+            Fail "The $Arch base file does not exist: $explicit"
+        }
+        return (Resolve-Path -LiteralPath $explicit).ProviderPath
+    }
+
+    # Otherwise look through every AutoHotkey location this repository knows
+    # about. The base may be one of the shipped "Unicode <bits>-bit.bin" files
+    # in the compiler folder, or one of the interpreters in an install.
+    $roots = @()
+    if ($script:compiler) {
+        $compilerDir = Split-Path -Parent $script:compiler
+        $roots += $compilerDir
+        $roots += (Split-Path -Parent $compilerDir)
+    }
     if ($env:AHK_EXE) { $roots += (Split-Path -Parent $env:AHK_EXE) }
     $roots += (Join-Path $repoRoot 'autohotkey')      # where CI unpacks it
     foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
@@ -135,7 +145,7 @@ function Get-BaseFile {
         }
     }
 
-    # Last resort: whatever the AutoHotkey installer unpacked into the repo.
+    # Last resort: whatever an installer unpacked into the repository.
     $searchRoot = Join-Path $repoRoot 'autohotkey'
     if (Test-Path -LiteralPath $searchRoot) {
         foreach ($name in $names) {
@@ -145,7 +155,43 @@ function Get-BaseFile {
         }
     }
 
-    throw "No $Arch base file was found for $Ahk2ExePath. Pass a -Ahk2Exe from an AutoHotkey install that has one (Compiler\Unicode $bits-bit.bin)."
+    Fail ("No $Arch base file was found (looked for 'Unicode $bits-bit.bin' and 'AutoHotkey$bits.exe' in: " +
+        (($roots | Where-Object { $_ }) -join '; ') + "). Pass -Base$bits.")
+}
+
+function Find-Ahk2Exe {
+    param([string] $Explicit)
+
+    if ($Explicit) {
+        if (-not (Test-Path -LiteralPath $Explicit -PathType Leaf)) {
+            Fail "Ahk2Exe.exe not found: $Explicit"
+        }
+        return (Resolve-Path -LiteralPath $Explicit).ProviderPath
+    }
+
+    $folders = @()
+    if ($env:AHK_EXE) { $folders += (Split-Path -Parent $env:AHK_EXE) }
+    $folders += (Join-Path $repoRoot 'autohotkey')          # where CI unpacks it
+    foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
+        if ($base) {
+            $folders += (Join-Path $base 'AutoHotkey')
+            $folders += (Join-Path $base 'Programs\AutoHotkey')
+        }
+    }
+
+    foreach ($folder in $folders) {
+        $candidate = Join-Path $folder 'Compiler\Ahk2Exe.exe'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $candidate).ProviderPath
+        }
+    }
+
+    # An installer that laid the compiler out somewhere unexpected.
+    $found = Get-ChildItem -LiteralPath $repoRoot -Recurse -Filter 'Ahk2Exe.exe' -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($found) { return $found.FullName }
+
+    Fail 'Ahk2Exe.exe was not found. Install the AutoHotkey compiler (the v2 Dash offers it), or pass -Ahk2Exe.'
 }
 
 # ---------------------------------------------------------------------------
@@ -159,23 +205,35 @@ if ($SkipCSharp) {
     }
 }
 else {
-    # Called in this runspace: a throw in the setup script stops the build here.
-    & (Join-Path $PSScriptRoot 'Setup-CSharpBackend.ps1')
+    # Called in this runspace, so a throw in the setup script lands here and is
+    # annotated like every other failure.
+    try {
+        & (Join-Path $PSScriptRoot 'Setup-CSharpBackend.ps1')
+    }
+    catch {
+        Fail "Setup-CSharpBackend.ps1 failed: $($_.Exception.Message)"
+    }
+    Write-Host ('Payload include present: {0}' -f (Test-Path -LiteralPath $payloadInclude))
 }
 
 if ($RebuildIcon) {
-    & (Join-Path $PSScriptRoot 'build_icon.ps1')
+    try {
+        & (Join-Path $PSScriptRoot 'build_icon.ps1')
+    }
+    catch {
+        Fail "build_icon.ps1 failed: $($_.Exception.Message)"
+    }
 }
 if (-not (Test-Path -LiteralPath $icon)) {
-    throw "The application icon is missing: $icon (run with -RebuildIcon, which needs ImageMagick)."
+    Fail "The application icon is missing: $icon (run with -RebuildIcon, which needs ImageMagick)."
 }
 
 # ---------------------------------------------------------------------------
 # 2. Compile
 # ---------------------------------------------------------------------------
 
-$compiler = Find-Ahk2Exe -Explicit $Ahk2Exe
-Write-Host "Ahk2Exe: $compiler"
+$script:compiler = Find-Ahk2Exe -Explicit $Ahk2Exe
+Write-Host "Ahk2Exe: $($script:compiler)"
 
 $targets = if ($Architecture -eq 'both') { @('x64', 'x86') } else { @($Architecture) }
 $built = @()
@@ -185,7 +243,7 @@ foreach ($arch in $targets) {
     # for x86; keep the same names so a local build is directly comparable.
     $name = if ($arch -eq 'x64') { 'CapsLock-.exe' } else { 'CapsLock-_x86.exe' }
     $out = Join-Path $OutDir $name
-    $base = Get-BaseFile -Ahk2ExePath $compiler -Arch $arch
+    $base = Get-BaseFile -Arch $arch
 
     if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Force }
 
@@ -204,20 +262,26 @@ foreach ($arch in $targets) {
         '/silent', 'verbose'
     )
     $stdout = Join-Path $OutDir "ahk2exe-$arch.log"
-    $process = Start-Process -FilePath $compiler -ArgumentList $arguments -Wait -NoNewWindow -PassThru `
+    $process = Start-Process -FilePath $script:compiler -ArgumentList $arguments -Wait -NoNewWindow -PassThru `
         -RedirectStandardOutput $stdout -RedirectStandardError "$stdout.err"
+
+    $logText = ''
     foreach ($log in @($stdout, "$stdout.err")) {
         if ((Test-Path -LiteralPath $log) -and (Get-Item -LiteralPath $log).Length -gt 0) {
+            $content = (Get-Content -LiteralPath $log -Raw)
+            $logText += $content
             Write-Host "--- $(Split-Path -Leaf $log) ---"
-            Write-Host (Get-Content -LiteralPath $log -Raw)
+            Write-Host $content
         }
         Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
     }
+
     if ($process.ExitCode -ne 0) {
-        throw "Ahk2Exe failed for $arch with exit code $($process.ExitCode)."
+        $tail = ($logText -split "`r?`n" | Where-Object { $_.Trim().Length -gt 0 } | Select-Object -Last 6) -join ' | '
+        Fail "Ahk2Exe failed for $arch with exit code $($process.ExitCode). Last output: $tail"
     }
     if (-not (Test-Path -LiteralPath $out)) {
-        throw "Ahk2Exe reported success but produced no $out"
+        Fail "Ahk2Exe reported success but produced no $out"
     }
     $built += $out
 }
@@ -226,7 +290,7 @@ foreach ($arch in $targets) {
 # 3. Verify the packaged payload
 # ---------------------------------------------------------------------------
 
-if (-not $SkipCSharp) {
+if (-not $SkipCSharp -and -not $SkipPayloadVerify) {
     foreach ($exe in $built) {
         & (Join-Path $PSScriptRoot 'ci\Test-CSharpPayload.ps1') -Path $exe
     }
