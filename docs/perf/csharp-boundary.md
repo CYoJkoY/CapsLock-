@@ -229,14 +229,18 @@ then, so use them while CapsLock- is not running:
 
 ### 3.3 Packaged into the compiled EXE
 
-`scripts\build.ps1` produces release-shaped executables with the C# backend
-inside them:
+`scripts\build.ps1` is the local one-command build: provision, then Ahk2Exe.
 
 ```powershell
 .\scripts\build.ps1                    # x64 -> build\CapsLock-.exe
 .\scripts\build.ps1 -Architecture both # plus build\CapsLock-_x86.exe
 .\scripts\build.ps1 -SkipCSharp        # pure-AHK executable
 ```
+
+`release.yml` and the packaging check in `dotnet.yml` take the same two steps
+explicitly instead, with `benmusson/ahk2exe-action` as the compiler, so the
+artifact that ships and the artifact CI verifies are produced by the same
+commands.
 
 `Setup-CSharpBackend.ps1` writes `CSharpPayload.ahk` next to the entry script,
 and that file holds nothing but the two `AddResource` directives that embed the
@@ -320,10 +324,12 @@ the application's own folders.
 checks the pure-AHK fallback on x64 and x86, checks out the pinned bridge, then
 validates the application, the real service boundary and the history window with
 **both x64 and x86 AutoHotkey**, and finally runs the profile harness (below).
-Its second job is the packaging check: `scripts\build.ps1` compiles x64 and x86
-executables with the payload embedded, `scripts\ci\Test-CSharpPayload.ps1` reads
-their resource directories, and each executable is then run with `-ProbeCSharp`,
-which unpacks the resources, boots the CLR and makes one managed call. That is the
+Its second job is the packaging check, and it takes the release route on purpose:
+`scripts\Setup-CSharpBackend.ps1` provisions both DLLs and writes the generated
+include, `benmusson/ahk2exe-action` compiles x64 and x86 the way `release.yml`
+does, `scripts\ci\Test-CSharpPayload.ps1` reads the resource directories of the
+finished executables, and each executable is then run with `-ProbeCSharp`, which
+unpacks the resources, boots the CLR and makes one managed call. That is the
 only place the whole chain - generated directives, Ahk2Exe resources, extraction,
 bridge hash check, CLR boot - is exercised end to end.
 `test.yml` runs `/Validate`, the hotkey regression, the pure-AHK service checks and

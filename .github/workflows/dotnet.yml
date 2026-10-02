@@ -137,32 +137,45 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # The action also installs Ahk2Exe and reports its path, so the build uses
-      # the same compiler a local `scripts\build.ps1` run finds.
-      - name: Install AutoHotkey and the script compiler
-        id: ahk
-        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
-        with:
-          version: '2.0.28'
-          compiler: 'latest'
-
-      # Provisions lib\, writes CSharpPayload.ahk and compiles with Ahk2Exe.
-      # The compiler and both base files come from the installer's own outputs,
-      # so nothing about the layout is guessed. Failures are re-announced as
-      # ::error:: annotations because only those survive without a job log.
-      - name: Build the EXE with the packaged C# backend
+      # Provision and compile exactly the way release.yml does, because the
+      # point of this job is to prove the artifact that actually ships - not a
+      # second build route that only CI takes. Setup-CSharpBackend downloads the
+      # pinned bridge, builds the AnyCPU assembly and writes CSharpPayload.ahk,
+      # whose AddResource directives make Ahk2Exe embed both DLLs.
+      # Failures are re-announced as ::error:: annotations: a sandboxed `gh`
+      # session can read annotations but not job logs.
+      - name: Provision the C# backend payload
         shell: pwsh
         run: |
           try {
-            .\scripts\build.ps1 -Architecture both -SkipPayloadVerify `
-              -Ahk2Exe '${{ steps.ahk.outputs.ahk2Exe }}' `
-              -Base64 '${{ steps.ahk.outputs.ahk64 }}' `
-              -Base32 '${{ steps.ahk.outputs.ahk32 }}'
+            .\scripts\Setup-CSharpBackend.ps1
           }
           catch {
-            Write-Host ('::error::build.ps1: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
+            Write-Host ('::error::Setup-CSharpBackend.ps1: {0}' -f ($_.Exception.Message -replace "`r?`n", ' | '))
             throw
           }
+
+      - name: Build (x64)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-.exe
+          icon: .\assets\CapsLock-.ico
+          target: x64
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (x86)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\CapsLock-.ahk
+          out: .\build\CapsLock-_x86.exe
+          icon: .\assets\CapsLock-.ico
+          target: x86
+          compression: none
+          ahk-tag: v2.0.28
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Reads the resource directory of each executable. This is the check that
       # proves the generated AddResource directives reached the compiler.
