@@ -1,38 +1,37 @@
 #Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Provisioning for the optional C# backend (issue #12).
+; Provisioning for the optional C# backend (issue #12): the one-click setup in
+; the Settings Center, and the headless switches behind it.
 ;
 ; The boundary needs exactly two files on disk before the CLR can start:
 ;
 ;   lib\CapsLockSharp.dll            the precompiled services (AnyCPU)
 ;   lib\ahk#\lib\ahk#.bridge.dll     the pinned AHK# bridge
 ;
-; Nothing in here starts the CLR, so `Services.Boot()` remains the only place
-; that pays the boot/JIT cost, and only for a service that is actually called.
-; This module only makes those two files exist:
+; This module makes them exist:
 ;
-;   * a compiled EXE built by scripts\build.ps1 carries both of them as RCDATA
-;     resources (see the generated CSharpPayload.ahk include). ExtractPackaged()
-;     writes them next to the EXE - or into %LOCALAPPDATA%\CapsLock- when the
-;     install folder is read-only - comparing SHA-256 first, so a second start
-;     neither rewrites nor re-locks an already loaded DLL. It touches only the
-;     local disk, because it runs inside a service call;
-;   * a source checkout builds them (`dotnet build`) or, without the .NET SDK,
-;     downloads the pinned AHK# bridge and the published assembly. That can
-;     take seconds and needs the network, so it belongs to the explicit
-;     one-click setup (EnsureFiles/Install), never to a hotkey path.
+;   * a compiled EXE carries both as resources; Core\CSharpPayload.ahk unpacks
+;     them (Services.Boot() already does that on first need, so a packaged
+;     build normally never reaches the routes below);
+;   * a source checkout builds the assembly with the .NET SDK, or downloads the
+;     pinned AHK# bridge and the published assembly when there is no SDK.
+;
+; Building and downloading can take seconds and needs the network, so none of
+; it runs from a service call: Services.Boot() only unpacks a packaged payload
+; (local disk, no CLR), and everything here is reached from the setup button or
+; from -InstallCSharp.
 ;
 ; Both routes keep the hash check AHK# performs at boot: the digest pinned in
 ; ahk#.ahk is parsed back out of the file and compared with the DLL, so a
 ; truncated or intercepted download is reported here instead of turning into a
 ; CLR boot failure later.
+;
+; Unlike Core\CSharpPayload.ahk this file is loaded by CapsLock-.ahk only: it
+; uses Lang(), ConfigManager and the Settings Center, which the headless
+; harnesses do not define.
 ; ---------------------------------------------------------------------------
 class CSharpRuntime {
-    ; Resource names written by the generated CSharpPayload.ahk directives.
-    static AssemblyResource := "CSHARP_DLL"
-    static BridgeResource := "AHK_BRIDGE_DLL"
-
     ; Pinned AHK# commit. Keep in sync with docs/perf/csharp-boundary.md,
     ; .github/workflows/dotnet.yml and scripts\Setup-CSharpBackend.ps1.
     static BridgeCommit := "e3b895c7590eba47748b0ed963b7978c237d1daf"
@@ -49,30 +48,29 @@ class CSharpRuntime {
     ; Diagnostics of the last provisioning attempt, one line per step.
     static report := []
 
-    static targetDir := ""
+    static cachedDir := ""
     static relocated := false
-    ; Set when a write failed, so the per-user retry runs only for the one
-    ; failure it can fix instead of repeating a download that cannot work.
-    static writeFailed := false
 
     ; =======================================================================
     ; Paths
     ; =======================================================================
 
-    ; lib\ next to the script, or a per-user folder when that is not writable.
+    ; Per-user folder for an install whose own folder will not take files.
+    static PerUserDir() {
+        perUser := EnvGet("LOCALAPPDATA")
+        return (perUser != "" ? perUser : A_Temp) "\CapsLock-\lib"
+    }
+
+    ; lib\ next to the script, or the per-user folder when that is not writable.
     static TargetDir() {
-        if this.targetDir != ""
-            return this.targetDir
+        if this.cachedDir != ""
+            return this.cachedDir
 
         primary := A_ScriptDir "\lib"
-        if this.IsWritable(primary) {
-            this.targetDir := primary
-        } else {
+        this.cachedDir := this.IsWritable(primary) ? primary : this.PerUserDir()
+        if this.cachedDir != primary
             this.relocated := true
-            perUser := EnvGet("LOCALAPPDATA")
-            this.targetDir := (perUser != "" ? perUser : A_Temp) "\CapsLock-\lib"
-        }
-        return this.targetDir
+        return this.cachedDir
     }
 
     ; An explicit override wins: the perf/equivalence harnesses point Services
@@ -101,11 +99,11 @@ class CSharpRuntime {
         return Services.assemblyPath != "" || Services.bridgePath != ""
     }
 
-    ; Only needed after a relocation: Services' own defaults already point at
-    ; lib\ next to the script, which is the normal target.
-    static PublishPaths() {
-        Services.assemblyPath := this.TargetDir() "\CapsLockSharp.dll"
-        Services.bridgePath := this.TargetDir() "\ahk#\lib\ahk#.bridge.dll"
+    ; Tell Services where the files ended up, so its own defaults are not the
+    ; only places Boot() looks.
+    static AdoptPaths(assemblyPath, bridgePath) {
+        Services.assemblyPath := assemblyPath
+        Services.bridgePath := bridgePath
     }
 
     ; Nothing is created here: a read-only install must not gain an empty lib\
@@ -130,123 +128,7 @@ class CSharpRuntime {
     }
 
     ; =======================================================================
-    ; Packaged payload (compiled EXE)
-    ; =======================================================================
-
-    ; Size without copying the bytes, for the cheap "is it packaged" check.
-    static ResourceSize(name) {
-        if !A_IsCompiled
-            return 0
-
-        module := DllCall("kernel32\GetModuleHandle", "Ptr", 0, "Ptr")
-        if !module
-            return 0
-
-        ; 10 = RT_RCDATA, the type Ahk2Exe picks for a .dll AddResource.
-        resource := DllCall("kernel32\FindResource", "Ptr", module, "Str", name, "Ptr", 10, "Ptr")
-        if !resource
-            return 0
-
-        return DllCall("kernel32\SizeofResource", "Ptr", module, "Ptr", resource, "UInt")
-    }
-
-    static HasPackagedPayload() {
-        return this.ResourceSize(this.AssemblyResource) > 0
-            && this.ResourceSize(this.BridgeResource) > 0
-    }
-
-    ; Read an RCDATA resource of this compiled EXE. Returns a Buffer, or ""
-    ; when running from source or when the resource is absent - a pure-AHK
-    ; build simply has no payload and stays pure AHK.
-    static ReadResource(name) {
-        size := this.ResourceSize(name)
-        if !size
-            return ""
-
-        module := DllCall("kernel32\GetModuleHandle", "Ptr", 0, "Ptr")
-        resource := DllCall("kernel32\FindResource", "Ptr", module, "Str", name, "Ptr", 10, "Ptr")
-        handle := DllCall("kernel32\LoadResource", "Ptr", module, "Ptr", resource, "Ptr")
-        if !handle
-            return ""
-
-        source := DllCall("kernel32\LockResource", "Ptr", handle, "Ptr")
-        if !source
-            return ""
-
-        data := Buffer(size, 0)
-        DllCall("kernel32\RtlMoveMemory", "Ptr", data.Ptr, "Ptr", source, "UPtr", size)
-        return data
-    }
-
-    ; The only provisioning a service call may trigger: unpack what this EXE
-    ; already contains. No network, no compiler, no CLR.
-    static ExtractPackaged() {
-        if !A_IsCompiled || this.HasOverride()
-            return false
-        if !this.HasPackagedPayload()
-            return false
-        this.writeFailed := false
-        if this.ExtractOnce()
-            return true
-        if this.relocated || !this.writeFailed
-            return false
-
-        ; A read-only install folder is the one recoverable failure.
-        this.report.Push("install folder is not writable, using the per-user folder")
-        this.relocated := true
-        this.targetDir := ""
-        this.PublishPaths()
-        return this.ExtractOnce()
-    }
-
-    static ExtractOnce() {
-        this.WritePackaged(this.AssemblyResource, this.AssemblyFile(), "CapsLockSharp.dll")
-        this.WritePackaged(this.BridgeResource, this.BridgeFile(), "ahk#.bridge.dll")
-        return FileExist(this.AssemblyFile()) && FileExist(this.BridgeFile())
-    }
-
-    static WritePackaged(resource, path, label) {
-        data := this.ReadResource(resource)
-        if data == ""
-            return false
-        return this.WriteIfDifferent(path, data, label " (packaged)")
-    }
-
-    ; Writes only when the bytes differ, so an already loaded bridge DLL is
-    ; never deleted underneath the CLR and a normal start writes nothing.
-    static WriteIfDifferent(path, data, label := "") {
-        try {
-            if FileExist(path) {
-                existing := Sha256File(path)
-                if existing != "" && existing == Sha256BufferHex(data) {
-                    this.report.Push("already present: " path)
-                    return true
-                }
-                FileDelete(path)
-            }
-
-            SplitPath(path, , &dir)
-            if !DirExist(dir)
-                DirCreate(dir)
-
-            file := FileOpen(path, "w", "RAW")
-            file.RawWrite(data, data.Size)
-            file.Close()
-
-            if FileGetSize(path) != data.Size
-                throw Error("written size mismatch")
-
-            this.report.Push("wrote " label ": " path " (" data.Size " bytes)")
-            return true
-        } catch as err {
-            this.writeFailed := true
-            this.report.Push("could not write " path ": " err.Message)
-            return false
-        }
-    }
-
-    ; =======================================================================
-    ; Full provisioning (explicit setup only)
+    ; Provisioning
     ; =======================================================================
 
     ; Makes both runtime files exist without starting the CLR. May build or
@@ -259,15 +141,7 @@ class CSharpRuntime {
             return FileExist(this.AssemblyFile()) && FileExist(this.BridgeFile())
         }
 
-        this.writeFailed := false
         ok := this.Provision()
-        if !ok && this.writeFailed && !this.relocated {
-            this.report.Push("retrying in the per-user folder")
-            this.relocated := true
-            this.targetDir := ""
-            this.PublishPaths()
-            ok := this.Provision()
-        }
 
         if !FileExist(this.AssemblyFile())
             this.report.Push("missing: " this.AssemblyFile())
@@ -279,15 +153,23 @@ class CSharpRuntime {
 
     static Provision() {
         try {
-            ; Repeatable and cheap when the payload is present: only what
-            ; actually differs is written.
-            if this.HasPackagedPayload() {
-                this.WritePackaged(this.AssemblyResource, this.AssemblyFile(), "CapsLockSharp.dll")
-                this.WritePackaged(this.BridgeResource, this.BridgeFile(), "ahk#.bridge.dll")
+            ; Repeatable and cheap when the payload is present: only bytes that
+            ; actually differ are written, and an unwritable install folder
+            ; falls back to the per-user one.
+            if CSharpPayload.HasPayload() {
+                found := CSharpPayload.ExtractTo(this.TargetDir(), this.PerUserDir())
+                for line in CSharpPayload.ReportLines()
+                    this.report.Push(line)
+                if IsObject(found) {
+                    if found[1] != this.AssemblyFile() || found[2] != this.BridgeFile()
+                        this.AdoptPaths(found[1], found[2])
+                }
             } else if A_IsCompiled {
                 this.report.Push("this build carries no packaged C# payload")
             }
 
+            ; An assembly built by scripts\Setup-CSharpBackend.ps1 is already at
+            ; the default path and is found by the checks above.
             if !FileExist(this.AssemblyFile())
                 this.FetchAssembly()
             if !FileExist(this.BridgeFile())
@@ -302,8 +184,6 @@ class CSharpRuntime {
     ; --- assembly ----------------------------------------------------------
 
     static FetchAssembly() {
-        ; An assembly built by scripts\Setup-CSharpBackend.ps1 is already at
-        ; the default path and is found before this runs.
         project := A_ScriptDir "\src\CapsLockSharp\CapsLockSharp.csproj"
         if FileExist(project) && this.BuildAssembly(project)
             return true
@@ -466,7 +346,6 @@ class CSharpRuntime {
             this.report.Push("wrote " label ": " target)
             return true
         } catch as err {
-            this.writeFailed := true
             this.report.Push("could not copy " source ": " err.Message)
             return false
         }
@@ -596,7 +475,7 @@ class CSharpRuntime {
             return Lang("MSG_CSHARP_ACTIVE")
         if this.HaveFiles()
             return Lang("MSG_CSHARP_READY")
-        if this.HasPackagedPayload()
+        if CSharpPayload.HasPayload()
             return Lang("MSG_CSHARP_PACKAGED")
         return Lang("MSG_CSHARP_MISSING")
     }
@@ -658,11 +537,11 @@ class CSharpRuntime {
     ; code is 1 only when a packaged payload failed to work: a pure-AHK build
     ; has nothing to verify and is a valid configuration.
     static Probe() {
-        packaged := this.HasPackagedPayload()
+        packaged := CSharpPayload.HasPayload()
         this.Say("compiled=" (A_IsCompiled ? 1 : 0))
         this.Say("bridge_code=" (Services.HaveBridge() ? 1 : 0))
-        this.Say("packaged_assembly_bytes=" this.ResourceSize(this.AssemblyResource))
-        this.Say("packaged_bridge_bytes=" this.ResourceSize(this.BridgeResource))
+        this.Say("packaged_assembly_bytes=" CSharpPayload.ResourceSize(CSharpPayload.AssemblyResource))
+        this.Say("packaged_bridge_bytes=" CSharpPayload.ResourceSize(CSharpPayload.BridgeResource))
 
         ensured := this.EnsureFiles()
         this.Say("assembly=" this.AssemblyFile())

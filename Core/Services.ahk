@@ -51,6 +51,13 @@ class Services {
         return A_ScriptDir "\lib\ahk#\lib\ahk#.bridge.dll"
     }
 
+    ; Where a packaged payload goes when the install folder will not take it,
+    ; for example an executable under Program Files.
+    static PerUserLibDir() {
+        perUser := EnvGet("LOCALAPPDATA")
+        return (perUser != "" ? perUser : A_Temp) "\CapsLock-\lib"
+    }
+
     static Boot() {
         global CS
         if !this.IsEnabled()
@@ -61,14 +68,22 @@ class Services {
         try {
             if !this.HaveBridge()
                 throw Error("AHK# is not installed")
-            ; A compiled EXE carries the services and the bridge as resources.
-            ; Unpacking them is local disk work only - no network, no compiler
-            ; and still no CLR - and is skipped when an explicit path override
-            ; is in effect. Building or downloading belongs to the one-click
-            ; setup, never to a service call.
-            CSharpRuntime.ExtractPackaged()
             dll := this.assemblyPath ? this.assemblyPath : this.DefaultAssemblyPath()
             bridge := this.bridgePath ? this.bridgePath : this.DefaultBridgePath()
+
+            ; A compiled EXE carries both files as resources. Unpacking them is
+            ; local disk work only - no network, no compiler and still no CLR -
+            ; and is skipped when the caller pinned explicit paths, which the
+            ; headless harnesses do (one of them to a deliberately missing
+            ; file). Building or downloading belongs to the one-click setup,
+            ; never to a service call.
+            if !this.assemblyPath && !this.bridgePath && CSharpPayload.HasPayload() {
+                found := CSharpPayload.ExtractTo(A_ScriptDir "\lib", this.PerUserLibDir())
+                if IsObject(found) {
+                    dll := found[1]
+                    bridge := found[2]
+                }
+            }
             if !FileExist(dll)
                 throw Error("CapsLockSharp.dll not found at " dll)
             if !FileExist(bridge)

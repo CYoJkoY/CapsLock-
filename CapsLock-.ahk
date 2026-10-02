@@ -71,6 +71,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\Zoom.ahk"
 #Include "Core\WindowHole.ahk"
 #Include "Core\Pandoc.ahk"
+#Include "Core\CSharpPayload.ahk"
 #Include "Core\Services.ahk"
 #Include "Core\CSharpRuntime.ahk"
 

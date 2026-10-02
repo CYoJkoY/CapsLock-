@@ -147,6 +147,14 @@ lib\ahk#\lib\ahk#.bridge.dll     the pinned AHK# bridge
 `Services.Boot()` remains the only place that does, on the first service that is
 actually called.
 
+Two halves, because `Services` is also loaded by the headless harnesses, which
+define neither `Lang()` nor `ConfigManager`:
+
+| File | Responsibility |
+| --- | --- |
+| `Core\CSharpPayload.ahk` | read the packaged resources, write them with a SHA-256 compare. No dependency beyond `Utils\Hash.ahk`. |
+| `Core\CSharpRuntime.ahk` | setup, build, download, diagnostics, the Settings Center button. Loaded by `CapsLock-.ahk` only. |
+
 ### 3.1 One click, in the Settings Center
 
 **Settings Center → General → System & Runtime → “Set Up C# Backend”**, next to
@@ -239,11 +247,13 @@ pure AHK. `scripts\ci\Test-CSharpPayload.ps1` reads the resource directory of
 the finished EXE and fails the build when a resource is missing, empty, or a
 different size than the file on disk.
 
-At runtime `CSharpRuntime.ExtractPackaged()` writes both resources next to the
-EXE - into `%LOCALAPPDATA%\CapsLock-\lib` when the install folder is read-only -
+At runtime `CSharpPayload.ExtractTo()` writes both resources next to the EXE -
+into `%LOCALAPPDATA%\CapsLock-\lib` when the install folder is read-only -
 comparing SHA-256 first, so a normal start writes nothing and an already loaded
-bridge is never deleted underneath the CLR. It is called from `Services.Boot()`
-and touches only local disk: no network, no compiler, still no CLR.
+bridge is never deleted underneath the CLR. `Services.Boot()` calls it directly,
+so it touches only local disk: no network, no compiler, still no CLR. Boot skips
+it entirely when a caller pinned `Services.assemblyPath`/`bridgePath`, which the
+harnesses do - one of them to a deliberately missing file.
 
 `Configure`, history loading and ignore-rule preparation never start .NET. Boot
 and JIT costs are paid on the first actual C# request and must be measured

@@ -15,7 +15,7 @@
     generated include is absent, `#Include *i CSharpPayload.ahk` resolves to
     nothing and no directive is seen. Pass -SkipCSharp for that build.
 
-    At runtime Core\CSharpRuntime.ahk extracts the resources next to the EXE
+    At runtime Core\CSharpPayload.ahk extracts the resources next to the EXE
     (or into %LOCALAPPDATA%\CapsLock- when the install folder is read-only) and
     Services.Boot() starts the CLR on the first C# request only.
 

@@ -208,7 +208,7 @@ elseif ((Test-Path -LiteralPath $assembly) -and (Test-Path -LiteralPath $bridgeD
         '; Written by scripts\Setup-CSharpBackend.ps1. These are the only lines that make',
         '; Ahk2Exe embed the C# backend into CapsLock-.exe; CapsLock-.ahk picks the file up',
         '; through `#Include *i CSharpPayload.ahk`. Delete it for a pure-AHK executable.',
-        '; Core\CSharpRuntime.ahk extracts both resources on first use and verifies them.',
+        '; Core\CSharpPayload.ahk extracts both resources on first use and verifies them.',
         ";@Ahk2Exe-AddResource lib\CapsLockSharp.dll, CSHARP_DLL",
         ";@Ahk2Exe-AddResource lib\ahk#\lib\ahk#.bridge.dll, AHK_BRIDGE_DLL",
         ''

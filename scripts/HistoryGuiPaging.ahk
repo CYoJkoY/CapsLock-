@@ -25,8 +25,9 @@
 #Include *i ..\lib\ahk#\lib\ahk#.ahk
 #Include ..\Config\Globals.ahk
 #Include ..\Config\Encryption.ahk
+#Include ..\Utils\Hash.ahk
+#Include ..\Core\CSharpPayload.ahk
 #Include ..\Core\Services.ahk
-#Include ..\Core\CSharpRuntime.ahk
 #Include ..\Core\FileValidation.ahk
 #Include ..\Core\FileOperations.ahk
 #Include ..\History\HistoryStorage.ahk
