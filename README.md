@@ -474,8 +474,10 @@ text/preview search, and batched ignore-rule filtering. History snapshots cross
 once, followed by small deltas; the history GUI formats only visible rows. Hotkeys,
 clipboard ownership, GUIs, native file enumeration and persistence stay in
 AutoHotkey. The default remains pure AHK, with a circuit breaker and real AHK
-fallbacks. Setup, regression checks and the still-unmeasured Windows performance
-tables are in [`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
+fallbacks. On a Windows CI runner the history paths measured 4-80x faster than
+their AHK equivalents and ignore-rule filtering only about 1.2x; desktop and
+whole-process measurements are still outstanding. Setup, regression checks and the
+measurements are in [`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
 
 ### Project status
 
