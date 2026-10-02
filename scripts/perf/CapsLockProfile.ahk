@@ -34,6 +34,10 @@
 ;     -Out <dir>        write results somewhere else
 ;     -History <sizes>  comma separated history sizes, default 1000,10000
 ;     -Files <count>    files per generated directory, default 8
+;     -JsonMax <n>      measure the JSON round trip only up to n history
+;                       entries, default 1000. Utils\Json.ahk grows faster
+;                       than linearly (about 1.2 s per round trip at 1,000
+;                       entries on a GitHub-hosted runner, minutes at 10,000).
 ; ---------------------------------------------------------------------------
 
 #Include *i ..\..\lib\ahk#\lib\ahk#.ahk
@@ -41,6 +45,7 @@
 #Include ..\..\Config\Encryption.ahk
 #Include ..\..\Utils\Json.ahk
 #Include ..\..\History\HistoryStorage.ahk
+#Include ..\..\Core\FileValidation.ahk
 #Include ..\..\Core\FileOperations.ahk
 #Include ..\..\Core\Services.ahk
 
@@ -410,7 +415,7 @@ Say(text) {
 }
 
 FormatRow(label, stats) {
-    return Format("    {1,-36} p50 {2} ms   p95 {3} ms   min {4} ms   max {5} ms   n={6}",
+    return Format("    {1:-36} p50 {2} ms   p95 {3} ms   min {4} ms   max {5} ms   n={6}",
         label, stats["p50_ms"], stats["p95_ms"], stats["min_ms"], stats["max_ms"], stats["n"])
 }
 
@@ -465,6 +470,7 @@ Main() {
     outDir := A_ScriptDir "\results"
     sizes := [1000, 10000]
     filesPerDir := 8
+    jsonMax := 1000
 
     args := A_Args
     i := 1
@@ -487,6 +493,10 @@ Main() {
                 i++
                 if (i <= args.Length)
                     filesPerDir := Integer(args[i])
+            case "-JsonMax":
+                i++
+                if (i <= args.Length)
+                    jsonMax := Integer(args[i])
             default:
         }
         i++
@@ -555,8 +565,13 @@ Main() {
         Say(FormatRow(label, results[label]))
 
         label := "json-roundtrip-" size
-        results[label] := Bench.Measure(WorkloadJsonRoundTrip.Bind(0), 10, 1)
-        Say(FormatRow(label, results[label]))
+        if (size <= jsonMax) {
+            results[label] := Bench.Measure(WorkloadJsonRoundTrip.Bind(0), 10, 1)
+            Say(FormatRow(label, results[label]))
+        } else {
+            results[label] := "skipped: " size " entries is above -JsonMax " jsonMax " (the AHK JSON round trip grows faster than linearly)"
+            Say("    " label " skipped: above -JsonMax " jsonMax)
+        }
 
         Say("")
     }
