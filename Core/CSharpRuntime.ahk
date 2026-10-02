@@ -530,6 +530,12 @@ class CSharpRuntime {
         for line in result["details"]
             this.Say("  " line)
         this.exitCode := result["ok"] ? 0 : 1
+
+        if this.exitCode != 0 {
+            this.Say("FAIL install: " result["message"])
+            for line in result["details"]
+                this.Say("FAIL install: " line)
+        }
         return true
     }
 
@@ -566,6 +572,22 @@ class CSharpRuntime {
         }
 
         this.exitCode := (packaged && !(ensured && verified)) ? 1 : 0
+
+        ; Invoke-Ahk.ps1 turns lines that start with FAIL into CI annotations,
+        ; and annotations are the only part of a run that is readable when the
+        ; job log is not. So the reason has to travel in that shape.
+        if this.exitCode != 0 {
+            this.Say("FAIL packaged payload unusable: files_ok=" (ensured ? 1 : 0)
+                . " managed_call_ok=" (verified ? 1 : 0)
+                . " bridge_code=" (Services.HaveBridge() ? 1 : 0))
+            this.Say("FAIL backend=" Services.backend
+                . " ready=" (Services.ready ? 1 : 0)
+                . " tripped=" (Services.tripped ? 1 : 0)
+                . " reason=" Services.reason)
+            for line in this.ReportLines()
+                this.Say("FAIL provisioning: " line)
+        }
+
         this.Say("probe_exit=" this.exitCode)
         return true
     }

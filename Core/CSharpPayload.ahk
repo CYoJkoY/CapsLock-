@@ -106,7 +106,7 @@ class CSharpPayload {
     ; bridge the CLR has already loaded is never deleted underneath it.
     static WriteResource(resource, path, label) {
         data := this.ReadResource(resource)
-        if data == ""
+        if !IsObject(data)
             return false
 
         try {
@@ -123,7 +123,11 @@ class CSharpPayload {
             if !DirExist(dir)
                 DirCreate(dir)
 
-            file := FileOpen(path, "w", "RAW")
+            ; RawWrite is byte-exact and writes no BOM, which is what the
+            ; history file relies on too (History\HistoryStorage.ahk). "RAW" is
+            ; a read encoding; passing it when writing is not something the
+            ; file object documents.
+            file := FileOpen(path, "w")
             file.RawWrite(data, data.Size)
             file.Close()
 

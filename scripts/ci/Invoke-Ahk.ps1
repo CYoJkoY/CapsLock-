@@ -227,6 +227,19 @@ if ($timedOut -or $badExit -or $badWarnings) {
         Write-Host ('::error::{0}: {1}' -f (ConvertTo-WorkflowData $scriptLabel), (ConvertTo-WorkflowData $line.Trim()))
         $annotated++
     }
+
+    if ($annotated -eq 0) {
+        # Nothing matched those shapes - a compiled EXE reporting its own
+        # failure through a CLI switch, for instance. Annotations are the only
+        # part of a run that stays readable when the job log cannot be
+        # downloaded, so fall back to the tail of stdout rather than reporting
+        # an exit code with no reason attached.
+        $tail = @($stdout -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 } | Select-Object -Last 8)
+        foreach ($line in $tail) {
+            Write-Host ('::error::{0}: {1}' -f (ConvertTo-WorkflowData $scriptLabel), (ConvertTo-WorkflowData $line.Trim()))
+            $annotated++
+        }
+    }
 }
 
 if (-not $exited) {
