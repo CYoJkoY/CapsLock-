@@ -469,11 +469,13 @@ artifacts changes until the measurements in
 That document deliberately carries no results: it is a harness, and the numbers
 have to be produced on real hardware.
 
-Data-heavy services may eventually move behind a C# boundary (AHK#) while every
-hotkey and input path stays in AutoHotkey. The harness for that decision, and the
-baseline tables that have to be filled in before any service migrates, live in
-[`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md). Nothing is enabled
-by default.
+An **optional C# backend (AHK#)** now provides a resident history duplicate index,
+text/preview search, and batched ignore-rule filtering. History snapshots cross
+once, followed by small deltas; the history GUI formats only visible rows. Hotkeys,
+clipboard ownership, GUIs, native file enumeration and persistence stay in
+AutoHotkey. The default remains pure AHK, with a circuit breaker and real AHK
+fallbacks. Setup, regression checks and the still-unmeasured Windows performance
+tables are in [`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
 
 ### Project status
 

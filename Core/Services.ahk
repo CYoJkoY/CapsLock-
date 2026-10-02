@@ -1,268 +1,381 @@
 #Requires AutoHotkey v2.0
 
-; ---------------------------------------------------------------------------
-; The AHK <-> C# service boundary (issue #12).
-;
-; Shape of the boundary
-;
-;   AutoHotkey owns: hotkeys, the clipboard, Send, every GUI, and every path
-;                    that must answer inside a single keystroke.
-;   C# owns:         pure, data-heavy work that allocates and loops a lot --
-;                    the history duplicate scan, ignore-rule matching, text
-;                    normalisation.
-;
-; Nothing here is enabled by default. AppState.ServiceBackend is "ahk" unless
-; someone sets [Services] Backend=csharp in Config.ini, so adding this module
-; changes no behaviour at all.
-;
-; Every crossing is guarded three ways:
-;   1. the backend is only reached when it is explicitly enabled;
-;   2. the first failure opens a circuit breaker that disables C# for the rest
-;      of the process, so a broken bridge costs one exception rather than
-;      degraded performance for the whole session;
-;   3. every call falls back to the AutoHotkey implementation.
-;
-; AHK# is not vendored
-;
-; The library is not committed to this repository: it ships a prebuilt
-; ahk#.bridge.dll, and that is a binary we would have to review and re-pin on
-; every upgrade. Instead the module looks for AHK# on disk and reports
-; "not installed" when it is missing. docs/perf/csharp-boundary.md explains
-; how to drop it in at the pinned commit.
-; ---------------------------------------------------------------------------
-
+; Optional AHK <-> C# boundary. Hotkeys, clipboard ownership, metadata, disk
+; storage and GUIs stay in AHK. The CLR is started only by a requested service,
+; never by Configure(), history loading, or rule preparation at app startup.
+; The first failure disables C# for the session; AHK remains authoritative.
 class Services {
-    ; --- state ---------------------------------------------------------------
-
-    static backend := "ahk"      ; "ahk" (default) or "csharp"
-    static ready := false        ; the CLR is booted and the assembly is loaded
-    static tripped := false      ; circuit breaker: an error already happened
+    static backend := "ahk"
+    static ready := false
+    static tripped := false
     static reason := "not configured"
 
-    static calls := 0            ; C# calls that returned
-    static fallbacks := 0        ; calls that ended up running AutoHotkey
-    static errors := 0           ; calls that threw
+    static calls := 0
+    static fallbacks := 0
+    static errors := 0
+    static historyLoads := 0
+    static historyDeltas := 0
 
-    static assemblyPath := ""    ; override for CapsLockSharp.dll
-    static history := ""         ; CapsLockSharp.HistoryService
-    static ignore := ""          ; CapsLockSharp.IgnoreMatcher
-    static clipboard := ""       ; CapsLockSharp.ClipboardService
+    static assemblyPath := ""
+    static bridgePath := ""
+    static history := ""
+    static historyType := ""
+    static ignore := ""
+    static clipboard := ""
+    static historyRevision := -1
+    static historySource := ""
+    static historyCount := 0
 
-    ; --- configuration --------------------------------------------------------
-
-    ; Reads the configured backend. Call once, after ConfigManager.Load().
     static Configure() {
         value := "ahk"
-
-        try
-            value := StrLower(Trim(String(AppState.ServiceBackend)))
-        catch
+        try value := StrLower(Trim(String(AppState.ServiceBackend)))
+        if value != "csharp"
             value := "ahk"
-
-        if (value != "csharp")
-            value := "ahk"
-
+        if value != this.backend
+            this.InvalidateHistory(value == "ahk")
         this.backend := value
-
-        if (value != "csharp")
-            this.reason := "backend is ahk"
-
-        return this.backend
+        if !this.tripped
+            this.reason := (value == "ahk") ? "backend is ahk" : (this.ready ? "ready" : "waiting for first service call")
+        return value
     }
 
     static IsEnabled() {
-        return (this.backend == "csharp") && !this.tripped
+        return this.backend == "csharp" && !this.tripped
     }
 
-    ; Where the compiled CapsLockSharp.dll is expected to live.
     static DefaultAssemblyPath() {
         return A_ScriptDir "\lib\CapsLockSharp.dll"
     }
 
     static DefaultBridgePath() {
-        return A_ScriptDir "\lib\ahk#\ahk#.bridge.dll"
+        return A_ScriptDir "\lib\ahk#\lib\ahk#.bridge.dll"
     }
 
-    ; --- boot ------------------------------------------------------------------
-
-    ; Boots the CLR and loads the assembly. Safe to call repeatedly.
-    ;
-    ; The first AHK# call costs about 100 ms to start the CLR, which is why
-    ; this never runs during start-up: it happens on the first service call
-    ; that actually asks for the C# backend.
     static Boot() {
         global CS
-
+        if !this.IsEnabled()
+            return false
         if this.ready
             return true
 
-        if this.tripped
-            return false
-
-        if !this.IsEnabled() {
-            this.reason := "backend is ahk"
-            return false
-        }
-
         try {
-            if !this.HaveBridge() {
-                this.reason := "AHK# is not installed"
-                this.tripped := true
-                return false
-            }
-
+            if !this.HaveBridge()
+                throw Error("AHK# is not installed")
             dll := this.assemblyPath ? this.assemblyPath : this.DefaultAssemblyPath()
+            bridge := this.bridgePath ? this.bridgePath : this.DefaultBridgePath()
+            if !FileExist(dll)
+                throw Error("CapsLockSharp.dll not found at " dll)
+            if !FileExist(bridge)
+                throw Error("AHK# bridge DLL not found at " bridge)
 
-            if !FileExist(dll) {
-                this.reason := "CapsLockSharp.dll not found at " dll
-                this.tripped := true
-                return false
-            }
-
-            ; Must happen before the first CS use: AHK# hashes the bridge DLL
-            ; as it loads it, and defaults to looking next to ahk#.ahk.
-            try
-                CS.Config.BridgeDll := this.DefaultBridgePath()
-            catch {
-                ; A HK# build without CS.Config is still usable; it will look
-                ; for the bridge beside ahk#.ahk instead.
-            }
-
+            ; Never ask AHK# to build/download anything on the user's machine.
+            ; Its developer flag would rebuild even an existing bridge DLL.
+            if EnvGet("AHKSHARP_DEV") != ""
+                throw Error("AHKSHARP_DEV runtime builds are not supported by Services")
+            ; Keep its default hash verification enabled.
+            CS.Config.BridgeDll := bridge
+            CS.Config.ShowErrorGui := false
             CS.LoadAssembly(dll)
-
             this.history := CS.CreateObject("CapsLockSharp.HistoryService")
+            this.historyType := CS("CapsLockSharp.HistoryService")
             this.ignore := CS.CreateObject("CapsLockSharp.IgnoreMatcher")
-            this.clipboard := CS.CreateObject("CapsLockSharp.ClipboardService")
-
+            ; Static C# classes are type references, not constructible objects.
+            this.clipboard := CS("CapsLockSharp.ClipboardService")
             this.ready := true
             this.reason := "ready"
             return true
         } catch as err {
-            this.errors++
-            this.tripped := true
-            this.reason := "boot failed: " err.Message
+            this.Trip("boot failed: " err.Message)
             return false
         }
     }
 
-    ; AHK# exposes itself as a global named CS. Referencing an unset global is
-    ; a catchable error, and IsSet answers without throwing.
     static HaveBridge() {
         global CS
-
-        try {
-            if !IsSet(CS)
-                return false
-            return IsObject(CS)
-        } catch {
-            return false
-        }
+        return IsSet(CS) && IsObject(CS)
     }
 
-    ; --- status ----------------------------------------------------------------
+    static Trip(reason) {
+        this.errors++
+        this.tripped := true
+        this.reason := reason
+        this.InvalidateHistory(true)
+    }
 
     static Status() {
         return Map(
-            "backend", this.backend,
-            "ready", this.ready,
-            "tripped", this.tripped,
-            "reason", this.reason,
-            "calls", this.calls,
-            "fallbacks", this.fallbacks,
-            "errors", this.errors
+            "backend", this.backend, "ready", this.ready,
+            "tripped", this.tripped, "reason", this.reason,
+            "calls", this.calls, "fallbacks", this.fallbacks, "errors", this.errors,
+            "history_loads", this.historyLoads, "history_deltas", this.historyDeltas
         )
     }
 
-    ; --- the guarded call --------------------------------------------------------
-
-    ; Runs "csharpFn" when the backend is up, otherwise "ahkFn". Any exception
-    ; trips the breaker and falls back, so a broken bridge cannot wedge the app.
-    ; Both arguments are bound functions, never closures.
     static Dispatch(csharpFn, ahkFn) {
-        if (this.IsEnabled() && this.Boot()) {
+        if this.IsEnabled() && this.Boot() {
             try {
                 result := csharpFn()
                 this.calls++
                 return result
             } catch as err {
-                this.errors++
-                this.tripped := true
-                this.reason := "call failed: " err.Message
+                this.Trip("call failed: " err.Message)
             }
         }
-
         this.fallbacks++
         return ahkFn()
     }
 
-    ; --- ignore matching ----------------------------------------------------------
+    ; Length framing avoids delimiter collisions in multiline clipboard text.
+    ; Both runtimes count UTF-16 code units. Preallocate once for bulk inputs.
+    static PackStrings(values) {
+        total := 0
+        for value in values {
+            length := StrLen(value)
+            total += StrLen(String(length)) + 1 + length
+        }
+        payload := ""
+        VarSetStrCapacity(&payload, total)
+        for value in values
+            payload .= StrLen(value) ":" value
+        return payload
+    }
 
-    ; Rules cross the boundary newline separated, which puts one string on the
-    ; wire instead of an array. The C# side caches the compiled matcher against
-    ; that exact text, so the rules are compiled once, not per path.
-    static IgnoreMatch(path, rulesText) {
+    static UnpackStrings(payload) {
+        values := []
+        offset := 1
+        total := StrLen(payload)
+        while offset <= total {
+            colon := InStr(payload, ":", true, offset)
+            if !colon
+                throw Error("Missing service string length")
+            digits := SubStr(payload, offset, colon - offset)
+            if !(digits ~= "^[0-9]+$")
+                throw Error("Invalid service string length")
+            length := Integer(digits)
+            offset := colon + 1
+            if length > total - offset + 1
+                throw Error("Truncated service string payload")
+            values.Push(SubStr(payload, offset, length))
+            offset += length
+        }
+        return values
+    }
+
+    static InvalidateHistory(discard := false) {
+        this.historyRevision := -1
+        this.historySource := ""
+        this.historyCount := 0
+        if discard
+            this.history := ""  ; let obsolete managed text become collectible
+    }
+
+    static SyncHistory() {
+        if this.historyRevision == HistoryManager.revision
+            && this.historySource == AppState.History
+            && this.historyCount == AppState.History.Length
+            return
+
+        ; Prevent a clipboard/timer mutation halfway through the one-time
+        ; snapshot. No worker callbacks, Send, or GUI work runs in this section.
+        wasCritical := A_IsCritical
+        Critical("On")
+        try {
+            if !IsObject(this.history)
+                this.history := this.historyType.Call()
+            texts := []
+            for item in AppState.History
+                texts.Push(item["text"])
+            this.history.LoadSnapshot(this.PackStrings(texts))
+            this.historyRevision := HistoryManager.revision
+            this.historySource := AppState.History
+            this.historyCount := AppState.History.Length
+            this.historyLoads++
+            this.calls++
+        } finally {
+            Critical(wasCritical)
+        }
+    }
+
+    static HistoryFindDuplicate(candidate) {
+        if !this.IsEnabled() {
+            this.fallbacks++
+            return ServicesHistoryFindDuplicateResidentAhk(candidate)
+        }
         return this.Dispatch(
-            ServicesIgnoreMatchCSharp.Bind(path, rulesText),
-            ServicesIgnoreMatchAhk.Bind(path, rulesText)
+            ServicesHistoryFindDuplicateCSharp.Bind(candidate),
+            ServicesHistoryFindDuplicateResidentAhk.Bind(candidate)
         )
     }
 
-    ; --- history duplicate scan -----------------------------------------------------
-
-    ; Returns the 1-based index of an existing identical entry, or 0 -- the
-    ; shape HistoryManager.Add wants.
-    static HistoryFindDuplicate(texts, candidate) {
-        return this.Dispatch(
-            ServicesHistoryFindDuplicateCSharp.Bind(texts, candidate),
-            ServicesHistoryFindDuplicateAhk.Bind(texts, candidate)
-        )
+    static HistorySearch(query) {
+        ; An unfiltered page needs no managed scan or all-indices COM transfer.
+        if query == "" {
+            indices := []
+            loop AppState.History.Length
+                indices.Push(A_Index)
+            return indices
+        }
+        if !this.IsEnabled() {
+            this.fallbacks++
+            return ServicesHistorySearchAhk(query)
+        }
+        return this.Dispatch(ServicesHistorySearchCSharp.Bind(query), ServicesHistorySearchAhk.Bind(query))
     }
 
-    ; --- clipboard text --------------------------------------------------------------
+    ; Notifications run only for an already resident, up-to-date index. They
+    ; never boot the CLR. If the backend was disabled during an edit, the next
+    ; query rebuilds once from authoritative AHK data instead of replaying it.
+    static CanUpdateHistory(previousRevision) {
+        if this.IsEnabled() && this.ready && this.historyRevision == previousRevision
+            && this.historySource == AppState.History
+            return true
+        this.InvalidateHistory(true)
+        return false
+    }
+
+    static HistoryAdded(text, duplicateIndex, max, previousRevision) {
+        if this.CanUpdateHistory(previousRevision)
+            this.ApplyHistoryDelta(ServicesHistoryAddedCSharp.Bind(text, duplicateIndex, max))
+    }
+
+    static HistoryDeleted(index, previousRevision) {
+        if this.CanUpdateHistory(previousRevision)
+            this.ApplyHistoryDelta(ServicesHistoryDeletedCSharp.Bind(index))
+    }
+
+    static HistoryTrimmed(max, previousRevision) {
+        if this.CanUpdateHistory(previousRevision)
+            this.ApplyHistoryDelta(ServicesHistoryTrimmedCSharp.Bind(max))
+    }
+
+    static ApplyHistoryDelta(fn) {
+        try {
+            count := Integer(fn())
+            if count != AppState.History.Length
+                throw Error("Resident history count mismatch")
+            this.historyRevision := HistoryManager.revision
+            this.historyCount := count
+            this.historyDeltas++
+            this.calls++
+        } catch as err {
+            ; AHK has already committed the edit. Never apply it a second time.
+            this.Trip("history delta failed: " err.Message)
+        }
+    }
+
+    static IgnoreMatch(path) {
+        return this.Dispatch(ServicesIgnoreMatchCSharp.Bind(path), ServicesIgnoreMatchAhk.Bind(path))
+    }
+
+    static FilterFilePaths(paths) {
+        return this.Dispatch(ServicesFilterFilePathsCSharp.Bind(paths), ServicesFilterFilePathsAhk.Bind(paths))
+    }
 
     static LooksLikeFilePathList(text) {
         return this.Dispatch(
-            ServicesLooksLikeFilePathListCSharp.Bind(text),
-            ServicesLooksLikeFilePathListAhk.Bind(text)
+            ServicesLooksLikeFilePathListCSharp.Bind(text), ServicesLooksLikeFilePathListAhk.Bind(text)
         )
     }
 }
 
-; ---------------------------------------------------------------------------
-; Backend halves.
-;
-; These are global functions rather than static methods so they can be handed
-; to Services.Dispatch through .Bind() without depending on how AutoHotkey
-; binds "this" for a static method, which is the one detail of the object
-; model that is easy to get wrong and unpleasant to debug.
-; ---------------------------------------------------------------------------
-
-ServicesIgnoreMatchCSharp(path, rulesText) {
-    return Services.ignore.IsMatch(rulesText, path) ? true : false
+ServicesHistoryFindDuplicateCSharp(candidate) {
+    Services.SyncHistory()
+    index := Integer(Services.history.FindDuplicate(candidate))
+    if index < -1 || index >= AppState.History.Length
+        throw Error("Invalid resident duplicate index")
+    if index >= 0 && !(AppState.History[index + 1]["text"] == candidate)
+        throw Error("Resident duplicate text mismatch")
+    return index + 1
 }
 
-ServicesIgnoreMatchAhk(path, rulesText) {
-    ; No local reimplementation on purpose. FileHelper.ShouldIgnore stays the
-    ; single AutoHotkey source of truth; this fallback is only reached when the
-    ; C# backend is enabled but unavailable, and in that case the caller's own
-    ; AutoHotkey path has already been bypassed, so the honest answer is to
-    ; match nothing and let the caller keep its previous behaviour.
-    return false
-}
-
-ServicesHistoryFindDuplicateCSharp(texts, candidate) {
-    index := Services.history.FindDuplicateIndex(texts, candidate)
-    return Integer(index) + 1
-}
-
-ServicesHistoryFindDuplicateAhk(texts, candidate) {
-    i := texts.Length
-    while (i > 0) {
-        if (texts[i] == candidate)
+ServicesHistoryFindDuplicateResidentAhk(candidate) {
+    i := AppState.History.Length
+    while i > 0 {
+        if AppState.History[i]["text"] == candidate
             return i
         i--
     }
     return 0
+}
+
+; Retained for the stateless/naive benchmark, not used by HistoryManager.Add.
+ServicesHistoryFindDuplicateAhk(texts, candidate) {
+    i := texts.Length
+    while i > 0 {
+        if texts[i] == candidate
+            return i
+        i--
+    }
+    return 0
+}
+
+ServicesHistoryAddedCSharp(text, duplicateIndex, max) {
+    return Services.history.ApplyAdd(text, duplicateIndex - 1, max)
+}
+
+ServicesHistoryDeletedCSharp(index) {
+    return Services.history.DeleteAt(index - 1)
+}
+
+ServicesHistoryTrimmedCSharp(max) {
+    return Services.history.TrimTo(max)
+}
+
+ServicesHistorySearchCSharp(query) {
+    Services.SyncHistory()
+    result := Services.history.SearchIndices(query)
+    indices := []
+    previous := 0
+    if result == ""
+        return indices
+    for value in StrSplit(result, ",") {
+        if !(value ~= "^[0-9]+$")
+            throw Error("Invalid resident search index")
+        index := Integer(value) + 1
+        if index <= previous || index > AppState.History.Length
+            throw Error("Resident search indices are out of order/range")
+        indices.Push(index)
+        previous := index
+    }
+    return indices
+}
+
+ServicesHistorySearchAhk(query) {
+    indices := []
+    for index, item in AppState.History {
+        text := item["text"]
+        if query == "" || InStr(text, query) || InStr(ServicesHistoryPreviewAhk(text), query)
+            indices.Push(index)
+    }
+    return indices
+}
+
+ServicesHistoryPreviewAhk(text) {
+    display := RegExReplace(SubStr(text, 1, 80), "[\r\n\t\v\f]+", " ")
+    return display . (StrLen(text) > 80 ? "…" : "")
+}
+
+ServicesIgnoreMatchCSharp(path) {
+    rules := FileHelper.ServiceRules()
+    return Services.ignore.IsMatch(rules[1], rules[2], path) ? true : false
+}
+
+ServicesIgnoreMatchAhk(path) {
+    return FileHelper.ShouldIgnoreAhk(path)
+}
+
+ServicesFilterFilePathsCSharp(paths) {
+    rules := FileHelper.ServiceRules()
+    result := Services.ignore.FilterPaths(rules[1], rules[2], Services.PackStrings(paths))
+    return Services.UnpackStrings(result)
+}
+
+ServicesFilterFilePathsAhk(paths) {
+    kept := []
+    for path in paths
+        if !FileHelper.ShouldIgnoreAhk(path)
+            kept.Push(path)
+    return kept
 }
 
 ServicesLooksLikeFilePathListCSharp(text) {
@@ -270,11 +383,8 @@ ServicesLooksLikeFilePathListCSharp(text) {
 }
 
 ServicesLooksLikeFilePathListAhk(text) {
-    if (text == "")
+    if text == "" || !InStr(text, "`n")
         return false
-    if !InStr(text, "`n")
-        return false
-
     first := StrSplit(text, "`n", "`r")[1]
     return FileExist(first) ? true : false
 }

@@ -1,4 +1,4 @@
-name: Build .NET services
+name: Build and test .NET services
 
 on:
   push:
@@ -6,10 +6,30 @@ on:
       - main
     paths:
       - 'src/CapsLockSharp/**'
+      - 'tests/CapsLockSharp.Tests/**'
+      - 'Core/Services.ahk'
+      - 'Core/FileOperations.ahk'
+      - 'History/**'
+      - 'Config/**'
+      - 'Tray/TraySettings.ahk'
+      - 'UI/SettingsGui.ahk'
+      - 'Utils/MethodsUtils.ahk'
+      - 'CapsLock-.ahk'
+      - 'scripts/perf/**'
       - '.github/workflows/dotnet.yml'
   pull_request:
     paths:
       - 'src/CapsLockSharp/**'
+      - 'tests/CapsLockSharp.Tests/**'
+      - 'Core/Services.ahk'
+      - 'Core/FileOperations.ahk'
+      - 'History/**'
+      - 'Config/**'
+      - 'Tray/TraySettings.ahk'
+      - 'UI/SettingsGui.ahk'
+      - 'Utils/MethodsUtils.ahk'
+      - 'CapsLock-.ahk'
+      - 'scripts/perf/**'
       - '.github/workflows/dotnet.yml'
   workflow_dispatch:
 
@@ -18,7 +38,7 @@ permissions:
 
 jobs:
   build:
-    name: Build CapsLockSharp (netstandard2.0, AnyCPU)
+    name: Build and verify optional C# backend (netstandard2.0, AnyCPU)
     runs-on: windows-latest
     timeout-minutes: 15
 
@@ -31,23 +51,45 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build
+      - name: Build precompiled services
         shell: pwsh
-        run: dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o build\dotnet --nologo
+        run: dotnet build src\CapsLockSharp\CapsLockSharp.csproj -c Release -o lib --nologo
 
-      - name: Report what was produced
+      - name: Managed regression tests
+        shell: pwsh
+        run: dotnet run --project tests\CapsLockSharp.Tests -c Release -- --benchmark
+
+      - name: Install AutoHotkey
+        uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
+        with:
+          version: '2.0.28'
+
+      - name: Verify pure AHK and missing-backend fallback
         shell: pwsh
         run: |
-          if (-not (Test-Path -LiteralPath 'build\dotnet\CapsLockSharp.dll')) {
-            throw 'CapsLockSharp.dll was not produced.'
+          & .\autohotkey\AutoHotkey64.exe /ErrorStdOut .\scripts\perf\ServiceEquivalence.ahk
+          if ($LASTEXITCODE -ne 0) { throw 'AHK fallback regression failed.' }
+
+      - name: Checkout AHKSharp bridge (pinned, test dependency only)
+        uses: actions/checkout@v4
+        with:
+          repository: owhs/AHKSharp
+          ref: e3b895c7590eba47748b0ed963b7978c237d1daf
+          path: lib/ahk#
+
+      - name: Verify real AHK-to-C# boundary (x64 and x86)
+        shell: pwsh
+        run: |
+          foreach ($exe in @('AutoHotkey64.exe', 'AutoHotkey32.exe')) {
+            & ".\autohotkey\$exe" /ErrorStdOut /Validate .\CapsLock-.ahk
+            if ($LASTEXITCODE -ne 0) { throw "Application validation failed: $exe" }
+            & ".\autohotkey\$exe" /ErrorStdOut .\scripts\perf\ServiceEquivalence.ahk -CSharp
+            if ($LASTEXITCODE -ne 0) { throw "C# service equivalence failed: $exe" }
           }
-          Get-Item build\dotnet\CapsLockSharp.dll |
-            Select-Object Name, Length, LastWriteTimeUtc |
-            Format-List
 
       - name: Upload the assembly
         uses: actions/upload-artifact@v4
         with:
           name: CapsLockSharp-netstandard2.0
-          path: build\dotnet\CapsLockSharp.dll
+          path: lib\CapsLockSharp.dll
           if-no-files-found: error

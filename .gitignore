@@ -1,3 +1,9 @@
 **/configs/
 *.lang
 CapsLock-.exe
+**/bin/
+**/obj/
+/lib/
+/build/
+/build-ahkcompiler/
+/scripts/perf/results/

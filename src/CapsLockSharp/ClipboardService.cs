@@ -6,7 +6,7 @@ namespace CapsLockSharp
 {
     /// <summary>
     /// Candidate C# implementation of the pure part of the clipboard service.
-    /// Mirrors the file-path-list test inside <c>ClipboardHandler.CopyAsPlainText</c>
+    /// Mirrors the file-path-list test inside <c>ClipboardHelper.CopyAsPlainText</c>
     /// in Core/Clipboard.ahk.
     /// </summary>
     /// <remarks>
@@ -37,7 +37,7 @@ namespace CapsLockSharp
             if (newline < 0)
                 return false;
 
-            string first = text.Substring(0, newline).TrimEnd('\r');
+            string first = text.Substring(0, newline).Trim('\r');
             if (first.Length == 0)
                 return false;
 
@@ -60,23 +60,40 @@ namespace CapsLockSharp
         }
 
         /// <summary>
-        /// Normalises line endings to CRLF and trims trailing whitespace, which
-        /// is what the history menu shows and what a pasted fragment needs.
+        /// Explicitly normalises line endings to CRLF and trims trailing spaces
+        /// and tabs per line. Clipboard/history contents are NOT automatically
+        /// passed through this helper; original text stays unchanged.
         /// </summary>
         public static string NormalizeText(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
 
-            string normalized = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "\r\n");
+            // A single pass avoids three whole-string replacements and a Split.
+            // Keep separators: the previous implementation joined every line
+            // together, silently changing the contents of multiline clips.
+            var sb = new StringBuilder(text.Length);
+            int start = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != '\r' && text[i] != '\n')
+                    continue;
 
-            var lines = normalized.Split(new[] { "\r\n" }, StringSplitOptions.None);
-            var sb = new StringBuilder(normalized.Length);
-
-            for (int i = 0; i < lines.Length; i++)
-                sb.Append(lines[i].TrimEnd(' ', '\t'));
-
+                AppendTrimmedLine(sb, text, start, i);
+                sb.Append("\r\n");
+                if (text[i] == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+                    i++;
+                start = i + 1;
+            }
+            AppendTrimmedLine(sb, text, start, text.Length);
             return sb.ToString();
+        }
+
+        private static void AppendTrimmedLine(StringBuilder sb, string text, int start, int end)
+        {
+            while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t'))
+                end--;
+            sb.Append(text, start, end - start);
         }
 
         /// <summary>

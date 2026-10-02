@@ -68,10 +68,5 @@ AutoCleanHistory() {
     if (maxItems <= 0)
         return
 
-    if (AppState.History.Length > maxItems) {
-        while (AppState.History.Length > maxItems)
-            AppState.History.Pop()
-
-        HistoryManager.ScheduleSave()
-    }
+    HistoryManager.Trim(maxItems)
 }

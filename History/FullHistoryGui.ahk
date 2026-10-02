@@ -139,31 +139,19 @@ RefreshFullHistoryList(isIncremental := false) {
 
     needRebuild := !isIncremental
         || !myGui.HasProp("cachedMatching")
-        || (myGui.HasProp("lastFilter") && myGui.lastFilter != filter)
+        || (myGui.HasProp("lastFilter") && !(myGui.lastFilter == filter))
+        || !myGui.HasProp("lastHistoryRevision")
+        || myGui.lastHistoryRevision != HistoryManager.revision
 
     if needRebuild {
-        matching := []
-
-        ; Pre-calculate filter once, outside the loop
-        hasFilter := filter != ""
-
-        for i, item in AppState.History {
-            rawText := item["text"]
-            ; Cache the raw text for filter comparison
-            display := RegExReplace(SubStr(rawText, 1, 80), "[\r\n\t\v\f]+", " ")
-            if StrLen(rawText) > 80
-                display .= "…"
-
-            timeShort := SubStr(item["time"], 12, 5)
-
-            if hasFilter && !InStr(display, filter) && !InStr(rawText, filter)
-                continue
-
-            matching.Push({ index: i, display: display, time: timeShort })
-        }
+        ; Cache only matching indices. Text search can run on the resident C#
+        ; snapshot; AHK previews/time strings are built only for visible rows,
+        ; not for every entry on every keystroke.
+        matching := Services.HistorySearch(filter)
 
         myGui.cachedMatching := matching
         myGui.lastFilter := filter
+        myGui.lastHistoryRevision := HistoryManager.revision
         myGui.displayedCount := 0
 
         SendMessage(0x000B, 0, 0, lv.Hwnd)
@@ -181,8 +169,9 @@ RefreshFullHistoryList(isIncremental := false) {
 
     if startIdx <= endIdx {
         Loop endIdx - startIdx + 1 {
-            entry := matching[startIdx + A_Index - 1]
-            lv.Add(, entry.index, entry.display, entry.time)
+            index := matching[startIdx + A_Index - 1]
+            item := AppState.History[index]
+            lv.Add(, index, ServicesHistoryPreviewAhk(item["text"]), SubStr(item["time"], 12, 5))
         }
         myGui.displayedCount := endIdx
     }

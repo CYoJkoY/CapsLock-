@@ -1,225 +1,142 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace CapsLockSharp
 {
     /// <summary>
-    /// Candidate C# implementation of the ignore-rule matcher. Mirrors
-    /// <c>FileHelper.BuildIgnoreRegexes</c> and <c>FileHelper.ShouldIgnore</c>
-    /// in Core/FileOperations.ahk.
+    /// Batched ignore matching. AHK supplies its already converted regexes,
+    /// rather than maintaining a second, subtly different gitignore parser.
+    /// Simple globs still use PathMatchSpecW, preserving Windows semantics
+    /// (including semicolon alternatives and extensionless '*.*' matches).
     /// </summary>
-    /// <remarks>
-    /// The AHK version keeps two buckets: simple globs answered by the native
-    /// <c>PathMatchSpecW</c>, and gitignore-style patterns converted to regex.
-    /// This port keeps the same split, but answers both from compiled .NET
-    /// Regex objects instead of one DllCall per pattern per path.
-    ///
-    /// The compiled matchers are cached against the exact rule set, so the
-    /// caller pays for compilation once, not per path. The cache key is the
-    /// joined rule text; a different rule set simply compiles a new matcher.
-    /// </remarks>
-    public static class IgnoreMatcher
+    public sealed class IgnoreMatcher
     {
         private sealed class Compiled
         {
-            public Regex[] Simple;
-            public Regex[] Complex;
+            internal string[] Simple;
+            internal Regex[] Complex;
         }
 
-        private static readonly object Sync = new object();
-        private static readonly Dictionary<string, Compiled> Cache =
-            new Dictionary<string, Compiled>(StringComparer.Ordinal);
+        private readonly object sync = new object();
+        private string simpleKey;
+        private string regexKey;
+        private Compiled cached;
 
-        /// <summary>Rules are passed newline separated, in file order.</summary>
-        public static bool IsMatch(string rules, string path)
+        [DllImport("shlwapi.dll", EntryPoint = "PathMatchSpecW", CharSet = CharSet.Unicode,
+            ExactSpelling = true)]
+        private static extern int PathMatchSpec(string path, string pattern);
+
+        /// <summary>Three scalar strings use the bridge's fast call path.</summary>
+        public bool IsMatch(string simpleRules, string regexRules, string path)
         {
-            if (string.IsNullOrEmpty(rules) || string.IsNullOrEmpty(path))
+            return IsMatch(GetCompiled(simpleRules, regexRules), path);
+        }
+
+        /// <summary>
+        /// One transfer in and one out, in the same order as AHK's native file
+        /// enumeration. Do not prune directories: the existing AHK matcher
+        /// filters files, and a directory-name glob need not match its children.
+        /// </summary>
+        public string FilterPaths(string simpleRules, string regexRules, string paths)
+        {
+            Compiled compiled = GetCompiled(simpleRules, regexRules);
+            string[] candidates = StringWire.Unpack(paths);
+            var kept = new List<string>(candidates.Length);
+            foreach (string path in candidates)
+                if (!IsMatch(compiled, path))
+                    kept.Add(path);
+            return StringWire.Pack(kept);
+        }
+
+        public void Invalidate()
+        {
+            lock (sync)
+            {
+                cached = null;
+                simpleKey = null;
+                regexKey = null;
+            }
+        }
+
+        /// <summary>At most one rule set is retained, even after many edits.</summary>
+        public int CacheCount
+        {
+            get { lock (sync) { return cached == null ? 0 : 1; } }
+        }
+
+        private Compiled GetCompiled(string simpleRules, string regexRules)
+        {
+            lock (sync)
+            {
+                if (cached != null && string.Equals(simpleKey, simpleRules, StringComparison.Ordinal)
+                    && string.Equals(regexKey, regexRules, StringComparison.Ordinal))
+                    return cached;
+
+                string[] simple = StringWire.Unpack(simpleRules);
+                string[] patterns = StringWire.Unpack(regexRules);
+                var regexes = new Regex[patterns.Length];
+                for (int i = 0; i < patterns.Length; i++)
+                {
+                    // AHK's complex regexes are case-sensitive. Only its
+                    // PathMatchSpecW bucket is case-insensitive.
+                    regexes[i] = new Regex(patterns[i], RegexOptions.Compiled | RegexOptions.CultureInvariant,
+                        TimeSpan.FromMilliseconds(250));
+                }
+
+                // Publish only after every rule has compiled successfully.
+                cached = new Compiled { Simple = simple, Complex = regexes };
+                simpleKey = simpleRules;
+                regexKey = regexRules;
+                return cached;
+            }
+        }
+
+        private static bool IsMatch(Compiled compiled, string path)
+        {
+            if (path == null)
                 return false;
 
-            Compiled compiled = GetCompiled(rules);
-            if (compiled == null)
-                return false;
-
-            string normalized = path.Replace('\\', '/');
-            while (normalized.EndsWith("/", StringComparison.Ordinal))
-                normalized = normalized.Substring(0, normalized.Length - 1);
-
-            string fileName = normalized;
-            int slash = normalized.LastIndexOf('/');
-            if (slash >= 0 && slash < normalized.Length - 1)
-                fileName = normalized.Substring(slash + 1);
-
-            for (int i = 0; i < compiled.Simple.Length; i++)
+            string normalized = path.Replace('\\', '/').TrimEnd('/');
+            if (compiled.Simple.Length != 0)
             {
-                if (compiled.Simple[i].IsMatch(normalized))
-                    return true;
-                if (fileName.Length > 0 && compiled.Simple[i].IsMatch(fileName))
-                    return true;
+                string fileName = FileNameLikeAhk(path);
+                foreach (string pattern in compiled.Simple)
+                    if (PathMatchSpec(normalized, pattern) != 0 || PathMatchSpec(fileName, pattern) != 0)
+                        return true;
             }
-
-            for (int i = 0; i < compiled.Complex.Length; i++)
-            {
-                if (compiled.Complex[i].IsMatch(normalized))
+            foreach (Regex regex in compiled.Complex)
+                if (regex.IsMatch(normalized))
                     return true;
-            }
-
             return false;
         }
 
-        /// <summary>Drops the cache. Call after the rule set changes.</summary>
-        public static void Invalidate()
+        // Mirror SplitPath, not Path.GetFileName. In particular, non-URL paths
+        // split on the last backslash (or colon if there is no backslash), not
+        // on forward slashes. This quirk is part of the existing AHK behavior.
+        private static string FileNameLikeAhk(string path)
         {
-            lock (Sync)
+            int url = path.IndexOf("://", StringComparison.Ordinal);
+            int delimiter;
+            if (url >= 0)
             {
-                Cache.Clear();
+                int driveEnd = path.IndexOf('/', url + 3);
+                if (driveEnd < 0)
+                    driveEnd = path.IndexOf('\\', url + 3);
+                if (driveEnd < 0 || driveEnd + 1 == path.Length)
+                    return string.Empty;
+                delimiter = path.LastIndexOf('/');
+                if (delimiter == url + 2)
+                    delimiter = path.LastIndexOf('\\');
             }
-        }
-
-        /// <summary>Number of cached rule sets, for the leak checks.</summary>
-        public static int CacheCount
-        {
-            get
+            else
             {
-                lock (Sync)
-                {
-                    return Cache.Count;
-                }
+                delimiter = path.LastIndexOf('\\');
+                if (delimiter < 0)
+                    delimiter = path.LastIndexOf(':');
             }
-        }
-
-        private static Compiled GetCompiled(string rules)
-        {
-            lock (Sync)
-            {
-                Compiled found;
-                if (Cache.TryGetValue(rules, out found))
-                    return found;
-
-                var simple = new List<Regex>();
-                var complex = new List<Regex>();
-
-                string[] lines = rules.Split('\n');
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    string pattern = lines[i].Trim().TrimEnd('\r');
-                    if (pattern.Length == 0)
-                        continue;
-                    if (pattern[0] == '#' || pattern[0] == '!')
-                        continue;
-
-                    if (pattern.Contains("**") || pattern.Contains("?"))
-                    {
-                        string regex = GitignoreToRegex(pattern);
-                        if (regex.Length > 0)
-                            complex.Add(new Regex(regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
-                    }
-                    else
-                    {
-                        string regex = GlobToRegex(pattern);
-                        if (regex.Length > 0)
-                            simple.Add(new Regex(regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
-                    }
-                }
-
-                var compiled = new Compiled
-                {
-                    Simple = simple.ToArray(),
-                    Complex = complex.ToArray()
-                };
-
-                Cache[rules] = compiled;
-                return compiled;
-            }
-        }
-
-        /// <summary>
-        /// Translates one gitignore-style pattern, following the conversion
-        /// rules documented in FileHelper._GitignoreToRegex.
-        /// </summary>
-        private static string GitignoreToRegex(string pattern)
-        {
-            var sb = new StringBuilder();
-            sb.Append('^');
-
-            int i = 0;
-            while (i < pattern.Length)
-            {
-                if (pattern[i] == '*')
-                {
-                    if (i + 1 < pattern.Length && pattern[i + 1] == '*')
-                    {
-                        i += 2;
-
-                        if (i < pattern.Length && pattern[i] == '/')
-                        {
-                            // "**/" -> optional leading directories
-                            sb.Append("(?:.*[/])?");
-                            i++;
-                        }
-                        else
-                        {
-                            // "/**" -> optional trailing subpath
-                            sb.Append("(?:[/].*)?");
-                        }
-                    }
-                    else
-                    {
-                        // "*" -> anything but a path separator
-                        sb.Append("[^/]*");
-                        i++;
-                    }
-                    continue;
-                }
-
-                if (pattern[i] == '?')
-                {
-                    sb.Append("[^/]");
-                    i++;
-                    continue;
-                }
-
-                if (pattern[i] == '/')
-                {
-                    sb.Append("[/]");
-                    i++;
-                    continue;
-                }
-
-                sb.Append(Regex.Escape(pattern[i].ToString()));
-                i++;
-            }
-
-            sb.Append('$');
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Translates a simple glob such as "*.tmp" to an anchored regex. The
-        /// AHK version hands these to PathMatchSpecW instead.
-        /// </summary>
-        private static string GlobToRegex(string pattern)
-        {
-            var sb = new StringBuilder();
-            sb.Append('^');
-
-            for (int i = 0; i < pattern.Length; i++)
-            {
-                char c = pattern[i];
-
-                if (c == '*')
-                    sb.Append("[^/]*");
-                else if (c == '?')
-                    sb.Append("[^/]");
-                else if (c == '/' || c == '\\')
-                    sb.Append("[/]");
-                else
-                    sb.Append(Regex.Escape(c.ToString()));
-            }
-
-            sb.Append('$');
-            return sb.ToString();
+            return path.Substring(delimiter + 1);
         }
     }
 }

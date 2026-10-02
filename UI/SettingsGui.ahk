@@ -959,6 +959,7 @@ class SettingsGui {
 
         if c.Has("serviceBackend") {
             AppState.ServiceBackend := (c["serviceBackend"].Value == 2) ? "csharp" : "ahk"
+            Services.Configure()
         }
 
         ; --- 2. Clipboard & History ---
@@ -969,8 +970,7 @@ class SettingsGui {
         if c.Has("maxHistory") && IsNumber(c["maxHistory"].Value) {
             newMax := Max(0, Integer(c["maxHistory"].Value))
             AppState.MaxHistory := newMax
-            while AppState.History.Length > AppState.MaxHistory
-                AppState.History.Pop()
+            HistoryManager.Trim(AppState.MaxHistory)
             HistoryManager.ForceSave()
         }
 
