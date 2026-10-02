@@ -16,6 +16,7 @@ on:
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
       - 'scripts/perf/**'
+      - 'scripts/ci/**'
       - '.github/workflows/dotnet.yml'
   pull_request:
     paths:
@@ -30,6 +31,7 @@ on:
       - 'Utils/MethodsUtils.ahk'
       - 'CapsLock-.ahk'
       - 'scripts/perf/**'
+      - 'scripts/ci/**'
       - '.github/workflows/dotnet.yml'
   workflow_dispatch:
 
@@ -64,11 +66,14 @@ jobs:
         with:
           version: '2.0.28'
 
-      - name: Verify pure AHK and missing-backend fallback
+      # AutoHotkey is a GUI-subsystem program: PowerShell neither waits for it
+      # nor sets $LASTEXITCODE, so every AHK step goes through the wrapper.
+      - name: Verify pure AHK and missing-backend fallback (x64 and x86)
         shell: pwsh
         run: |
-          & .\autohotkey\AutoHotkey64.exe /ErrorStdOut .\scripts\perf\ServiceEquivalence.ahk
-          if ($LASTEXITCODE -ne 0) { throw 'AHK fallback regression failed.' }
+          foreach ($arch in 'x64', 'x86') {
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -Architecture $arch
+          }
 
       - name: Checkout AHKSharp bridge (pinned, test dependency only)
         uses: actions/checkout@v4
@@ -80,11 +85,9 @@ jobs:
       - name: Verify real AHK-to-C# boundary (x64 and x86)
         shell: pwsh
         run: |
-          foreach ($exe in @('AutoHotkey64.exe', 'AutoHotkey32.exe')) {
-            & ".\autohotkey\$exe" /ErrorStdOut /Validate .\CapsLock-.ahk
-            if ($LASTEXITCODE -ne 0) { throw "Application validation failed: $exe" }
-            & ".\autohotkey\$exe" /ErrorStdOut .\scripts\perf\ServiceEquivalence.ahk -CSharp
-            if ($LASTEXITCODE -ne 0) { throw "C# service equivalence failed: $exe" }
+          foreach ($arch in 'x64', 'x86') {
+            .\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate -Architecture $arch
+            .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture $arch
           }
 
       - name: Upload the assembly
