@@ -4,7 +4,7 @@
 ; Exercise history search, preview normalization, and incremental page bounds
 ; without constructing a native window.
 #Include "..\Config\Globals.ahk"
-#Include "..\History\FullHistoryGui.ahk"
+#Include "..\History\HistoryQueries.ahk"
 
 AppState.History := []
 Loop 120 {
