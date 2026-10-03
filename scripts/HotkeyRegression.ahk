@@ -474,6 +474,7 @@ CheckPinIndicatorRegressions(root) {
 
 CheckThemeTokenArchitecture(root) {
     themeText := ReadText(root "\UI\Theme.ahk")
+    helperText := ReadText(root "\UI\ThemeHelper.ahk")
     settingsText := ReadText(root "\UI\SettingsGui.ahk")
     stateText := ReadText(root "\Config\Globals.ahk")
 
@@ -485,8 +486,9 @@ CheckThemeTokenArchitecture(root) {
     )
     Check(
         InStr(settingsText, "ThemeHelper.AddSurfaceCard") > 0
-            && InStr(settingsText, "nav-active") > 0,
-        "settings pages use shared surface and navigation components"
+            && InStr(settingsText, "nav-active") > 0
+            && InStr(helperText, "CreateRoundRectRgn") > 0,
+        "settings pages use shared rounded surfaces and navigation components"
     )
     Check(
         InStr(stateText, "THEME_") == 0,

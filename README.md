@@ -276,7 +276,7 @@ Two interface themes ship with the application and are selectable from the tray 
 | Dark  | Neutral charcoal canvas, layered graphite surfaces, and soft blue tonal selection/action states. |
 | Light | Cool off-white canvas, white cards, subtle gray outlines, and restrained blue emphasis. |
 
-The interface follows Material 3 principles rather than using the four Google brand colors as decoration: neutral surface roles establish hierarchy, blue marks primary emphasis and active/focus states, while red/green/amber are limited to semantic status. Rounded controls, compact spacing, readable secondary text, and consistent state feedback are shared across the settings center, menus, OSD, history, and Quick Phrase windows. The palettes and roles live centrally in `UI/Theme.ahk`; controls consume semantic tokens instead of defining local colors.
+The interface follows Material 3 principles rather than using the four Google brand colors as decoration: neutral surface roles establish hierarchy, blue marks primary emphasis and active/focus states, while red/green/amber are limited to semantic status. Rounded surface cards and controls, compact spacing, readable secondary text, and consistent state feedback are shared across the settings center, menus, OSD, history, and Quick Phrase windows. The palettes and roles live centrally in `UI/Theme.ahk`; controls consume semantic tokens instead of defining local colors.
 
 <a name="readme-quick-start"></a>
 

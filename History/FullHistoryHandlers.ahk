@@ -59,7 +59,7 @@ PasteSelectedFromFullHistory() {
         return
     }
 
-    if !EnsureFullHistoryTargetWindow(myGui)
+    if !EnsureFullHistoryTargetWindow()
         return
 
     WinActivate("ahk_id " AppState.TargetWindow)
@@ -92,7 +92,7 @@ PasteSelectedFromFullHistoryText() {
 
     combined := Join(textList, "`n")
 
-    if !EnsureFullHistoryTargetWindow(myGui)
+    if !EnsureFullHistoryTargetWindow()
         return
 
     PasteAsPlainText(combined, Lang("MSG_PASTE_MULTI_COMPLETE", "", textList.Length))
@@ -132,7 +132,7 @@ OnItemCheck(lv, row, checked) {
     guiObj.chkSelectAll.Value := (checkedCount == totalRows) ? 1 : 0
 }
 
-EnsureFullHistoryTargetWindow(myGui := "") {
+EnsureFullHistoryTargetWindow() {
     targetHwnd := AppState.TargetWindow
     if targetHwnd && WinExist("ahk_id " targetHwnd)
         return true

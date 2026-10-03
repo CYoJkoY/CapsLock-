@@ -332,7 +332,30 @@ class ThemeHelper {
             "Text",
             "x" (x + 1) " y" (y + 1) " w" (width - 2) " h" (height - 2) " Background" Theme.Surface
         )
+        this._ApplyRoundedCorners(borderCtrl, Theme.Radius)
+        this._ApplyRoundedCorners(fillCtrl, Theme.Radius - 1)
         return [borderCtrl, fillCtrl]
+    }
+
+    static _ApplyRoundedCorners(ctrl, radius) {
+        rect := Buffer(16, 0)
+        if !DllCall("GetClientRect", "Ptr", ctrl.Hwnd, "Ptr", rect, "Int")
+            return
+
+        width := NumGet(rect, 8, "Int")
+        height := NumGet(rect, 12, "Int")
+        region := DllCall(
+            "gdi32\\CreateRoundRectRgn",
+            "Int", 0,
+            "Int", 0,
+            "Int", width + 1,
+            "Int", height + 1,
+            "Int", radius * 2,
+            "Int", radius * 2,
+            "Ptr"
+        )
+        if region && !DllCall("SetWindowRgn", "Ptr", ctrl.Hwnd, "Ptr", region, "Int", true, "Int")
+            DllCall("gdi32\\DeleteObject", "Ptr", region)
     }
 
     ; Creates a 1px horizontal divider inside a surface card.
