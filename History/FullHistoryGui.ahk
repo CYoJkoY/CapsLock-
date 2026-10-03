@@ -104,7 +104,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
         "Text",
         "x16 y+12 w640",
         " " Lang("GUI_FULL_STATUS", "", "Ready") " | "
-            . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
+        . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
     )
     myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
     myGui.StatusBar := statusBar
@@ -144,10 +144,7 @@ RefreshFullHistoryList(isIncremental := false) {
         || myGui.lastHistoryRevision != HistoryManager.revision
 
     if needRebuild {
-        ; Cache only matching indices. Text search can run on the resident C#
-        ; snapshot; AHK previews/time strings are built only for visible rows,
-        ; not for every entry on every keystroke.
-        matching := Services.HistorySearch(filter)
+        matching := HistorySearch(filter)
 
         myGui.cachedMatching := matching
         myGui.lastFilter := filter
@@ -168,10 +165,10 @@ RefreshFullHistoryList(isIncremental := false) {
     endIdx := Min(maxDisplay, totalMatching)
 
     if startIdx <= endIdx {
-        Loop endIdx - startIdx + 1 {
+        loop endIdx - startIdx + 1 {
             index := matching[startIdx + A_Index - 1]
             item := AppState.History[index]
-            lv.Add(, index, ServicesHistoryPreviewAhk(item["text"]), SubStr(item["time"], 12, 5))
+            lv.Add(, index, HistoryPreviewText(item["text"]), SubStr(item["time"], 12, 5))
         }
         myGui.displayedCount := endIdx
     }
@@ -192,6 +189,21 @@ RefreshFullHistoryList(isIncremental := false) {
     }
 
     myGui.chkSelectAll.Value := 0
+}
+
+HistorySearch(query) {
+    indices := []
+    for index, item in AppState.History {
+        text := item["text"]
+        if query == "" || InStr(text, query) || InStr(HistoryPreviewText(text), query)
+            indices.Push(index)
+    }
+    return indices
+}
+
+HistoryPreviewText(text) {
+    display := RegExReplace(SubStr(text, 1, 80), "[\r\n\t\v\f]+", " ")
+    return display . (StrLen(text) > 80 ? "…" : "")
 }
 
 ResizeFullHistoryGui(guiObj, minmax, width, height) {
@@ -252,5 +264,5 @@ ResizeFullHistoryGui(guiObj, minmax, width, height) {
     }
 
     if guiObj.HasProp("StatusBar")
-        guiObj.StatusBar.Move(margin, height - statusH - 4, width - margin * 2)
+        try guiObj.StatusBar.Move(margin, height - statusH - 8, width - margin * 2, statusH)
 }

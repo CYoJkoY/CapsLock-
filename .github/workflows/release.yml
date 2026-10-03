@@ -4,10 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-
-  # Manual runs exist so the AHKCompiler evaluation (issue #46) can produce
-  # comparison binaries without touching a real release. A plain tag push
-  # always uses Ahk2Exe, which is the shipped compiler.
   workflow_dispatch:
     inputs:
       compiler:
@@ -46,18 +42,6 @@ jobs:
         shell: pwsh
         run: .\scripts\build_icon.ps1
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      # Downloads the pinned AHK# bridge, builds the AnyCPU services assembly
-      # and writes CSharpPayload.ahk, whose AddResource directives make Ahk2Exe
-      # embed both DLLs. Without it the very same source compiles pure AHK.
-      - name: Provision the C# backend payload
-        shell: pwsh
-        run: .\scripts\Setup-CSharpBackend.ps1
-
       - name: Build (x86)
         uses: benmusson/ahk2exe-action@v1
         with:
@@ -80,17 +64,7 @@ jobs:
           ahk-tag: v2.0.28
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Reads the resource directory of each finished EXE. An EXE that lost its
-      # payload would otherwise ship and silently never start the CLR.
-      - name: Verify the packaged C# payload
-        shell: pwsh
-        run: |
-          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-_x86.exe
-          .\scripts\ci\Test-CSharpPayload.ps1 -Path .\build\CapsLock-.exe
-
       - name: Upload to Release
-        # Only a tag push publishes. A workflow_dispatch run must never create
-        # or overwrite a release from a branch ref.
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -99,22 +73,9 @@ jobs:
           files: |
             .\build\CapsLock-_x86.exe
             .\build\CapsLock-.exe
-            .\lib\CapsLockSharp.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ---------------------------------------------------------------------------
-  # AHKCompiler evaluation build (issue #46)
-  #
-  # Off by default. It never publishes: the output lands in a workflow artifact
-  # so it can be benchmarked against the Ahk2Exe build with
-  # scripts\benchmark\Measure-CapsLockBuild.ps1.
-  #
-  # Enable for a normal release by changing the if: below to also accept
-  #   || vars.ENABLE_AHKCOMPILER == 'true'
-  # and only after docs/build/compiler-evaluation.md records measurements that
-  # justify it.
-  # ---------------------------------------------------------------------------
   ahkcompiler:
     name: AHKCompiler evaluation build
     runs-on: windows-latest
@@ -126,8 +87,6 @@ jobs:
       - name: Checkout CapsLock-
         uses: actions/checkout@v4
 
-      # Pinned to a commit, not a branch. The project ships no tags, so a
-      # commit is the only reproducible reference available.
       - name: Checkout AHKCompiler (pinned)
         uses: actions/checkout@v4
         with:
@@ -152,10 +111,6 @@ jobs:
         shell: pwsh
         run: .\scripts\build_icon.ps1
 
-      # Discovery only. These steps print the profile names and the feature
-      # switches the pinned commit actually supports, so the log is the
-      # reference for the "profile" input. They are allowed to fail because
-      # the exact flags are not part of the documented surface.
       - name: List AHKCompiler profiles
         shell: cmd
         working-directory: tools\AHKCompiler
@@ -176,20 +131,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path build-ahkcompiler -Force | Out-Null
-
           $found = @(Get-ChildItem -Path tools\AHKCompiler\out -Recurse -Filter *.exe -ErrorAction SilentlyContinue)
-
           if ($found.Count -eq 0) {
-            Write-Host '--- contents of tools\AHKCompiler\out ---'
-            Get-ChildItem -Path tools\AHKCompiler -Recurse -ErrorAction SilentlyContinue |
-              Select-Object -ExpandProperty FullName
-            throw 'AHKCompiler produced no .exe. Check the profile name in the log of the "/list" step above.'
+            throw 'AHKCompiler produced no .exe.'
           }
-
           foreach ($file in $found) {
             Copy-Item -LiteralPath $file.FullName -Destination build-ahkcompiler\ -Force
           }
-
           Get-ChildItem build-ahkcompiler | Format-Table Name, Length | Out-String
 
       - name: Upload the evaluation build

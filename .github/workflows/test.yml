@@ -28,10 +28,6 @@ jobs:
         with:
           version: '2.0.28'
 
-      # AutoHotkey is a GUI-subsystem program: PowerShell neither waits for it,
-      # captures its output nor sets $LASTEXITCODE, so calling it directly makes
-      # a step pass before the script has even run. The wrapper waits, prints
-      # stdout/stderr, enforces a timeout and fails on a non-zero exit code.
       - name: Validate AutoHotkey source
         shell: pwsh
         timeout-minutes: 2
@@ -41,11 +37,6 @@ jobs:
         shell: pwsh
         timeout-minutes: 2
         run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegression.ahk -TimeoutSeconds 90
-
-      - name: Service fallback regression checks
-        shell: pwsh
-        timeout-minutes: 2
-        run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -TimeoutSeconds 90
 
       - name: History window paging checks (AHK backend)
         shell: pwsh
