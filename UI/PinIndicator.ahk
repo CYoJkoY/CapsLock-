@@ -254,7 +254,7 @@ class PinIndicator {
             return ""
         }
 
-        badge.BackColor := AppState.THEME_ACCENT
+        badge.BackColor := Theme.Primary
         badge.MarginX := 0
         badge.MarginY := 0
 
@@ -262,7 +262,7 @@ class PinIndicator {
         ; supported Windows build, which keeps the badge readable without a
         ; second colour to maintain.
         try {
-            badge.SetFont("s11 c" AppState.THEME_ON_ACCENT, "Segoe UI Emoji")
+            badge.SetFont("s11 c" Theme.OnPrimary, "Segoe UI Emoji")
             badge.Add("Text", "x0 y0 w" size " h" size " Center +0x200", "📌")
         } catch {
         }

@@ -11,14 +11,14 @@ ShowPreviewGui(text) {
         Lang("GUI_PREVIEW_STATS", "", lineCount, charCount), 600)
     ThemeHelper.AddSeparator(myGui, 600)
 
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
+    myGui.SetFont("s10 c" Theme.Text, Theme.FontMono)
     myEdit := myGui.Add(
         "Edit",
         "ReadOnly VScroll Wrap w600 h350 " ThemeHelper.GetEditOptions(),
         text
     )
     ThemeHelper.StyleEdit(myEdit)
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
     btnCopy.OnEvent("Click", (*) => (
@@ -37,7 +37,6 @@ ShowPreviewGui(text) {
     ))
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 640, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w640 h480")
 }

@@ -271,12 +271,12 @@ Language selection is available from the tray. Translation caches are generated 
 
 Two interface themes ship with the application and are selectable from the tray settings:
 
-| Theme | Notes                                                                                               |
-| :---- | :-------------------------------------------------------------------------------------------------- |
-| Dark  | Default. Existing dark appearance.                                                                  |
-| Light | Low-glare light palette: main surfaces stay in the `#F2F3F5`–`#F6F7F9` range instead of pure white. |
+| Theme | Notes |
+| :---- | :---- |
+| Dark  | Neutral charcoal canvas, layered graphite surfaces, and soft blue tonal selection/action states. |
+| Light | Cool off-white canvas, white cards, subtle gray outlines, and restrained blue emphasis. |
 
-Both themes are defined by a single palette each, so shared UI surfaces (tray menus and submenus, OSD, Quick Phrase UI, settings windows, headers, and transient surfaces) follow the selected theme without per-window colours. Open windows pick up a newly selected theme the next time they are opened.
+The interface follows Material 3 principles rather than using the four Google brand colors as decoration: neutral surface roles establish hierarchy, blue marks primary emphasis and active/focus states, while red/green/amber are limited to semantic status. Rounded controls, compact spacing, readable secondary text, and consistent state feedback are shared across the settings center, menus, OSD, history, and Quick Phrase windows. The palettes and roles live centrally in `UI/Theme.ahk`; controls consume semantic tokens instead of defining local colors.
 
 <a name="readme-quick-start"></a>
 
@@ -286,15 +286,12 @@ Both themes are defined by a single palette each, so shared UI surfaces (tray me
 
 Download the latest executable from [GitHub Releases](https://github.com/CYoJkoY/CapsLock-/releases).
 
-| Artifact              | Target                                              |
-| :-------------------- | :-------------------------------------------------- |
-| `CapsLock-.exe`       | Windows x64                                         |
-| `CapsLock-_x86.exe`   | Windows x86                                         |
-| `CapsLockSharp.dll`   | Optional C# services, also embedded in both EXE      |
+| Artifact              | Target      |
+| :-------------------- | :---------- |
+| `CapsLock-.exe`       | Windows x64 |
+| `CapsLock-_x86.exe`   | Windows x86 |
 
-Release builds are produced by GitHub Actions from version tags matching `v*.*.*`.
-Both executables package the optional C# backend (see below); they stay pure
-AutoHotkey until it is switched on.
+Release builds are produced by GitHub Actions from version tags matching `v*.*.*`. The executables run entirely on AutoHotkey v2; ImageMagick and Pandoc remain optional integrations for their respective document workflows.
 
 ### Run from source
 
@@ -315,26 +312,6 @@ Install ImageMagick and configure `magick.exe` from the tray menu when image-to-
 #### Pandoc
 
 Install Pandoc and configure `pandoc.exe` from the tray menu when document conversion is needed. The same tray submenu controls the output format.
-
-#### C# backend (optional)
-
-A resident history index, history search and batched ignore-rule filtering can run
-in .NET instead of AutoHotkey. It is **off by default** and every path keeps a real
-AutoHotkey fallback behind a circuit breaker.
-
-Turn it on with one click in **Settings Center → General → System & Runtime → “Set
-Up C# Backend”**, next to the backend selector. The button unpacks the files that
-release builds already carry (or builds/downloads them in a source checkout),
-switches the backend and then verifies the result with one real managed call. The
-status line beside it reports whether the backend is active, installed, bundled,
-or missing.
-
-Release executables contain the services assembly and the pinned AHK# bridge as
-resources and unpack them on first use, so no compiler or download is needed on an
-end-user machine. `scripts\build.ps1` reproduces such a build locally, and
-`scripts\Setup-CSharpBackend.ps1` provisions a source checkout the same way the
-one-click setup does. Setup, diagnostics and measurements:
-[`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
 
 ### Configuration files
 
@@ -451,14 +428,14 @@ The main functional boundaries are:
 
 | Directory  | Responsibility                                                                    |
 | :--------- | :-------------------------------------------------------------------------------- |
-| `Config/`  | Persistent application state and configuration                                    |
-| `Core/`    | Clipboard, file, cleanup, Pandoc, Quick Phrase, Window Hole, and window utilities |
-| `History/` | Clipboard history storage and interfaces                                          |
-| `Hotkeys/` | User-facing keyboard bindings and action routing                                  |
-| `Tray/`    | Tray menus and settings                                                           |
-| `UI/`      | Theme palettes, OSD, Quick Phrase UI, preview, and shared theme helpers           |
-| `Utils/`   | Language and shared utility functions                                             |
-| `scripts/` | Build-time helper scripts                                                         |
+| `Config/`  | Persisted settings and application runtime state                                 |
+| `Core/`    | Clipboard, file, cleanup, Pandoc, Quick Phrase, Window Hole, and window services |
+| `History/` | Clipboard history storage, search, paging, and history actions                   |
+| `Hotkeys/` | User-facing keyboard bindings and action routing                                 |
+| `Tray/`    | Tray menus and settings                                                          |
+| `UI/`      | Semantic theme tokens, shared controls, OSD, and feature windows                 |
+| `Utils/`   | Language resources and focused reusable helpers                                  |
+| `scripts/` | Build and headless regression helpers                                            |
 
 ### Architecture
 
@@ -475,47 +452,20 @@ CapsLock-.ahk
    └── UI / Utils ────► presentation + shared services
 ```
 
-This modular layout is intended to make individual features easier to change without turning the entry script into a monolith.
+The entry point owns composition and lifecycle only. Feature behavior stays in `Core/` and `History/`, settings persistence stays in `Config/`, and presentation reads semantic tokens from `UI/Theme.ahk`. Shared helpers are included once and reused by windows instead of maintaining per-screen color rules or duplicated setup flows.
 
 ### Testing and release automation
 
 The repository includes GitHub Actions for:
 
-- source/build validation through `.github/workflows/test.yml`;
-- .NET service build/test plus a packaged-EXE probe through `.github/workflows/dotnet.yml`;
+- AutoHotkey syntax validation and headless source regressions through `.github/workflows/test.yml`;
 - tagged x86/x64 release builds through `.github/workflows/release.yml`.
 
-Release compilation currently uses **AutoHotkey v2.0.28** through the configured AHK build
-action. Before compiling, the workflow provisions the optional C# backend and generates the
-compiler-directive include that embeds it, then verifies that the finished executables really
-carry both resources, so a release can never ship an executable that silently lost its payload.
-
-An alternative release compiler is under evaluation. Nothing about the shipped
-artifacts changes until the measurements in
-[`docs/build/compiler-evaluation.md`](docs/build/compiler-evaluation.md) justify it.
-That document deliberately carries no results: it is a harness, and the numbers
-have to be produced on real hardware.
-
-An **optional C# backend (AHK#)** now provides a resident history duplicate index,
-text/preview search, and batched ignore-rule filtering. History snapshots cross
-once, followed by small deltas; the history GUI formats only visible rows. Hotkeys,
-clipboard ownership, GUIs, native file enumeration and persistence stay in
-AutoHotkey. The default remains pure AHK, with a circuit breaker and real AHK
-fallbacks. On a Windows CI runner the history paths measured 4-80x faster than
-their AHK equivalents and ignore-rule filtering only about 1.2x; desktop and
-whole-process measurements are still outstanding. Setup, regression checks and the
-measurements are in [`docs/perf/csharp-boundary.md`](docs/perf/csharp-boundary.md).
+Release compilation uses **AutoHotkey v2.0.28** through the configured build action. The manual workflow also offers a separate, opt-in AHKCompiler evaluation artifact; it does not affect tagged release executables. CI installs ImageMagick only to generate the application icon.
 
 ### Project status
 
-The current implementation is centered on local Windows productivity workflows. Two larger features are explicitly planned but **not part of the shipped feature set yet**:
-
-| Roadmap item                                                                   | Status      |
-| :----------------------------------------------------------------------------- | :---------- |
-| [Custom low-glare light theme](https://github.com/CYoJkoY/CapsLock-/issues/41) | Planned     |
-| [Optional cloud sync](https://github.com/CYoJkoY/CapsLock-/issues/42)          | In progress |
-
-Cloud Sync is intended to remain optional; normal local use should not depend on a hosted CapsLock service.
+The project is centered on local Windows productivity workflows. The light theme and Cloud Sync are both implemented; Cloud Sync remains opt-in, and normal local use has no account or network requirement.
 
 ### Known development considerations
 

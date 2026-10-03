@@ -222,16 +222,15 @@ class CustomMenu {
         menuH := totalH
 
         myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
-        myGui.BackColor := AppState.THEME_SURFACE
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, menuW, 3)
+        myGui.BackColor := Theme.Surface
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         curY := topPad // 2
         for entry in this.items {
             if entry.isSep {
                 myGui.Add(
                     "Text",
-                    "x12 y" (curY + 3) " w" (menuW - 24) " h1 Background" AppState.THEME_BORDER
+                    "x12 y" (curY + 3) " w" (menuW - 24) " h1 Background" Theme.Outline
                 )
                 curY += sepH
                 continue
@@ -239,12 +238,12 @@ class CustomMenu {
 
             bgCtrl := myGui.Add(
                 "Text",
-                "x4 y" curY " w" (menuW - 8) " h" itemH " +0x0100 Background" AppState.THEME_SURFACE
+                "x4 y" curY " w" (menuW - 8) " h" itemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := myGui.Add(
                 "Text",
-                "x16 y" (curY + (itemH - 20) // 2) " w" (menuW - 40) " h20 +0x0100 Background" AppState.THEME_SURFACE,
+                "x16 y" (curY + (itemH - 20) // 2) " w" (menuW - 40) " h20 +0x0100 Background" Theme.Surface,
                 entry.label
             )
 
@@ -466,16 +465,15 @@ class CustomMenu {
             subTotalH += entry.isSep ? subSepH : subItemH
 
         subMyGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
-        subMyGui.BackColor := AppState.THEME_SURFACE
-        subMyGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        ThemeHelper.AddGoogleAccentBar(subMyGui, 0, 0, subMenuW, 3)
+        subMyGui.BackColor := Theme.Surface
+        subMyGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         subCurY := subTopPad // 2
         for entry in subItems {
             if entry.isSep {
                 subMyGui.Add(
                     "Text",
-                    "x12 y" (subCurY + 3) " w" (subMenuW - 24) " h1 Background" AppState.THEME_BORDER
+                    "x12 y" (subCurY + 3) " w" (subMenuW - 24) " h1 Background" Theme.Outline
                 )
                 subCurY += subSepH
                 continue
@@ -483,12 +481,12 @@ class CustomMenu {
 
             bgCtrl := subMyGui.Add(
                 "Text",
-                "x4 y" subCurY " w" (subMenuW - 8) " h" subItemH " +0x0100 Background" AppState.THEME_SURFACE
+                "x4 y" subCurY " w" (subMenuW - 8) " h" subItemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := subMyGui.Add(
                 "Text",
-                "x16 y" (subCurY + (subItemH - 20) // 2) " w" (subMenuW - 40) " h20 +0x0100 Background" AppState.THEME_SURFACE,
+                "x16 y" (subCurY + (subItemH - 20) // 2) " w" (subMenuW - 40) " h20 +0x0100 Background" Theme.Surface,
                 entry.label
             )
 
@@ -628,15 +626,15 @@ class CustomMenu {
             nestedTotalH += entry.isSep ? nestedSepH : nestedItemH
 
         nestedGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
-        nestedGui.BackColor := AppState.THEME_SURFACE
-        nestedGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        nestedGui.BackColor := Theme.Surface
+        nestedGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         curY := nestedTopPad // 2
         for entry in nestedItems {
             if entry.isSep {
                 nestedGui.Add(
                     "Text",
-                    "x12 y" (curY + 3) " w" (nestedMenuW - 24) " h1 Background" AppState.THEME_BORDER
+                    "x12 y" (curY + 3) " w" (nestedMenuW - 24) " h1 Background" Theme.Outline
                 )
                 curY += nestedSepH
                 continue
@@ -644,14 +642,14 @@ class CustomMenu {
 
             bgCtrl := nestedGui.Add(
                 "Text",
-                "x4 y" curY " w" (nestedMenuW - 8) " h" nestedItemH " +0x0100 Background" AppState.THEME_SURFACE
+                "x4 y" curY " w" (nestedMenuW - 8) " h" nestedItemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := nestedGui.Add(
                 "Text",
                 "x16 y" (curY + (nestedItemH - 20) // 2)
                     " w" (nestedMenuW - 40)
-                    " h20 +0x0100 Background" AppState.THEME_SURFACE,
+                    " h20 +0x0100 Background" Theme.Surface,
                 entry.label
             )
 
@@ -874,8 +872,8 @@ class CustomMenu {
         if !IsObject(entry) || entry.isSep
             return
 
-        bg := isHover ? AppState.THEME_ELEVATED : AppState.THEME_SURFACE
-        fg := isHover ? AppState.THEME_ACCENT_GLOW : AppState.THEME_FG
+        bg := isHover ? Theme.PrimaryContainer : Theme.Surface
+        fg := isHover ? Theme.OnPrimaryContainer : Theme.Text
 
         try {
             entry.bgCtrl.Opt("Background" bg)

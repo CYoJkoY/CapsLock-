@@ -30,9 +30,6 @@
 .PARAMETER Script
     The .ahk file to run (or, with -Validate, to load and syntax-check).
 
-.PARAMETER ScriptArguments
-    Arguments passed to the script after its path, e.g. '-CSharp'.
-
 .PARAMETER Validate
     Pass /Validate: load the script, report load-time errors and exit without
     running it. The exit code is 0 only if the script loaded successfully.
@@ -64,20 +61,12 @@
     The script is killed, and the step fails, if it runs longer than this.
 
 .EXAMPLE
-    .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk
-
-.EXAMPLE
-    .\scripts\ci\Invoke-Ahk.ps1 .\scripts\perf\ServiceEquivalence.ahk -ScriptArguments '-CSharp' -Architecture x86
-
-.EXAMPLE
     .\scripts\ci\Invoke-Ahk.ps1 .\CapsLock-.ahk -Validate
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string] $Script,
-
-    [string[]] $ScriptArguments = @(),
 
     [switch] $Validate,
 
@@ -157,7 +146,6 @@ if (-not $NoHeadless -and -not $Compiled) {
 if ($Validate) { $arguments.Add('/Validate') }
 # A compiled exe takes no script path; its arguments are the script's own.
 if (-not $Compiled) { $arguments.Add($scriptPath) }
-foreach ($argument in $ScriptArguments) { $arguments.Add($argument) }
 
 $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
 $startInfo.FileName = $exe

@@ -74,7 +74,6 @@ class CloudSyncConflictGui {
         myGui.OnEvent("Escape", (*) => myGui.Destroy())
         myGui.OnEvent("Close", (*) => myGui.Destroy())
 
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 560, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w560 AutoSize Center")
     }

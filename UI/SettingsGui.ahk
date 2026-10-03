@@ -1,11 +1,8 @@
 #Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Dedicated Google Workspace / Chrome Material Settings Center (SettingsGui)
-;
-; Consolidates all CapsLock- configuration into a multi-page Google Material
-; settings interface with a left navigation rail, elevated surface cards,
-; live theme/language switching, and instant persistence.
+; Multi-page settings center built from shared Material 3 semantic tokens and
+; reusable navigation, card, field, and action components.
 ; ---------------------------------------------------------------------------
 
 ShowSettingsGui(initialTab := 1, *) {
@@ -82,23 +79,20 @@ class SettingsGui {
         myGui.MarginX := 0
         myGui.MarginY := 0
 
-        ; --- Top Google 4-Color Brand Bar ---
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, this.WIN_W, 3)
-
         ; --- Left Navigation Rail ---
-        myGui.SetFont("s16 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        brandTitle := myGui.Add("Text", "x20 y20 w184 h28 Background" AppState.THEME_BG, "CapsLock-")
-        ThemeHelper.MarkSurface(brandTitle, AppState.THEME_ACCENT, AppState.THEME_BG)
+        myGui.SetFont("s16 Bold c" Theme.Primary, Theme.Font)
+        brandTitle := myGui.Add("Text", "x20 y20 w184 h28 Background" Theme.Background, "CapsLock-")
+        ThemeHelper.MarkSurface(brandTitle, Theme.Primary, Theme.Background)
 
-        myGui.SetFont("s8 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
         brandSub := myGui.Add(
             "Text",
-            "x20 y48 w184 h18 Background" AppState.THEME_BG,
+            "x20 y48 w184 h18 Background" Theme.Background,
             Lang("GUI_SETTINGS_SUBTITLE")
         )
-        ThemeHelper.MarkSurface(brandSub, AppState.THEME_FG_DIM, AppState.THEME_BG)
+        ThemeHelper.MarkSurface(brandSub, Theme.TextSecondary, Theme.Background)
 
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         navLabels := [
             "⚙️   " . Lang("SET_NAV_GENERAL"),
@@ -118,7 +112,7 @@ class SettingsGui {
                 "x12 y" navY " w196 h38",
                 navLabels[idx],
                 style,
-                AppState.THEME_BG
+                Theme.Background
             )
             btn.OnEvent("Click", this._MakeTabCallback(idx))
             this.navButtons.Push(btn)
@@ -127,47 +121,47 @@ class SettingsGui {
 
         ; --- Sidebar Footer Quick Theme Switcher Card ---
         ThemeHelper.AddSurfaceCard(myGui, 12, 560, 196, 64)
-        myGui.SetFont("s8 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
         themeHint := myGui.Add(
             "Text",
-            "x24 y568 w172 h16 Background" AppState.THEME_SURFACE,
+            "x24 y568 w172 h16 Background" Theme.Surface,
             Lang("MENU_THEME") . ": " . Theme.Label(Theme.Current)
         )
-        ThemeHelper.MarkSurface(themeHint, AppState.THEME_FG_DIM, AppState.THEME_SURFACE)
+        ThemeHelper.MarkSurface(themeHint, Theme.TextSecondary, Theme.Surface)
 
-        myGui.SetFont("s9 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
         quickThemeBtn := ThemeHelper.AddButton(
             myGui,
             "x22 y586 w176 h30",
             "🌓  " . Lang("MENU_THEME_DARK") . " / " . Lang("MENU_THEME_LIGHT"),
             "tonal",
-            AppState.THEME_SURFACE
+            Theme.Surface
         )
         quickThemeBtn.OnEvent("Click", (*) => this._OnQuickThemeToggle())
 
         ; --- Vertical Hairline Divider between Sidebar and Content ---
-        myGui.Add("Text", "x" this.NAV_W " y3 w1 h637 Background" AppState.THEME_BORDER)
+        myGui.Add("Text", "x" this.NAV_W " y3 w1 h637 Background" Theme.Outline)
 
         ; --- Content Page Header ---
-        myGui.SetFont("s15 Bold c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s15 Bold c" Theme.Text, Theme.Font)
         this.headerTitle := myGui.Add(
             "Text",
-            "x" this.CONTENT_X " y20 w" this.CONTENT_W " h28 Background" AppState.THEME_BG,
+            "x" this.CONTENT_X " y20 w" this.CONTENT_W " h28 Background" Theme.Background,
             ""
         )
-        ThemeHelper.MarkSurface(this.headerTitle, AppState.THEME_FG, AppState.THEME_BG)
+        ThemeHelper.MarkSurface(this.headerTitle, Theme.Text, Theme.Background)
 
-        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
         this.headerDesc := myGui.Add(
             "Text",
-            "x" this.CONTENT_X " y50 w" this.CONTENT_W " h20 Background" AppState.THEME_BG,
+            "x" this.CONTENT_X " y50 w" this.CONTENT_W " h20 Background" Theme.Background,
             ""
         )
-        ThemeHelper.MarkSurface(this.headerDesc, AppState.THEME_FG_DIM, AppState.THEME_BG)
+        ThemeHelper.MarkSurface(this.headerDesc, Theme.TextSecondary, Theme.Background)
 
-        myGui.Add("Text", "x" this.CONTENT_X " y76 w" this.CONTENT_W " h1 Background" AppState.THEME_BORDER)
+        myGui.Add("Text", "x" this.CONTENT_X " y76 w" this.CONTENT_W " h1 Background" Theme.Outline)
 
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         ; --- Build All 6 Settings Pages ---
         this._BuildPageGeneral(myGui)
@@ -178,31 +172,31 @@ class SettingsGui {
         this._BuildPageTools(myGui)
 
         ; --- Bottom Sticky Action Bar ---
-        myGui.Add("Text", "x221 y574 w679 h1 Background" AppState.THEME_BORDER)
-        myGui.Add("Text", "x221 y575 w679 h65 Background" AppState.THEME_SURFACE)
+        myGui.Add("Text", "x221 y574 w679 h1 Background" Theme.Outline)
+        myGui.Add("Text", "x221 y575 w679 h65 Background" Theme.Surface)
 
-        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
         this.statusText := myGui.Add(
             "Text",
-            "x" this.CONTENT_X " y598 w350 h20 Background" AppState.THEME_SURFACE,
+            "x" this.CONTENT_X " y598 w350 h20 Background" Theme.Surface,
             Lang("SET_STATUS_READY")
         )
-        ThemeHelper.MarkSurface(this.statusText, AppState.THEME_FG_DIM, AppState.THEME_SURFACE)
+        ThemeHelper.MarkSurface(this.statusText, Theme.TextSecondary, Theme.Surface)
 
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         saveBtn := ThemeHelper.AddButton(
             myGui,
             "Default x616 y590 w140 h34",
             "✓ " . Lang("SET_BTN_APPLY_ALL"),
             "primary",
-            AppState.THEME_SURFACE
+            Theme.Surface
         )
         closeBtn := ThemeHelper.AddButton(
             myGui,
             "x766 y590 w106 h34",
             "✕ " . Lang("GUI_FULL_CLOSE"),
             "secondary",
-            AppState.THEME_SURFACE
+            Theme.Surface
         )
 
         saveBtn.OnEvent("Click", (*) => this.ApplyAll(false))
@@ -237,24 +231,24 @@ class SettingsGui {
     }
 
     static _AddSectionTitle(myGui, pageIdx, x, y, text) {
-        myGui.SetFont("s10 Bold c" AppState.THEME_ACCENT, AppState.THEME_FONT)
-        ctrl := myGui.Add("Text", "x" x " y" y " w" this.CONTENT_W " h20 Background" AppState.THEME_BG, text)
-        ThemeHelper.MarkSurface(ctrl, AppState.THEME_ACCENT, AppState.THEME_BG)
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 Bold c" Theme.Primary, Theme.Font)
+        ctrl := myGui.Add("Text", "x" x " y" y " w" this.CONTENT_W " h20 Background" Theme.Background, text)
+        ThemeHelper.MarkSurface(ctrl, Theme.Primary, Theme.Background)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         return this._Reg(pageIdx, ctrl)
     }
 
     static _AddCardLabel(myGui, pageIdx, x, y, w, text, isDim := false) {
         if isDim {
-            myGui.SetFont("s8 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-            ctrl := myGui.Add("Text", "x" x " y" y " w" w " h18 Background" AppState.THEME_SURFACE, text)
-            ThemeHelper.MarkSurface(ctrl, AppState.THEME_FG_DIM, AppState.THEME_SURFACE)
+            myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+            ctrl := myGui.Add("Text", "x" x " y" y " w" w " h18 Background" Theme.Surface, text)
+            ThemeHelper.MarkSurface(ctrl, Theme.TextSecondary, Theme.Surface)
         } else {
-            myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-            ctrl := myGui.Add("Text", "x" x " y" y " w" w " h22 Background" AppState.THEME_SURFACE, text)
-            ThemeHelper.MarkSurface(ctrl, AppState.THEME_FG, AppState.THEME_SURFACE)
+            myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+            ctrl := myGui.Add("Text", "x" x " y" y " w" w " h22 Background" Theme.Surface, text)
+            ThemeHelper.MarkSurface(ctrl, Theme.Text, Theme.Surface)
         }
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         return this._Reg(pageIdx, ctrl)
     }
 
@@ -282,7 +276,7 @@ class SettingsGui {
     static _AddCardCombo(myGui, pageIdx, x, y, w, items, selectedIdx := 1) {
         cbo := myGui.Add(
             "DropDownList",
-            "x" x " y" y " w" w " Choose" selectedIdx " c" AppState.THEME_FG " Background" AppState.THEME_CONTROL_BG,
+            "x" x " y" y " w" w " Choose" selectedIdx " c" Theme.Text " Background" Theme.Control,
             items
         )
         ThemeHelper.StyleComboBox(cbo)
@@ -295,7 +289,7 @@ class SettingsGui {
             "x" x " y" y " w" w " h" h,
             label,
             style,
-            AppState.THEME_SURFACE
+            Theme.Surface
         )
         return this._Reg(pageIdx, btn)
     }
@@ -349,7 +343,7 @@ class SettingsGui {
 
         ; Section 2: System & Runtime
         this._AddSectionTitle(myGui, p, cx, 264, Lang("SET_SEC_SYSTEM"))
-        this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 288, cw, 216))
+        this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 288, cw, 132))
 
         ; Row 1: AutoStart
         chkAutoStart := this._AddCardCheckBox(
@@ -359,47 +353,19 @@ class SettingsGui {
         )
         this.controls["autoStart"] := chkAutoStart
 
+        ; Row 2: Common system folders
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 344, cw))
-
-        ; Row 2: Service Backend
-        this._AddCardLabel(myGui, p, cx + 18, 360, 340, "⚡  " . Lang("SET_SEC_BACKEND"))
-        backendIdx := (StrLower(AppState.ServiceBackend) == "csharp") ? 2 : 1
-        cboBackend := this._AddCardCombo(
-            myGui, p, cx + 410, 358, 194,
-            ["AHK Native (ahk)", "C# CLR (csharp)"],
-            backendIdx
-        )
-        this.controls["serviceBackend"] := cboBackend
-
-        ; Row 2b: one-click C# backend setup. The combo above only selects a
-        ; backend; this provisions the two files the boundary needs (embedded
-        ; in a release EXE, built or downloaded in a source checkout) and
-        ; verifies the result with one real managed call.
-        btnCSharp := this._AddCardButton(
-            myGui, p, cx + 18, 392, 220, 30,
-            "🔌 " . Lang("SET_BTN_CSHARP_SETUP")
-        )
-        btnCSharp.OnEvent("Click", (*) => this._OnCSharpSetup())
-        this.controls["csharpSetup"] := btnCSharp
-
-        this.controls["csharpStatus"] := this._AddCardLabel(
-            myGui, p, cx + 250, 397, 354, CSharpRuntime.StatusText(), true
-        )
-
-        this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 436, cw))
-
-        ; Row 3: Quick System Folders
         btnOpenTemp := this._AddCardButton(
-            myGui, p, cx + 18, 452, 220, 32,
+            myGui, p, cx + 18, 362, 220, 34,
             "📂 " . Lang("MENU_OPEN_TEMP")
         )
         btnOpenTemp.OnEvent("Click", (*) => OpenTempFolder())
 
         btnOpenCfg := this._AddCardButton(
-            myGui, p, cx + 250, 452, 220, 32,
+            myGui, p, cx + 250, 362, 220, 34,
             "📁 " . Lang("SET_BTN_OPEN_CONFIG")
         )
-        btnOpenCfg.OnEvent("Click", (*) => Run("explore " . A_ScriptDir . "\configs"))
+        btnOpenCfg.OnEvent("Click", (*) => Run("explorer.exe " . Chr(34) . A_ScriptDir . "\configs" . Chr(34)))
     }
 
     ; =======================================================================
@@ -917,7 +883,7 @@ class SettingsGui {
             ThemeHelper.SetButtonStyle(
                 this.navButtons[idx],
                 idx == tabIdx ? "nav-active" : "nav",
-                AppState.THEME_BG
+                Theme.Background
             )
         }
 
@@ -959,79 +925,6 @@ class SettingsGui {
         }
     }
 
-    ; -----------------------------------------------------------------------
-    ; One-click C# backend setup
-    ;
-    ; Provisioning can build the services assembly or download the pinned
-    ; bridge, displaying a progress dialog with live feedback.
-    ; -----------------------------------------------------------------------
-    static _OnCSharpSetup() {
-        if !this.IsOpen()
-            return
-
-        progGui := ""
-        try {
-            if this.controls.Has("csharpStatus")
-                this.controls["csharpStatus"].Text := Lang("MSG_CSHARP_WORKING")
-
-            progGui := CSharpSetupProgressGui.Show(Lang("MSG_CSHARP_SETUP_TITLE"))
-            onProgress := (percent, statusText, logLine) => CSharpSetupProgressGui.Update(progGui, percent, statusText, logLine)
-            result := CSharpRuntime.Install(true, onProgress)
-        } catch as err {
-            result := CSharpRuntime.UnexpectedInstallFailure(err)
-        } finally {
-            CSharpSetupProgressGui.Close(progGui)
-        }
-
-        details := ""
-        for line in result["details"]
-            details .= "`n  " line
-        if result["stage"] != "" {
-            stageLabel := Lang("MSG_CSHARP_STAGE", "Stage")
-            details := "`n  " . stageLabel . ": " . result["stage"] . details
-        }
-        if details != ""
-            details := "`n`n" . Lang("MSG_CSHARP_DETAILS") . ":" details
-
-        hintSection := ""
-        if !result["ok"] && result.Has("hint") && result["hint"] != ""
-            hintSection := "`n`n💡 " . Lang("MSG_CSHARP_HINT_TITLE") . ":`n" . result["hint"]
-
-        MsgBox(
-            result["message"] . hintSection . details,
-            Lang("MSG_CSHARP_SETUP_TITLE"),
-            (result["ok"] ? "Iconi" : "Icon!") . " T30"
-        )
-
-        this._RefreshCSharpStatus()
-
-        if !result["ok"]
-            return
-
-        if result["active"] {
-            if this.controls.Has("serviceBackend")
-                this.controls["serviceBackend"].Value := 2
-            OSD.ShowNotification(Lang("MSG_CSHARP_DONE"), 1800, "success")
-            return
-        }
-
-        ; A source run only picks the newly provisioned bridge up through
-        ; `#Include *i`, which is resolved when the process starts.
-        if result["restartNeeded"] && !A_IsCompiled {
-            if MsgBox(
-                Lang("MSG_CSHARP_RELOAD_CONFIRM"),
-                Lang("MSG_CSHARP_SETUP_TITLE"),
-                "YesNo Icon? T30"
-            ) == "Yes"
-                Reload()
-        }
-    }
-
-    static _RefreshCSharpStatus() {
-        if this.controls.Has("csharpStatus")
-            this.controls["csharpStatus"].Text := CSharpRuntime.StatusText()
-    }
-
     static ApplyAll(silent := false) {
         if !this.IsOpen()
             return
@@ -1043,12 +936,6 @@ class SettingsGui {
             wantAuto := c["autoStart"].Value == 1
             if (wantAuto != IsAutoStartEnabled())
                 ToggleAutoStart()
-        }
-
-        if c.Has("serviceBackend") {
-            AppState.ServiceBackend := (c["serviceBackend"].Value == 2) ? "csharp" : "ahk"
-            Services.Configure()
-            this._RefreshCSharpStatus()
         }
 
         ; --- 2. Clipboard & History ---
@@ -1218,69 +1105,5 @@ class SettingsGui {
         this.pageControls := Map()
         this.controls := Map()
         AppState.SettingsGui := ""
-    }
-}
-
-class CSharpSetupProgressGui {
-    static Show(title := "") {
-        if title == ""
-            title := Lang("MSG_CSHARP_SETUP_TITLE")
-
-        width := 480
-        myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", title)
-        ThemeHelper.StyleGui(myGui)
-        ThemeHelper.AddTitle(myGui, "🔌 " . title, width - 20)
-
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
-        txtStatus := myGui.Add("Text", "w" (width - 40) " y+12 r1", Lang("MSG_CSHARP_WORKING"))
-
-        prgBar := myGui.Add("Progress", "w" (width - 40) " h18 y+8 -Smooth Range0-100 c4285F4 Background333333", 10)
-
-        myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
-        txtDetail := myGui.Add("Text", "w" (width - 40) " y+8 r1", "")
-
-        myGui.SetFont("s9 c" AppState.THEME_FG, "Consolas")
-        edtLog := myGui.Add("Edit", "w" (width - 40) " r6 y+8 ReadOnly " . ThemeHelper.GetEditOptions(), "")
-
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, width + 12, 3)
-        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
-        myGui.Show("AutoSize Center")
-
-        return {
-            Gui: myGui,
-            Status: txtStatus,
-            Progress: prgBar,
-            Detail: txtDetail,
-            Log: edtLog,
-            LogLines: []
-        }
-    }
-
-    static Update(inst, percent, statusText, detailText := "") {
-        if !inst || !inst.Gui
-            return
-        try {
-            if percent >= 0
-                inst.Progress.Value := percent
-            if statusText != ""
-                inst.Status.Text := statusText
-            if detailText != "" {
-                inst.Detail.Text := detailText
-                inst.LogLines.Push(detailText)
-                if inst.LogLines.Length > 25
-                    inst.LogLines.RemoveAt(1)
-                fullText := ""
-                for line in inst.LogLines
-                    fullText .= (fullText != "" ? "`r`n" : "") . line
-                inst.Log.Value := fullText
-            }
-            Sleep(20)
-        }
-    }
-
-    static Close(inst) {
-        if !inst || !inst.Gui
-            return
-        try inst.Gui.Destroy()
     }
 }

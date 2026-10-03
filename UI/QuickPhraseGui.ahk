@@ -60,7 +60,6 @@ ShowQuickPhraseSelector() {
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseSelector(myGui))
 
     AppState.QuickPhraseGui := myGui
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h470")
     search.Focus()
@@ -424,8 +423,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         y := 96 + (row - 1) * normalRowH
 
         myGui.SetFont(
-            "s9 c" AppState.THEME_FG_DIM,
-            AppState.THEME_FONT
+            "s9 c" Theme.TextSecondary,
+            Theme.Font
         )
 
         myGui.Add(
@@ -435,8 +434,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         )
 
         myGui.SetFont(
-            "s10 c" AppState.THEME_FG,
-            AppState.THEME_FONT
+            "s10 c" Theme.Text,
+            Theme.Font
         )
 
         editControl := myGui.Add(
@@ -461,8 +460,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ; real line breaks instead of accepting the dialog.
     if etxtName != "" {
         myGui.SetFont(
-            "s9 c" AppState.THEME_FG_DIM,
-            AppState.THEME_FONT
+            "s9 c" Theme.TextSecondary,
+            Theme.Font
         )
 
         myGui.Add(
@@ -472,8 +471,8 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         )
 
         myGui.SetFont(
-            "s10 c" AppState.THEME_FG,
-            AppState.THEME_FONT
+            "s10 c" Theme.Text,
+            Theme.Font
         )
 
         etxtEdit := myGui.Add(
@@ -498,7 +497,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         controls.Push(etxtControl)
     }
 
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     myGui.Add(
         "Text",
@@ -979,7 +978,6 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
     AppState.QuickPhraseManagerGui := myGui
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 740, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w740 h590")
     search.Focus()
@@ -1078,25 +1076,25 @@ ShowQuickPhraseEditor(id := 0) {
     ThemeHelper.AddTitle(myGui, "📝 " Lang(titleKey, titleDefault), 640)
     ThemeHelper.AddSeparator(myGui, 640)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     myGui.Add("Text", "w640 y+10", Lang("GUI_QUICK_PHRASE_NAME", "Name"))
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     nameEdit := myGui.Add("Edit", "w640 r1 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.name : "")
     ThemeHelper.StyleEdit(nameEdit)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     myGui.Add("Text", "w640 y+12", Lang("GUI_QUICK_PHRASE_CATEGORY", "Category"))
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     categoryEdit := myGui.Add("Edit", "w640 r1 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.category : "")
     ThemeHelper.StyleEdit(categoryEdit)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     myGui.Add("Text", "w640 y+12", Lang("GUI_QUICK_PHRASE_TEMPLATE", "Template"))
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     contentEdit := myGui.Add("Edit", "w640 r12 y+6 " ThemeHelper.GetEditOptions(), isEdit ? phrase.content : "")
     ThemeHelper.StyleEdit(contentEdit)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     myGui.Add(
         "Text",
         "w640 y+8",
@@ -1142,7 +1140,6 @@ ShowQuickPhraseEditor(id := 0) {
     myGui.OnEvent("Escape", Cancel)
     myGui.OnEvent("Close", Cancel)
 
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h560")
     nameEdit.Focus()

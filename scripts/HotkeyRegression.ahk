@@ -33,10 +33,8 @@ global gChecks := 0
 global gFailures := []
 
 ; The application's own source folders. Only these (plus CapsLock-.ahk) are
-; scanned: the repository root can also hold .ahk files that are not part of
-; the app - scripts\, an AHK# checkout in lib\, or the AutoHotkey install that
-; CI unpacks into .\autohotkey - and cross-checking those against the app's
-; include list would only produce noise.
+; scanned: the repository root can also hold test scripts and the AutoHotkey
+; runtime unpacked by CI, which are not application modules.
 global gSourceFolders := ["Config", "Core", "Hotkeys", "History", "Tray", "UI", "Utils"]
 
 ; ---------------------------------------------------------------------------
@@ -447,14 +445,12 @@ FindClosingParen(text, start) {
 }
 
 ; ---------------------------------------------------------------------------
-; Focused regressions for the window badge, tray callback, and C# diagnostics
+; Focused regressions for the window badge, tray callback, and theme boundary
 ; ---------------------------------------------------------------------------
 
-CheckPinAndSetupRegressions(root) {
+CheckPinIndicatorRegressions(root) {
     pinText := ReadText(root "\UI\PinIndicator.ahk")
     trayText := ReadText(root "\Tray\TrayMenu.ahk")
-    runtimeText := ReadText(root "\Core\CSharpRuntime.ahk")
-    settingsText := ReadText(root "\UI\SettingsGui.ahk")
 
     Check(
         InStr(trayText, "callback: PinIndicator.MakeUnpinCallback(hwnd)") > 0
@@ -474,22 +470,27 @@ CheckPinAndSetupRegressions(root) {
         InStr(pinText, "IsWindowVisible") > 0 && InStr(pinText, "NoActivate") > 0,
         "pin badge visibility is reconciled with the native window after restore"
     )
+}
+
+CheckThemeTokenArchitecture(root) {
+    themeText := ReadText(root "\UI\Theme.ahk")
+    settingsText := ReadText(root "\UI\SettingsGui.ahk")
+    stateText := ReadText(root "\Config\Globals.ahk")
 
     Check(
-        InStr(runtimeText, "static CompleteInstall(result)") > 0
-            && InStr(runtimeText, "Full diagnostic log:") > 0
-            && InStr(runtimeText, "static FormatException(err)") > 0,
-        "C# setup retains exception details in a persistent diagnostic report"
+        InStr(themeText, "static Palettes := Map(") > 0
+            && InStr(themeText, "PrimaryContainer") > 0
+            && InStr(themeText, "TextSecondary") > 0,
+        "theme exposes shared semantic surface and text roles"
     )
     Check(
-        InStr(runtimeText, "static DotNetCandidates()") > 0
-            && InStr(runtimeText, "this.HasDotNet8Sdk(candidate)") > 0,
-        "C# setup probes all .NET hosts before selecting an SDK"
+        InStr(settingsText, "ThemeHelper.AddSurfaceCard") > 0
+            && InStr(settingsText, "nav-active") > 0,
+        "settings pages use shared surface and navigation components"
     )
     Check(
-        InStr(settingsText, "CSharpRuntime.UnexpectedInstallFailure(err)") > 0
-            && InStr(settingsText, "finally") > 0,
-        "C# setup UI reports unexpected failures and closes its progress window"
+        InStr(stateText, "THEME_") == 0,
+        "presentation tokens stay out of persisted application state"
     )
 }
 
@@ -549,7 +550,8 @@ Main() {
 
     CheckShortcutBindings(root)
     CheckConfigRoundTrip(root)
-    CheckPinAndSetupRegressions(root)
+    CheckPinIndicatorRegressions(root)
+    CheckThemeTokenArchitecture(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")
