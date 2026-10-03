@@ -36,8 +36,8 @@ ProcessImagePathsToPDF() {
     ThemeHelper.ApplyWindowTheme(progressGui.Hwnd)
     progressGui.Show("AutoSize Center")
 
-    outputPdf := A_Temp "\\ClipTemp_" A_TickCount ".pdf"
-    logFile := A_Temp "\\CapsLock_ImageMagick_" A_TickCount ".log"
+    outputPdf := A_Temp "\ClipTemp_" A_TickCount ".pdf"
+    logFile := A_Temp "\CapsLock_ImageMagick_" A_TickCount ".log"
     errorText := ""
 
     success := _RunImageMagickPdf(exe, paths, outputPdf, logFile)
@@ -145,8 +145,8 @@ _EnableUserPdfWritePolicy() {
         if (userProfile == "")
             return false
 
-        configDir := userProfile "\\.config\\ImageMagick"
-        policyPath := configDir "\\policy.xml"
+        configDir := userProfile "\.config\ImageMagick"
+        policyPath := configDir "\policy.xml"
         backupPath := policyPath ".capslock-backup"
         DirCreate(configDir)
 
