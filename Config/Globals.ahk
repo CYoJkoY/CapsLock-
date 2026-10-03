@@ -32,11 +32,6 @@ class AppState {
     static MenuPosY := 0
     static ImageMagickExe := ""
 
-    ; --- C# service boundary (issue #12) ---
-    ; "ahk" (default) or "csharp". Read by Services.Configure(); the CLR
-    ; is never booted unless this is "csharp".
-    static ServiceBackend := "ahk"
-
     ; --- Shift Layer ---
     static ShiftLayerActive := false
     static ShiftLayerTimer := ""

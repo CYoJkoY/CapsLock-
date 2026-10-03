@@ -7,56 +7,35 @@ class FileHelper {
     static _simplePatterns := []
     static _regexPatterns := []
     static _regexReady := false
-    static _serviceRules := ""
-
-    static PATH_MATCH_SPEC := DllCall( "GetModuleHandle", "Str", "shlwapi", "Ptr" ) || DllCall( "LoadLibrary", "Str", "shlwapi", "Ptr" )
 
     static BuildIgnoreRegexes() {
         this._simplePatterns := []
         this._regexPatterns := []
         this._regexReady := false
-        this._serviceRules := ""
 
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
             return
 
         for rawPattern in AppState.IgnorePatterns {
             pattern := Trim(rawPattern)
-            if pattern == ""
-                continue
-            if SubStr(pattern, 1, 1) == "#"
-                continue
-            if SubStr(pattern, 1, 1) == "!"
+            if pattern == "" || SubStr(pattern, 1, 1) == "#" || SubStr(pattern, 1, 1) == "!"
                 continue
 
-            ; Separate simple patterns (fast PathMatchSpecW) from complex patterns (slow regex)
-            ; Patterns with ** or ? require regex; everything else uses native API
             if InStr(pattern, "**") || InStr(pattern, "?") {
                 regexStr := this._GitignoreToRegex(pattern)
                 if regexStr != "" {
                     try {
                         RegExMatch("", regexStr)
                         this._regexPatterns.Push({ pattern: pattern, regex: regexStr })
-                    } catch {
                     }
                 }
             } else {
                 this._simplePatterns.Push(pattern)
             }
         }
-
         this._regexReady := true
     }
 
-    ; Convert gitignore-style patterns to AHK RegEx strings
-    ;
-    ; Conversion rules:
-    ;   /**/  ->  (?:[\/].*)?        (0+ intermediate directories)
-    ;   /**   ->  (?:[\/].*)?        (optional trailing subpath)
-    ;   **/   ->  (?:.*[\/])?        (optional leading directories)
-    ;   *     ->  [^\/]*             (no path separators)
-    ;   ?     ->  [^\/]              (single non-separator)
-    ;   /     ->  [\/]               (path separator)
     static _GitignoreToRegex(pattern) {
         patLen := StrLen(pattern)
         if patLen > 0 && SubStr(pattern, patLen, 1) == "/"
@@ -74,24 +53,15 @@ class FileHelper {
 
         while i <= len {
             ch := SubStr(pattern, i, 1)
-
-            if ch == this.MARKER_MID {
+            if ch == this.MARKER_MID || ch == this.MARKER_END {
                 result .= "(?:[\\/].*)?"
                 i++
                 continue
             }
-
-            if ch == this.MARKER_END {
-                result .= "(?:[\\/].*)?"
-                i++
-                continue
-            }
-
             if ch == "*" {
                 if i < len && SubStr(pattern, i + 1, 1) == "*" {
                     prevCh := (i > 1) ? SubStr(pattern, i - 1, 1) : ""
                     nextCh := (i + 2 <= len) ? SubStr(pattern, i + 2, 1) : ""
-
                     if (prevCh == "" || prevCh == "/") && nextCh == "/" {
                         result .= "(?:.*[\\/])?"
                         i += 3
@@ -100,68 +70,32 @@ class FileHelper {
                         result .= ".*"
                         i += 2
                         continue
-                    } else {
-                        result .= "[^\\/]*"
-                        i++
-                        continue
                     }
-                } else {
-                    result .= "[^\\/]*"
-                    i++
-                    continue
                 }
+                result .= "[^\\/]*"
+                i++
+                continue
             }
-
             if ch == "?" {
                 result .= "[^\\/]"
                 i++
                 continue
             }
-
             if ch == "/" {
                 result .= "[\\/]"
                 i++
                 continue
             }
-
             if ch ~= "[\\.\\^\$\(\)\|\[\]\{\}\+\\\\]"
                 result .= "\\" ch
             else
                 result .= ch
-
             i++
         }
-
         return "^" result "(?:[\\/].*)?$"
     }
 
-    ; Share the AHK parser's actual output with C#, once per rule edit. This
-    ; does not load .NET and avoids two diverging gitignore implementations.
-    static ServiceRules() {
-        if !this._regexReady
-            this.BuildIgnoreRegexes()
-        if !IsObject(this._serviceRules) {
-            regexes := []
-            for entry in this._regexPatterns
-                regexes.Push(entry.regex)
-            this._serviceRules := [Services.PackStrings(this._simplePatterns), Services.PackStrings(regexes)]
-        }
-        return this._serviceRules
-    }
-
-    ; Single-path check, used right where the user pastes. Always the AHK
-    ; matcher, even with [Services] Backend=csharp: on a GitHub-hosted Windows
-    ; runner one warm C# call cost about twice one AHK call (0.019 vs 0.009 ms),
-    ; and the first one would also start the CLR inside a paste hotkey. Only
-    ; whole-file batches (CollectFilesFromFolder, ReadMultipleFilesAsText) cross
-    ; the bridge. See docs/perf/csharp-boundary.md.
     static ShouldIgnore(filePath) {
-        return this.ShouldIgnoreAhk(filePath)
-    }
-
-    ; The AHK matcher, and the reference the C# implementation is tested
-    ; against. Never re-enters Services.
-    static ShouldIgnoreAhk(filePath) {
         if !IsObject(AppState.IgnorePatterns) || AppState.IgnorePatterns.Length == 0
             return false
 
@@ -174,51 +108,30 @@ class FileHelper {
 
         SplitPath(filePath, &fileName)
 
-        ; Check simple patterns first using fast PathMatchSpecW API
         for pattern in this._simplePatterns {
             try {
                 if DllCall("shlwapi\PathMatchSpecW", "str", normalized, "str", pattern, "int")
                     return true
                 if DllCall("shlwapi\PathMatchSpecW", "str", fileName, "str", pattern, "int")
                     return true
-            } catch {
             }
         }
 
-        ; Check complex patterns with regex (only when necessary)
         for entry in this._regexPatterns {
             try {
                 if RegExMatch(normalized, entry.regex)
                     return true
-            } catch {
             }
         }
-
         return false
-    }
-
-    static PathMatchSpec( filePath, pattern ) {
-        return DllCall( "shlwapi\PathMatchSpecW", "Str", filePath, "Str", pattern, "Int" )
     }
 
     static ReadMultipleFilesAsText(filePaths) {
         result := ""
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-        batch := Services.IsEnabled() && IsObject(AppState.IgnorePatterns) && AppState.IgnorePatterns.Length > 0
-        if batch {
-            trimmed := []
-            for path in filePaths {
-                path := Trim(path)
-                if path != ""
-                    trimmed.Push(path)
-            }
-            filePaths := Services.FilterFilePaths(trimmed)
-        }
-        for idx, filePath in filePaths {
+        for filePath in filePaths {
             filePath := Trim(filePath)
-            if filePath == ""
-                continue
-            if !batch && this.ShouldIgnoreAhk(filePath)
+            if filePath == "" || this.ShouldIgnore(filePath)
                 continue
             result .= this.BuildFileHeader(filePath, timestamp)
             result .= this.ReadFileContentSafe(filePath)
@@ -246,34 +159,20 @@ class FileHelper {
         }
     }
 
-    ; Collect all files from a folder, optionally recursive.
-    ; Uses built-in recursive Loop Files (flag "FR") for significant speedup
-    ; over manual recursion, especially for deep directory trees.
     static CollectFilesFromFolder(folderPath, recursive := true, fileList := unset) {
         if !IsSet(fileList)
             fileList := []
 
         folderPath := RTrim(folderPath, "\/")
-
         if this.ShouldIgnore(folderPath)
             return fileList
 
-        ; Keep native enumeration (including its order and error handling).
-        ; C# filters one batch, not one bridge round-trip per file. Do not prune
-        ; directories, which would change the semantics of simple name globs.
-        batch := Services.IsEnabled() && IsObject(AppState.IgnorePatterns) && AppState.IgnorePatterns.Length > 0
-        candidates := batch ? [] : fileList
         flags := recursive ? "FR" : "F"
         try {
             loop files, folderPath "\*", flags {
-                if batch || !this.ShouldIgnoreAhk(A_LoopFileFullPath)
-                    candidates.Push(A_LoopFileFullPath)
+                if !this.ShouldIgnore(A_LoopFileFullPath)
+                    fileList.Push(A_LoopFileFullPath)
             }
-        }
-
-        if batch {
-            for path in Services.FilterFilePaths(candidates)
-                fileList.Push(path)
         }
         return fileList
     }

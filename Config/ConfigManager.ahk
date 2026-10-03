@@ -18,20 +18,18 @@ class ConfigManager {
             return
 
         try {
-            AppState.DeleteMode        := IniRead(cfg, "Cleanup",   "deleteMode",      1)
-            AppState.DeleteDelay       := IniRead(cfg, "Cleanup",   "deleteDelay",     10)
-            AppState.CleanupInterval   := IniRead(cfg, "Cleanup",   "cleanupInterval", 30)
-            AppState.ImageMagickExe    := IniRead(cfg, "ImageMagick", "Path",          "")
-            AppState.MaxHistory        := IniRead(cfg, "History",   "maxHistory",     10000)
-            AppState.PasteMode         := IniRead(cfg, "General",   "pasteMode",      1)
-            AppState.AutoCleanEnabled  := IniRead(cfg, "General",   "autoClean",      "0") == "1"
-            AppState.MaxHistoryItems   := Integer(IniRead(cfg, "General", "maxHistoryItems", "500"))
+            AppState.DeleteMode := IniRead(cfg, "Cleanup", "deleteMode", 1)
+            AppState.DeleteDelay := IniRead(cfg, "Cleanup", "deleteDelay", 10)
+            AppState.CleanupInterval := IniRead(cfg, "Cleanup", "cleanupInterval", 30)
+            AppState.ImageMagickExe := IniRead(cfg, "ImageMagick", "Path", "")
+            AppState.MaxHistory := IniRead(cfg, "History", "maxHistory", 10000)
+            AppState.PasteMode := IniRead(cfg, "General", "pasteMode", 1)
+            AppState.AutoCleanEnabled := IniRead(cfg, "General", "autoClean", "0") == "1"
+            AppState.MaxHistoryItems := Integer(IniRead(cfg, "General", "maxHistoryItems", "500"))
             AppState.QuickPhraseEnabled := IniRead(cfg, "QuickPhrase", "enabled", "1") == "1"
             AppState.ThemeMode := StrLower(Trim(IniRead(cfg, "UI", "theme", "dark")))
-            AppState.PandocExe         := IniRead(cfg, "Pandoc", "Path", "")
+            AppState.PandocExe := IniRead(cfg, "Pandoc", "Path", "")
             AppState.PandocOutputFormat := IniRead(cfg, "Pandoc", "OutputFormat", "docx")
-            AppState.ServiceBackend    := StrLower(Trim(IniRead(cfg, "Services", "Backend", "ahk")))
-
             ; ---- Cloud Sync ----
             AppState.CloudSyncEnabled :=
                 IniRead(cfg, "CloudSync", "enabled", "0") == "1"
@@ -96,7 +94,8 @@ class ConfigManager {
                 : 360
 
             windowHoleShape := StrLower(Trim(IniRead(cfg, "WindowHole", "shape", "circle")))
-            AppState.WindowHoleShape := (windowHoleShape == "circle" || windowHoleShape == "rounded" || windowHoleShape == "square")
+            AppState.WindowHoleShape := (windowHoleShape == "circle" || windowHoleShape == "rounded" || windowHoleShape ==
+                "square")
                 ? windowHoleShape
                 : "circle"
 
@@ -214,19 +213,18 @@ class ConfigManager {
     static Save(markCloudSyncDirty := true) {
         cfg := AppState.ConfigFile
         try {
-            IniWrite(AppState.DeleteMode,         cfg, "Cleanup",   "deleteMode")
-            IniWrite(AppState.DeleteDelay,        cfg, "Cleanup",   "deleteDelay")
-            IniWrite(AppState.CleanupInterval,    cfg, "Cleanup",   "cleanupInterval")
-            IniWrite(AppState.MaxHistory,         cfg, "History",   "maxHistory")
-            IniWrite(AppState.PasteMode,          cfg, "General",   "pasteMode")
+            IniWrite(AppState.DeleteMode, cfg, "Cleanup", "deleteMode")
+            IniWrite(AppState.DeleteDelay, cfg, "Cleanup", "deleteDelay")
+            IniWrite(AppState.CleanupInterval, cfg, "Cleanup", "cleanupInterval")
+            IniWrite(AppState.MaxHistory, cfg, "History", "maxHistory")
+            IniWrite(AppState.PasteMode, cfg, "General", "pasteMode")
             IniWrite(AppState.AutoCleanEnabled ? "1" : "0", cfg, "General", "autoClean")
-            IniWrite(AppState.MaxHistoryItems,    cfg, "General",   "maxHistoryItems")
+            IniWrite(AppState.MaxHistoryItems, cfg, "General", "maxHistoryItems")
             IniWrite(AppState.QuickPhraseEnabled ? "1" : "0", cfg, "QuickPhrase", "enabled")
             IniWrite(AppState.ThemeMode, cfg, "UI", "theme")
-            IniWrite(AppState.PandocExe,          cfg, "Pandoc", "Path")
+            IniWrite(AppState.PandocExe, cfg, "Pandoc", "Path")
             IniWrite(AppState.PandocOutputFormat, cfg, "Pandoc", "OutputFormat")
-            IniWrite(AppState.ImageMagickExe,     cfg, "ImageMagick", "Path")
-            IniWrite(AppState.ServiceBackend,     cfg, "Services", "Backend")
+            IniWrite(AppState.ImageMagickExe, cfg, "ImageMagick", "Path")
 
             ; ---- Window Hole ----
             IniWrite(AppState.WindowHoleDiameter, cfg, "WindowHole", "diameter")
