@@ -23,6 +23,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Reject escaped backslashes in DLL names
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\scripts\ci\Check-DllPaths.ps1
+
       - name: Install AutoHotkey
         uses: holy-tao/install-autohotkey@37e2ba93564d85ce51426c4e77efcbda81b65c24
         with:

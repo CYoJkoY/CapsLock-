@@ -337,25 +337,60 @@ class ThemeHelper {
         return [borderCtrl, fillCtrl]
     }
 
+    ; Clips a control to a rounded rectangle so cards read as surfaces instead
+    ; of plain filled boxes. Note the single backslash in the DLL names: in
+    ; AutoHotkey v2 "\" is NOT an escape character, so "gdi32\\..." would ask
+    ; Windows to load a DLL literally named "gdi32\\" and throw.
+    ; Every step is guarded: a missing/zero-sized window or a failed region
+    ; leaves the control untouched instead of breaking the caller's thread.
     static _ApplyRoundedCorners(ctrl, radius) {
+        hwnd := 0
+        try hwnd := ctrl.Hwnd
+        catch
+            return
+        if !hwnd || !IsNumber(radius) || radius <= 0
+            return
+
         rect := Buffer(16, 0)
-        if !DllCall("GetClientRect", "Ptr", ctrl.Hwnd, "Ptr", rect, "Int")
+        try {
+            if !DllCall("GetClientRect", "Ptr", hwnd, "Ptr", rect, "Int")
+                return
+        } catch
             return
 
         width := NumGet(rect, 8, "Int")
         height := NumGet(rect, 12, "Int")
-        region := DllCall(
-            "gdi32\\CreateRoundRectRgn",
-            "Int", 0,
-            "Int", 0,
-            "Int", width + 1,
-            "Int", height + 1,
-            "Int", radius * 2,
-            "Int", radius * 2,
-            "Ptr"
-        )
-        if region && !DllCall("SetWindowRgn", "Ptr", ctrl.Hwnd, "Ptr", region, "Int", true, "Int")
-            DllCall("gdi32\\DeleteObject", "Ptr", region)
+        if (width <= 0 || height <= 0)
+            return
+
+        region := 0
+        try {
+            region := DllCall(
+                "gdi32\CreateRoundRectRgn",
+                "Int", 0,
+                "Int", 0,
+                "Int", width + 1,
+                "Int", height + 1,
+                "Int", radius * 2,
+                "Int", radius * 2,
+                "Ptr"
+            )
+        } catch
+            return
+
+        if !region
+            return
+
+        ; After a successful SetWindowRgn the system owns the region; only a
+        ; failure leaves us responsible for deleting it.
+        applied := false
+        try applied := DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", region, "Int", true, "Int")
+        catch
+            applied := false
+
+        if !applied {
+            try DllCall("gdi32\DeleteObject", "Ptr", region)
+        }
     }
 
     ; Creates a 1px horizontal divider inside a surface card.
