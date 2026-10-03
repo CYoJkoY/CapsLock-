@@ -106,7 +106,6 @@ OnSelectAllClicked(chk, info) {
 
     newState := chk.Value ? "Check" : "-Check"
 
-    ; 暂停重绘以提高大量历史记录勾选时的性能
     SendMessage(0x000B, 0, 0, lv.Hwnd) ; WM_SETREDRAW = 0
     loop totalRows {
         lv.Modify(A_Index, newState)
@@ -115,41 +114,7 @@ OnSelectAllClicked(chk, info) {
     DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
 }
 
-OnDeleteSelected(*) {
-    myGui := AppState.FullHistoryGui
-    lv := myGui.ListView
-
-    indicesToDelete := []
-
-    row := 0
-    while row := lv.GetNext(row, "Checked") {
-        realIdx := lv.GetText(row, 1)
-        if realIdx ~= "^\d+$"
-            indicesToDelete.Push(Integer(realIdx))
-    }
-
-    if indicesToDelete.Length == 0 {
-        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1500)
-        return
-    }
-
-    while indicesToDelete.Length {
-        maxPos := 1
-
-        loop indicesToDelete.Length {
-            if indicesToDelete[A_Index] > indicesToDelete[maxPos]
-                maxPos := A_Index
-        }
-
-        HistoryManager.Delete(indicesToDelete[maxPos])
-        indicesToDelete.RemoveAt(maxPos)
-    }
-
-    RefreshFullHistoryList()
-}
-
 OnItemCheck(lv, row, checked) {
-    ; 当用户手动单选时，若全部勾选则同步勾选全选框，反之取消全选框勾选
     guiObj := lv.Gui
     if !guiObj.HasProp("chkSelectAll")
         return
@@ -167,61 +132,69 @@ OnItemCheck(lv, row, checked) {
     guiObj.chkSelectAll.Value := (checkedCount == totalRows) ? 1 : 0
 }
 
-UpdateSelectAllCheckbox() {
-    myGui := AppState.FullHistoryGui
-    lv := myGui.ListView
-
-    realRows := GetRealListViewRows(lv)
-    checkedRows := GetCheckedRealListViewRows(lv)
-
-    myGui.chkSelectAll.Value := (realRows.Length > 0 && checkedRows.Length == realRows.Length) ? 1 : 0
-}
-
-EnsureFullHistoryTargetWindow(myGui) {
-    if AppState.TargetWindow && WinExist("ahk_id " AppState.TargetWindow)
+EnsureFullHistoryTargetWindow(myGui := "") {
+    targetHwnd := AppState.TargetWindow
+    if targetHwnd && WinExist("ahk_id " targetHwnd)
         return true
 
-    current := WinExist("A")
-    if current && current != myGui.Hwnd {
-        AppState.TargetWindow := current
+    activeHwnd := WinExist("A")
+    if activeHwnd && !WindowIsOwnProcess(activeHwnd) {
+        AppState.TargetWindow := activeHwnd
         return true
     }
 
-    ShowToolTip(Lang("MSG_TARGET_CLOSED"), 2500)
-
-    loop 20 {
-        Sleep(100)
-
-        current := WinExist("A")
-        if current && current != myGui.Hwnd {
-            AppState.TargetWindow := current
-            return true
-        }
-    }
-
-    ShowToolTip(Lang("MSG_NO_TARGET"), 2000)
+    ShowToolTip(Lang("MSG_TARGET_WINDOW_LOST", "", "Target window is no longer available."), 1800)
     return false
 }
 
-GetRealListViewRows(lv) {
-    rows := []
-
-    loop lv.GetCount() {
-        if lv.GetText(A_Index, 1) ~= "^\d+$"
-            rows.Push(A_Index)
-    }
-
-    return rows
-}
-
-GetCheckedRealListViewRows(lv) {
-    rows := []
+OnDeleteSelected(btn, info) {
+    myGui := btn.Gui
+    lv := myGui.ListView
+    indices := []
 
     row := 0
     while row := lv.GetNext(row, "Checked") {
-        if lv.GetText(row, 1) ~= "^\d+$"
-            rows.Push(row)
+        realIdx := lv.GetText(row, 1)
+        if realIdx ~= "^\d+$"
+            indices.Push(Integer(realIdx))
     }
 
-    return rows
+    if indices.Length == 0 {
+        ShowToolTip(Lang("MSG_SELECT_ITEM", "", "Please select an item."), 1500)
+        return
+    }
+
+    _SortIndicesDescending(indices)
+    for idx in indices {
+        if idx >= 1 && idx <= AppState.History.Length {
+            AppState.History.RemoveAt(idx)
+        }
+    }
+
+    if HasMethod(HistoryManager, "Invalidate")
+        HistoryManager.Invalidate()
+    else if HistoryManager.HasProp("revision")
+        HistoryManager.revision++
+
+    RefreshFullHistoryList()
+    ShowToolTip(Lang("MSG_DELETED", "", "Deleted!"), 1200)
+}
+
+_SortIndicesDescending(arr) {
+    n := arr.Length
+    if n <= 1
+        return
+    loop n - 1 {
+        swapped := false
+        loop n - A_Index {
+            if arr[A_Index] < arr[A_Index + 1] {
+                temp := arr[A_Index]
+                arr[A_Index] := arr[A_Index + 1]
+                arr[A_Index + 1] := temp
+                swapped := true
+            }
+        }
+        if !swapped
+            break
+    }
 }

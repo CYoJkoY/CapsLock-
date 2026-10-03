@@ -116,7 +116,7 @@ _RunImageMagickPdf(exe, paths, outputPdf, logFile) {
     for path in paths
         pathArgs .= '"' path '" '
 
-    ; 修正参数引号拼接：由 '\"' 改为原生 '"'
+    ; 原生引号嵌套构造命令行参数
     commandLine := '"' exe '" -density 150 -auto-orient -quality 95 ' . pathArgs . '"' outputPdf '"'
 
     batchPath := A_Temp "\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
@@ -125,8 +125,6 @@ _RunImageMagickPdf(exe, paths, outputPdf, logFile) {
     batch .= "exit /b %errorlevel%`r`n"
 
     FileAppend(batch, batchPath, "UTF-8")
-
-    ; 修正 cmd 执行调用的双引号结构
     exitCode := RunWait('"' A_ComSpec '" /d /c call "' batchPath '"', , "Hide")
 
     try FileDelete(batchPath)

@@ -5,10 +5,8 @@ class HistoryManager {
     static saveTimer := ""
     static revision := 0
 
-    ; Snapshot replacement is lazy: even Load() at startup never starts .NET.
     static Replaced() {
         this.revision++
-        Services.InvalidateHistory(true)
     }
 
     static Load() {
@@ -39,7 +37,7 @@ class HistoryManager {
 
             list := []
 
-            Loop count {
+            loop count {
                 size := history.ReadInt()
 
                 if size <= 0
@@ -85,9 +83,6 @@ class HistoryManager {
         this.savePending := true
         this.saveTimer := ObjBindMethod(this, "DoSave")
 
-        ; Extended debounce from 2000ms to 3000ms to reduce disk I/O
-        ; during rapid clipboard operations. ForceSave() is called on exit
-        ; so no data is lost.
         SetTimer(this.saveTimer, -3000)
     }
 
@@ -108,12 +103,10 @@ class HistoryManager {
             srcStr := item["source"]
             txtStr := item["text"]
 
-            ; Measure string sizes with StrPut
             timeSize := StrPut(timeStr, "UTF-8")
             srcSize := StrPut(srcStr, "UTF-8")
             txtSize := StrPut(txtStr, "UTF-8")
 
-            ; Build buffer directly with StrPut (no intermediate buffers or RtlMoveMemory)
             total := 4 + timeSize + 4 + srcSize + 4 + txtSize
             buf := Buffer(total, 0)
 
@@ -143,18 +136,10 @@ class HistoryManager {
         if text == ""
             return
 
-        ; Fast check: most common duplicate case is the most recent entry
         if AppState.History.Length > 0 && AppState.History[1]["text"] == text
             return
 
-        ; C# keeps a resident hash/ring index; only the candidate crosses on
-        ; warm calls. The AHK fallback retains the original reverse scan.
-        previousRevision := this.revision
-        idx := Services.HistoryFindDuplicate(text)
-        ; A timer/clipboard event may have edited history during a cold boot.
-        if previousRevision != this.revision
-            idx := ServicesHistoryFindDuplicateResidentAhk(text)
-        previousRevision := this.revision
+        idx := this._FindDuplicate(text)
         if idx > 0
             AppState.History.RemoveAt(idx)
 
@@ -167,31 +152,26 @@ class HistoryManager {
             AppState.History.Pop()
 
         this.revision++
-        Services.HistoryAdded(text, idx, AppState.MaxHistory, previousRevision)
         this.ScheduleSave()
     }
 
     static Delete(index) {
         if index >= 1 && index <= AppState.History.Length {
-            previousRevision := this.revision
             AppState.History.RemoveAt(index)
             this.revision++
-            Services.HistoryDeleted(index, previousRevision)
             this.ScheduleSave()
         }
     }
 
-    ; All limit changes and auto-cleaning go through this path so the resident
-    ; index and the GUI's incremental-search cache cannot become stale.
     static Trim(limit) {
         limit := Max(0, Integer(limit))
         if AppState.History.Length <= limit
             return
-        previousRevision := this.revision
+
         while AppState.History.Length > limit
             AppState.History.Pop()
+
         this.revision++
-        Services.HistoryTrimmed(limit, previousRevision)
         this.ScheduleSave()
     }
 
@@ -208,6 +188,14 @@ class HistoryManager {
 
         if this.savePending
             this.DoSave()
+    }
+
+    static _FindDuplicate(text) {
+        for index, item in AppState.History {
+            if item["text"] == text
+                return index
+        }
+        return 0
     }
 }
 

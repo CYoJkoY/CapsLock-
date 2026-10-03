@@ -93,8 +93,7 @@ class QuickPhraseStore {
         }
 
         this._phrases.Push(phrase)
-        if !AppState.CloudSyncApplying
-            CloudSyncCoordinator.MarkLocalChanged()
+        this._NotifySyncDirty()
         return true
     }
 
@@ -129,8 +128,7 @@ class QuickPhraseStore {
             return false
         }
 
-        if !AppState.CloudSyncApplying
-            CloudSyncCoordinator.MarkLocalChanged()
+        this._NotifySyncDirty()
         return true
     }
 
@@ -150,8 +148,7 @@ class QuickPhraseStore {
 
         this._phrases.RemoveAt(index)
         this._NormalizeOrders()
-        if !AppState.CloudSyncApplying
-            CloudSyncCoordinator.MarkLocalChanged()
+        this._NotifySyncDirty()
         return true
     }
 
@@ -173,9 +170,17 @@ class QuickPhraseStore {
 
         this._Sort()
         this._PersistMetadata()
-        if !AppState.CloudSyncApplying
-            CloudSyncCoordinator.MarkLocalChanged()
+        this._NotifySyncDirty()
         return true
+    }
+
+    static _NotifySyncDirty() {
+        if AppState.CloudSyncApplying
+            return
+
+        if HasMethod(CloudSyncCoordinator, "MarkLocalChanged") {
+            try CloudSyncCoordinator.MarkLocalChanged()
+        }
     }
 
     static _EnsureDirectories() {
