@@ -38,14 +38,14 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleCheckBox(enabled)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     providerLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_PROVIDER", "Provider"))
     ThemeHelper.MarkDim(providerLabel)
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     provider := myGui.Add(
         "ComboBox",
-        "w620 y+6 Choose1 c" AppState.THEME_FG,
+        "w620 y+6 Choose1 c" Theme.Text,
         [
             "GitHub Gist",
             "GitHub Private Repository",
@@ -154,10 +154,10 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleEdit(interval)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
     minutesLabel := myGui.AddText("x504 yp+3", Lang("GUI_CLOUD_SYNC_MINUTES", "minutes"))
     ThemeHelper.MarkDim(minutesLabel)
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     status := myGui.Add(
         "Text",
@@ -607,7 +607,6 @@ ShowCloudSyncSettings(*) {
     myGui.OnEvent("Escape", CloseSettings)
     myGui.OnEvent("Close", CloseSettings)
 
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 660, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
 
     LoadFields()

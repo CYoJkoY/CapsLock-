@@ -178,9 +178,7 @@ class QuickPhraseStore {
         if AppState.CloudSyncApplying
             return
 
-        if HasMethod(CloudSyncCoordinator, "MarkLocalChanged") {
-            try CloudSyncCoordinator.MarkLocalChanged()
-        }
+        CloudSyncCoordinator.MarkLocalChanged()
     }
 
     static _EnsureDirectories() {

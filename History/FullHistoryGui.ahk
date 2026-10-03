@@ -41,9 +41,9 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
-    myGui.SetFont("s10 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.TextMuted, Theme.Font)
     searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     searchBox := myGui.Add(
         "Edit",
         "x" (margin + 22) " y" (searchY - 2) " w604 " ThemeHelper.GetEditOptions("r1")
@@ -99,18 +99,17 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     btnLoadMore.OnEvent("Click", OnLoadMoreClicked)
     myGui.btnLoadMore := btnLoadMore
 
-    myGui.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+    myGui.SetFont("s8 c" Theme.TextMuted, Theme.Font)
     statusBar := myGui.Add(
         "Text",
         "x16 y+12 w640",
         " " Lang("GUI_FULL_STATUS", "", "Ready") " | "
         . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
     )
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     myGui.StatusBar := statusBar
 
     AppState.FullHistoryGui := myGui
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 680, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("w680 h580")
     RefreshFullHistoryList()
@@ -137,9 +136,7 @@ RefreshFullHistoryList(isIncremental := false) {
     filter := Trim(myGui.SearchBox.Text)
     maxDisplay := AppState.MAX_FULL_HISTORY_DISPLAY
 
-    hasRevision := HistoryManager.HasProp("revision")
-    currentRevision := hasRevision ? HistoryManager.revision : 0
-
+    currentRevision := HistoryManager.revision
     needRebuild := !isIncremental
         || !myGui.HasProp("cachedMatching")
         || (myGui.HasProp("lastFilter") && !(myGui.lastFilter == filter))
@@ -164,16 +161,14 @@ RefreshFullHistoryList(isIncremental := false) {
     totalMatching := matching.Length
     prevDisplayed := myGui.HasProp("displayedCount") ? myGui.displayedCount : 0
 
-    startIdx := prevDisplayed + 1
-    endIdx := Min(maxDisplay, totalMatching)
-
-    if startIdx <= endIdx {
-        loop endIdx - startIdx + 1 {
-            index := matching[startIdx + A_Index - 1]
+    pageRange := HistoryPageRange(totalMatching, prevDisplayed, maxDisplay)
+    if pageRange.start <= pageRange.end {
+        loop pageRange.end - pageRange.start + 1 {
+            index := matching[pageRange.start + A_Index - 1]
             item := AppState.History[index]
             lv.Add(, index, HistoryPreviewText(item["text"]), SubStr(item["time"], 12, 5))
         }
-        myGui.displayedCount := endIdx
+        myGui.displayedCount := pageRange.end
     }
 
     SendMessage(0x000B, 1, 0, lv.Hwnd)
@@ -192,21 +187,6 @@ RefreshFullHistoryList(isIncremental := false) {
     }
 
     myGui.chkSelectAll.Value := 0
-}
-
-HistorySearch(query) {
-    indices := []
-    for index, item in AppState.History {
-        text := item["text"]
-        if query == "" || InStr(text, query) || InStr(HistoryPreviewText(text), query)
-            indices.Push(index)
-    }
-    return indices
-}
-
-HistoryPreviewText(text) {
-    display := RegExReplace(SubStr(text, 1, 80), "[\r\n\t\v\f]+", " ")
-    return display . (StrLen(text) > 80 ? "…" : "")
 }
 
 ResizeFullHistoryGui(guiObj, minmax, width, height) {

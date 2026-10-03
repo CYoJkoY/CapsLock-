@@ -54,9 +54,9 @@ class HotkeyReferenceGui {
         ThemeHelper.AddSubtitle(myGui, Lang("CHEAT_HINT"), 640)
         ThemeHelper.AddSeparator(myGui, 640)
 
-        myGui.SetFont("s10 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.TextMuted, Theme.Font)
         searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         search := myGui.Add(
             "Edit",
             "x" (margin + 22) " y" (searchY - 2) " w560 " ThemeHelper.GetEditOptions("r1")
@@ -74,9 +74,9 @@ class HotkeyReferenceGui {
         lv.OnEvent("DoubleClick", (lvObj, row) => HotkeyReferenceGui.RunEntry(row))
         ThemeHelper.StyleListView(lv)
 
-        myGui.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
+        myGui.SetFont("s8 c" Theme.TextMuted, Theme.Font)
         status := myGui.Add("Text", "x" margin " y+10 w640", "")
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         this.gui := myGui
         this.listView := lv
@@ -84,7 +84,6 @@ class HotkeyReferenceGui {
         this.statusBar := status
         this.searchIcon := searchIcon
 
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 672, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w672 h560")
         this.Refresh()

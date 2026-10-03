@@ -119,14 +119,14 @@ SetIgnorePatterns(*) {
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
     ThemeHelper.AddSeparator(myGui, 500)
 
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT_MONO)
+    myGui.SetFont("s10 c" Theme.Text, Theme.FontMono)
     myEdit := myGui.Add(
         "Edit",
         "Multi VScroll w500 h200 y+12 " ThemeHelper.GetEditOptions(),
         ""
     )
     ThemeHelper.StyleEdit(myEdit)
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     current := ""
     for pattern in AppState.IgnorePatterns
@@ -139,7 +139,6 @@ SetIgnorePatterns(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 540, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show()
 }
@@ -207,13 +206,13 @@ SetPandocOutput(*) {
     ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
     ThemeHelper.AddSeparator(myGui, 420)
 
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
     formats := AppState.PandocOutputFormats.Clone()
     _SortStrings(formats)
 
     cbo := myGui.Add(
         "ComboBox",
-        "w320 vOutputFormat Choose1 c" AppState.THEME_FG " Background" AppState.THEME_CONTROL_BG,
+        "w320 vOutputFormat Choose1 c" Theme.Text " Background" Theme.Control,
         formats
     )
     ThemeHelper.StyleComboBox(cbo)
@@ -232,7 +231,6 @@ SetPandocOutput(*) {
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 460, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }
@@ -355,7 +353,7 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.AddSeparator(myGui, 560)
 
-    myGui.SetFont("s9 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s9 c" Theme.Text, Theme.Font)
 
     myGui.AddText(
         "x30 y+10 w560",
@@ -401,7 +399,7 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.StyleEdit(excludeClass)
 
-    myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
     btnOK := ThemeHelper.AddButton(
         myGui,
@@ -428,7 +426,6 @@ SetWindowHoleRules(*) {
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
     myGui.OnEvent("Escape", (*) => myGui.Destroy())
 
-    ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 620, 3)
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     myGui.Show("AutoSize Center")
 }

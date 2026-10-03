@@ -81,9 +81,9 @@ ConvertWithPandoc() {
         ThemeHelper.StyleGui(progressGui)
         ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
         ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
-        progressGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        progressGui.SetFont("s10 c" Theme.Text, Theme.Font)
         progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
-        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" AppState.THEME_ACCENT " Background" AppState.THEME_CONTROL_BG,
+        progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" Theme.Primary " Background" Theme.Control,
             0)
         ThemeHelper.ApplyWindowTheme(progressGui.Hwnd)
         progressGui.Show("AutoSize Center")

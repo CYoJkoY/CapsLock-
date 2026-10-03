@@ -111,7 +111,7 @@ class WindowSwitcherGui {
 
         ; The list font is set for this control only, so the row height and
         ; text size follow the configured row density.
-        myGui.SetFont(profile.font " c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont(profile.font " c" Theme.Text, Theme.Font)
 
         list := myGui.Add(
             "ListView",
@@ -120,7 +120,7 @@ class WindowSwitcherGui {
             columns
         )
 
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         ; Full-row selection keeps the highlight readable end to end; double
         ; buffering keeps filtering from flickering.
@@ -144,13 +144,13 @@ class WindowSwitcherGui {
         if this._imageList
             WindowIcons.AttachImageList(this._imageList, list.Hwnd)
 
-        myGui.SetFont("s8 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
         status := myGui.Add(
             "Text",
             "w640 y+8",
             ""
         )
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         ThemeHelper.MarkDim(status)
 
         activateBtn := ThemeHelper.AddButton(
@@ -230,7 +230,6 @@ class WindowSwitcherGui {
         this.Instance := myGui
         this.EnsureNotifyHook()
 
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, 672, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
 
         myGui.Show("AutoSize")
@@ -934,7 +933,7 @@ class WindowSwitcherGui {
         DllCall(
             "gdi32\SetDCBrushColor",
             "Ptr", hdc,
-            "UInt", this.Cref(selected ? AppState.THEME_ELEVATED : AppState.THEME_CONTROL_BG)
+            "UInt", this.Cref(selected ? Theme.PrimaryContainer : Theme.Control)
         )
         DllCall("gdi32\FillRect", "Ptr", hdc, "Ptr", rcPtr, "Ptr", this._dcBrush)
 
@@ -947,7 +946,7 @@ class WindowSwitcherGui {
             DllCall(
                 "gdi32\SetDCBrushColor",
                 "Ptr", hdc,
-                "UInt", this.Cref(AppState.THEME_ACCENT)
+                "UInt", this.Cref(Theme.Primary)
             )
             DllCall("gdi32\FillRect", "Ptr", hdc, "Ptr", bar, "Ptr", this._dcBrush)
         } else {
@@ -959,7 +958,7 @@ class WindowSwitcherGui {
             DllCall(
                 "gdi32\SetDCBrushColor",
                 "Ptr", hdc,
-                "UInt", this.Cref(AppState.THEME_SURFACE)
+                "UInt", this.Cref(Theme.Surface)
             )
             DllCall("gdi32\FillRect", "Ptr", hdc, "Ptr", line, "Ptr", this._dcBrush)
         }
@@ -968,7 +967,7 @@ class WindowSwitcherGui {
         ; these colours when CDRF_NEWFONT is returned.
         NumPut(
             "UInt",
-            this.Cref(selected ? AppState.THEME_FG : AppState.THEME_FG_DIM),
+            this.Cref(selected ? Theme.Text : Theme.TextSecondary),
             lParam + clrTextOff
         )
         NumPut("UInt", 0xFFFFFFFF, lParam + clrTextOff + 4)   ; CLR_NONE

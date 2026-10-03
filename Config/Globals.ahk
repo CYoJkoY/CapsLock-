@@ -49,92 +49,6 @@ class AppState {
     static MAX_VISIBLE_MENU := 12
     static MAX_FULL_HISTORY_DISPLAY := 50
 
-    ; --- UI Theme (Google Chrome / Workspace Material Design) ---
-    static THEME_BG := "0x202124"
-    static THEME_SURFACE := "0x292A2D"
-    static THEME_ELEVATED := "0x1F3760"
-    static THEME_CONTROL_BG := "0x303134"
-    static THEME_CONTROL_HOVER := "0x3C4043"
-    static THEME_BORDER := "0x3C4043"
-
-    static THEME_FG := "0xE8EAED"
-    static THEME_FG_DIM := "0x9AA0A6"
-    static THEME_FG_MUTED := "0x80868B"
-
-    static THEME_ACCENT := "0x8AB4F8"
-    static THEME_ACCENT_DARK := "0x1A73E8"
-    static THEME_ACCENT_GLOW := "0xD2E3FC"
-
-    static THEME_SUCCESS := "0x81C995"
-    static THEME_WARNING := "0xFDD663"
-    static THEME_DANGER := "0xD93025"
-
-    ; Foreground used on accent-filled surfaces (primary / danger buttons).
-    static THEME_ON_ACCENT := "0xFFFFFF"
-
-    ; Google Brand 4-Color Accents
-    static GOOGLE_BLUE := "0x4285F4"
-    static GOOGLE_RED := "0xEA4335"
-    static GOOGLE_YELLOW := "0xFBBC05"
-    static GOOGLE_GREEN := "0x34A853"
-
-    static THEME_FONT := "Segoe UI"
-    static THEME_FONT_MONO := "Cascadia Code"
-    static THEME_RADIUS := 12
-
-    ; --- Theme Palettes ---
-    ; The single source of truth for both themes. AppState.THEME_* above holds
-    ; the values of the active theme; Theme.Apply() copies one of these
-    ; palettes into those fields. Adding a theme means adding one entry here
-    ; instead of touching individual windows.
-    ;
-    ; Colours are AHK RGB strings (0xRRGGBB). ThemeHelper converts them to
-    ; GDI COLORREF (0xBBGGRR) when talking to the Win32 API.
-    static THEME_PALETTES := Map(
-        "dark", Map(
-            ; Google Chrome / Workspace Dark palette:
-            ; Deep #202124 canvas, #292A2D elevated cards, #1F3760 tonal selection
-            ; pill, and signature #8AB4F8 / #1A73E8 Google Blue accents.
-            "THEME_BG", "0x202124",
-            "THEME_SURFACE", "0x292A2D",
-            "THEME_ELEVATED", "0x1F3760",
-            "THEME_CONTROL_BG", "0x303134",
-            "THEME_CONTROL_HOVER", "0x3C4043",
-            "THEME_BORDER", "0x3C4043",
-            "THEME_FG", "0xE8EAED",
-            "THEME_FG_DIM", "0x9AA0A6",
-            "THEME_FG_MUTED", "0x80868B",
-            "THEME_ACCENT", "0x8AB4F8",
-            "THEME_ACCENT_DARK", "0x1A73E8",
-            "THEME_ACCENT_GLOW", "0xD2E3FC",
-            "THEME_SUCCESS", "0x81C995",
-            "THEME_WARNING", "0xFDD663",
-            "THEME_DANGER", "0xD93025",
-            "THEME_ON_ACCENT", "0xFFFFFF"
-        ),
-        "light", Map(
-            ; Google Chrome / Workspace Light palette:
-            ; Crisp #F8F9FA neutral canvas, #FFFFFF elevated cards, #E8F0FE
-            ; tonal blue selection pill, and #1A73E8 Google Blue accents.
-            "THEME_BG", "0xF8F9FA",
-            "THEME_SURFACE", "0xFFFFFF",
-            "THEME_ELEVATED", "0xE8F0FE",
-            "THEME_CONTROL_BG", "0xF1F3F4",
-            "THEME_CONTROL_HOVER", "0xE8EAED",
-            "THEME_BORDER", "0xDADCE0",
-            "THEME_FG", "0x202124",
-            "THEME_FG_DIM", "0x5F6368",
-            "THEME_FG_MUTED", "0x80868B",
-            "THEME_ACCENT", "0x1A73E8",
-            "THEME_ACCENT_DARK", "0x1A73E8",
-            "THEME_ACCENT_GLOW", "0x174EA6",
-            "THEME_SUCCESS", "0x1E8E3E",
-            "THEME_WARNING", "0xF9AB00",
-            "THEME_DANGER", "0xD93025",
-            "THEME_ON_ACCENT", "0xFFFFFF"
-        )
-    )
-
     ; --- File Types ---
     static TextFormats := [
         "txt", "log", "md", "rtf",
@@ -145,7 +59,7 @@ class AppState {
         "ts", "html", "htm", "css", "php",
         "jsp", "asp", "apsx", "vue", "scss",
         "sass", "less", "py", "java", "go",
-        "rs", "rb", "kt", "cs", "sql", "r",
+        "rs", "rb", "kt", "sql", "r",
         "lua", "vb", "bat", "cmd", "sh", "ps1",
         "gd", "gdshader", "tres", "tscn"
     ]

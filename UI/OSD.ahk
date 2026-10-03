@@ -17,34 +17,33 @@ class OSD {
             this.currentHwnd := 0
         }
 
-        accentColor := AppState.THEME_ACCENT
+        accentColor := Theme.Primary
         icon := "💡"
 
         switch mytype {
-            case "success": accentColor := AppState.THEME_SUCCESS, icon := "✅"
-            case "warning": accentColor := AppState.THEME_WARNING, icon := "⚠️"
-            case "error":   accentColor := AppState.THEME_DANGER,  icon := "❌"
-            default:        accentColor := AppState.THEME_ACCENT,  icon := "💡"
+            case "success": accentColor := Theme.Success, icon := "✅"
+            case "warning": accentColor := Theme.Warning, icon := "⚠️"
+            case "error":   accentColor := Theme.Error,  icon := "❌"
+            default:        accentColor := Theme.Primary,  icon := "💡"
         }
 
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
-        myOSD.BackColor := AppState.THEME_SURFACE
+        myOSD.BackColor := Theme.Surface
 
         ; Left semantic status indicator bar
         myOSD.Add("Text", "x0 y3 w4 h59 Background" accentColor)
 
         myOSD.SetFont("s16", "Segoe UI Emoji")
-        myOSD.Add("Text", "x16 y14 Background" AppState.THEME_SURFACE, icon)
+        myOSD.Add("Text", "x16 y14 Background" Theme.Surface, icon)
 
-        myOSD.SetFont("s11 Bold c" AppState.THEME_FG, AppState.THEME_FONT)
-        myOSD.Add("Text", "x48 y15 Background" AppState.THEME_SURFACE, text)
+        myOSD.SetFont("s11 Bold c" Theme.Text, Theme.Font)
+        myOSD.Add("Text", "x48 y15 Background" Theme.Surface, text)
 
-        myOSD.SetFont("s8 c" AppState.THEME_FG_MUTED, AppState.THEME_FONT)
-        myOSD.Add("Text", "x48 y39 Background" AppState.THEME_SURFACE, "CapsLock-  ·  " FormatTime(, "HH:mm:ss"))
+        myOSD.SetFont("s8 c" Theme.TextMuted, Theme.Font)
+        myOSD.Add("Text", "x48 y39 Background" Theme.Surface, "CapsLock-  ·  " FormatTime(, "HH:mm:ss"))
 
         myOSD.Show("Hide")
         myOSD.GetPos(, , &ow, &oh)
-        ThemeHelper.AddGoogleAccentBar(myOSD, 0, 0, ow, 3)
         savedHwnd := myOSD.Hwnd
 
         try {

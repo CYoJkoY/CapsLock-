@@ -59,7 +59,7 @@ PasteSelectedFromFullHistory() {
         return
     }
 
-    if !EnsureFullHistoryTargetWindow(myGui)
+    if !EnsureFullHistoryTargetWindow()
         return
 
     WinActivate("ahk_id " AppState.TargetWindow)
@@ -92,7 +92,7 @@ PasteSelectedFromFullHistoryText() {
 
     combined := Join(textList, "`n")
 
-    if !EnsureFullHistoryTargetWindow(myGui)
+    if !EnsureFullHistoryTargetWindow()
         return
 
     PasteAsPlainText(combined, Lang("MSG_PASTE_MULTI_COMPLETE", "", textList.Length))
@@ -132,7 +132,7 @@ OnItemCheck(lv, row, checked) {
     guiObj.chkSelectAll.Value := (checkedCount == totalRows) ? 1 : 0
 }
 
-EnsureFullHistoryTargetWindow(myGui := "") {
+EnsureFullHistoryTargetWindow() {
     targetHwnd := AppState.TargetWindow
     if targetHwnd && WinExist("ahk_id " targetHwnd)
         return true
@@ -143,7 +143,7 @@ EnsureFullHistoryTargetWindow(myGui := "") {
         return true
     }
 
-    ShowToolTip(Lang("MSG_TARGET_WINDOW_LOST", "", "Target window is no longer available."), 1800)
+    ShowToolTip(Lang("MSG_TARGET_WINDOW_GONE", "", "Target window is no longer available."), 1800)
     return false
 }
 
@@ -164,37 +164,15 @@ OnDeleteSelected(btn, info) {
         return
     }
 
-    _SortIndicesDescending(indices)
+    indices := StrSplit(Sort(Join(indices, "`n"), "N R"), "`n")
     for idx in indices {
-        if idx >= 1 && idx <= AppState.History.Length {
+        idx := Integer(idx)
+        if idx >= 1 && idx <= AppState.History.Length
             AppState.History.RemoveAt(idx)
-        }
     }
 
-    if HasMethod(HistoryManager, "Invalidate")
-        HistoryManager.Invalidate()
-    else if HistoryManager.HasProp("revision")
-        HistoryManager.revision++
+    HistoryManager.revision++
 
     RefreshFullHistoryList()
     ShowToolTip(Lang("MSG_DELETED", "", "Deleted!"), 1200)
-}
-
-_SortIndicesDescending(arr) {
-    n := arr.Length
-    if n <= 1
-        return
-    loop n - 1 {
-        swapped := false
-        loop n - A_Index {
-            if arr[A_Index] < arr[A_Index + 1] {
-                temp := arr[A_Index]
-                arr[A_Index] := arr[A_Index + 1]
-                arr[A_Index + 1] := temp
-                swapped := true
-            }
-        }
-        if !swapped
-            break
-    }
 }

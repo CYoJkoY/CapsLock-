@@ -38,7 +38,7 @@ jobs:
         timeout-minutes: 2
         run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegression.ahk -TimeoutSeconds 90
 
-      - name: History window paging checks (AHK backend)
+      - name: History search, preview, and paging checks
         shell: pwsh
         timeout-minutes: 2
         run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk -TimeoutSeconds 90

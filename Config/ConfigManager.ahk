@@ -202,7 +202,7 @@ class ConfigManager {
             }
 
             langVal := IniRead(cfg, "General", "language", "")
-            if langVal != "" && AppState.HasProp("CurrentLanguage")
+            if langVal != ""
                 AppState.CurrentLanguage := langVal
 
             ignoreStr := IniRead(cfg, "Ignore", "Rules", "")
@@ -237,7 +237,7 @@ class ConfigManager {
             IniWrite(Join(AppState.WindowHoleAllowedClasses, "|"), cfg, "WindowHole", "allowedClasses")
             IniWrite(Join(AppState.WindowHoleExcludedClasses, "|"), cfg, "WindowHole", "excludedClasses")
 
-            if AppState.HasProp("CurrentLanguage") && AppState.CurrentLanguage != ""
+            if AppState.CurrentLanguage != ""
                 IniWrite(AppState.CurrentLanguage, cfg, "General", "language")
 
             ignoreStr := Join(AppState.IgnorePatterns, "|")
@@ -290,11 +290,8 @@ class ConfigManager {
             IniWrite(AppState.CloudSyncOneDrivePath, cfg, "CloudSyncOneDrive", "path")
         }
 
-        if markCloudSyncDirty && !AppState.CloudSyncApplying {
-            if HasMethod(CloudSyncCoordinator, "MarkLocalChanged") {
-                try CloudSyncCoordinator.MarkLocalChanged()
-            }
-        }
+        if markCloudSyncDirty && !AppState.CloudSyncApplying
+            CloudSyncCoordinator.MarkLocalChanged()
     }
 }
 

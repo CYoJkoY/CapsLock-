@@ -12,9 +12,9 @@ class DarkInputDialog {
         ThemeHelper.StyleGui(myGui)
         ThemeHelper.AddTitle(myGui, "⚙️ " title, width - 20)
 
-        myGui.SetFont("s10 c" AppState.THEME_FG_DIM, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.TextSecondary, Theme.Font)
         myGui.Add("Text", "w" (width - 20) " y+8", prompt)
-        myGui.SetFont("s10 c" AppState.THEME_FG, AppState.THEME_FONT)
+        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
         editCtrl := myGui.Add(
             "Edit",
@@ -41,7 +41,6 @@ class DarkInputDialog {
         myGui.OnEvent("Escape", OnCancel)
         myGui.OnEvent("Close", OnCancel)
 
-        ThemeHelper.AddGoogleAccentBar(myGui, 0, 0, width + 12, 3)
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("AutoSize Center")
         editCtrl.Focus()
