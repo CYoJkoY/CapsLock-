@@ -1,57 +1,53 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 
 namespace CapsLockSharp
 {
-    /// <summary>
-    /// One BSTR per bulk transfer, framed as UTF-16-length:text. Unlike a joined
-    /// array, this also round-trips clipboard text containing any delimiter.
-    /// AHK StrLen and System.String.Length both count UTF-16 code units.
-    /// </summary>
-    internal static class StringWire
+    public static class StringWire
     {
-        internal static string Pack(IEnumerable<string> values)
+        public static string Pack(IEnumerable<string> values)
         {
-            var output = new StringBuilder();
-            foreach (string value in values)
+            if (values == null)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            foreach (var value in values)
             {
-                if (value == null)
-                    throw new ArgumentException("Null strings cannot cross the service boundary.");
-                output.Append(value.Length.ToString(CultureInfo.InvariantCulture));
-                output.Append(':');
-                output.Append(value);
+                string s = value ?? string.Empty;
+                sb.Append(s.Length).Append(':').Append(s);
             }
-            return output.ToString();
+            return sb.ToString();
         }
 
-        internal static string[] Unpack(string payload)
+        public static List<string> Unpack(string payload)
         {
-            if (payload == null)
-                throw new ArgumentNullException(nameof(payload));
+            var list = new List<string>();
+            if (string.IsNullOrEmpty(payload))
+                return list;
 
-            var values = new List<string>();
             int offset = 0;
-            while (offset < payload.Length)
+            int total = payload.Length;
+
+            while (offset < total)
             {
                 int colon = payload.IndexOf(':', offset);
-                if (colon < 0 || colon == offset)
-                    throw new FormatException("Missing string length.");
+                if (colon < 0)
+                    throw new InvalidOperationException("Missing service string length delimiter");
 
-                int length;
-                if (!int.TryParse(payload.Substring(offset, colon - offset),
-                    NumberStyles.None, CultureInfo.InvariantCulture, out length))
-                    throw new FormatException("Invalid string length.");
+                string lenStr = payload.Substring(offset, colon - offset);
+                if (!int.TryParse(lenStr, out int length) || length < 0)
+                    throw new InvalidOperationException("Invalid service string length");
 
                 offset = colon + 1;
-                if (length > payload.Length - offset)
-                    throw new FormatException("Truncated string payload.");
+                if (offset + length > total)
+                    throw new InvalidOperationException("Truncated service string payload");
 
-                values.Add(payload.Substring(offset, length));
+                list.Add(payload.Substring(offset, length));
                 offset += length;
             }
-            return values.ToArray();
+
+            return list;
         }
     }
 }

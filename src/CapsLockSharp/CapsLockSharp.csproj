@@ -1,36 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!--
-    Optional resident C# services for the AHK <-> .NET boundary (issue #12).
-
-    TargetFramework is netstandard2.0 on purpose:
-      * the AHK# bridge loads net4x first, then netstandard1.0-2.0, so a
-        netstandard2.0 assembly loads fine on the .NET Framework 4.x CLR that
-        AHK# hosts on Windows 10/11;
-      * `dotnet build` produces it without any .NET Framework targeting pack,
-        so CI needs nothing but the .NET SDK;
-      * one AnyCPU assembly serves both the x86 and the x64 build of the app,
-        because the CLR takes the bitness of the AutoHotkey exe it is hosted in.
-
-    LangVersion is pinned so the output never depends on which compiler the
-    build agent happens to have.
-
-    AutoHotkey uses these services only with [Services] Backend=csharp and a
-    locally installed, pinned AHK# bridge. The default remains pure AHK;
-    see docs/perf/csharp-boundary.md for setup, tests and measurements.
-  -->
-
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
     <AssemblyName>CapsLockSharp</AssemblyName>
     <RootNamespace>CapsLockSharp</RootNamespace>
-    <Platforms>AnyCPU</Platforms>
-    <Deterministic>true</Deterministic>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
 </Project>
