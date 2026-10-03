@@ -100,21 +100,19 @@ PasteSelectedFromFullHistoryText() {
 
 OnSelectAllClicked(chk, info) {
     lv := chk.Gui.ListView
+    totalRows := lv.GetCount()
+    if totalRows == 0
+        return
 
-    realRows := GetRealListViewRows(lv)
-    checkedRows := GetCheckedRealListViewRows(lv)
+    newState := chk.Value ? "Check" : "-Check"
 
-    if checkedRows.Length == realRows.Length {
-        for r in realRows
-            lv.Modify(r, "-Check")
-
-        chk.Value := 0
-    } else {
-        for r in realRows
-            lv.Modify(r, "Check")
-
-        chk.Value := 1
+    ; 暂停重绘以提高大量历史记录勾选时的性能
+    SendMessage(0x000B, 0, 0, lv.Hwnd) ; WM_SETREDRAW = 0
+    loop totalRows {
+        lv.Modify(A_Index, newState)
     }
+    SendMessage(0x000B, 1, 0, lv.Hwnd) ; WM_SETREDRAW = 1
+    DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
 }
 
 OnDeleteSelected(*) {
@@ -138,7 +136,7 @@ OnDeleteSelected(*) {
     while indicesToDelete.Length {
         maxPos := 1
 
-        Loop indicesToDelete.Length {
+        loop indicesToDelete.Length {
             if indicesToDelete[A_Index] > indicesToDelete[maxPos]
                 maxPos := A_Index
         }
@@ -151,7 +149,22 @@ OnDeleteSelected(*) {
 }
 
 OnItemCheck(lv, row, checked) {
-    UpdateSelectAllCheckbox()
+    ; 当用户手动单选时，若全部勾选则同步勾选全选框，反之取消全选框勾选
+    guiObj := lv.Gui
+    if !guiObj.HasProp("chkSelectAll")
+        return
+
+    totalRows := lv.GetCount()
+    if totalRows == 0
+        return
+
+    checkedCount := 0
+    currentRow := 0
+    while currentRow := lv.GetNext(currentRow, "Checked") {
+        checkedCount++
+    }
+
+    guiObj.chkSelectAll.Value := (checkedCount == totalRows) ? 1 : 0
 }
 
 UpdateSelectAllCheckbox() {
@@ -176,7 +189,7 @@ EnsureFullHistoryTargetWindow(myGui) {
 
     ShowToolTip(Lang("MSG_TARGET_CLOSED"), 2500)
 
-    Loop 20 {
+    loop 20 {
         Sleep(100)
 
         current := WinExist("A")
@@ -193,7 +206,7 @@ EnsureFullHistoryTargetWindow(myGui) {
 GetRealListViewRows(lv) {
     rows := []
 
-    Loop lv.GetCount() {
+    loop lv.GetCount() {
         if lv.GetText(A_Index, 1) ~= "^\d+$"
             rows.Push(A_Index)
     }

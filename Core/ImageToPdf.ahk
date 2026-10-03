@@ -114,21 +114,20 @@ _RunImageMagickPdf(exe, paths, outputPdf, logFile) {
 
     pathArgs := ""
     for path in paths
-        pathArgs .= '\"' path '\" '
+        pathArgs .= '"' path '" '
 
-    ; Keep read-affecting options before input files and quote every path.
-    commandLine := '\"' exe '\" -density 150 -auto-orient -quality 95 ' . pathArgs . '\"' outputPdf '\"'
+    ; 修正参数引号拼接：由 '\"' 改为原生 '"'
+    commandLine := '"' exe '" -density 150 -auto-orient -quality 95 ' . pathArgs . '"' outputPdf '"'
 
-    ; Use a temporary batch file solely to capture stdout/stderr. This makes
-    ; ImageMagick's real diagnostic visible instead of reducing every failure
-    ; to the unhelpful generic "exit code 1" message.
-    batchPath := A_Temp "\\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
+    batchPath := A_Temp "\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
     batch := "@echo off`r`n"
-    batch .= commandLine " > " '\"' logFile '\"' " 2>&1`r`n"
+    batch .= commandLine ' > "' logFile '" 2>&1`r`n'
     batch .= "exit /b %errorlevel%`r`n"
 
     FileAppend(batch, batchPath, "UTF-8")
-    exitCode := RunWait('\"' A_ComSpec '\" /d /c call \"' batchPath '\"', , "Hide")
+
+    ; 修正 cmd 执行调用的双引号结构
+    exitCode := RunWait('"' A_ComSpec '" /d /c call "' batchPath '"', , "Hide")
 
     try FileDelete(batchPath)
 

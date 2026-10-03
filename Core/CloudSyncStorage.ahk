@@ -5,8 +5,7 @@ class CloudSyncStorage {
         if !CloudSyncModel.VerifyPackage(package)
             return false
 
-        stagingDir := AppState.CloudSyncDir "\staging\apply-"
-        CloudSyncModel.CreateRevisionId()
+        stagingDir := AppState.CloudSyncDir "\staging\apply-" CloudSyncModel.CreateRevisionId()
 
         backupDir := ""
         AppState.CloudSyncApplying := true

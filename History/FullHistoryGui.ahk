@@ -137,11 +137,14 @@ RefreshFullHistoryList(isIncremental := false) {
     filter := Trim(myGui.SearchBox.Text)
     maxDisplay := AppState.MAX_FULL_HISTORY_DISPLAY
 
+    hasRevision := HistoryManager.HasProp("revision")
+    currentRevision := hasRevision ? HistoryManager.revision : 0
+
     needRebuild := !isIncremental
         || !myGui.HasProp("cachedMatching")
         || (myGui.HasProp("lastFilter") && !(myGui.lastFilter == filter))
         || !myGui.HasProp("lastHistoryRevision")
-        || myGui.lastHistoryRevision != HistoryManager.revision
+        || myGui.lastHistoryRevision != currentRevision
 
     if needRebuild {
         matching := HistorySearch(filter)

@@ -178,7 +178,7 @@ class CloudSyncCoordinator {
             return false
         }
 
-        if !this._IsProviderConfigured() && CloudSyncCredentials.Get("webdav", "username", "") != "" {
+        if !this._IsProviderConfigured() {
             this._SetState("not-configured")
             return false
         }

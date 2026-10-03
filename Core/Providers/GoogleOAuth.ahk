@@ -147,7 +147,7 @@ class GoogleOAuth {
             if received <= 0
                 return
 
-            request := StrGet(buffer, received, "UTF-8")
+            request := StrGet(mybuffer, received, "UTF-8")
             if !RegExMatch(
                 request,
                 "m)^GET /oauth2callback\?([^ ]+) HTTP/",
