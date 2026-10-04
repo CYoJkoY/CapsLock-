@@ -114,7 +114,7 @@ SetImPath(*) {
 SetIgnorePatterns(*) {
     myGui := Gui("+AlwaysOnTop +MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
+    ThemeHelper.AddTitle(myGui, "— " Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
     ThemeHelper.AddSeparator(myGui, 500)
@@ -202,7 +202,7 @@ _SortStrings(arr) {
 SetPandocOutput(*) {
     myGui := Gui("+AlwaysOnTop", Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "📤 " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
+    ThemeHelper.AddTitle(myGui, "↑ " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
     ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
     ThemeHelper.AddSeparator(myGui, 420)
 
@@ -342,7 +342,7 @@ ToggleWindowHoleFallback(*) {
 SetWindowHoleRules(*) {
     myGui := Gui("+AlwaysOnTop +MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "⚙️ " Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang(

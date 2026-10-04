@@ -43,6 +43,7 @@ class PinIndicator {
     static Enabled        := true
     static Tracked        := Map()     ; hwnd -> badge geometry, visibility, and restore state
     static TimerCallback  := ""
+    static _messageHooked := false
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -54,6 +55,14 @@ class PinIndicator {
         this.Enabled := AppState.AlwaysOnTopIndicator ? true : false
         this.Tracked := Map()
         this.TimerCallback := ""
+
+        ; Mouse minimization follows the shell's WM_SIZE path rather than our
+        ; hotkey path. Listen to the restore edge explicitly so Windows cannot
+        ; leave the independent badge hidden after a native minimize/restore.
+        if !this._messageHooked {
+            OnMessage(0x0005, ObjBindMethod(this, "_OnWindowSize")) ; WM_SIZE
+            this._messageHooked := true
+        }
 
         if this.Enabled
             this.ScanTopmostWindows()
@@ -260,12 +269,11 @@ class PinIndicator {
         badge.MarginX := 0
         badge.MarginY := 0
 
-        ; Segoe UI Emoji renders the pin glyph as a coloured bitmap on every
-        ; supported Windows build, which keeps the badge readable without a
-        ; second colour to maintain.
+        ; Use an ordinary publication mark rather than emoji: glyph metrics are
+        ; stable across Windows font packs, locales and DPI configurations.
         try {
-            badge.SetFont("s11 c" Theme.OnPrimary, "Segoe UI Emoji")
-            badge.Add("Text", "x0 y0 w" size " h" size " Center +0x200", "📌")
+            badge.SetFont("s11 c" Theme.OnPrimary, Theme.FontMono)
+            badge.Add("Text", "x0 y0 w" size " h" size " Center +0x200", "✦")
         } catch {
         }
 
@@ -286,6 +294,22 @@ class PinIndicator {
             visible: true,
             wasMinimized: false
         }
+    }
+
+    ; WM_SIZE is delivered for mouse-driven minimize and restore too. A
+    ; restored window gets a fresh popup rather than relying on the visibility
+    ; state cached before the shell transition.
+    static _OnWindowSize(wParam, lParam, msg, hwnd) {
+        if !this.Tracked.Has(hwnd)
+            return
+        if wParam == 0 { ; SIZE_RESTORED
+            SetTimer(ObjBindMethod(this, "_RefreshRestored", hwnd), -1)
+        }
+    }
+
+    static _RefreshRestored(hwnd) {
+        if this.Tracked.Has(hwnd)
+            try this._UpdateBadge(hwnd)
     }
 
     ; -----------------------------------------------------------------------

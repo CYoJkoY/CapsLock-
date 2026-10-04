@@ -7,7 +7,7 @@ class CloudSyncConflictGui {
 
         ThemeHelper.AddTitle(
             myGui,
-            "⚠ " Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"),
+            "! " Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"),
             520
         )
         ThemeHelper.AddSubtitle(

@@ -50,8 +50,10 @@ class ThemeHelper {
     static StyleGui(myGui) {
         myGui.BackColor := Theme.Background
         myGui.SetFont("s10 c" Theme.Text, Theme.Font)
-        myGui.MarginX := 16
-        myGui.MarginY := 16
+        ; Wabi-Press uses generous 8px rhythm and hairline structure rather
+        ; than rounded, elevated dashboard surfaces.
+        myGui.MarginX := 24
+        myGui.MarginY := 24
     }
 
     static _EnsureHooks() {
@@ -236,7 +238,7 @@ class ThemeHelper {
         static DWMWA_CAPTION_COLOR := 35
         static DWMWA_TEXT_COLOR := 36
         static DWMWA_TRANSITIONS_FORCEDISABLED := 3
-        static DWMWCP_ROUND := 2
+        static DWMWCP_DONOTROUND := 1
 
         try DllCall(
             "dwmapi\DwmSetWindowAttribute",
@@ -256,7 +258,7 @@ class ThemeHelper {
             "dwmapi\DwmSetWindowAttribute",
             "ptr", hwnd,
             "int", DWMWA_WINDOW_CORNER_PREFERENCE,
-            "int*", DWMWCP_ROUND,
+            "int*", DWMWCP_DONOTROUND,
             "int", 4
         )
         try DllCall(
@@ -280,6 +282,19 @@ class ThemeHelper {
             "int*", this.RgbToColorRef(Theme.Text),
             "int", 4
         )
+    }
+
+    ; Render the SVG source through the project's dedicated GDI+ SVG engine.
+    ; The Picture control receives an HBITMAP produced at runtime from the
+    ; SVG XML, so no browser, PNG derivative or external converter is needed.
+    static AddSvgIcon(myGui, path, options) {
+        hBitmap := SvgRenderer.Render(path, 20, 20)
+        if !hBitmap
+            return ""
+        try
+            return myGui.Add("Picture", options, "HBITMAP:" hBitmap)
+        catch
+            return ""
     }
 
     static AddButton(myGui, options, label, style := "secondary", parentBg := "") {
@@ -319,7 +334,8 @@ class ThemeHelper {
 
     ; Draw a restrained neutral divider without introducing decorative color.
     static AddSeparator(myGui, width := 600) {
-        return myGui.Add("Text", "w" width " h2 Background" Theme.Outline)
+        ; Chapter hairline: one quiet pixel, never a heavy divider.
+        return myGui.Add("Text", "w" width " h1 Background" Theme.Outline)
     }
 
     ; Add a neutral, outlined container for related controls.
@@ -402,15 +418,17 @@ class ThemeHelper {
     }
 
     static AddTitle(myGui, text, width := 600) {
-        myGui.SetFont("s14 Bold c" Theme.Text, Theme.Font)
-        ctrl := myGui.Add("Text", "w" width " Background" Theme.Background, text)
+        ; Explicit heights keep localized headings from colliding with the
+        ; following subtitle when a fallback CJK font has taller metrics.
+        myGui.SetFont("s15 c" Theme.Text, Theme.FontEditorial)
+        ctrl := myGui.Add("Text", "w" width " h28 Background" Theme.Background, text)
         myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         return ctrl
     }
 
     static AddSubtitle(myGui, text, width := 600) {
         myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
-        ctrl := myGui.Add("Text", "w" width " Background" Theme.Background, text)
+        ctrl := myGui.Add("Text", "w" width " h20 Background" Theme.Background, text)
         myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         this.MarkDim(ctrl)
         return ctrl
@@ -528,10 +546,9 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
             : ThemeHelper.RgbToColorRef(Theme.Outline)
     }
 
-    ; 3. Draw rounded pill / button shape using GDI RoundRect.
-    radius := (style == "nav" || style == "nav-active" || style == "tonal")
-        ? Theme.Radius + 4
-        : Theme.Radius
+    ; 3. Draw the restrained hand-cut paper shape. Wabi-Press uses a
+    ; hairline and a two-pixel corner, never a rounded dashboard pill.
+    radius := Theme.Radius
     fillBrush := ThemeHelper.GetBrush(fillColor)
     borderPen := ThemeHelper.GetPen(borderColor, 1)
 

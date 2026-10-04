@@ -18,7 +18,7 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(
         myGui,
-        "☁ " Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"),
+        Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"),
         620
     )
     ThemeHelper.AddSubtitle(
@@ -96,7 +96,7 @@ ShowCloudSyncSettings(*) {
     googleAuthorize := ThemeHelper.AddButton(
         myGui,
         "w150 y+10",
-        "🔐 " Lang("GUI_CLOUD_SYNC_GOOGLE_AUTHORIZE", "Authorize Google"),
+        "▣ " Lang("GUI_CLOUD_SYNC_GOOGLE_AUTHORIZE", "Authorize Google"),
         "primary"
     )
 
@@ -115,7 +115,7 @@ ShowCloudSyncSettings(*) {
     oneDriveAuthorize := ThemeHelper.AddButton(
         myGui,
         "w160 y+10",
-        "🔐 " Lang("GUI_CLOUD_SYNC_ONEDRIVE_AUTHORIZE", "Authorize OneDrive"),
+        "▣ " Lang("GUI_CLOUD_SYNC_ONEDRIVE_AUTHORIZE", "Authorize OneDrive"),
         "primary"
     )
 
@@ -186,7 +186,7 @@ ShowCloudSyncSettings(*) {
     syncBtn := ThemeHelper.AddButton(
         myGui,
         "x222 yp w95 h30",
-        "☁ " Lang("GUI_CLOUD_SYNC_SYNC_NOW", "Sync now")
+        Lang("GUI_CLOUD_SYNC_SYNC_NOW", "Sync now")
     )
     resetBtn := ThemeHelper.AddButton(
         myGui,

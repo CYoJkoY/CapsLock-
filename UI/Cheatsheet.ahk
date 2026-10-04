@@ -50,12 +50,12 @@ class HotkeyReferenceGui {
         myGui.OnEvent("Escape", (*) => HotkeyReferenceGui.Close())
         myGui.OnEvent("Size", (g, minmax, w, h) => HotkeyReferenceGui.Resize(g, w, h))
 
-        ThemeHelper.AddTitle(myGui, "⌨️ " Lang("CHEAT_TITLE"), 640)
+        ThemeHelper.AddTitle(myGui, Lang("CHEAT_TITLE"), 640)
         ThemeHelper.AddSubtitle(myGui, Lang("CHEAT_HINT"), 640)
         ThemeHelper.AddSeparator(myGui, 640)
 
         myGui.SetFont("s10 c" Theme.TextMuted, Theme.Font)
-        searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
+        searchIcon := ThemeHelper.AddSvgIcon(myGui, A_ScriptDir "\assets\icons\search.svg", "x" margin " y" searchY " w18 h18")
         myGui.SetFont("s10 c" Theme.Text, Theme.Font)
         search := myGui.Add(
             "Edit",

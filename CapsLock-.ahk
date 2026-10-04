@@ -77,6 +77,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\PinIndicator.ahk"
 #Include "UI\PreviewGui.ahk"
 #Include "UI\Theme.ahk"
+#Include "UI\SvgRenderer.ahk"
 #Include "UI\ThemeHelper.ahk"
 #Include "UI\WindowIcons.ahk"
 #Include "UI\WindowSwitcherGui.ahk"

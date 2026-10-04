@@ -38,7 +38,7 @@ ShowHistoryMenu(isReturning := false) {
         })
 
         menuItems.Push({
-            label: "📋 " Lang("HISTORY_MENU_VIEW_FULL", "", total),
+            label: Lang("HISTORY_MENU_VIEW_FULL", "", total),
             callback: CreateShowFullHistoryCallback(),
             isSep: false
         })

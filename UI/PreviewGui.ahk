@@ -3,7 +3,7 @@
 ShowPreviewGui(text) {
     myGui := Gui("+AlwaysOnTop +Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "👁️ " Lang("GUI_PREVIEW_TITLE"), 600)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_PREVIEW_TITLE"), 600)
 
     lineCount := StrSplit(text, "`n").Length
     charCount := StrLen(text)
@@ -20,7 +20,7 @@ ShowPreviewGui(text) {
     ThemeHelper.StyleEdit(myEdit)
     myGui.SetFont("s10 c" Theme.Text, Theme.Font)
 
-    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
+    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", Lang("GUI_PREVIEW_COPY"), "primary")
     btnCopy.OnEvent("Click", (*) => (
         AppState.IgnoreNextClipChange := true,
         A_Clipboard := text,

@@ -22,7 +22,7 @@ ShowQuickPhraseSelector() {
         Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
     )
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "💬 " Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"), 640)
+    ThemeHelper.AddTitle(myGui, "¶ " Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases"), 640)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang("GUI_QUICK_PHRASE_SUBTITLE", "Search by name or content. Press Enter or double-click to insert."),
@@ -45,7 +45,7 @@ ShowQuickPhraseSelector() {
 
     status := myGui.Add("Text", "w640 y+8", "")
     useBtn := ThemeHelper.AddButton(myGui, "Default w110 y+12", "✓ " Lang("GUI_QUICK_PHRASE_USE", "Use"), "primary")
-    manageBtn := ThemeHelper.AddButton(myGui, "x+8 yp w110", "📝 " Lang("GUI_QUICK_PHRASE_MANAGE", "Manage"))
+    manageBtn := ThemeHelper.AddButton(myGui, "x+8 yp w110", "✎ " Lang("GUI_QUICK_PHRASE_MANAGE", "Manage"))
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
@@ -1021,7 +1021,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
 
     myGui := Gui("+Resize +AlwaysOnTop +MinSize720x470", Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "📝 " Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"), 700)
+    ThemeHelper.AddTitle(myGui, "✎ " Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"), 700)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang("GUI_QUICK_PHRASE_MANAGER_SUBTITLE", "Create, edit, reorder, categorize, and delete local quick phrases."),
@@ -1044,7 +1044,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
 
     newBtn := ThemeHelper.AddButton(myGui, "Default w100 y+12", "＋ " Lang("GUI_QUICK_PHRASE_NEW", "New"), "primary")
     editBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✎ " Lang("GUI_QUICK_PHRASE_EDIT", "Edit"))
-    delBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑 " Lang("GUI_QUICK_PHRASE_DELETE", "Delete"), "danger")
+    delBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "× " Lang("GUI_QUICK_PHRASE_DELETE", "Delete"), "danger")
     upBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "↑ " Lang("GUI_QUICK_PHRASE_MOVE_UP", "Move Up"))
     downBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "↓ " Lang("GUI_QUICK_PHRASE_MOVE_DOWN", "Move Down"))
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
@@ -1164,7 +1164,7 @@ ShowQuickPhraseEditor(id := 0) {
 
     myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang(titleKey, titleDefault))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "📝 " Lang(titleKey, titleDefault), 640)
+    ThemeHelper.AddTitle(myGui, "✎ " Lang(titleKey, titleDefault), 640)
     ThemeHelper.AddSeparator(myGui, 640)
 
     myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)

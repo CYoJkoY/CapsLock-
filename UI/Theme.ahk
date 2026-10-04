@@ -1,7 +1,9 @@
 #Requires AutoHotkey v2.0
 
-; Material 3-inspired color system. Neutral surfaces establish hierarchy;
-; blue is reserved for primary actions, selection, and keyboard focus.
+; Wabi-Press / 侘寂刊本 visual contract.
+; The application is intentionally rendered as a quiet editorial instrument:
+; washi paper, pine-soot ink, cinnabar seals and moss accents. All controls
+; consume these semantic roles; no view owns a private palette.
 class Theme {
     static Dark := "dark"
     static Light := "light"
@@ -9,151 +11,100 @@ class Theme {
     static Modes := ["dark", "light"]
     static Current := "dark"
 
-    ; Semantic tokens consumed by all UI modules. Keep component code expressed
-    ; in roles (Surface, PrimaryContainer, TextSecondary), not palette values.
-    static Background := "0x202124"
-    static Surface := "0x292A2D"
-    static PrimaryContainer := "0x394B64"
-    static Control := "0x303134"
-    static ControlHover := "0x3C4043"
-    static Outline := "0x3C4043"
-    static Text := "0xE8EAED"
-    static TextSecondary := "0x9AA0A6"
-    static TextMuted := "0x92979B"
-    static Primary := "0xA8C7FA"
-    static OnPrimaryContainer := "0xD3E3FD"
-    static OnPrimary := "0x202124"
-    static Success := "0x81C995"
-    static Warning := "0xFDD663"
-    static Error := "0xF28B82"
+    ; Light spectrum: warm washi / ink / cinnabar / moss.
+    static Background := "0xF5F3EC"
+    static Surface := "0xFAF9F5"
+    static PrimaryContainer := "0xECE8DC"
+    static Control := "0xECE8DC"
+    static ControlHover := "0xE2DED2"
+    static Outline := "0xBDB6A9"
+    static Text := "0x1C1A17"
+    static TextSecondary := "0x524C44"
+    static TextMuted := "0x878074"
+    static Primary := "0xA6382A"
+    static OnPrimaryContainer := "0x3B5848"
+    static OnPrimary := "0xF5F3EC"
+    static Success := "0x3B5848"
+    static Warning := "0x9A5B28"
+    static Error := "0xA6382A"
 
     static Font := "Segoe UI"
-    static FontMono := "Cascadia Code"
-    static Radius := 12
+    static FontEditorial := "Source Han Serif SC"
+    static FontMono := "Cascadia Mono"
+    static Radius := 2
 
     static Palettes := Map(
-        "dark", Map(
-            "Background", "0x202124",
-            "Surface", "0x292A2D",
-            "PrimaryContainer", "0x394B64",
-            "Control", "0x303134",
-            "ControlHover", "0x3C4043",
-            "Outline", "0x3C4043",
-            "Text", "0xE8EAED",
-            "TextSecondary", "0x9AA0A6",
-            "TextMuted", "0x92979B",
-            "Primary", "0xA8C7FA",
-            "OnPrimaryContainer", "0xD3E3FD",
-            "OnPrimary", "0x202124",
-            "Success", "0x81C995",
-            "Warning", "0xFDD663",
-            "Error", "0xF28B82"
-        ),
         "light", Map(
-            "Background", "0xF8F9FA",
-            "Surface", "0xFFFFFF",
-            "PrimaryContainer", "0xE8F0FE",
-            "Control", "0xF1F3F4",
-            "ControlHover", "0xE8EAED",
-            "Outline", "0xDADCE0",
-            "Text", "0x202124",
-            "TextSecondary", "0x5F6368",
-            "TextMuted", "0x6B7075",
-            "Primary", "0x0B57D0",
-            "OnPrimaryContainer", "0x174EA6",
-            "OnPrimary", "0xFFFFFF",
-            "Success", "0x188038",
-            "Warning", "0xB06000",
-            "Error", "0xB3261E"
+            "Background", "0xF5F3EC", "Surface", "0xFAF9F5",
+            "PrimaryContainer", "0xECE8DC", "Control", "0xECE8DC",
+            "ControlHover", "0xE2DED2", "Outline", "0xBDB6A9",
+            "Text", "0x1C1A17", "TextSecondary", "0x524C44", "TextMuted", "0x878074",
+            "Primary", "0xA6382A", "OnPrimaryContainer", "0x3B5848", "OnPrimary", "0xF5F3EC",
+            "Success", "0x3B5848", "Warning", "0x9A5B28", "Error", "0xA6382A"
+        ),
+        "dark", Map(
+            "Background", "0x131416", "Surface", "0x1B1C20",
+            "PrimaryContainer", "0x25272D", "Control", "0x25272D",
+            "ControlHover", "0x303239", "Outline", "0x5A5955",
+            "Text", "0xEDEAE2", "TextSecondary", "0xA39F95", "TextMuted", "0x68645C",
+            "Primary", "0xC84A3B", "OnPrimaryContainer", "0x537B65", "OnPrimary", "0x131416",
+            "Success", "0x537B65", "Warning", "0xC1814D", "Error", "0xC84A3B"
         )
     )
 
     static Normalize(mode) {
         mode := StrLower(Trim(String(mode)))
-        for candidate in this.Modes {
+        for candidate in this.Modes
             if candidate == mode
                 return mode
-        }
         return this.Default
     }
-
     static IsDark() => this.Current == this.Dark
 
-    ; Apply the selected palette once, then let all UI modules read the same
-    ; semantic roles. Configuration stores only the selected mode.
     static Apply(mode := "") {
-        if (mode == "")
-            mode := this.Current
-
-        mode := this.Normalize(mode)
+        mode := this.Normalize(mode == "" ? this.Current : mode)
         palette := this.Palettes[mode]
-
         this.Background        := palette["Background"]
         this.Surface           := palette["Surface"]
         this.PrimaryContainer  := palette["PrimaryContainer"]
-        this.Control            := palette["Control"]
-        this.ControlHover       := palette["ControlHover"]
-        this.Outline            := palette["Outline"]
-        this.Text               := palette["Text"]
-        this.TextSecondary      := palette["TextSecondary"]
-        this.TextMuted          := palette["TextMuted"]
-        this.Primary            := palette["Primary"]
+        this.Control           := palette["Control"]
+        this.ControlHover      := palette["ControlHover"]
+        this.Outline           := palette["Outline"]
+        this.Text              := palette["Text"]
+        this.TextSecondary     := palette["TextSecondary"]
+        this.TextMuted         := palette["TextMuted"]
+        this.Primary           := palette["Primary"]
         this.OnPrimaryContainer := palette["OnPrimaryContainer"]
         this.OnPrimary          := palette["OnPrimary"]
-        this.Success            := palette["Success"]
-        this.Warning            := palette["Warning"]
-        this.Error              := palette["Error"]
-
+        this.Success           := palette["Success"]
+        this.Warning           := palette["Warning"]
+        this.Error             := palette["Error"]
         AppState.ThemeMode := mode
         this.Current := mode
     }
-
-    ; Apply the persisted mode after ConfigManager.Load().
     static Init() => this.Apply(AppState.ThemeMode)
+    static Label(mode) => this.Normalize(mode) == this.Light ? Lang("MENU_THEME_LIGHT", "Light") : Lang("MENU_THEME_DARK", "Dark")
+    static Toggle() => this.Set(this.IsDark() ? this.Light : this.Dark)
 
-    static Label(mode) {
-        return this.Normalize(mode) == this.Light
-            ? Lang("MENU_THEME_LIGHT", "Light")
-            : Lang("MENU_THEME_DARK", "Dark")
-    }
-
-    static Toggle() {
-        this.Set(this.IsDark() ? this.Light : this.Dark)
-    }
-
-    ; Update persisted state and rebuild only surfaces that cache GDI colors.
     static Set(mode) {
         mode := this.Normalize(mode)
-
         if mode == this.Current {
             ShowToolTip(Lang("MSG_THEME_ALREADY", "Theme already set to {1}.", this.Label(mode)), 1600)
             return
         }
-
         this.Apply(mode)
         try ConfigManager.Save()
-
         ThemeHelper.RefreshThemeResources()
         try CustomMenu.Hide()
-
         if IsObject(AppState.FullHistoryGui) {
             try AppState.FullHistoryGui.Destroy()
             AppState.FullHistoryGui := ""
         }
-
         if IsObject(OSD.currentOSD)
             try OSD.DestroyOSD(OSD.currentHwnd)
-
         try PinIndicator.RefreshTheme()
-
         if IsSet(SettingsGui) && SettingsGui.IsOpen()
             try SettingsGui.RefreshTheme()
-
-        ShowToolTip(
-            Lang(mode == this.Light ? "MSG_THEME_LIGHT_SET" : "MSG_THEME_DARK_SET",
-                mode == this.Light ? "Light theme enabled." : "Dark theme enabled.")
-            . " " . Lang("MSG_THEME_REOPEN", "Reopen open windows to apply the change."),
-            2600
-        )
+        ShowToolTip(Lang(mode == this.Light ? "MSG_THEME_LIGHT_SET" : "MSG_THEME_DARK_SET", mode == this.Light ? "Light theme enabled." : "Dark theme enabled.") . " " . Lang("MSG_THEME_REOPEN", "Reopen open windows to apply the change."), 2600)
     }
 }

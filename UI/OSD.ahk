@@ -18,13 +18,13 @@ class OSD {
         }
 
         accentColor := Theme.Primary
-        icon := "💡"
+        icon := "✦"
 
         switch mytype {
-            case "success": accentColor := Theme.Success, icon := "✅"
-            case "warning": accentColor := Theme.Warning, icon := "⚠️"
-            case "error":   accentColor := Theme.Error,  icon := "❌"
-            default:        accentColor := Theme.Primary,  icon := "💡"
+            case "success": accentColor := Theme.Success, icon := "✓"
+            case "warning": accentColor := Theme.Warning, icon := "!"
+            case "error":   accentColor := Theme.Error,  icon := "×"
+            default:        accentColor := Theme.Primary,  icon := "✦"
         }
 
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
@@ -74,7 +74,7 @@ class OSD {
     ; PinIndicator; this only has to be unambiguous while it is on screen.
     static ShowTopMostOSD(targetHwnd, isOnTop) {
         text := isOnTop
-            ? "📌 " Lang("UI_ALWAYS_TOP") . "  ·  " . this._WindowLabel(targetHwnd)
+            ? "✦ " Lang("UI_ALWAYS_TOP") . "  ·  " . this._WindowLabel(targetHwnd)
             : "○ " Lang("UI_UNPINNED") . "  ·  " . this._WindowLabel(targetHwnd)
         mytype := isOnTop ? "success" : "info"
         this.ShowNotification(text, 1500, mytype)

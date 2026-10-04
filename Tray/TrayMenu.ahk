@@ -41,7 +41,7 @@ BuildTrayMenuItems() {
 
     ; --- Primary entry: Dedicated Settings Center ---
     items.Push({
-        label: "⚙️ " . Lang("MENU_SETTINGS"),
+        label: Lang("MENU_SETTINGS"),
         callback: (*) => ShowSettingsGui()
     })
 
@@ -49,22 +49,22 @@ BuildTrayMenuItems() {
 
     ; --- High-frequency quick actions ---
     items.Push({
-        label: "📋 " . Lang("GUI_FULL_TITLE"),
+        label: Lang("GUI_FULL_TITLE"),
         callback: (*) => ShowFullHistoryGui()
     })
 
     items.Push({
-        label: "💬 " . Lang("MENU_QUICK_PHRASE_MANAGE"),
+        label: "¶ " . Lang("MENU_QUICK_PHRASE_MANAGE"),
         callback: (*) => ShowQuickPhraseManager()
     })
 
     items.Push({
-        label: "☁ " . Lang("MENU_CLOUD_SYNC_NOW"),
+        label: Lang("MENU_CLOUD_SYNC_NOW"),
         callback: (*) => (AppState.CloudSyncEnabled ? CloudSyncCoordinator.SyncNow() : ShowCloudSyncSettings())
     })
 
     items.Push({
-        label: "⌨️ " . Lang("MENU_CHEATSHEET"),
+        label: Lang("MENU_CHEATSHEET"),
         callback: (*) => OpenCheatsheetFromTray()
     })
 
@@ -83,7 +83,7 @@ BuildTrayMenuItems() {
         topmostChildren.Push({ isSep: true })
         for hwnd in pinned {
             topmostChildren.Push({
-                label: "📌 " . PinIndicator.MenuLabel(hwnd),
+                label: "✦ " . PinIndicator.MenuLabel(hwnd),
                 callback: PinIndicator.MakeUnpinCallback(hwnd)
             })
         }
@@ -95,35 +95,35 @@ BuildTrayMenuItems() {
     }
 
     items.Push({
-        label: "📌 " . Lang("MENU_TOPMOST") . " (" . pinned.Length . ")",
+        label: "✦ " . Lang("MENU_TOPMOST") . " (" . pinned.Length . ")",
         children: topmostChildren
     })
 
     ; --- Hidden windows restore (CapsLock + Shift + S) ---
-    hiddenLabel := "🫥 " . Lang("MENU_HIDDEN_WINDOWS") . " (" . TrayHider.Count() . ")"
+    hiddenLabel := "— " . Lang("MENU_HIDDEN_WINDOWS") . " (" . TrayHider.Count() . ")"
     items.Push({ label: hiddenLabel, children: TrayHider.MenuItems() })
 
     ; --- Quick Theme Switch (sub-menu) ---
     themeChildren := []
     for mode in Theme.Modes {
         themeChildren.Push({
-            label: (mode == Theme.Current ? "● " : "○ ") . "🎨 " . Theme.Label(mode),
+            label: (mode == Theme.Current ? "● " : "○ ") . Theme.Label(mode),
             callback: SetTheme.Bind(mode)
         })
     }
     items.Push({
-        label: "🌓 " . Lang("MENU_THEME") . ": " . Theme.Label(Theme.Current),
+        label: Lang("MENU_THEME") . ": " . Theme.Label(Theme.Current),
         children: themeChildren
     })
 
     items.Push({ isSep: true })
 
     ; --- Open temp folder ---
-    items.Push({ label: "📂 " . Lang("MENU_OPEN_TEMP"), callback: (*) => Run("explore " A_Temp) })
+    items.Push({ label: Lang("MENU_OPEN_TEMP"), callback: (*) => Run("explore " A_Temp) })
 
     ; --- Reload / Exit ---
-    items.Push({ label: "🔄 " . Lang("MENU_RELOAD"), callback: (*) => ReloadWithRestore() })
-    items.Push({ label: "❌ " . Lang("MENU_EXIT"),   callback: (*) => ExitWithRestore() })
+    items.Push({ label: "↻ " . Lang("MENU_RELOAD"), callback: (*) => ReloadWithRestore() })
+    items.Push({ label: "× " . Lang("MENU_EXIT"),   callback: (*) => ExitWithRestore() })
 
     return items
 }
