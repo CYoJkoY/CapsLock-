@@ -225,13 +225,25 @@ class ShiftLayerToast {
 
         if targetHwnd && WindowHandleAlive(targetHwnd) {
             try {
-                WinGetPos(&windowX, &windowY, &windowW, &windowH, "ahk_id " targetHwnd)
-                if windowW > 0 && windowH > 0 {
-                    monitor := MonitorGetFromPoint(
-                        windowX + windowW // 2,
-                        windowY + windowH // 2
-                    )
-                    MonitorGet(monitor, &left, &top, &right, &bottom)
+                monitor := DllCall(
+                    "user32\MonitorFromWindow",
+                    "Ptr", targetHwnd,
+                    "UInt", 2, ; MONITOR_DEFAULTTONEAREST
+                    "Ptr"
+                )
+                info := Buffer(40, 0)
+                NumPut("UInt", info.Size, info)
+
+                if monitor && DllCall(
+                    "user32\GetMonitorInfoW",
+                    "Ptr", monitor,
+                    "Ptr", info,
+                    "Int"
+                ) {
+                    left := NumGet(info, 4, "Int")
+                    top := NumGet(info, 8, "Int")
+                    right := NumGet(info, 12, "Int")
+                    bottom := NumGet(info, 16, "Int")
                 }
             } catch {
                 left := 0
