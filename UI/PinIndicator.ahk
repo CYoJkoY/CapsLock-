@@ -29,19 +29,19 @@
 ;   * The badge is WS_EX_TRANSPARENT (click-through) plus WS_EX_NOACTIVATE, so
 ;     it never captures input and never steals focus. Clicks land on the
 ;     title bar underneath, which is a non-destructive drag target.
-;   * The badge is owned by the pinned window, so it always stays above it in
-;     the z-order and is torn down together with it.
+;   * The badge is an independent topmost popup. Its visibility is controlled
+;     explicitly so Windows cannot strand an owned badge hidden on restore.
 ; ---------------------------------------------------------------------------
 class PinIndicator {
     ; --- Tunables ---
-    static UpdateInterval := 150       ; ms between geometry re-validations
+    static UpdateInterval := 16        ; near-frame updates keep the badge attached while dragging
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
     static DefaultDpi     := 96
 
     ; --- Runtime state ---
     static Enabled        := true
-    static Tracked        := Map()     ; hwnd -> { gui, x, y, size, visible }
+    static Tracked        := Map()     ; hwnd -> badge geometry, visibility, and restore state
     static TimerCallback  := ""
 
     ; -----------------------------------------------------------------------
@@ -246,9 +246,11 @@ class PinIndicator {
         offset := Max(1, Round(this.BaseOffset * scale))
 
         try {
+            ; Do not make this an owned popup: Windows can hide owned windows
+            ; with their owner during minimize/restore transitions.
             badge := Gui(
                 "-DPIScale +AlwaysOnTop -Caption +ToolWindow +Border"
-                " +E0x20 +E0x08000000 +Owner" hwnd
+                " +E0x20 +E0x08000000"
             )
         } catch {
             return ""
@@ -281,7 +283,8 @@ class PinIndicator {
             y: -2000,
             size: size,
             offset: offset,
-            visible: true
+            visible: true,
+            wasMinimized: false
         }
     }
 
@@ -329,26 +332,36 @@ class PinIndicator {
             return
         }
 
-        ; A minimized topmost window may temporarily report a different
-        ; extended style while Windows moves it through the iconic z-order.
-        ; Keep tracking it until it is restored; otherwise one timer tick during
-        ; minimize can permanently discard the badge before the next restore.
+        state := this.Tracked[hwnd]
         minimized := false
         try
             minimized := WinGetMinMax("ahk_id " hwnd) == -1
         catch
             minimized := false
 
-        if minimized {
+        ; Minimized and hidden windows keep their tracked pin state. Hide the
+        ; independent badge while its target is not on screen.
+        if minimized || !WindowIsVisible(hwnd) {
+            state.wasMinimized := true
             this._SetBadgeVisible(hwnd, false)
             return
         }
 
-        ; Once the window is visible again, the actual topmost style is
-        ; authoritative. An intentional unpin still removes the badge promptly.
+        ; Some applications / window managers drop WS_EX_TOPMOST on restore.
+        ; The tracked pin is the source of truth across that transition, so
+        ; restore topmost once before considering the badge stale. Outside a
+        ; minimize/hidden cycle, an external unpin still removes the badge.
         if !this.IsTopmost(hwnd) {
-            this.Untrack(hwnd)
-            return
+            if !state.wasMinimized {
+                this.Untrack(hwnd)
+                return
+            }
+
+            try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
+            if !this.IsTopmost(hwnd) {
+                this._SetBadgeVisible(hwnd, false)
+                return
+            }
         }
 
         x := 0
@@ -367,7 +380,11 @@ class PinIndicator {
             return
         }
 
+        if !this._EnsureBadgeWindow(hwnd, state.wasMinimized)
+            return
+
         state := this.Tracked[hwnd]
+        state.wasMinimized := false
         offset := state.offset
         size := state.size
 
@@ -394,6 +411,35 @@ class PinIndicator {
         this._SetBadgeVisible(hwnd, true)
     }
 
+    static _EnsureBadgeWindow(hwnd, forceRecreate := false) {
+        if !this.Tracked.Has(hwnd)
+            return false
+
+        state := this.Tracked[hwnd]
+        badgeHwnd := 0
+        try {
+            if IsObject(state.gui)
+                badgeHwnd := state.gui.Hwnd
+        } catch {
+        }
+
+        if !forceRecreate && badgeHwnd && WindowHandleAlive(badgeHwnd)
+            return true
+
+        ; Rebuild after every minimize / hide cycle so a stale popup cannot
+        ; keep the indicator hidden after the target is restored.
+        if IsObject(state.gui)
+            try state.gui.Destroy()
+
+        replacement := this._CreateBadge(hwnd)
+        if !IsObject(replacement)
+            return false
+
+        replacement.wasMinimized := state.wasMinimized
+        this.Tracked[hwnd] := replacement
+        return true
+    }
+
     static _SetBadgeVisible(hwnd, visible) {
         if !this.Tracked.Has(hwnd)
             return
@@ -403,10 +449,9 @@ class PinIndicator {
         if !IsObject(state.gui)
             return
 
-        ; The badge is an owned popup. Windows can hide it automatically when
-        ; its owner is minimized, without updating this class's cached `visible`
-        ; flag. Reconcile against the native visibility before taking the fast
-        ; path, so a restored owner always gets its badge back.
+        ; The GUI can become natively hidden without the cached `visible` flag
+        ; changing. Reconcile with Win32 before taking the fast path so a
+        ; restored target always gets its badge back.
         nativeVisible := state.visible
         try
             nativeVisible := DllCall("user32\IsWindowVisible", "Ptr", state.gui.Hwnd, "Int") != 0

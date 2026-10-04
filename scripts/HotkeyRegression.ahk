@@ -445,7 +445,8 @@ FindClosingParen(text, start) {
 }
 
 ; ---------------------------------------------------------------------------
-; Focused regressions for the window badge, tray callback, and theme boundary
+; Focused regressions for the window badge, tray callback, shift-layer toast,
+; and theme boundary
 ; ---------------------------------------------------------------------------
 
 CheckPinIndicatorRegressions(root) {
@@ -469,6 +470,27 @@ CheckPinIndicatorRegressions(root) {
     Check(
         InStr(pinText, "IsWindowVisible") > 0 && InStr(pinText, "NoActivate") > 0,
         "pin badge visibility is reconciled with the native window after restore"
+    )
+    Check(
+        InStr(pinText, "static UpdateInterval := 16") > 0
+            && InStr(pinText, "state.wasMinimized := true") > 0
+            && InStr(pinText, "static _EnsureBadgeWindow(hwnd, forceRecreate := false)") > 0
+            && InStr(pinText, "_EnsureBadgeWindow(hwnd, state.wasMinimized)") > 0
+            && InStr(pinText, "+Owner") == 0,
+        "pin badge follows rapid movement and cannot be hidden with its owner during restore"
+    )
+}
+
+CheckShiftLayerToastRegressions(root) {
+    actionText := ReadText(root "\Hotkeys\HotkeyActions.ahk")
+    osdText := ReadText(root "\UI\OSD.ahk")
+
+    Check(
+        InStr(actionText, "ShiftLayerToast.Show(duration") > 0
+            && InStr(actionText, "ShiftLayerToast.Hide()") > 0
+            && InStr(osdText, "class ShiftLayerToast") > 0
+            && InStr(osdText, "remainingWidth := Max(1, Round(this.Width * remaining / this.Duration))") > 0,
+        "Shift-layer activation shows a timed top-edge progress bar"
     )
 }
 
@@ -553,6 +575,7 @@ Main() {
     CheckShortcutBindings(root)
     CheckConfigRoundTrip(root)
     CheckPinIndicatorRegressions(root)
+    CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
     CheckEveryFileIncluded(root, files)
 

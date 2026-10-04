@@ -3,17 +3,22 @@
 class QuickPhraseStore {
     static SectionPrefix := "QuickPhrase_"
     static _phrases := []
+    static _onChange := ""
 
     static Load() {
         this._EnsureDirectories()
         this._phrases := []
 
-        if !FileExist(AppState.QuickPhraseFile)
+        if !FileExist(AppState.QuickPhraseFile) {
+            this._NotifyChanged()
             return
+        }
 
         try sections := IniRead(AppState.QuickPhraseFile, , , "")
-        catch
+        catch {
+            this._NotifyChanged()
             return
+        }
 
         for section in StrSplit(sections, Chr(10), Chr(13)) {
             section := Trim(section)
@@ -26,7 +31,7 @@ class QuickPhraseStore {
 
             id := Integer(idText)
             name := IniRead(AppState.QuickPhraseFile, section, "Name", "")
-            category := IniRead(AppState.QuickPhraseFile, section, "Category", "")
+            category := Trim(IniRead(AppState.QuickPhraseFile, section, "Category", ""))
             orderText := IniRead(AppState.QuickPhraseFile, section, "Order", id)
             contentFile := IniRead(AppState.QuickPhraseFile, section, "ContentFile", "")
 
@@ -55,9 +60,14 @@ class QuickPhraseStore {
 
         this._Sort()
         this._NormalizeOrders()
+        this._NotifyChanged()
     }
 
     static GetAll() => this._phrases
+
+    static SetOnChange(callback) {
+        this._onChange := IsObject(callback) ? callback : ""
+    }
 
     static GetById(id) {
         index := this._FindIndex(id)
@@ -93,6 +103,7 @@ class QuickPhraseStore {
         }
 
         this._phrases.Push(phrase)
+        this._NotifyChanged()
         this._NotifySyncDirty()
         return true
     }
@@ -128,6 +139,7 @@ class QuickPhraseStore {
             return false
         }
 
+        this._NotifyChanged()
         this._NotifySyncDirty()
         return true
     }
@@ -148,30 +160,54 @@ class QuickPhraseStore {
 
         this._phrases.RemoveAt(index)
         this._NormalizeOrders()
+        this._NotifyChanged()
         this._NotifySyncDirty()
         return true
     }
 
     static Move(id, direction) {
+        if direction != -1 && direction != 1
+            return false
+
         this._Sort()
         index := this._FindIndex(id)
         if !index
             return false
 
+        phrase := this._phrases[index]
+        category := phrase.category
+        ; Reorder within the visible category group so the arrow buttons remain intuitive.
         target := index + direction
-        if target < 1 || target > this._phrases.Length
+        count := this._phrases.Length
+
+        while target >= 1 && target <= count {
+            candidate := this._phrases[target]
+            if StrCompare(category, candidate.category, false) == 0
+                break
+            target += direction
+        }
+
+        if target < 1 || target > count
             return false
 
-        left := this._phrases[index]
-        right := this._phrases[target]
-        temp := left.order
-        left.order := right.order
-        right.order := temp
+        neighbor := this._phrases[target]
+        temp := phrase.order
+        phrase.order := neighbor.order
+        neighbor.order := temp
 
         this._Sort()
         this._PersistMetadata()
+        this._NotifyChanged()
         this._NotifySyncDirty()
         return true
+    }
+
+    static _NotifyChanged() {
+        callback := this._onChange
+        if !IsObject(callback)
+            return
+
+        try callback.Call()
     }
 
     static _NotifySyncDirty() {
@@ -248,25 +284,53 @@ class QuickPhraseStore {
     }
 
     static _Sort() {
-        n := this._phrases.Length
-        if n <= 1
+        count := this._phrases.Length
+        if count < 2
             return
 
-        loop n - 1 {
-            swapped := false
-            limit := n - A_Index
-            loop limit {
-                left := this._phrases[A_Index]
-                right := this._phrases[A_Index + 1]
-                if right.order < left.order
-                    || (right.order == left.order && right.id < left.id) {
-                    this._phrases[A_Index] := right
-                    this._phrases[A_Index + 1] := left
-                    swapped := true
-                }
-            }
-            if !swapped
-                break
+        root := count // 2
+        while root > 0 {
+            this._SiftDown(root, count)
+            root -= 1
         }
+
+        heapEnd := count
+        while heapEnd > 1 {
+            this._Swap(1, heapEnd)
+            heapEnd -= 1
+            this._SiftDown(1, heapEnd)
+        }
+    }
+
+    static _SiftDown(root, heapEnd) {
+        while root * 2 <= heapEnd {
+            child := root * 2
+            if (
+                child < heapEnd
+                && this._CompareByOrder(this._phrases[child], this._phrases[child + 1]) < 0
+            ) {
+                child += 1
+            }
+
+            if this._CompareByOrder(this._phrases[root], this._phrases[child]) >= 0
+                return
+
+            this._Swap(root, child)
+            root := child
+        }
+    }
+
+    static _Swap(leftIndex, rightIndex) {
+        temp := this._phrases[leftIndex]
+        this._phrases[leftIndex] := this._phrases[rightIndex]
+        this._phrases[rightIndex] := temp
+    }
+
+    static _CompareByOrder(left, right) {
+        if left.order != right.order
+            return left.order < right.order ? -1 : 1
+        if left.id == right.id
+            return 0
+        return left.id < right.id ? -1 : 1
     }
 }

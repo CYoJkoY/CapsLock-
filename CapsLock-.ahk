@@ -91,6 +91,7 @@ Language.Load()
 ConfigManager.Load()
 Theme.Init()
 HistoryManager.Load()
+QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)
 QuickPhraseStore.Load()
 CloudSyncIdentity.Initialize()
 CloudSyncState.Initialize()
@@ -109,6 +110,7 @@ OnExit((*) => (
     WindowHole.Stop(),
     Spotlight.Stop(),
     Zoom.Stop(),
+    DeactivateShiftLayer(),
     PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),

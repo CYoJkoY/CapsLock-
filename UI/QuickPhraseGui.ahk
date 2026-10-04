@@ -89,58 +89,144 @@ QuickPhraseOpenManager(selectorGui) {
 }
 
 QuickPhraseRefreshSelector(myGui) {
-    if !IsObject(myGui) || !IsObject(myGui.ListView)
+    result := QuickPhraseRefreshList(myGui, 100)
+    if !IsObject(result)
         return
 
+    if result.total == 0
+        myGui.Status.Text := Lang("GUI_QUICK_PHRASE_EMPTY", "No saved quick phrases. Use Manage to create one.")
+    else
+        myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", result.visible)
+}
+
+QuickPhraseRefreshList(myGui, previewLength, selectFirst := false) {
+    if !IsObject(myGui)
+        return ""
+    if !myGui.HasProp("ListView") || !myGui.HasProp("SearchBox")
+        return ""
+
     list := myGui.ListView
-    filter := StrLower(Trim(myGui.SearchBox.Text))
+    searchBox := myGui.SearchBox
+    if !IsObject(list) || !IsObject(searchBox)
+        return ""
+
+    selectedId := QuickPhraseGetSelectedId(list)
+    allPhrases := QuickPhraseStore.GetAll()
+    phrases := QuickPhraseFilterAndSort(allPhrases, searchBox.Text)
+
     list.Delete()
-    count := 0
+    selectedRow := 0
+    for phrase in phrases {
+        row := list.Add(
+            , phrase.id,
+            phrase.name,
+            phrase.category,
+            QuickPhrasePreview(phrase.content, previewLength)
+        )
+        if phrase.id == selectedId
+            selectedRow := row
+    }
+
+    if !selectedRow && selectFirst && phrases.Length
+        selectedRow := 1
+    if selectedRow
+        list.Modify(selectedRow, "Select")
+
+    return {
+        total: allPhrases.Length,
+        visible: phrases.Length
+    }
+}
+
+QuickPhraseGetSelectedId(list) {
+    if !IsObject(list)
+        return 0
+
+    row := list.GetNext(0, "Focused")
+    if !row
+        row := list.GetNext(0)
+    if !row
+        return 0
+
+    idText := list.GetText(row, 1)
+    if !(idText ~= "^\d+$")
+        return 0
+
+    return Integer(idText)
+}
+
+QuickPhraseFilterAndSort(allPhrases, query) {
+    filter := Trim(query)
+    ; Sort a derived list so the store's backing array remains unchanged.
     phrases := []
 
-    for phrase in QuickPhraseStore.GetAll() {
-        if filter != "" && !InStr(StrLower(phrase.name " " phrase.category " " phrase.content), filter)
+    for phrase in allPhrases {
+        if !QuickPhraseMatchesFilter(phrase, filter)
             continue
         phrases.Push(phrase)
     }
 
-    QuickPhraseSortSelectorPhrases(phrases)
-
-    for phrase in phrases {
-        list.Add(, phrase.id, phrase.name, phrase.category, QuickPhrasePreview(phrase.content, 100))
-        count += 1
-    }
-
-    total := QuickPhraseStore.GetAll().Length
-    if total == 0
-        myGui.Status.Text := Lang("GUI_QUICK_PHRASE_EMPTY", "No saved quick phrases. Use Manage to create one.")
-    else
-        myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", count)
+    return QuickPhraseSortPhrases(phrases)
 }
 
-QuickPhraseSortSelectorPhrases(phrases) {
-    n := phrases.Length
-    if n <= 1
-        return
+QuickPhraseMatchesFilter(phrase, filter) {
+    if filter == ""
+        return true
 
-    Loop n - 1 {
-        limit := n - A_Index
-        Loop limit {
-            index := A_Index
-            left := phrases[index]
-            right := phrases[index + 1]
+    return (
+        InStr(phrase.name, filter, false)
+        || InStr(phrase.category, filter, false)
+        || InStr(phrase.content, filter, false)
+    )
+}
 
-            if QuickPhraseCompareSelectorPhrases(left, right) > 0 {
-                phrases[index] := right
-                phrases[index + 1] := left
-            }
+QuickPhraseSortPhrases(phrases) {
+    count := phrases.Length
+    if count < 2
+        return phrases
+
+    ; Heap sort keeps refreshes O(n log n) with constant auxiliary memory.
+    root := count // 2
+    while root > 0 {
+        QuickPhraseSiftDown(phrases, root, count)
+        root -= 1
+    }
+
+    heapEnd := count
+    while heapEnd > 1 {
+        temp := phrases[1]
+        phrases[1] := phrases[heapEnd]
+        phrases[heapEnd] := temp
+        heapEnd -= 1
+        QuickPhraseSiftDown(phrases, 1, heapEnd)
+    }
+
+    return phrases
+}
+
+QuickPhraseSiftDown(phrases, root, heapEnd) {
+    while root * 2 <= heapEnd {
+        child := root * 2
+        if (
+            child < heapEnd
+            && QuickPhraseComparePhrases(phrases[child], phrases[child + 1]) < 0
+        ) {
+            child += 1
         }
+
+        if QuickPhraseComparePhrases(phrases[root], phrases[child]) >= 0
+            return
+
+        temp := phrases[root]
+        phrases[root] := phrases[child]
+        phrases[child] := temp
+        root := child
     }
 }
 
-QuickPhraseCompareSelectorPhrases(left, right) {
-    leftCategory := Trim(left.category)
-    rightCategory := Trim(right.category)
+QuickPhraseComparePhrases(left, right) {
+    leftCategory := left.category
+    rightCategory := right.category
 
     if leftCategory == "" && rightCategory != ""
         return 1
@@ -157,7 +243,6 @@ QuickPhraseCompareSelectorPhrases(left, right) {
     nameCompare := StrCompare(left.name, right.name, false)
     if nameCompare != 0
         return nameCompare
-
     if left.id == right.id
         return 0
 
@@ -969,7 +1054,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.ReturnToSelector := returnToSelector
     search.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseEditSelected(myGui))
-    newBtn.OnEvent("Click", (*) => QuickPhraseCreateNew(myGui))
+    newBtn.OnEvent("Click", (*) => QuickPhraseCreateNew())
     editBtn.OnEvent("Click", (*) => QuickPhraseEditSelected(myGui))
     delBtn.OnEvent("Click", (*) => QuickPhraseDeleteSelected(myGui))
     upBtn.OnEvent("Click", (*) => QuickPhraseMoveSelected(myGui, -1))
@@ -985,27 +1070,32 @@ ShowQuickPhraseManager(returnToSelector := false) {
 }
 
 CloseQuickPhraseManager(myGui) {
-    returnToSelector := myGui.HasProp("ReturnToSelector") && myGui.ReturnToSelector
-    try myGui.Destroy()
-    AppState.QuickPhraseManagerGui := ""
+    if !IsObject(myGui)
+        return
 
-    if returnToSelector
-        ShowQuickPhraseSelector()
+    returnToSelector := myGui.HasProp("ReturnToSelector") && myGui.ReturnToSelector
+    AppState.QuickPhraseManagerGui := ""
+    try myGui.Destroy()
+
+    if !returnToSelector
+        return
+    ShowQuickPhraseSelector()
 }
 
 QuickPhraseRefreshManager(myGui) {
-    list := myGui.ListView
-    filter := StrLower(Trim(myGui.SearchBox.Text))
-    list.Delete()
+    QuickPhraseRefreshList(myGui, 105, true)
+}
 
-    for phrase in QuickPhraseStore.GetAll() {
-        if filter != "" && !InStr(StrLower(phrase.name " " phrase.category " " phrase.content), filter)
-            continue
-        list.Add(, phrase.id, phrase.name, phrase.category, QuickPhrasePreview(phrase.content, 105))
+QuickPhraseRefreshOpenViews() {
+    manager := AppState.QuickPhraseManagerGui
+    if IsObject(manager) {
+        try QuickPhraseRefreshManager(manager)
     }
 
-    if list.GetCount()
-        list.Modify(1, "Select")
+    selector := AppState.QuickPhraseGui
+    if IsObject(selector) {
+        try QuickPhraseRefreshSelector(selector)
+    }
 }
 
 QuickPhraseSelectedPhrase(myGui) {
@@ -1019,9 +1109,8 @@ QuickPhraseSelectedPhrase(myGui) {
     return (idText ~= "^\d+$") ? QuickPhraseStore.GetById(Integer(idText)) : ""
 }
 
-QuickPhraseCreateNew(myGui) {
-    if ShowQuickPhraseEditor()
-        QuickPhraseRefreshManager(myGui)
+QuickPhraseCreateNew() {
+    ShowQuickPhraseEditor()
 }
 
 QuickPhraseEditSelected(myGui) {
@@ -1030,8 +1119,8 @@ QuickPhraseEditSelected(myGui) {
         ShowToolTip(Lang("MSG_QUICK_PHRASE_SELECT", "Please select a quick phrase."), 1500)
         return
     }
-    if ShowQuickPhraseEditor(phrase.id)
-        QuickPhraseRefreshManager(myGui)
+
+    ShowQuickPhraseEditor(phrase.id)
 }
 
 QuickPhraseDeleteSelected(myGui) {
@@ -1049,16 +1138,18 @@ QuickPhraseDeleteSelected(myGui) {
     if answer != "Yes"
         return
 
-    if QuickPhraseStore.Delete(phrase.id) {
-        ShowToolTip(Lang("MSG_QUICK_PHRASE_DELETED", "Quick phrase deleted."), 1300)
-        QuickPhraseRefreshManager(myGui)
-    }
+    if !QuickPhraseStore.Delete(phrase.id)
+        return
+
+    ShowToolTip(Lang("MSG_QUICK_PHRASE_DELETED", "Quick phrase deleted."), 1300)
 }
 
 QuickPhraseMoveSelected(myGui, direction) {
     phrase := QuickPhraseSelectedPhrase(myGui)
-    if IsObject(phrase) && QuickPhraseStore.Move(phrase.id, direction)
-        QuickPhraseRefreshManager(myGui)
+    if !IsObject(phrase)
+        return
+
+    QuickPhraseStore.Move(phrase.id, direction)
 }
 
 ShowQuickPhraseEditor(id := 0) {
