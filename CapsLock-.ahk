@@ -110,6 +110,7 @@ OnExit((*) => (
     WindowHole.Stop(),
     Spotlight.Stop(),
     Zoom.Stop(),
+    DeactivateShiftLayer(),
     PinIndicator.Clear(),
     RestoreManagedWindows(),
     HistoryManager.ForceSave(),

@@ -9,16 +9,24 @@
 ; minimize / maximize.
 ; ---------------------------------------------------------------------------
 ActivateShiftLayer(*) {
-    AppState.ShiftLayerActive := true
     if AppState.ShiftLayerTimer != ""
         SetTimer(AppState.ShiftLayerTimer, 0)
-    AppState.ShiftLayerTimer := ObjBindMethod(DeactivateShiftLayer)
-    SetTimer(AppState.ShiftLayerTimer, -2000)
+
+    duration := ShiftLayerToast.DefaultDuration
+    AppState.ShiftLayerActive := true
+    AppState.ShiftLayerTimer := DeactivateShiftLayer
+    SetTimer(AppState.ShiftLayerTimer, -duration)
+    ShiftLayerToast.Show(duration, WinExist("A"))
 }
 
 DeactivateShiftLayer(*) {
+    if AppState.ShiftLayerTimer != "" {
+        SetTimer(AppState.ShiftLayerTimer, 0)
+        AppState.ShiftLayerTimer := ""
+    }
+
     AppState.ShiftLayerActive := false
-    AppState.ShiftLayerTimer := ""
+    ShiftLayerToast.Hide()
 }
 
 CopyAsPlainTextAndAddToHistory() {
@@ -75,7 +83,7 @@ WindowWildcardMaximize() {
     if ForwardModifierKey(WildcardForwardKey("w"))
         return
     if AppState.ShiftLayerActive {
-        AppState.ShiftLayerActive := false
+        DeactivateShiftLayer()
         WindowFullScreen.Toggle()
         return
     }
@@ -86,7 +94,7 @@ WindowWildcardMinimize() {
     if ForwardModifierKey(WildcardForwardKey("s"))
         return
     if AppState.ShiftLayerActive {
-        AppState.ShiftLayerActive := false
+        DeactivateShiftLayer()
         TrayHider.HideActive()
         return
     }
