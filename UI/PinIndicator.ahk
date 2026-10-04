@@ -378,7 +378,7 @@ class PinIndicator {
             return
         }
 
-        if !this._EnsureBadgeWindow(hwnd)
+        if !this._EnsureBadgeWindow(hwnd, state.wasMinimized)
             return
 
         state := this.Tracked[hwnd]
@@ -409,7 +409,7 @@ class PinIndicator {
         this._SetBadgeVisible(hwnd, true)
     }
 
-    static _EnsureBadgeWindow(hwnd) {
+    static _EnsureBadgeWindow(hwnd, forceRecreate := false) {
         if !this.Tracked.Has(hwnd)
             return false
 
@@ -421,8 +421,13 @@ class PinIndicator {
         } catch {
         }
 
-        if badgeHwnd && WindowHandleAlive(badgeHwnd)
+        if !forceRecreate && badgeHwnd && WindowHandleAlive(badgeHwnd)
             return true
+
+        ; Rebuild after every minimize / hide cycle, even if Windows leaves the
+        ; owned popup HWND alive but non-visible after restoring its owner.
+        if IsObject(state.gui)
+            try state.gui.Destroy()
 
         replacement := this._CreateBadge(hwnd)
         if !IsObject(replacement)

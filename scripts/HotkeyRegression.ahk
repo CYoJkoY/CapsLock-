@@ -474,7 +474,8 @@ CheckPinIndicatorRegressions(root) {
     Check(
         InStr(pinText, "static UpdateInterval := 16") > 0
             && InStr(pinText, "state.wasMinimized := true") > 0
-            && InStr(pinText, "static _EnsureBadgeWindow(hwnd)") > 0,
+            && InStr(pinText, "static _EnsureBadgeWindow(hwnd, forceRecreate := false)") > 0
+            && InStr(pinText, "_EnsureBadgeWindow(hwnd, state.wasMinimized)") > 0,
         "pin badge follows rapid movement and is recreated after minimize / restore"
     )
 }
