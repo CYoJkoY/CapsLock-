@@ -29,8 +29,8 @@
 ;   * The badge is WS_EX_TRANSPARENT (click-through) plus WS_EX_NOACTIVATE, so
 ;     it never captures input and never steals focus. Clicks land on the
 ;     title bar underneath, which is a non-destructive drag target.
-;   * The badge is owned by the pinned window, so it always stays above it in
-;     the z-order and is torn down together with it.
+;   * The badge is an independent topmost popup. Its visibility is controlled
+;     explicitly so Windows cannot strand an owned badge hidden on restore.
 ; ---------------------------------------------------------------------------
 class PinIndicator {
     ; --- Tunables ---
@@ -246,9 +246,11 @@ class PinIndicator {
         offset := Max(1, Round(this.BaseOffset * scale))
 
         try {
+            ; Do not make this an owned popup: Windows can hide owned windows
+            ; with their owner during minimize/restore transitions.
             badge := Gui(
                 "-DPIScale +AlwaysOnTop -Caption +ToolWindow +Border"
-                " +E0x20 +E0x08000000 +Owner" hwnd
+                " +E0x20 +E0x08000000"
             )
         } catch {
             return ""
@@ -337,8 +339,8 @@ class PinIndicator {
         catch
             minimized := false
 
-        ; Minimized and hidden windows keep their tracked pin state. The owner
-        ; may also hide or destroy its owned badge while it is not on screen.
+        ; Minimized and hidden windows keep their tracked pin state. Hide the
+        ; independent badge while its target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
             this._SetBadgeVisible(hwnd, false)
@@ -424,8 +426,8 @@ class PinIndicator {
         if !forceRecreate && badgeHwnd && WindowHandleAlive(badgeHwnd)
             return true
 
-        ; Rebuild after every minimize / hide cycle, even if Windows leaves the
-        ; owned popup HWND alive but non-visible after restoring its owner.
+        ; Rebuild after every minimize / hide cycle so a stale popup cannot
+        ; keep the indicator hidden after the target is restored.
         if IsObject(state.gui)
             try state.gui.Destroy()
 
@@ -447,10 +449,9 @@ class PinIndicator {
         if !IsObject(state.gui)
             return
 
-        ; The badge is an owned popup. Windows can hide it automatically when
-        ; its owner is minimized, without updating this class's cached `visible`
-        ; flag. Reconcile against the native visibility before taking the fast
-        ; path, so a restored owner always gets its badge back.
+        ; The GUI can become natively hidden without the cached `visible` flag
+        ; changing. Reconcile with Win32 before taking the fast path so a
+        ; restored target always gets its badge back.
         nativeVisible := state.visible
         try
             nativeVisible := DllCall("user32\IsWindowVisible", "Ptr", state.gui.Hwnd, "Int") != 0
