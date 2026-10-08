@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/hero.svg" alt="CapsLock Extended — a second keyboard control layer for Windows" width="1200" style="max-width:100%;height:auto;">
+  <img src="assets/readme/hero.svg" alt="CapsLock Extended — a second keyboard control layer for Windows" width="1200" style="max-width:100%;height:auto;">
   <h1>CapsLock Extended</h1>
   <p><strong>Turn CapsLock into a predictable second control layer for Windows.</strong></p>
   <p>Text navigation · Clipboard · Windows · Window Hole · Quick Phrases · Documents</p>
