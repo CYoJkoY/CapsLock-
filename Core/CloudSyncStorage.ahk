@@ -204,6 +204,41 @@ class CloudSyncStorage {
         }
     }
 
+    ; ConfigManager.Load() only refreshes AppState. Several consumers cache their
+    ; view of AppState at startup and would otherwise keep operating with the
+    ; pre-sync values until the next restart:
+    ;
+    ;   * LanguagePack caches the translation table, keyed on the language code
+    ;   * FileHelper compiles the ignore rules into regexes exactly once
+    ;   * the auto-clean timer is started / stopped only by the entry point
+    ;
+    ; Rebuild them here so a synced change takes effect immediately.
+    ; This runs inside the CloudSyncApplying guard, so none of these reloads can
+    ; schedule a new local-changed sync back to the provider.
+    static _RefreshRuntimeState() {
+        ; Language: reload the translation table for the (possibly new) code.
+        ; Language.Load() reads the saved code straight from Config.ini, so it
+        ; picks up whatever was just written.
+        try Language.Load()
+        catch {
+        }
+
+        ; Ignore rules: recompile the simple and gitignore-style patterns.
+        try FileHelper.BuildIgnoreRegexes()
+        catch {
+        }
+
+        ; Auto history trim: the timer is set up once at startup, so a synced
+        ; toggle of [General] autoClean has to add or remove it here as well.
+        try {
+            if AppState.AutoCleanEnabled
+                SetTimer(AutoCleanHistory, 60000)
+            else
+                SetTimer(AutoCleanHistory, 0)
+        } catch {
+        }
+    }
+
     static _ReplaceQuickPhrases(stagingDir) {
         qpPath := stagingDir "\QuickPhrases.ini"
         if !FileExist(qpPath)
