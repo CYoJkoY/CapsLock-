@@ -92,39 +92,73 @@ class HistoryManager {
 
         this.savePending := false
 
-        history := FileOpen(AppState.HistoryFile, "w")
+        targetPath := AppState.HistoryFile
+        tmpPath := targetPath ".tmp"
+
+        SplitPath(targetPath, , &dir)
+        if (dir != "" && !DirExist(dir)) {
+            try DirCreate(dir)
+            catch
+                return
+        }
+
+        history := ""
+        try {
+            history := FileOpen(tmpPath, "w", "CP0")
+        } catch {
+            history := ""
+        }
+
         if !IsObject(history)
             return
 
-        history.WriteInt(AppState.History.Length)
+        writeOK := false
 
-        for item in AppState.History {
-            timeStr := item["time"]
-            srcStr := item["source"]
-            txtStr := item["text"]
+        try {
+            history.WriteInt(AppState.History.Length)
 
-            timeSize := StrPut(timeStr, "UTF-8")
-            srcSize := StrPut(srcStr, "UTF-8")
-            txtSize := StrPut(txtStr, "UTF-8")
+            for item in AppState.History {
+                timeStr := item["time"]
+                srcStr := item["source"]
+                txtStr := item["text"]
 
-            total := 4 + timeSize + 4 + srcSize + 4 + txtSize
-            buf := Buffer(total, 0)
+                timeSize := StrPut(timeStr, "UTF-8")
+                srcSize := StrPut(srcStr, "UTF-8")
+                txtSize := StrPut(txtStr, "UTF-8")
 
-            p := 0
-            NumPut("Int", timeSize, buf, p), p += 4
-            StrPut(timeStr, buf.Ptr + p, timeSize, "UTF-8"), p += timeSize
-            NumPut("Int", srcSize, buf, p), p += 4
-            StrPut(srcStr, buf.Ptr + p, srcSize, "UTF-8"), p += srcSize
-            NumPut("Int", txtSize, buf, p), p += 4
-            StrPut(txtStr, buf.Ptr + p, txtSize, "UTF-8")
+                total := 4 + timeSize + 4 + srcSize + 4 + txtSize
+                buf := Buffer(total, 0)
 
-            CryptBuffer(buf)
+                p := 0
+                NumPut("Int", timeSize, buf, p), p += 4
+                StrPut(timeStr, buf.Ptr + p, timeSize, "UTF-8"), p += timeSize
+                NumPut("Int", srcSize, buf, p), p += 4
+                StrPut(srcStr, buf.Ptr + p, srcSize, "UTF-8"), p += srcSize
+                NumPut("Int", txtSize, buf, p), p += 4
+                StrPut(txtStr, buf.Ptr + p, txtSize, "UTF-8")
 
-            history.WriteInt(buf.Size)
-            history.RawWrite(buf, buf.Size)
+                CryptBuffer(buf)
+
+                history.WriteInt(buf.Size)
+                history.RawWrite(buf, buf.Size)
+            }
+
+            writeOK := true
+        } catch {
+            writeOK := false
+        } finally {
+            try history.Close()
         }
 
-        history.Close()
+        if !writeOK {
+            try FileDelete(tmpPath)
+            return
+        }
+
+        try {
+            FileMove(tmpPath, targetPath, true)
+        } catch {
+        }
     }
 
     static Add(text, source := "Manual Copy") {
