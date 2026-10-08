@@ -24,16 +24,19 @@ class HttpClient {
         responseHeaders := ""
         try responseHeaders := request.GetAllResponseHeaders()
 
-        utf8_body := request.ResponseText
+        responseBody := request.ResponseText
 
-        ; No charset means WinHTTP uses the local code page and corrupts UTF-8; use binary
         try {
-            arr := request.ResponseBody
-            size := arr.MaxIndex() + 1
-            buf := Buffer(size, 0)
-            Loop size
-                buf[A_Index - 1] := arr[A_Index - 1]
-            utf8_body := StrGet(buf, size, "UTF-8")
+            bytes := request.ResponseBody
+            size := bytes.MaxIndex() + 1
+
+            if (size > 0) {
+                buf := Buffer(size, 0)
+                loop size
+                    buf[A_Index - 1] := bytes[A_Index - 1]
+
+                responseBody := StrGet(buf, size, "UTF-8")
+            }
         } catch {
         }
 
@@ -41,17 +44,16 @@ class HttpClient {
             status: request.Status,
             statusText: request.StatusText,
             headers: responseHeaders,
-            body: request.ResponseText
+            body: responseBody
         }
     }
 
     static IsSuccess(response) {
         return IsObject(response)
-            && response.status >= 200
-            && response.status < 300
+        && response.status >= 200
+        && response.status < 300
     }
 }
-
 
 FormUrlEncode(values) {
     result := ""
@@ -63,7 +65,6 @@ FormUrlEncode(values) {
     return result
 }
 
-
 UriEncode(text) {
     text := String(text)
     size := StrPut(text, "UTF-8") - 1
@@ -74,7 +75,7 @@ UriEncode(text) {
     alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
     result := ""
 
-    Loop size {
+    loop size {
         byte := NumGet(mybuffer, A_Index - 1, "UChar")
         ch := Chr(byte)
 
