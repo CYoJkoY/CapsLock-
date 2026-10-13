@@ -13,6 +13,9 @@ class CommandPaletteGui {
     static Commands := []
     static VisibleCommands := []
     static Target := ""
+    static RecentCommandIds := []
+    static RecentCommandsLoaded := false
+    static MaxRecentCommands := 5
 
     static Show() {
         if IsObject(this.Instance) {
@@ -28,6 +31,7 @@ class CommandPaletteGui {
             this.Close()
         }
 
+        this.LoadRecentCommands()
         this.Target := this.CaptureTarget()
         myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox +ToolWindow", Lang("GUI_COMMAND_PALETTE_TITLE"))
         ThemeHelper.StyleGui(myGui)
@@ -313,6 +317,14 @@ class CommandPaletteGui {
             if matchScore < 0
                 continue
 
+            ; Surface recents only for an empty query. Explicit searches keep
+            ; the established relevance ranking unchanged.
+            if searchTerms.Length == 0 {
+                recentRank := this.GetRecentCommandRank(commandEntry.id)
+                if recentRank > 0
+                    matchScore := 1000 - recentRank
+            }
+
             rankedEntry := {item: commandEntry, score: matchScore}
             insertIndex := rankedCommands.Length + 1
             for rankedIndex, existingRank in rankedCommands {
@@ -404,6 +416,68 @@ class CommandPaletteGui {
         return matchScore
     }
 
+    static LoadRecentCommands() {
+        if this.RecentCommandsLoaded
+            return
+
+        this.RecentCommandsLoaded := true
+        this.RecentCommandIds := []
+        raw := ""
+
+        try
+            raw := IniRead(AppState.ConfigFile, "CommandPalette", "recentCommands", "")
+        catch
+            raw := ""
+
+        seen := Map()
+        for rawId in StrSplit(raw, ",") {
+            commandId := Trim(rawId)
+            if !(commandId ~= "^[a-z0-9-]+$")
+                continue
+
+            if seen.Has(commandId)
+                continue
+
+            seen[commandId] := true
+            this.RecentCommandIds.Push(commandId)
+            if this.RecentCommandIds.Length >= this.MaxRecentCommands
+                break
+        }
+    }
+
+    static GetRecentCommandRank(commandId) {
+        this.LoadRecentCommands()
+        for rank, recentId in this.RecentCommandIds {
+            if recentId == commandId
+                return rank
+        }
+        return 0
+    }
+
+    static RememberCommand(commandId) {
+        if !(commandId ~= "^[a-z0-9-]+$")
+            return
+
+        this.LoadRecentCommands()
+        updated := [commandId]
+        for recentId in this.RecentCommandIds {
+            if recentId == commandId
+                continue
+            updated.Push(recentId)
+            if updated.Length >= this.MaxRecentCommands
+                break
+        }
+
+        this.RecentCommandIds := updated
+
+        ; Usage history is local-only. Do not mark Cloud Sync dirty or add it
+        ; to the cloud-sync model.
+        try
+            IniWrite(Join(this.RecentCommandIds, ","), AppState.ConfigFile, "CommandPalette", "recentCommands")
+        catch
+            return
+    }
+
     static UpdateStatus() {
         if !IsObject(this.Status)
             return
@@ -471,9 +545,10 @@ class CommandPaletteGui {
             }
         }
 
-        try
+        try {
             selectedCommand.action.Call()
-        catch as caughtError
+            this.RememberCommand(selectedCommand.id)
+        } catch as caughtError
             ShowToolTip(caughtError.Message, 2200)
     }
 
