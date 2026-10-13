@@ -30,18 +30,24 @@ HistorySearch(query) {
     rankedEntries := []
     for historyIndex, historyItem in AppState.History {
         entryText := historyItem["text"]
-        entryTextLower := StrLower(entryText)
-        previewText := StrLower(HistoryPreviewText(entryText))
         allTermsFound := true
-        allTermsInPreview := true
-        previewScore := 0
 
+        ; InStr is case-insensitive by default. Check the full text before
+        ; creating any normalized copy so non-matching entries stay cheap.
         for searchTerm in searchTerms {
-            if !InStr(entryTextLower, searchTerm) {
+            if !InStr(entryText, searchTerm) {
                 allTermsFound := false
                 break
             }
+        }
 
+        if !allTermsFound
+            continue
+
+        previewText := StrLower(HistoryPreviewText(entryText))
+        allTermsInPreview := true
+        previewScore := 0
+        for searchTerm in searchTerms {
             previewPosition := InStr(previewText, searchTerm)
             if previewPosition {
                 previewScore += Max(0, 81 - previewPosition)
@@ -50,14 +56,11 @@ HistorySearch(query) {
             }
         }
 
-        if !allTermsFound
-            continue
-
         ; A single-term query should favor preview hits, not make every match
         ; a "contiguous phrase" match.
         phrasePosition := 0
         if searchTerms.Length > 1 {
-            normalizedText := RegExReplace(entryTextLower, "\s+", " ")
+            normalizedText := RegExReplace(entryText, "\s+", " ")
             phrasePosition := InStr(normalizedText, searchQuery)
         }
 
