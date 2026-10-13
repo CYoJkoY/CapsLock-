@@ -54,6 +54,22 @@ PasteSelectedFromFullHistory() {
             fileList.Push(AppState.History[Integer(realIdx)])
     }
 
+    ; Checked rows define a batch. With no checks, treat the highlighted
+    ; row as a single-item paste so Enter and the primary button work naturally.
+    if fileList.Length == 0 {
+        selectedRow := lv.GetNext(0, "Focused")
+        if !selectedRow
+            selectedRow := lv.GetNext(0)
+        if !selectedRow && lv.GetCount() > 0
+            selectedRow := 1
+
+        if selectedRow {
+            realIdx := lv.GetText(selectedRow, 1)
+            if realIdx ~= "^\d+$"
+                fileList.Push(AppState.History[Integer(realIdx)])
+        }
+    }
+
     if fileList.Length == 0 {
         ShowToolTip(Lang("MSG_SELECT_ITEM"), 1500)
         return

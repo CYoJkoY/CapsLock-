@@ -147,9 +147,11 @@ RefreshFullHistoryList(isIncremental := false) {
         || myGui.lastHistoryRevision != currentRevision
 
     preservedCheckedIndices := Map()
+    preservedSelectedIndex := 0
     if needRebuild {
         ; Numeric history indices are safe to reuse only while the underlying
-        ; history revision is unchanged. Capture visible checks before deleting rows.
+        ; history revision is unchanged. Capture visible checks and the highlighted
+        ; row before deleting rows.
         canPreserveSelection := myGui.HasProp("lastHistoryRevision")
             && myGui.lastHistoryRevision == currentRevision
             && myGui.HasProp("cachedMatching")
@@ -159,6 +161,15 @@ RefreshFullHistoryList(isIncremental := false) {
                 historyIndexText := lv.GetText(checkedRow, 1)
                 if historyIndexText ~= "^\d+$"
                     preservedCheckedIndices[Integer(historyIndexText)] := true
+            }
+
+            highlightedRow := lv.GetNext(0, "Focused")
+            if !highlightedRow
+                highlightedRow := lv.GetNext(0)
+            if highlightedRow {
+                highlightedIndexText := lv.GetText(highlightedRow, 1)
+                if highlightedIndexText ~= "^\d+$"
+                    preservedSelectedIndex := Integer(highlightedIndexText)
             }
         }
 
@@ -180,6 +191,7 @@ RefreshFullHistoryList(isIncremental := false) {
     prevDisplayed := myGui.HasProp("displayedCount") ? myGui.displayedCount : 0
 
     pageRange := HistoryPageRange(totalMatching, prevDisplayed, maxDisplay)
+    selectedDisplayRow := 0
     if pageRange.start <= pageRange.end {
         loop pageRange.end - pageRange.start + 1 {
             index := matching[pageRange.start + A_Index - 1]
@@ -187,8 +199,18 @@ RefreshFullHistoryList(isIncremental := false) {
             row := lv.Add(, index, HistoryPreviewText(item["text"]), SubStr(item["time"], 12, 5))
             if preservedCheckedIndices.Has(index)
                 lv.Modify(row, "Check")
+            if needRebuild && index == preservedSelectedIndex
+                selectedDisplayRow := row
         }
         myGui.displayedCount := pageRange.end
+    }
+
+    ; Keep keyboard selection useful after filtering without taking focus
+    ; away from the search Edit control.
+    if needRebuild && lv.GetCount() > 0 {
+        if !selectedDisplayRow
+            selectedDisplayRow := 1
+        lv.Modify(selectedDisplayRow, "Select")
     }
 
     SendMessage(0x000B, 1, 0, lv.Hwnd)
