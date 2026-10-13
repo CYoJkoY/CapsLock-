@@ -122,6 +122,8 @@ History retention is configurable. Automatic trimming can also be enabled for lo
 
 `CapsLock + Shift + P` opens a local searchable phrase selector.
 
+Search supports multiple whitespace-separated terms across phrase names, categories, and content; every term must match, even when terms occur in different fields. Exact name matches rank first, followed by other name matches, category matches, and content-only matches. With an empty query, the existing category/order sorting is preserved.
+
 Templates can combine user-entered variables with built-in values:
 
 ```text

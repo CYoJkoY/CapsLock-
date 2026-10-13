@@ -89,7 +89,7 @@ QuickPhraseOpenManager(selectorGui) {
 }
 
 QuickPhraseRefreshSelector(myGui) {
-    result := QuickPhraseRefreshList(myGui, 100)
+    result := QuickPhraseRefreshList(myGui, 100, false, true)
     if !IsObject(result)
         return
 
@@ -99,7 +99,7 @@ QuickPhraseRefreshSelector(myGui) {
         myGui.Status.Text := Lang("GUI_QUICK_PHRASE_STATUS", "{1} quick phrase(s) available.", result.visible)
 }
 
-QuickPhraseRefreshList(myGui, previewLength, selectFirst := false) {
+QuickPhraseRefreshList(myGui, previewLength, selectFirst := false, rankByRelevance := false) {
     if !IsObject(myGui)
         return ""
     if !myGui.HasProp("ListView") || !myGui.HasProp("SearchBox")
@@ -112,7 +112,7 @@ QuickPhraseRefreshList(myGui, previewLength, selectFirst := false) {
 
     selectedId := QuickPhraseGetSelectedId(list)
     allPhrases := QuickPhraseStore.GetAll()
-    phrases := QuickPhraseFilterAndSort(allPhrases, searchBox.Text)
+    phrases := QuickPhraseFilterAndSort(allPhrases, searchBox.Text, rankByRelevance)
 
     list.Delete()
     selectedRow := 0
@@ -155,18 +155,53 @@ QuickPhraseGetSelectedId(list) {
     return Integer(idText)
 }
 
-QuickPhraseFilterAndSort(allPhrases, query) {
+QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
     filter := Trim(query)
-    ; Sort a derived list so the store's backing array remains unchanged.
-    phrases := []
 
-    for phrase in allPhrases {
-        if !QuickPhraseMatchesFilter(phrase, filter)
-            continue
-        phrases.Push(phrase)
+    ; The manager retains its original literal-substring search and sort.
+    if !rankByRelevance {
+        phrases := []
+        for phrase in allPhrases {
+            if !QuickPhraseMatchesFilter(phrase, filter)
+                continue
+            phrases.Push(phrase)
+        }
+        return QuickPhraseSortPhrases(phrases)
     }
 
-    return QuickPhraseSortPhrases(phrases)
+    ; Normalize whitespace so tabs/newlines work like ordinary spaces.
+    filter := RegExReplace(filter, "\s+", " ")
+    terms := []
+
+    if filter != "" {
+        for term in StrSplit(filter, A_Space)
+            if term != ""
+                terms.Push(term)
+    }
+
+    ; Keep the configured category/order/name sort when there is no query.
+    if !terms.Length {
+        phrases := []
+        for phrase in allPhrases
+            phrases.Push(phrase)
+        return QuickPhraseSortPhrases(phrases)
+    }
+
+    ; Rank a derived list; never mutate the store's backing array.
+    ranked := []
+    for phrase in allPhrases {
+        score := QuickPhraseScorePhrase(phrase, terms, filter)
+        if score < 0
+            continue
+        ranked.Push({phrase: phrase, score: score})
+    }
+
+    QuickPhraseSortRankedPhrases(ranked)
+
+    phrases := []
+    for item in ranked
+        phrases.Push(item.phrase)
+    return phrases
 }
 
 QuickPhraseMatchesFilter(phrase, filter) {
@@ -178,6 +213,102 @@ QuickPhraseMatchesFilter(phrase, filter) {
         || InStr(phrase.category, filter, false)
         || InStr(phrase.content, filter, false)
     )
+}
+
+QuickPhraseScorePhrase(phrase, terms, query) {
+    score := 0
+    hasNameMatch := false
+    hasCategoryMatch := false
+
+    for term in terms {
+        namePosition := InStr(phrase.name, term, false)
+        categoryPosition := InStr(phrase.category, term, false)
+        contentPosition := InStr(phrase.content, term, false)
+
+        ; Every query term must match at least one field. Different terms
+        ; may match different fields, which makes multi-term search useful.
+        if !namePosition && !categoryPosition && !contentPosition
+            return -1
+
+        ; Use the strongest field match for each term rather than inflating
+        ; a score merely because the same word also appears in the body.
+        if namePosition {
+            score += 100
+            hasNameMatch := true
+            if namePosition == 1
+                score += 20
+        } else if categoryPosition {
+            score += 40
+            hasCategoryMatch := true
+        } else {
+            score += 10
+        }
+    }
+
+    ; Field tiers ensure a name hit outranks category-only and content-only
+    ; hits, while exact/prefix name queries receive an additional boost.
+    if hasNameMatch
+        score += 10000
+    else if hasCategoryMatch
+        score += 1000
+
+    if StrCompare(phrase.name, query, false) == 0
+        score += 100000
+    else if InStr(phrase.name, query, false) == 1
+        score += 5000
+
+    return score
+}
+
+QuickPhraseSortRankedPhrases(entries) {
+    count := entries.Length
+    if count < 2
+        return entries
+
+    root := count // 2
+    while root > 0 {
+        QuickPhraseRankedSiftDown(entries, root, count)
+        root -= 1
+    }
+
+    heapEnd := count
+    while heapEnd > 1 {
+        temp := entries[1]
+        entries[1] := entries[heapEnd]
+        entries[heapEnd] := temp
+        heapEnd -= 1
+        QuickPhraseRankedSiftDown(entries, 1, heapEnd)
+    }
+
+    return entries
+}
+
+QuickPhraseRankedSiftDown(entries, root, heapEnd) {
+    while root * 2 <= heapEnd {
+        child := root * 2
+        if (
+            child < heapEnd
+            && QuickPhraseCompareRanked(entries[child], entries[child + 1]) < 0
+        ) {
+            child += 1
+        }
+
+        if QuickPhraseCompareRanked(entries[root], entries[child]) >= 0
+            return
+
+        temp := entries[root]
+        entries[root] := entries[child]
+        entries[child] := temp
+        root := child
+    }
+}
+
+QuickPhraseCompareRanked(left, right) {
+    if left.score != right.score
+        return left.score > right.score ? -1 : 1
+
+    ; Reuse established deterministic tie-breaking for equal scores.
+    return QuickPhraseComparePhrases(left.phrase, right.phrase)
 }
 
 QuickPhraseSortPhrases(phrases) {
