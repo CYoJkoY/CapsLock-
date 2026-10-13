@@ -148,6 +148,29 @@ OnItemCheck(lv, row, checked) {
     UpdateFullHistorySelectAll(lv.Gui)
 }
 
+; Move the highlighted result without transferring keyboard focus from the
+; search Edit control. The existing Enter binding can then paste the result.
+MoveFullHistorySelection(delta) {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    rowCount := lv.GetCount()
+    if rowCount < 1
+        return
+
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0)
+
+    row += delta
+    row := Max(1, Min(row, rowCount))
+
+    lv.Modify(row, "Select Focus")
+    try lv.Modify(row, "Vis")
+}
+
 EnsureFullHistoryTargetWindow() {
     targetHwnd := AppState.TargetWindow
     if targetHwnd && WinExist("ahk_id " targetHwnd)
