@@ -269,13 +269,56 @@ class WindowSwitcherGui {
         filter := ""
 
         try
-            filter := StrLower(Trim(myGui.SearchBox.Text))
+            filter := StrLower(RegExReplace(Trim(myGui.SearchBox.Text), "\s+", " "))
         catch
             filter := ""
 
         lv := myGui.ListView
         windows := myGui.AllWindows
         visible := []
+        searchTerms := []
+
+        if filter != "" {
+            for term in StrSplit(filter, A_Space) {
+                if term != ""
+                    searchTerms.Push(term)
+            }
+        }
+
+        ; An empty search preserves WinGetList's existing front-to-back order.
+        if !searchTerms.Length {
+            for entry in windows
+                visible.Push(entry)
+        } else {
+            ; Insert only before strictly weaker results so ties retain the
+            ; original enumeration order.
+            ranked := []
+            for windowIndex, entry in windows {
+                label := entry.display != "" ? entry.display : entry.process
+                relevance := this.GetWindowMatchScore(
+                    label,
+                    entry.title,
+                    entry.process,
+                    filter,
+                    searchTerms
+                )
+                if !IsObject(relevance)
+                    continue
+
+                rankedEntry := {
+                    entry: entry,
+                    tier: relevance.tier,
+                    score: relevance.score
+                }
+                rankedEntry.order := windowIndex
+                ranked.Push(rankedEntry)
+            }
+
+            this.SortRankedWindows(ranked)
+            for rankedEntry in ranked
+                visible.Push(rankedEntry.entry)
+        }
+
         iconSize := this.IconSize()
         showIcons := this.ShowIcons()
         showProcess := this.ShowProcessColumn()
@@ -287,15 +330,8 @@ class WindowSwitcherGui {
 
         lv.Delete()
 
-        for entry in windows {
+        for entry in visible {
             label := entry.display != "" ? entry.display : entry.process
-            haystack := StrLower(label " " entry.process " " entry.title)
-
-            if filter != "" && !InStr(haystack, filter)
-                continue
-
-            visible.Push(entry)
-
             options := ""
             if showIcons && this._imageList {
                 index := this.IconIndex(myGui, entry, iconSize)
@@ -327,6 +363,108 @@ class WindowSwitcherGui {
         lv.Modify(target, "Select Focus")
 
         this.UpdateStatus()
+    }
+
+    ; Score only matching windows. The field tier is compared before the
+    ; within-tier score so exact title matches cannot outrank app-name hits.
+    static GetWindowMatchScore(label, title, process, query, terms) {
+        labelText := StrLower(label)
+        titleText := StrLower(title)
+        processText := StrLower(process)
+        tier := 3
+        score := 0
+
+        for term in terms {
+            labelPosition := InStr(labelText, term)
+            titlePosition := InStr(titleText, term)
+            processPosition := InStr(processText, term)
+
+            ; Every term must be found in at least one searchable field.
+            if !labelPosition && !titlePosition && !processPosition
+                return -1
+
+            if labelPosition {
+                tier := 1
+                score += labelPosition == 1 ? 120 : 100
+            } else if titlePosition {
+                if tier > 2
+                    tier := 2
+                score += titlePosition == 1 ? 72 : 60
+            } else {
+                score += processPosition == 1 ? 36 : 30
+            }
+        }
+
+        ; Prefix/exact boosts refine results within the same field tier.
+        if StrCompare(labelText, query, false) == 0
+            score += 5000
+        else if InStr(labelText, query) == 1
+            score += 2500
+
+        if StrCompare(titleText, query, false) == 0
+            score += 2000
+        else if InStr(titleText, query) == 1
+            score += 1000
+
+        if StrCompare(processText, query, false) == 0
+            score += 500
+        else if InStr(processText, query) == 1
+            score += 250
+
+        return {tier: tier, score: score}
+    }
+
+    ; O(n log n) heap sort keeps per-keystroke filtering bounded for large lists.
+    ; Original enumeration order is the final tie-breaker for stable results.
+    static SortRankedWindows(entries) {
+        count := entries.Length
+        if count < 2
+            return
+
+        root := count // 2
+        while root > 0 {
+            this.SiftDownRankedWindows(entries, root, count)
+            root -= 1
+        }
+
+        heapEnd := count
+        while heapEnd > 1 {
+            temp := entries[1]
+            entries[1] := entries[heapEnd]
+            entries[heapEnd] := temp
+            heapEnd -= 1
+            this.SiftDownRankedWindows(entries, 1, heapEnd)
+        }
+    }
+
+    static SiftDownRankedWindows(entries, root, heapEnd) {
+        while root * 2 <= heapEnd {
+            child := root * 2
+            if (
+                child < heapEnd
+                && this.CompareRankedWindows(entries[child], entries[child + 1]) < 0
+            ) {
+                child += 1
+            }
+
+            if this.CompareRankedWindows(entries[root], entries[child]) >= 0
+                return
+
+            temp := entries[root]
+            entries[root] := entries[child]
+            entries[child] := temp
+            root := child
+        }
+    }
+
+    static CompareRankedWindows(left, right) {
+        if left.tier != right.tier
+            return left.tier < right.tier ? -1 : 1
+        if left.score != right.score
+            return left.score > right.score ? -1 : 1
+        if left.order == right.order
+            return 0
+        return left.order < right.order ? -1 : 1
     }
 
     ; --- Per-row close button ---------------------------------------------
