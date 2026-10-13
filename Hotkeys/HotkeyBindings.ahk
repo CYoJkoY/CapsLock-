@@ -134,6 +134,8 @@ NumpadEnter:: PasteSelectedFromFullHistory()
 #HotIf FullHistoryListFocused()
 Space:: ToggleFullHistoryFocusedCheck()
 ^a:: ToggleFullHistorySelectAll()
+Home:: MoveFullHistorySelectionToBoundary(false)
+End:: MoveFullHistorySelectionToBoundary(true)
 #HotIf
 
 #HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
