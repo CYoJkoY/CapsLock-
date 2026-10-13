@@ -12,7 +12,9 @@
 }
 
 CapsLockHotkeysAvailable() {
-    return GetKeyState("CapsLock", "P") && !AppState.QuickPhraseTransactionActive
+    return GetKeyState("CapsLock", "P")
+        && !AppState.QuickPhraseTransactionActive
+        && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
 }
 
 QuickPhraseUiActive() {
@@ -82,7 +84,7 @@ PgUp:: WindowSwitcherGui.MoveSelection(-5)
 PgDn:: WindowSwitcherGui.MoveSelection(5)
 #HotIf
 
-#HotIf GetKeyState("CapsLock", "P")
+#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
 j:: JumpToLine()
 k:: TerminateProcessByPid()
 #HotIf
