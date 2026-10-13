@@ -114,22 +114,22 @@ OnSelectAllClicked(chk, info) {
     DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
 }
 
-OnItemCheck(lv, row, checked) {
-    guiObj := lv.Gui
-    if !guiObj.HasProp("chkSelectAll")
+UpdateFullHistorySelectAll(guiObj) {
+    if !IsObject(guiObj) || !guiObj.HasProp("chkSelectAll") || !guiObj.HasProp("ListView")
         return
 
+    lv := guiObj.ListView
     totalRows := lv.GetCount()
-    if totalRows == 0
-        return
-
     checkedCount := 0
     currentRow := 0
-    while currentRow := lv.GetNext(currentRow, "Checked") {
+    while currentRow := lv.GetNext(currentRow, "Checked")
         checkedCount++
-    }
 
-    guiObj.chkSelectAll.Value := (checkedCount == totalRows) ? 1 : 0
+    guiObj.chkSelectAll.Value := (totalRows > 0 && checkedCount == totalRows) ? 1 : 0
+}
+
+OnItemCheck(lv, row, checked) {
+    UpdateFullHistorySelectAll(lv.Gui)
 }
 
 EnsureFullHistoryTargetWindow() {
