@@ -146,12 +146,27 @@ RefreshFullHistoryList(isIncremental := false) {
         || !myGui.HasProp("lastHistoryRevision")
         || myGui.lastHistoryRevision != currentRevision
 
+    preservedCheckedIndices := Map()
     if needRebuild {
+        ; Numeric history indices are safe to reuse only while the underlying
+        ; history revision is unchanged. Capture visible checks before deleting rows.
+        canPreserveSelection := myGui.HasProp("lastHistoryRevision")
+            && myGui.lastHistoryRevision == currentRevision
+            && myGui.HasProp("cachedMatching")
+        if canPreserveSelection {
+            checkedRow := 0
+            while checkedRow := lv.GetNext(checkedRow, "Checked") {
+                historyIndexText := lv.GetText(checkedRow, 1)
+                if historyIndexText ~= "^\d+$"
+                    preservedCheckedIndices[Integer(historyIndexText)] := true
+            }
+        }
+
         matching := HistorySearch(filter)
 
         myGui.cachedMatching := matching
         myGui.lastFilter := filter
-        myGui.lastHistoryRevision := HistoryManager.revision
+        myGui.lastHistoryRevision := currentRevision
         myGui.displayedCount := 0
 
         SendMessage(0x000B, 0, 0, lv.Hwnd)
@@ -169,7 +184,9 @@ RefreshFullHistoryList(isIncremental := false) {
         loop pageRange.end - pageRange.start + 1 {
             index := matching[pageRange.start + A_Index - 1]
             item := AppState.History[index]
-            lv.Add(, index, HistoryPreviewText(item["text"]), SubStr(item["time"], 12, 5))
+            row := lv.Add(, index, HistoryPreviewText(item["text"]), SubStr(item["time"], 12, 5))
+            if preservedCheckedIndices.Has(index)
+                lv.Modify(row, "Check")
         }
         myGui.displayedCount := pageRange.end
     }
@@ -189,7 +206,7 @@ RefreshFullHistoryList(isIncremental := false) {
         myGui.StatusBar.Text := lang(statusKey, , totalMatching, displayCount)
     }
 
-    myGui.chkSelectAll.Value := 0
+    UpdateFullHistorySelectAll(myGui)
 }
 
 ResizeFullHistoryGui(guiObj, minmax, width, height) {
