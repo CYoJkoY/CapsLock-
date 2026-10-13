@@ -100,7 +100,7 @@ Press `CapsLock + R` to open the searchable command palette. Type an action name
 
 ### Application-specific hotkeys
 
-Open Settings → Tools → Application Profiles to choose a running application and disable the CapsLock shortcut layer for that executable. Rules match executable names case-insensitively and apply only to the selected application; unlisted applications retain the existing behavior. The rules are stored locally in the `[AppProfiles]` section of `configs/Config.ini`.
+Open Settings → Tools → Application Profiles to choose a running application. You can disable the entire CapsLock shortcut layer for that executable or disable selected groups such as text editing, clipboard/history, window management, browser tabs, visual effects, general tools, and Quick Phrase. Rules match executable names case-insensitively; unlisted applications retain the existing behavior. Both rule types are stored locally in the `[AppProfiles]` section of `configs/Config.ini` and do not mark Cloud Sync dirty.
 
 ### Clipboard and smart paste
 
@@ -362,7 +362,7 @@ Important configuration areas include:
 | `[History]`        | Clipboard history limit                                                           |
 | `[General]`        | Paste mode, auto-clean, language                                                  |
 | `[QuickPhrase]`    | Quick Phrase enable/disable state                                                 |
-| `[AppProfiles]`    | Per-executable CapsLock-layer disable rules                                      |
+| `[AppProfiles]`    | Per-executable full-layer and shortcut-group disable rules                       |
 | `[Pandoc]`         | Pandoc path and output format                                                     |
 | `[WindowHole]`     | Diameter, shape, activation, update interval, fallback, executable/class rules    |
 | `[WindowSwitcher]` | Application icons, icon size, row density, process column, selected-row highlight |

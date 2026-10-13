@@ -7,7 +7,7 @@ class ApplicationProfilesGui {
     static RulesList := ""
     static Status := ""
     static RunningWindows := []
-    static RuleExecutables := []
+    static RuleEntries := []
 
     static Show() {
         if IsObject(this.Instance) {
@@ -57,6 +57,11 @@ class ApplicationProfilesGui {
             "⊘ " Lang("GUI_APP_PROFILES_DISABLE_SELECTED"),
             "primary"
         )
+        configureGroupsButton := ThemeHelper.AddButton(
+            myGui,
+            "x398 y258 w220 h30",
+            Lang("GUI_APP_PROFILES_CONFIGURE_GROUPS")
+        )
 
         myGui.SetFont("s10 Bold c" Theme.Primary, Theme.Font)
         rulesHeading := myGui.Add(
@@ -100,11 +105,12 @@ class ApplicationProfilesGui {
         this.RulesList := rulesList
         this.Status := status
         this.RunningWindows := []
-        this.RuleExecutables := []
+        this.RuleEntries := []
 
         refreshButton.OnEvent("Click", (*) => ApplicationProfilesGui.Refresh())
         addButton.OnEvent("Click", (*) => ApplicationProfilesGui.AddSelectedExecutable())
-        removeButton.OnEvent("Click", (*) => ApplicationProfilesGui.RemoveSelectedExecutable())
+        configureGroupsButton.OnEvent("Click", (*) => ApplicationProfilesGui.ConfigureSelectedGroups())
+        removeButton.OnEvent("Click", (*) => ApplicationProfilesGui.RemoveSelectedRule())
         closeButton.OnEvent("Click", (*) => ApplicationProfilesGui.Close())
         runningList.OnEvent("DoubleClick", (ctrl, row) => ApplicationProfilesGui.AddSelectedExecutable())
         myGui.OnEvent("Escape", (*) => ApplicationProfilesGui.Close())
@@ -170,19 +176,60 @@ class ApplicationProfilesGui {
         if !IsObject(rulesList)
             return
 
-        this.RuleExecutables := ApplicationProfiles.NormalizeDisabledExecutables(
-            AppState.DisabledHotkeyProcesses
-        )
+        this.RuleEntries := []
         rulesList.Delete()
 
-        for executableName in this.RuleExecutables
+        disabledExecutables := ApplicationProfiles.NormalizeDisabledExecutables(
+            AppState.DisabledHotkeyProcesses
+        )
+        for executableName in disabledExecutables {
+            this.RuleEntries.Push({process: executableName, type: "all"})
             rulesList.Add(, executableName, Lang("GUI_APP_PROFILES_DISABLED"))
+        }
+
+        for executableName, groupIds in AppState.DisabledHotkeyGroups {
+            if groupIds.Length == 0
+                continue
+
+            groupLabels := []
+            for definition in ApplicationProfiles.GetShortcutGroups() {
+                for disabledGroup in groupIds {
+                    if disabledGroup == definition.id {
+                        groupLabels.Push(Lang(definition.labelKey))
+                        break
+                    }
+                }
+            }
+
+            this.RuleEntries.Push({process: executableName, type: "groups"})
+            rulesList.Add(
+                ,
+                executableName,
+                Lang("GUI_APP_PROFILES_GROUP_RULE", "", Join(groupLabels, ", "))
+            )
+        }
 
         if IsObject(this.Status) {
             this.Status.Text := this.RunningWindows.Length == 0
                 ? Lang("GUI_APP_PROFILES_NO_WINDOWS")
-                : Lang("GUI_APP_PROFILES_STATUS", "", this.RuleExecutables.Length)
+                : Lang("GUI_APP_PROFILES_STATUS", "", this.RuleEntries.Length)
         }
+    }
+
+    static ConfigureSelectedGroups() {
+        runningList := this.RunningList
+        if !IsObject(runningList)
+            return
+
+        selectedRow := runningList.GetNext(0, "Focused")
+        if !selectedRow
+            selectedRow := runningList.GetNext(0)
+        if !selectedRow || selectedRow > this.RunningWindows.Length {
+            this.Status.Text := Lang("GUI_APP_PROFILES_SELECT_RUNNING")
+            return
+        }
+
+        ApplicationProfilesGroupGui.Show(this.RunningWindows[selectedRow].process)
     }
 
     static AddSelectedExecutable() {
@@ -215,7 +262,7 @@ class ApplicationProfilesGui {
         this.Status.Text := Lang("GUI_APP_PROFILES_ADDED", "", executableName)
     }
 
-    static RemoveSelectedExecutable() {
+    static RemoveSelectedRule() {
         rulesList := this.RulesList
         if !IsObject(rulesList)
             return
@@ -223,14 +270,17 @@ class ApplicationProfilesGui {
         selectedRow := rulesList.GetNext(0, "Focused")
         if !selectedRow
             selectedRow := rulesList.GetNext(0)
-        if !selectedRow || selectedRow > this.RuleExecutables.Length {
+        if !selectedRow || selectedRow > this.RuleEntries.Length {
             this.Status.Text := Lang("GUI_APP_PROFILES_SELECT_RULE")
             return
         }
 
-        executableName := this.RuleExecutables[selectedRow]
+        selectedRule := this.RuleEntries[selectedRow]
         try {
-            wasRemoved := ApplicationProfiles.RemoveDisabledExecutable(executableName)
+            if selectedRule.type == "all"
+                wasRemoved := ApplicationProfiles.RemoveDisabledExecutable(selectedRule.process)
+            else
+                wasRemoved := ApplicationProfiles.SetDisabledGroups(selectedRule.process, [])
         } catch as caughtError {
             this.Status.Text := caughtError.Message
             return
@@ -240,7 +290,9 @@ class ApplicationProfilesGui {
             return
 
         this.RefreshRules()
-        this.Status.Text := Lang("GUI_APP_PROFILES_REMOVED", "", executableName)
+        this.Status.Text := selectedRule.type == "all"
+            ? Lang("GUI_APP_PROFILES_REMOVED", "", selectedRule.process)
+            : Lang("GUI_APP_PROFILES_GROUPS_REMOVED", "", selectedRule.process)
     }
 
     static Close() {
@@ -253,6 +305,120 @@ class ApplicationProfilesGui {
         this.RulesList := ""
         this.Status := ""
         this.RunningWindows := []
-        this.RuleExecutables := []
+        this.RuleEntries := []
+    }
+}
+
+
+; Modal editor for per-executable shortcut-group exclusions.
+class ApplicationProfilesGroupGui {
+    static Instance := ""
+    static Executable := ""
+    static CheckBoxes := Map()
+
+    static Show(processName) {
+        executableName := ApplicationProfiles.NormalizeExecutableName(processName)
+        if executableName == ""
+            return
+
+        this.Close()
+        myGui := Gui(
+            "+AlwaysOnTop -MaximizeBox -MinimizeBox +ToolWindow",
+            Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName)
+        )
+        ThemeHelper.StyleGui(myGui)
+        ThemeHelper.AddTitle(
+            myGui,
+            "⌘ " Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName),
+            640
+        )
+        ThemeHelper.AddSubtitle(myGui, Lang("GUI_APP_PROFILES_GROUPS_HINT"), 640)
+        ThemeHelper.AddSeparator(myGui, 640)
+
+        this.Executable := executableName
+        this.CheckBoxes := Map()
+        disabledGroups := ApplicationProfiles.GetDisabledGroups(executableName)
+        rowY := 112
+
+        for definition in ApplicationProfiles.GetShortcutGroups() {
+            checkbox := myGui.Add(
+                "Checkbox",
+                ThemeHelper.GetCheckBoxOptions("x24 y" rowY " w630 h26"),
+                Lang(definition.labelKey)
+            )
+            ThemeHelper.StyleCheckBox(checkbox)
+            for disabledGroup in disabledGroups {
+                if disabledGroup == definition.id {
+                    checkbox.Value := 1
+                    break
+                }
+            }
+            this.CheckBoxes[definition.id] := checkbox
+            rowY += 31
+        }
+
+        applyButton := ThemeHelper.AddButton(
+            myGui,
+            "x420 y" (rowY + 8) " w100 h30",
+            Lang("GUI_APP_PROFILES_GROUPS_APPLY"),
+            "primary"
+        )
+        cancelButton := ThemeHelper.AddButton(
+            myGui,
+            "x528 y" (rowY + 8) " w92 h30",
+            Lang("GUI_APP_PROFILES_GROUPS_CANCEL")
+        )
+
+        applyButton.OnEvent("Click", (*) => ApplicationProfilesGroupGui.Apply())
+        cancelButton.OnEvent("Click", (*) => ApplicationProfilesGroupGui.Close())
+        myGui.OnEvent("Escape", (*) => ApplicationProfilesGroupGui.Close())
+        myGui.OnEvent("Close", (*) => ApplicationProfilesGroupGui.Close())
+
+        this.Instance := myGui
+        ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
+        myGui.Show("w660 h" (rowY + 58) " Center")
+    }
+
+    static Apply() {
+        if this.Executable == "" || !IsObject(this.Instance)
+            return
+
+        selectedGroups := []
+        for groupId, checkbox in this.CheckBoxes {
+            if checkbox.Value
+                selectedGroups.Push(groupId)
+        }
+
+        try {
+            if !ApplicationProfiles.SetDisabledGroups(this.Executable, selectedGroups)
+                return
+        } catch as caughtError {
+            ShowToolTip(caughtError.Message, 2200)
+            return
+        }
+
+        if IsObject(ApplicationProfilesGui.Status) {
+            ApplicationProfilesGui.Status.Text := Lang(
+                "GUI_APP_PROFILES_GROUPS_SAVED",
+                "",
+                this.Executable
+            )
+        }
+        ApplicationProfilesGui.RefreshRules()
+        ShowToolTip(
+            Lang("GUI_APP_PROFILES_GROUPS_SAVED", "", this.Executable),
+            1600
+        )
+        this.Close()
+    }
+
+    static Close() {
+        if IsObject(this.Instance) {
+            try this.Instance.Destroy()
+        }
+
+        this.Instance := ""
+        this.Executable := ""
+        this.CheckBoxes := Map()
     }
 }

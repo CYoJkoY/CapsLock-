@@ -17,6 +17,12 @@ CapsLockHotkeysAvailable() {
         && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
 }
 
+CapsLockShortcutGroupAvailable(groupId) {
+    return GetKeyState("CapsLock", "P")
+        && !AppState.QuickPhraseTransactionActive
+        && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow(groupId)
+}
+
 QuickPhraseUiActive() {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -26,7 +32,7 @@ QuickPhraseUiActive() {
 }
 
 QuickPhraseHotkeyAvailable() {
-    return CapsLockHotkeysAvailable()
+    return CapsLockShortcutGroupAvailable("quickphrase")
     && !QuickPhraseUiActive()
 }
 
@@ -84,13 +90,19 @@ PgUp:: WindowSwitcherGui.MoveSelection(-5)
 PgDn:: WindowSwitcherGui.MoveSelection(5)
 #HotIf
 
-#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
+#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
 j:: JumpToLine()
+#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("window")
 k:: TerminateProcessByPid()
 #HotIf
 
+; Shift arms the existing sequential modifier layer; the action hotkeys below
+; apply their own per-application group policy.
 #HotIf CapsLockHotkeysAvailable()
 ~Shift:: ActivateShiftLayer()
+#HotIf
+
+#HotIf CapsLockShortcutGroupAvailable("text")
 +Left:: Send("^+{Left}")
 +Right:: Send("^+{Right}")
 +Up:: Send("+{Home}")
@@ -102,10 +114,14 @@ d:: Send("{Delete}")
 +d:: Send("^{Delete}")
 Backspace:: Send("{Home}+{End}{Delete}")
 Delete:: Send("{Home}+{End}{Delete}")
+#HotIf
+
+#HotIf CapsLockShortcutGroupAvailable("tabs")
 q:: Send("^{PgUp}")
 e:: Send("^{PgDn}")
+#HotIf
 
-#HotIf CapsLockHotkeysAvailable() && !WindowHole.IsActive()
+#HotIf CapsLockShortcutGroupAvailable("window") && !WindowHole.IsActive()
 LButton:: {
     AdjustOpacity(20)
     if KeyWait("LButton", "T0.3")
@@ -132,48 +148,42 @@ MButton:: {
     else
         WinSetTransparent(255, hwnd)
 }
+#HotIf
 
-#HotIf CapsLockHotkeysAvailable()
+#HotIf CapsLockShortcutGroupAvailable("window")
 ; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------
-;
-; Every key of the two groups reaches these handlers through a wildcard hotkey,
-; because a separate "+w" / "+8" / "+s" / "+2" binding next to the stacked
-; "w / 8 / Numpad8" and "s / 2 / Numpad2" definitions is never registered: the
-; stacked head owns the key and the Shift variant is dropped. Resolving the
-; modifier state here keeps one reliable entry point per key.
-;
-;   CapsLock + W / 8 / Num8             maximize / restore
-;   CapsLock + Shift + W / 8 / Num8     borderless fullscreen
-;   CapsLock + S / 2 / Num2             minimize
-;   CapsLock + Shift + S / 2 / Num2     hide to tray
-;
-; Ctrl / Alt / Win combinations belong to the active window (Ctrl + S saves,
-; Ctrl + W closes a tab), so they are forwarded untouched.
+; Ctrl / Alt / Win combinations are forwarded untouched.
 *w:: WindowWildcardMaximize()
 *8:: WindowWildcardMaximize()
 *Numpad8:: WindowWildcardMaximize()
 *s:: WindowWildcardMinimize()
 *2:: WindowWildcardMinimize()
 *Numpad2:: WindowWildcardMinimize()
+t:: ToggleAlwaysOnTopWithOSD()
+l:: WindowSwitcherGui.Show()
+#HotIf
 
+#HotIf CapsLockShortcutGroupAvailable("clipboard")
 c:: CopyAsPlainTextAndAddToHistory()
 v:: PasteWithCurrentMode()
 +v:: ShowHistoryMenu()
 f:: ChangeCaseOfLastCopy()
-t:: ToggleAlwaysOnTopWithOSD()
+#HotIf
+
+#HotIf CapsLockShortcutGroupAvailable("tools")
 p:: ConvertWithPandoc()
-l:: WindowSwitcherGui.Show()
+!q:: OpenTempFolder()
 r:: CommandPaletteGui.Show()
+h:: HotkeyReferenceGui.Toggle()
+F1:: HotkeyReferenceGui.Toggle()
+,:: SettingsGui.Toggle()
+i:: SettingsGui.Toggle()
+#HotIf
+
+#HotIf CapsLockShortcutGroupAvailable("visual")
 o:: Spotlight.HandleDown()
 z:: Zoom.HandleDown()
 x:: WindowHole.HandleXDown()
-; --- Files: open the temp folder used by file-oriented paste ---
-!q:: OpenTempFolder()
-; --- Help: built-in hotkey reference & Settings Center ---
-h::
-F1:: HotkeyReferenceGui.Toggle()
-,::
-i:: SettingsGui.Toggle()
 #HotIf
 
 ; X-up, O-up and Z-up are intentionally global so releasing the key still stops hold
