@@ -65,7 +65,7 @@ PasteSelectedFromFullHistory() {
 
         if selectedRow {
             realIdx := lv.GetText(selectedRow, 1)
-            if realIdx ~= "^\\d+$"
+            if realIdx ~= "^\d+$"
                 fileList.Push(AppState.History[Integer(realIdx)])
         }
     }
