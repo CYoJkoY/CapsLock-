@@ -52,9 +52,12 @@ CommandPaletteSearchFocused() {
         if !IsObject(CommandPaletteGui.Instance)
             return false
         if !CommandPaletteGui.Instance.HasProp("SearchBox")
+            || !CommandPaletteGui.Instance.HasProp("ListView")
             return false
-        return DllCall("user32\GetFocus", "Ptr")
-            == CommandPaletteGui.Instance.SearchBox.Hwnd
+
+        focusedHwnd := DllCall("user32\GetFocus", "Ptr")
+        return focusedHwnd == CommandPaletteGui.Instance.SearchBox.Hwnd
+            || focusedHwnd == CommandPaletteGui.Instance.ListView.Hwnd
     } catch
         return false
 }
