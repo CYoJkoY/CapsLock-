@@ -48,6 +48,9 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
         "Edit",
         "x" (margin + 22) " y" (searchY - 2) " w604 " ThemeHelper.GetEditOptions("r1")
     )
+    ; EM_SETCUEBANNER exposes the multi-word-search hint in the native Edit control.
+    searchHint := Lang("GUI_FULL_SEARCH_PLACEHOLDER", "Search multiple words")
+    DllCall("SendMessageW", "Ptr", searchBox.Hwnd, "UInt", 0x1501, "Ptr", 1, "Str", searchHint, "Ptr")
     searchBox.OnEvent("Change", (*) => (
         AppState.MAX_FULL_HISTORY_DISPLAY := 50,
         RefreshFullHistoryList()
