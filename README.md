@@ -98,6 +98,10 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 Press `CapsLock + R` to open the searchable command palette. Type an action name, category, description, keyword, or shortcut; separate multiple terms with spaces. Matching requires every term, and results rank command-label matches above weaker descriptive matches. Use the arrow keys and `Enter` to run an action; `Esc` closes the palette. The palette reuses existing actions and respects the current theme and language.
 
+### Window switcher
+
+Press `CapsLock + L` to search open windows. Use multiple whitespace-separated terms; every term must match the application display name, window title, or process name, and terms may match different fields. Application-name matches rank first, followed by title matches and then process-only matches; exact and prefix matches improve ordering within each tier. Clearing the query restores the original window order. Keyboard navigation, activation, and per-row close actions remain unchanged.
+
 ### Application-specific hotkeys
 
 Open Settings → Tools → Application Profiles to choose a running application. You can disable the entire CapsLock shortcut layer for that executable or disable selected groups such as text editing, clipboard/history, window management, browser tabs, visual effects, general tools, and Quick Phrase. Rules match executable names case-insensitively; unlisted applications retain the existing behavior. Both rule types are stored locally in the `[AppProfiles]` section of `configs/Config.ini` and do not mark Cloud Sync dirty.
