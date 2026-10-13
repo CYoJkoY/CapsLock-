@@ -118,7 +118,7 @@ Open Settings → Tools → Application Profiles to choose a running application
 
 **Clipboard history**
 
-`CapsLock + Shift + V` opens the history menu. The full history interface supports search, multi-selection, batch operations, deletion, and paginated loading.
+`CapsLock + Shift + V` opens the history menu. The full history interface supports multi-term search: separate query terms with spaces, and every term must match even when terms appear in different parts or lines. Contiguous full-query matches rank first, followed by entries whose terms are visible in the short preview; equal-relevance entries retain their newest-first order. The interface also supports multi-selection, batch operations, deletion, and paginated loading.
 
 History retention is configurable. Automatic trimming can also be enabled for long-running installations.
 

@@ -10,20 +10,131 @@ HistoryPageRange(totalCount, displayedCount, maxDisplay) {
 
 HistorySearch(query) {
     indices := []
-    query := Trim(query)
+    searchQuery := StrLower(RegExReplace(Trim(query), "\s+", " "))
+    searchTerms := []
 
-    if query == "" {
-        for index, item in AppState.History
-            indices.Push(index)
+    if searchQuery != "" {
+        for searchTerm in StrSplit(searchQuery, A_Space) {
+            if searchTerm != ""
+                searchTerms.Push(searchTerm)
+        }
+    }
+
+    ; Keep the existing newest-first order when no query terms are present.
+    if !searchTerms.Length {
+        for historyIndex, historyItem in AppState.History
+            indices.Push(historyIndex)
         return indices
     }
 
-    for index, item in AppState.History {
-        text := item["text"]
-        if InStr(text, query) || InStr(HistoryPreviewText(text), query)
-            indices.Push(index)
+    rankedEntries := []
+    for historyIndex, historyItem in AppState.History {
+        entryText := historyItem["text"]
+        searchableText := StrLower(RegExReplace(entryText, "\s+", " "))
+        previewText := StrLower(HistoryPreviewText(entryText))
+        allTermsFound := true
+        allTermsInPreview := true
+        previewScore := 0
+
+        for searchTerm in searchTerms {
+            if !InStr(searchableText, searchTerm) {
+                allTermsFound := false
+                break
+            }
+
+            previewPosition := InStr(previewText, searchTerm)
+            if previewPosition {
+                previewScore += Max(0, 81 - previewPosition)
+            } else {
+                allTermsInPreview := false
+            }
+        }
+
+        if !allTermsFound
+            continue
+
+        phrasePosition := InStr(searchableText, searchQuery)
+        if phrasePosition {
+            ; A contiguous full-query match outranks a non-contiguous match.
+            tier := 1
+            relevanceScore := 10000 + Max(0, 1000 - phrasePosition)
+        } else if allTermsInPreview {
+            ; If all terms are visible in the list preview, rank ahead of
+            ; matches that require searching deeper inside the clipboard entry.
+            tier := 2
+            relevanceScore := previewScore
+        } else {
+            tier := 3
+            relevanceScore := previewScore
+        }
+
+        rankedEntries.Push({
+            index: historyIndex,
+            tier: tier,
+            score: relevanceScore,
+            order: historyIndex
+        })
     }
+
+    HistorySortRankedResults(rankedEntries)
+    for rankedEntry in rankedEntries
+        indices.Push(rankedEntry.index)
+
     return indices
+}
+
+; O(n log n) heap sort keeps per-keystroke ranking bounded for large histories.
+HistorySortRankedResults(entries) {
+    count := entries.Length
+    if count < 2
+        return entries
+
+    root := count // 2
+    while root > 0 {
+        HistoryRankedSiftDown(entries, root, count)
+        root -= 1
+    }
+
+    heapEnd := count
+    while heapEnd > 1 {
+        temp := entries[1]
+        entries[1] := entries[heapEnd]
+        entries[heapEnd] := temp
+        heapEnd -= 1
+        HistoryRankedSiftDown(entries, 1, heapEnd)
+    }
+
+    return entries
+}
+
+HistoryRankedSiftDown(entries, root, heapEnd) {
+    while root * 2 <= heapEnd {
+        child := root * 2
+        if (
+            child < heapEnd
+            && HistoryCompareRankedResults(entries[child], entries[child + 1]) < 0
+        ) {
+            child += 1
+        }
+
+        if HistoryCompareRankedResults(entries[root], entries[child]) >= 0
+            return
+
+        temp := entries[root]
+        entries[root] := entries[child]
+        entries[child] := temp
+        root := child
+    }
+}
+
+HistoryCompareRankedResults(leftEntry, rightEntry) {
+    if leftEntry.tier != rightEntry.tier
+        return leftEntry.tier < rightEntry.tier ? -1 : 1
+    if leftEntry.score != rightEntry.score
+        return leftEntry.score > rightEntry.score ? -1 : 1
+    if leftEntry.order == rightEntry.order
+        return 0
+    return leftEntry.order < rightEntry.order ? -1 : 1
 }
 
 HistoryPreviewText(text) {
