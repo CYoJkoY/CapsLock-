@@ -96,7 +96,7 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 ### Command palette
 
-Press `CapsLock + R` to open the searchable command palette. Type an action name, category, description, keyword, or shortcut, then use the arrow keys and `Enter` to run it. `Esc` closes the palette. The palette reuses existing actions and respects the current theme and language.
+Press `CapsLock + R` to open the searchable command palette. Type an action name, category, description, keyword, or shortcut; separate multiple terms with spaces. Matching requires every term, and results rank command-label matches above weaker descriptive matches. Use the arrow keys and `Enter` to run an action; `Esc` closes the palette. The palette reuses existing actions and respects the current theme and language.
 
 ### Application-specific hotkeys
 

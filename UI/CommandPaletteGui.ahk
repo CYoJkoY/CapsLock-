@@ -291,29 +291,50 @@ class CommandPaletteGui {
         if !IsObject(list)
             return
 
-        filter := ""
+        rawSearch := ""
         try
-            filter := StrLower(Trim(this.SearchBox.Text))
+            rawSearch := StrLower(Trim(this.SearchBox.Text, " `t`r`n"))
         catch
-            filter := ""
+            rawSearch := ""
+
+        searchTerms := []
+        searchPhrase := ""
+        for searchTerm in StrSplit(rawSearch, [A_Space, A_Tab, "`r", "`n"], " `t`r`n") {
+            if searchTerm == ""
+                continue
+
+            searchTerms.Push(searchTerm)
+            searchPhrase .= (searchPhrase == "" ? "" : A_Space) searchTerm
+        }
+
+        rankedCommands := []
+        for commandIndex, commandEntry in this.Commands {
+            matchScore := this.GetMatchScore(commandEntry, searchPhrase, searchTerms)
+            if matchScore < 0
+                continue
+
+            rankedEntry := {item: commandEntry, score: matchScore}
+            insertIndex := rankedCommands.Length + 1
+            for rankedIndex, existingRank in rankedCommands {
+                if matchScore > existingRank.score {
+                    insertIndex := rankedIndex
+                    break
+                }
+            }
+
+            ; Insert before strictly weaker results only. Equal scores stay in
+            ; their original registration order, including when the query is blank.
+            rankedCommands.InsertAt(insertIndex, rankedEntry)
+        }
 
         this.VisibleCommands := []
         SendMessage(0x000B, 0, 0, list.Hwnd)
         list.Delete()
 
-        for entry in this.Commands {
-            haystack := StrLower(
-                entry.label " "
-                entry.description " "
-                entry.category " "
-                entry.shortcut " "
-                entry.keywords
-            )
-            if filter != "" && !InStr(haystack, filter)
-                continue
-
-            this.VisibleCommands.Push(entry)
-            list.Add(, entry.label, entry.description, entry.shortcut)
+        for rankedEntry in rankedCommands {
+            commandEntry := rankedEntry.item
+            this.VisibleCommands.Push(commandEntry)
+            list.Add(, commandEntry.label, commandEntry.description, commandEntry.shortcut)
         }
 
         SendMessage(0x000B, 1, 0, list.Hwnd)
@@ -321,6 +342,66 @@ class CommandPaletteGui {
             list.Modify(1, "Select Focus Vis")
 
         this.UpdateStatus()
+    }
+
+    static GetMatchScore(commandEntry, searchPhrase, searchTerms) {
+        if searchTerms.Length == 0
+            return 0
+
+        labelText := StrLower(commandEntry.label)
+        descriptionText := StrLower(commandEntry.description)
+        categoryText := StrLower(commandEntry.category)
+        shortcutText := StrLower(commandEntry.shortcut)
+        keywordText := StrLower(commandEntry.keywords)
+        searchableText := labelText " "
+            descriptionText " "
+            categoryText " "
+            shortcutText " "
+            keywordText
+
+        ; Multi-term search uses AND semantics across the existing searchable
+        ; fields: every term must be present somewhere in the indexed text.
+        for searchTerm in searchTerms {
+            if !InStr(searchableText, searchTerm)
+                return -1
+        }
+
+        matchScore := 0
+        if labelText == searchPhrase
+            matchScore += 10000
+        else if SubStr(labelText, 1, StrLen(searchPhrase)) == searchPhrase
+            matchScore += 5000
+        else if InStr(labelText, searchPhrase)
+            matchScore += 2500
+
+        ; Prefer label matches, then descriptive fields. For labels, a match at
+        ; the start or after a non-letter/digit boundary scores above an
+        ; arbitrary substring. Lowercase matching keeps the current semantics.
+        for searchTerm in searchTerms {
+            termScore := 0
+            labelPosition := InStr(labelText, searchTerm)
+            if labelPosition == 1 {
+                termScore := 700
+            } else if labelPosition > 1 {
+                precedingCharacter := SubStr(labelText, labelPosition - 1, 1)
+                termScore := RegExMatch(precedingCharacter, "^[\p{L}\p{N}]$")
+                    ? 500
+                    : 620
+            }
+
+            if InStr(descriptionText, searchTerm)
+                termScore := Max(termScore, 240)
+            if InStr(categoryText, searchTerm)
+                termScore := Max(termScore, 220)
+            if InStr(shortcutText, searchTerm)
+                termScore := Max(termScore, 200)
+            if InStr(keywordText, searchTerm)
+                termScore := Max(termScore, 180)
+
+            matchScore += termScore
+        }
+
+        return matchScore
     }
 
     static UpdateStatus() {
