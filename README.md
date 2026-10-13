@@ -122,20 +122,38 @@ History retention is configurable. Automatic trimming can also be enabled for lo
 
 `CapsLock + Shift + P` opens a local searchable phrase selector.
 
-Templates may contain variables such as:
+Templates can combine user-entered variables with built-in values:
 
 ```text
-Please summarize {{topic}} for {{audience}} in {{language}}.
+Date: {{date}}
+Time: {{time}}
+Summary for {{audience}}: {{topic}}
+Clipboard excerpt: {{clipboard}}
+Next detail: {{cursor}}
 ```
 
-When a phrase is used:
+Built-in tokens are filled automatically and do not open an input field:
 
-1. Unique placeholders are detected in first-appearance order.
+| Token | Result |
+| :--- | :--- |
+| `{{date}}` | Local date in `yyyy-MM-dd` format |
+| `{{time}}` | Local time in `HH:mm:ss` format |
+| `{{datetime}}` | Local date and time in `yyyy-MM-dd HH:mm:ss` format |
+| `{{clipboard}}` | Current plain-text clipboard content |
+| `{{date:yyyy/MM/dd}}` | A date rendered with a custom AutoHotkey `FormatTime` format |
+| `{{time:HH:mm}}` | A time rendered with a custom format |
+| `{{cursor}}` | A caret marker that is removed and positions the caret after insertion |
+
+Use one `{{cursor}}` marker per template. If it is absent, insertion keeps the existing end-of-text caret behavior.
+
+When a phrase contains ordinary variables:
+
+1. Unique user-entered placeholders are detected in first-appearance order.
 2. Each placeholder is requested once.
-3. The completed text can be reviewed before insertion.
+3. The completed text is previewed before insertion.
 4. Confirming inserts the result into the application that was focused before the selector opened.
 
-Templates without placeholders are inserted directly.
+Templates containing only built-in tokens are inserted directly without opening the variable dialog.
 
 Phrase data is stored locally under:
 

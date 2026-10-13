@@ -329,7 +329,12 @@ QuickPhraseExecutePhrase(phrase) {
         variables := QuickPhraseExtractVariables(phrase.content)
 
         if variables.Length == 0 {
-            ok := QuickPhrasePasteText(phrase.content)
+            rendered := QuickPhraseRenderTemplate(phrase.content, Map())
+            ok := QuickPhrasePasteText(
+                rendered.text,
+                "",
+                rendered.cursorOffset
+            )
         } else {
             result := ShowQuickPhraseVariableDialog(
                 phrase,
@@ -341,10 +346,13 @@ QuickPhraseExecutePhrase(phrase) {
                 return
             }
 
-            ; 变量窗口已在 ShowQuickPhraseVariableDialog() 内销毁完毕，
-            ; 这里与无参路径共用同一个同步交付点：同一个线程、GUI 已销毁、
-            ; 目标仍是 CapsLock+Shift+P 触发时捕获的 target。
-            ok := QuickPhrasePasteText(result.text)
+            ; The dialog is destroyed before the captured external target
+            ; receives the rendered text and optional cursor repositioning.
+            ok := QuickPhrasePasteText(
+                result.text,
+                "",
+                result.cursorOffset
+            )
         }
     } catch as caughtError {
         errorMessage := caughtError.Message
@@ -391,7 +399,11 @@ QuickPhraseExtractVariables(template) {
 
     while RegExMatch(template, pattern, &match, pos) {
         name := Trim(match[1])
-        if name != "" && !seen.Has(name) {
+        if (
+            name != ""
+            && !QuickPhraseIsBuiltInVariable(name)
+            && !seen.Has(name)
+        ) {
             variables.Push(name)
             seen[name] := true
         }
@@ -400,20 +412,76 @@ QuickPhraseExtractVariables(template) {
     return variables
 }
 
+QuickPhraseIsBuiltInVariable(name) {
+    normalized := StrLower(Trim(name))
+    return (
+        normalized == "date"
+        || normalized == "time"
+        || normalized == "datetime"
+        || normalized == "clipboard"
+        || normalized == "cursor"
+        || RegExMatch(name, "i)^(date|time):.+$")
+    )
+}
+
+QuickPhraseResolveBuiltInVariable(name) {
+    trimmed := Trim(name)
+    normalized := StrLower(trimmed)
+
+    if normalized == "date"
+        return FormatTime(, "yyyy-MM-dd")
+    if normalized == "time"
+        return FormatTime(, "HH:mm:ss")
+    if normalized == "datetime"
+        return FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    if normalized == "clipboard"
+        return A_Clipboard
+
+    if RegExMatch(trimmed, "i)^date:(.+)$", &match)
+        return FormatTime(, match[1])
+    if RegExMatch(trimmed, "i)^time:(.+)$", &match)
+        return FormatTime(, match[1])
+
+    return ""
+}
+
 QuickPhraseApplyVariables(template, values) {
+    return QuickPhraseRenderTemplate(template, values).text
+}
+
+QuickPhraseRenderTemplate(template, values) {
     result := ""
+    cursorOffset := -1
     pattern := "\{\{\s*([^{}\r\n]+?)\s*\}\}"
     pos := 1
 
     while RegExMatch(template, pattern, &match, pos) {
         if match.Pos > pos
             result .= SubStr(template, pos, match.Pos - pos)
+
         name := Trim(match[1])
-        result .= values.Has(name) ? values[name] : match[0]
+        normalized := StrLower(name)
+
+        if normalized == "cursor" {
+            if cursorOffset < 0
+                cursorOffset := StrLen(result)
+            replacement := ""
+        } else if values.Has(name) {
+            replacement := values[name]
+        } else if QuickPhraseIsBuiltInVariable(name) {
+            replacement := QuickPhraseResolveBuiltInVariable(name)
+        } else {
+            replacement := match[0]
+        }
+
+        result .= replacement
         pos := match.Pos + match.Len
     }
 
-    return result . SubStr(template, pos)
+    return {
+        text: result . SubStr(template, pos),
+        cursorOffset: cursorOffset
+    }
 }
 
 ShowQuickPhraseVariableDialog(phrase, variables) {
@@ -643,10 +711,12 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         for item in controls
             values[item.name] := item.edit.Text
 
-        result.text := QuickPhraseApplyVariables(
+        rendered := QuickPhraseRenderTemplate(
             phrase.content,
             values
         )
+        result.text := rendered.text
+        result.cursorOffset := rendered.cursorOffset
 
         result.cancelled := false
         result.ok := true
@@ -812,7 +882,7 @@ QuickPhraseActivateCapturedTarget(target) {
     return true
 }
 
-QuickPhrasePasteText(text, targetOverride := "") {
+QuickPhrasePasteText(text, targetOverride := "", cursorOffset := -1) {
     target := QuickPhraseGetExternalTarget(targetOverride)
 
     if !IsObject(target) || !target.window
@@ -838,10 +908,27 @@ QuickPhrasePasteText(text, targetOverride := "") {
             QuickPhraseRestoreCapturedControl(target)
         }
 
-        return PasteAsPlainText(text, "", target.window)
+        if !PasteAsPlainText(text, "", target.window)
+            return false
+
+        if cursorOffset >= 0 {
+            suffix := SubStr(text, cursorOffset + 1)
+            moveCount := QuickPhraseCountCursorMoves(suffix)
+            if moveCount > 0
+                Send("{Left " moveCount "}")
+        }
+
+        return true
     } catch {
         return false
     }
+}
+
+QuickPhraseCountCursorMoves(text) {
+    ; A Windows line break is one caret movement even when represented as CRLF.
+    text := StrReplace(text, "`r`n", "`n")
+    text := StrReplace(text, "`r", "`n")
+    return StrLen(text)
 }
 
 QuickPhraseRestoreCapturedControl(target) {
