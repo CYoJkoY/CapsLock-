@@ -156,14 +156,16 @@ MoveFullHistorySelection(delta) {
         return
 
     lv := myGui.ListView
+    rowCount := lv.GetCount()
+    if rowCount < 1
+        return
+
     row := lv.GetNext(0, "Focused")
     if !row
         row := lv.GetNext(0)
 
     row += delta
-    row := Max(1, Min(row, lv.GetCount()))
-    if row < 1
-        return
+    row := Max(1, Min(row, rowCount))
 
     lv.Modify(row, "Select Focus")
     try lv.Modify(row, "Vis")
