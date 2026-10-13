@@ -115,19 +115,68 @@ PasteSelectedFromFullHistoryText() {
 }
 
 OnSelectAllClicked(chk, info) {
-    lv := chk.Gui.ListView
+    SetFullHistoryRowsChecked(chk.Gui, chk.Value ? true : false)
+}
+
+SetFullHistoryRowsChecked(guiObj, shouldCheck) {
+    if !IsObject(guiObj) || !guiObj.HasProp("ListView")
+        return
+
+    lv := guiObj.ListView
+    totalRows := lv.GetCount()
+    if totalRows == 0 {
+        UpdateFullHistorySelectAll(guiObj)
+        return
+    }
+
+    newState := shouldCheck ? "Check" : "-Check"
+
+    SendMessage(0x000B, 0, 0, lv.Hwnd) ; WM_SETREDRAW = 0
+    loop totalRows
+        lv.Modify(A_Index, newState)
+    SendMessage(0x000B, 1, 0, lv.Hwnd) ; WM_SETREDRAW = 1
+    DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
+
+    UpdateFullHistorySelectAll(guiObj)
+}
+
+; Space toggles only the focused row's checkbox. It is bound exclusively to
+; the focused ListView, so Space remains ordinary text in the search field.
+ToggleFullHistoryFocusedCheck() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0)
+    if !row
+        return
+
+    isChecked := lv.GetNext(row - 1, "Checked") == row
+    lv.Modify(row, isChecked ? "-Check" : "Check")
+    UpdateFullHistorySelectAll(myGui)
+}
+
+; Ctrl+A follows the visible ListView scope: check every row, or clear all
+; checks when every visible row is already checked.
+ToggleFullHistorySelectAll() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
     totalRows := lv.GetCount()
     if totalRows == 0
         return
 
-    newState := chk.Value ? "Check" : "-Check"
+    checkedCount := 0
+    currentRow := 0
+    while currentRow := lv.GetNext(currentRow, "Checked")
+        checkedCount++
 
-    SendMessage(0x000B, 0, 0, lv.Hwnd) ; WM_SETREDRAW = 0
-    loop totalRows {
-        lv.Modify(A_Index, newState)
-    }
-    SendMessage(0x000B, 1, 0, lv.Hwnd) ; WM_SETREDRAW = 1
-    DllCall("InvalidateRect", "Ptr", lv.Hwnd, "Ptr", 0, "Int", 1)
+    SetFullHistoryRowsChecked(myGui, checkedCount != totalRows)
 }
 
 UpdateFullHistorySelectAll(guiObj) {
