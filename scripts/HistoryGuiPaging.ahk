@@ -8,8 +8,13 @@
 
 AppState.History := []
 Loop 120 {
+    entryText := "Test Entry " A_Index
+    if A_Index == 1
+        entryText .= " UniqueMarker and more content"
+    entryText .= "`nSecond Line"
+
     AppState.History.Push(Map(
-        "text", "Test Entry " A_Index "`nSecond Line",
+        "text", entryText,
         "time", "2026-10-03 10:00:00"
     ))
 }
@@ -26,9 +31,9 @@ if allResults.Length != AppState.History.Length {
     ExitApp(1)
 }
 
-normalizedResults := HistorySearch("Entry 1 Second Line")
+normalizedResults := HistorySearch("UniqueMarker Second Line")
 if normalizedResults.Length != 1 || normalizedResults[1] != 1 {
-    FileAppend("FAIL: search did not match normalized preview text`n", "*")
+    FileAppend("FAIL: multi-term search did not match terms across lines`n", "*")
     ExitApp(1)
 }
 
