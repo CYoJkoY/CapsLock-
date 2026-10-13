@@ -129,7 +129,7 @@ Date: {{date}}
 Time: {{time}}
 Summary for {{audience}}: {{topic}}
 Clipboard excerpt: {{clipboard}}
-Next detail: {{cursor}}
+Next detail: {{cursor}}write the next detail here.
 ```
 
 Built-in tokens are filled automatically and do not open an input field:

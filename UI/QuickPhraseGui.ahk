@@ -925,10 +925,14 @@ QuickPhrasePasteText(text, targetOverride := "", cursorOffset := -1) {
 }
 
 QuickPhraseCountCursorMoves(text) {
-    ; A Windows line break is one caret movement even when represented as CRLF.
-    text := StrReplace(text, "`r`n", "`n")
-    text := StrReplace(text, "`r", "`n")
-    return StrLen(text)
+    ; Count extended grapheme clusters so CRLF and supplementary Unicode use one caret step.
+    count := 0
+    pos := 1
+    while RegExMatch(text, "\X", &match, pos) {
+        count += 1
+        pos := match.Pos + match.Len
+    }
+    return count
 }
 
 QuickPhraseRestoreCapturedControl(target) {
