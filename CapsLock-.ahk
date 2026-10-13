@@ -8,6 +8,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 ;@Ahk2Exe-AddResource assets\AlwaysOnTopOff.wav, SND_OFF
 
 #Include "Config\Globals.ahk"
+#Include "Core\ApplicationProfiles.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 
@@ -83,6 +84,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
+#Include "UI\ApplicationProfilesGui.ahk"
 #Include "UI\SettingsGui.ahk"
 #Include "UI\CommandPaletteGui.ahk"
 

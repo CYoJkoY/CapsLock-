@@ -98,6 +98,10 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 Press `CapsLock + R` to open the searchable command palette. Type an action name, category, description, keyword, or shortcut, then use the arrow keys and `Enter` to run it. `Esc` closes the palette. The palette reuses existing actions and respects the current theme and language.
 
+### Application-specific hotkeys
+
+Open Settings → Tools → Application Profiles to choose a running application and disable the CapsLock shortcut layer for that executable. Rules match executable names case-insensitively and apply only to the selected application; unlisted applications retain the existing behavior. The rules are stored locally in the `[AppProfiles]` section of `configs/Config.ini`.
+
 ### Clipboard and smart paste
 
 **Plain-text copy**
@@ -340,6 +344,7 @@ Important configuration areas include:
 | `[History]`        | Clipboard history limit                                                           |
 | `[General]`        | Paste mode, auto-clean, language                                                  |
 | `[QuickPhrase]`    | Quick Phrase enable/disable state                                                 |
+| `[AppProfiles]`    | Per-executable CapsLock-layer disable rules                                      |
 | `[Pandoc]`         | Pandoc path and output format                                                     |
 | `[WindowHole]`     | Diameter, shape, activation, update interval, fallback, executable/class rules    |
 | `[WindowSwitcher]` | Application icons, icon size, row density, process column, selected-row highlight |

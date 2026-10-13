@@ -837,6 +837,12 @@ class SettingsGui {
             "danger"
         )
         btnExit.OnEvent("Click", (*) => ExitWithRestore())
+
+        btnAppProfiles := this._AddCardButton(
+            myGui, p, cx + 420, 430, 184, 32,
+            "🪟 " . Lang("GUI_APP_PROFILES_TITLE")
+        )
+        btnAppProfiles.OnEvent("Click", (*) => ApplicationProfilesGui.Show())
     }
 
     ; =======================================================================
