@@ -10,7 +10,7 @@ HistoryPageRange(totalCount, displayedCount, maxDisplay) {
 
 HistorySearch(query) {
     indices := []
-    searchQuery := StrLower(RegExReplace(Trim(query), "\s+", " "))
+    searchQuery := StrLower(Trim(RegExReplace(query, "\s+", " ")))
     searchTerms := []
 
     if searchQuery != "" {
