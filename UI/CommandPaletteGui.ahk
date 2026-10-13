@@ -159,6 +159,26 @@ class CommandPaletteGui {
             action: (*) => (AppState.CloudSyncEnabled ? CloudSyncCoordinator.SyncNow() : ShowCloudSyncSettings())
         })
 
+        commands.Push({
+            id: "spotlight",
+            label: Lang("CHEAT_ACT_SPOTLIGHT"),
+            category: Lang("CHEAT_CAT_VISUAL"),
+            description: Lang("CHEAT_ACT_SPOTLIGHT"),
+            shortcut: "CapsLock + O",
+            keywords: "mouse spotlight focus dim screen",
+            restoreTarget: false,
+            action: (*) => Spotlight.Toggle()
+        })
+        commands.Push({
+            id: "dynamic-zoom",
+            label: Lang("CHEAT_ACT_ZOOM"),
+            category: Lang("CHEAT_CAT_VISUAL"),
+            description: Lang("CHEAT_ACT_ZOOM"),
+            shortcut: "CapsLock + Z",
+            keywords: "magnify zoom screen cursor",
+            restoreTarget: false,
+            action: (*) => Zoom.Toggle()
+        })
         if IsObject(target) {
             commands.Push({
                 id: "clipboard-menu",
@@ -260,26 +280,7 @@ class CommandPaletteGui {
                 restoreTarget: true,
                 action: (*) => WindowHole.Toggle()
             })
-            commands.Push({
-                id: "spotlight",
-                label: Lang("CHEAT_ACT_SPOTLIGHT"),
-                category: Lang("CHEAT_CAT_VISUAL"),
-                description: Lang("CHEAT_ACT_SPOTLIGHT"),
-                shortcut: "CapsLock + O",
-                keywords: "mouse spotlight focus dim screen",
-                restoreTarget: false,
-                action: (*) => Spotlight.Toggle()
-            })
-            commands.Push({
-                id: "dynamic-zoom",
-                label: Lang("CHEAT_ACT_ZOOM"),
-                category: Lang("CHEAT_CAT_VISUAL"),
-                description: Lang("CHEAT_ACT_ZOOM"),
-                shortcut: "CapsLock + Z",
-                keywords: "magnify zoom screen cursor",
-                restoreTarget: false,
-                action: (*) => Zoom.Toggle()
-            })
+
         }
 
         return commands
