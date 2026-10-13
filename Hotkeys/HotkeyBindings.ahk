@@ -69,6 +69,18 @@ FullHistorySearchOrListFocused() {
 }
 
 
+; Batch-selection shortcuts must not intercept text-editing keys in the search box.
+FullHistoryListFocused() {
+    try {
+        myGui := AppState.FullHistoryGui
+        if !IsObject(myGui) || !myGui.HasProp("ListView")
+            return false
+        return DllCall("user32\GetFocus", "Ptr") == myGui.ListView.Hwnd
+    } catch
+        return false
+}
+
+
 ; True only while the command palette search field owns keyboard focus.
 ; Keep these navigation keys scoped to the palette so normal application input
 ; is untouched whenever the palette is closed.
@@ -115,6 +127,13 @@ PgUp:: MoveFullHistorySelection(-5)
 PgDn:: MoveFullHistorySelection(5)
 Enter:: PasteSelectedFromFullHistory()
 NumpadEnter:: PasteSelectedFromFullHistory()
+#HotIf
+
+; Space toggles one checkbox; Ctrl+A toggles all currently visible checkboxes.
+; This context is limited to the ListView so the search box keeps normal editing.
+#HotIf FullHistoryListFocused()
+Space:: ToggleFullHistoryFocusedCheck()
+^a:: ToggleFullHistorySelectAll()
 #HotIf
 
 #HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
