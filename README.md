@@ -77,6 +77,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Window       | `T`                        | Toggle always-on-top with a persistent pin badge                                                              |
 | Window       | `K`                        | Terminate a process by PID after confirmation                                                                 |
 | Window       | `L`                        | Search and activate an open window                                                                            |
+| Commands     | `R`                        | Search and execute built-in actions from the command palette                                                  |
 | Window       | `W / 8 / Num8`             | Maximize / restore                                                                                            |
 | Window       | `S / 2 / Num2`             | Minimize                                                                                                      |
 | Window       | `Shift, then W / 8 / Num8` | Toggle borderless fullscreen                                                                                  |
@@ -92,6 +93,10 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 
 The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
+
+### Command palette
+
+Press `CapsLock + R` to open the searchable command palette. Type an action name, category, description, keyword, or shortcut, then use the arrow keys and `Enter` to run it. `Esc` closes the palette. The palette reuses existing actions and respects the current theme and language.
 
 ### Clipboard and smart paste
 

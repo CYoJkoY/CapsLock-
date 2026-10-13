@@ -43,6 +43,35 @@ WindowSwitcherSearchFocused() {
         return false
 }
 
+
+; True only while the command palette search field owns keyboard focus.
+; Keep these navigation keys scoped to the palette so normal application input
+; is untouched whenever the palette is closed.
+CommandPaletteSearchFocused() {
+    try {
+        if !IsObject(CommandPaletteGui.Instance)
+            return false
+        if !CommandPaletteGui.Instance.HasProp("SearchBox")
+            || !CommandPaletteGui.Instance.HasProp("ListView")
+            return false
+
+        focusedHwnd := DllCall("user32\GetFocus", "Ptr")
+        return focusedHwnd == CommandPaletteGui.Instance.SearchBox.Hwnd
+            || focusedHwnd == CommandPaletteGui.Instance.ListView.Hwnd
+    } catch
+        return false
+}
+
+#HotIf CommandPaletteSearchFocused()
+Up:: CommandPaletteGui.MoveSelection(-1)
+Down:: CommandPaletteGui.MoveSelection(1)
+PgUp:: CommandPaletteGui.MoveSelection(-5)
+PgDn:: CommandPaletteGui.MoveSelection(5)
+Enter:: CommandPaletteGui.RunSelected()
+NumpadEnter:: CommandPaletteGui.RunSelected()
+Esc:: CommandPaletteGui.Close()
+#HotIf
+
 ; --- Window switcher (CapsLock + L) keyboard navigation ---
 ; Scoped to the switcher's search box so arrow keys move the selection while
 ; typing, without interfering with any other window or GUI.
@@ -132,6 +161,7 @@ f:: ChangeCaseOfLastCopy()
 t:: ToggleAlwaysOnTopWithOSD()
 p:: ConvertWithPandoc()
 l:: WindowSwitcherGui.Show()
+r:: CommandPaletteGui.Show()
 o:: Spotlight.HandleDown()
 z:: Zoom.HandleDown()
 x:: WindowHole.HandleXDown()
