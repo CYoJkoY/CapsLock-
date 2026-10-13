@@ -84,6 +84,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\CloudSyncConflictGui.ahk"
 #Include "UI\QuickPhraseGui.ahk"
 #Include "UI\SettingsGui.ahk"
+#Include "UI\CommandPaletteGui.ahk"
 
 Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
 
