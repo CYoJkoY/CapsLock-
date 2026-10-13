@@ -380,7 +380,13 @@ class CommandPaletteGui {
             }
 
             WinActivate("ahk_id " target.window)
-            Sleep(80)
+            if !WinWaitActive("ahk_id " target.window, , 1) {
+                ShowToolTip(
+                    Lang("MSG_COMMAND_PALETTE_TARGET_ACTIVATION_FAILED"),
+                    1800
+                )
+                return
+            }
         }
 
         try
