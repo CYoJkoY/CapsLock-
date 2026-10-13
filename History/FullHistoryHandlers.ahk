@@ -220,6 +220,16 @@ MoveFullHistorySelection(delta) {
     try lv.Modify(row, "Vis")
 }
 
+; Return from the result list to the search Edit and select the current query.
+FocusFullHistorySearch() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("SearchBox")
+        return
+
+    myGui.SearchBox.Focus()
+    Send("^a")
+}
+
 ; Jump to the first or last result without changing focus away from the ListView.
 MoveFullHistorySelectionToBoundary(toLast := false) {
     myGui := AppState.FullHistoryGui
