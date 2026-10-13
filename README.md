@@ -126,7 +126,7 @@ History retention is configurable. Automatic trimming can also be enabled for lo
 
 `CapsLock + Shift + P` opens a local searchable phrase selector.
 
-Search supports multiple whitespace-separated terms across phrase names, categories, and content; every term must match, even when terms occur in different fields. Exact name matches rank first, followed by other name matches, category matches, and content-only matches. With an empty query, the existing category/order sorting is preserved.
+Search supports multiple whitespace-separated terms across phrase names, categories, and content; every term must match, even when terms occur in different fields. Exact name matches rank first, followed by other name matches, category matches, and content-only matches. With an empty query, up to five recently inserted phrases appear first (most recent first), followed by the existing category/order/name sort. Only successful insertions count; cancelling variable entry and failed insertions do not change recency. Recent usage is kept locally in `configs/Config.ini` and is not included in Cloud Sync. A non-empty query continues to use the relevance ranking described above.
 
 Templates can combine user-entered variables with built-in values:
 
