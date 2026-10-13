@@ -90,6 +90,60 @@ HistorySearch(query) {
     return indices
 }
 
+; O(n log n) heap sort keeps per-keystroke ranking bounded for large histories.
+HistorySortRankedResults(entries) {
+    count := entries.Length
+    if count < 2
+        return entries
+
+    root := count // 2
+    while root > 0 {
+        HistoryRankedSiftDown(entries, root, count)
+        root -= 1
+    }
+
+    heapEnd := count
+    while heapEnd > 1 {
+        temp := entries[1]
+        entries[1] := entries[heapEnd]
+        entries[heapEnd] := temp
+        heapEnd -= 1
+        HistoryRankedSiftDown(entries, 1, heapEnd)
+    }
+
+    return entries
+}
+
+HistoryRankedSiftDown(entries, root, heapEnd) {
+    while root * 2 <= heapEnd {
+        child := root * 2
+        if (
+            child < heapEnd
+            && HistoryCompareRankedResults(entries[child], entries[child + 1]) < 0
+        ) {
+            child += 1
+        }
+
+        if HistoryCompareRankedResults(entries[root], entries[child]) >= 0
+            return
+
+        temp := entries[root]
+        entries[root] := entries[child]
+        entries[child] := temp
+        root := child
+    }
+}
+
+HistoryCompareRankedResults(leftEntry, rightEntry) {
+    if leftEntry.tier != rightEntry.tier
+        return leftEntry.tier < rightEntry.tier ? -1 : 1
+    if leftEntry.score != rightEntry.score
+        return leftEntry.score > rightEntry.score ? -1 : 1
+    if leftEntry.order == rightEntry.order
+        return 0
+    return leftEntry.order < rightEntry.order ? -1 : 1
+}
+
 HistoryPreviewText(text) {
     display := RegExReplace(SubStr(text, 1, 80), "[\r\n\t\v\f]+", " ")
     return display . (StrLen(text) > 80 ? "…" : "")
