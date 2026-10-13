@@ -228,6 +228,8 @@ class WindowHole {
     static HandleSecondLevelPenetration(*) {
         if !this.Active
             return
+        if !ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("visual")
+            return
 
         ; Secondary penetration never changes window visibility or activation
         ; state. The currently focused window receives a Window Hole at the
