@@ -52,6 +52,23 @@ WindowSwitcherSearchFocused() {
 }
 
 
+; True only while the full-history search box or result list owns keyboard focus.
+FullHistorySearchOrListFocused() {
+    try {
+        myGui := AppState.FullHistoryGui
+        if !IsObject(myGui)
+            return false
+        if !myGui.HasProp("SearchBox") || !myGui.HasProp("ListView")
+            return false
+
+        focusedHwnd := DllCall("user32\GetFocus", "Ptr")
+        return focusedHwnd == myGui.SearchBox.Hwnd
+            || focusedHwnd == myGui.ListView.Hwnd
+    } catch
+        return false
+}
+
+
 ; True only while the command palette search field owns keyboard focus.
 ; Keep these navigation keys scoped to the palette so normal application input
 ; is untouched whenever the palette is closed.
@@ -88,6 +105,16 @@ Up:: WindowSwitcherGui.MoveSelection(-1)
 Down:: WindowSwitcherGui.MoveSelection(1)
 PgUp:: WindowSwitcherGui.MoveSelection(-5)
 PgDn:: WindowSwitcherGui.MoveSelection(5)
+#HotIf
+
+; Full-history navigation is active only while its search or result control has focus.
+#HotIf FullHistorySearchOrListFocused()
+Up:: MoveFullHistorySelection(-1)
+Down:: MoveFullHistorySelection(1)
+PgUp:: MoveFullHistorySelection(-5)
+PgDn:: MoveFullHistorySelection(5)
+Enter:: PasteSelectedFromFullHistory()
+NumpadEnter:: PasteSelectedFromFullHistory()
 #HotIf
 
 #HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
