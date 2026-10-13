@@ -220,6 +220,22 @@ MoveFullHistorySelection(delta) {
     try lv.Modify(row, "Vis")
 }
 
+; Jump to the first or last result without changing focus away from the ListView.
+MoveFullHistorySelectionToBoundary(toLast := false) {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    rowCount := lv.GetCount()
+    if rowCount < 1
+        return
+
+    targetRow := toLast ? rowCount : 1
+    lv.Modify(targetRow, "Select Focus")
+    try lv.Modify(targetRow, "Vis")
+}
+
 EnsureFullHistoryTargetWindow() {
     targetHwnd := AppState.TargetWindow
     if targetHwnd && WinExist("ahk_id " targetHwnd)
