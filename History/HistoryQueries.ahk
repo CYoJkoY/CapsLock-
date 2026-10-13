@@ -30,14 +30,14 @@ HistorySearch(query) {
     rankedEntries := []
     for historyIndex, historyItem in AppState.History {
         entryText := historyItem["text"]
-        searchableText := StrLower(RegExReplace(entryText, "\s+", " "))
+        entryTextLower := StrLower(entryText)
         previewText := StrLower(HistoryPreviewText(entryText))
         allTermsFound := true
         allTermsInPreview := true
         previewScore := 0
 
         for searchTerm in searchTerms {
-            if !InStr(searchableText, searchTerm) {
+            if !InStr(entryTextLower, searchTerm) {
                 allTermsFound := false
                 break
             }
@@ -53,9 +53,16 @@ HistorySearch(query) {
         if !allTermsFound
             continue
 
-        phrasePosition := InStr(searchableText, searchQuery)
+        ; A single-term query should favor preview hits, not make every match
+        ; a "contiguous phrase" match.
+        phrasePosition := 0
+        if searchTerms.Length > 1 {
+            normalizedText := RegExReplace(entryTextLower, "\s+", " ")
+            phrasePosition := InStr(normalizedText, searchQuery)
+        }
+
         if phrasePosition {
-            ; A contiguous full-query match outranks a non-contiguous match.
+            ; A contiguous multi-term phrase outranks a non-contiguous match.
             tier := 1
             relevanceScore := 10000 + Max(0, 1000 - phrasePosition)
         } else if allTermsInPreview {
@@ -81,60 +88,6 @@ HistorySearch(query) {
         indices.Push(rankedEntry.index)
 
     return indices
-}
-
-; O(n log n) heap sort keeps per-keystroke ranking bounded for large histories.
-HistorySortRankedResults(entries) {
-    count := entries.Length
-    if count < 2
-        return entries
-
-    root := count // 2
-    while root > 0 {
-        HistoryRankedSiftDown(entries, root, count)
-        root -= 1
-    }
-
-    heapEnd := count
-    while heapEnd > 1 {
-        temp := entries[1]
-        entries[1] := entries[heapEnd]
-        entries[heapEnd] := temp
-        heapEnd -= 1
-        HistoryRankedSiftDown(entries, 1, heapEnd)
-    }
-
-    return entries
-}
-
-HistoryRankedSiftDown(entries, root, heapEnd) {
-    while root * 2 <= heapEnd {
-        child := root * 2
-        if (
-            child < heapEnd
-            && HistoryCompareRankedResults(entries[child], entries[child + 1]) < 0
-        ) {
-            child += 1
-        }
-
-        if HistoryCompareRankedResults(entries[root], entries[child]) >= 0
-            return
-
-        temp := entries[root]
-        entries[root] := entries[child]
-        entries[child] := temp
-        root := child
-    }
-}
-
-HistoryCompareRankedResults(leftEntry, rightEntry) {
-    if leftEntry.tier != rightEntry.tier
-        return leftEntry.tier < rightEntry.tier ? -1 : 1
-    if leftEntry.score != rightEntry.score
-        return leftEntry.score > rightEntry.score ? -1 : 1
-    if leftEntry.order == rightEntry.order
-        return 0
-    return leftEntry.order < rightEntry.order ? -1 : 1
 }
 
 HistoryPreviewText(text) {
