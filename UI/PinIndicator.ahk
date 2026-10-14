@@ -37,12 +37,21 @@ class PinIndicator {
     static UpdateInterval := 16        ; near-frame updates keep the badge attached while dragging
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
-    static DefaultDpi     := 96
+    static DefaultDpi           := 96
+    static EVENT_OBJECT_SHOW    := 0x8002
+    static OBJID_WINDOW         := 0
+    static CHILDID_SELF         := 0
+    static EVENT_DEBOUNCE_MS    := 50
 
     ; --- Runtime state ---
-    static Enabled        := true
-    static Tracked        := Map()     ; hwnd -> badge geometry, visibility, and restore state
-    static TimerCallback  := ""
+    static Enabled              := true
+    static Tracked              := Map()  ; hwnd -> badge geometry, visibility, and restore state
+    static TimerCallback        := ""
+    static WinEventHook         := 0
+    static WinEventProc         := 0
+    static WinEventCallback     := ""
+    static EventProcessCallback := ""
+    static PendingWindowEvents  := Map()
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -55,12 +64,17 @@ class PinIndicator {
         this.Tracked := Map()
         this.TimerCallback := ""
 
-        if this.Enabled
+        if this.Enabled {
             this.ScanTopmostWindows()
+            this._EnsureWinEventHook()
+        }
     }
 
     ; Tear everything down. Called on exit and when the feature is disabled.
     static Clear() {
+        ; Stop receiving global window notifications before tearing down badge GUIs.
+        this._StopWinEventHook()
+
         for hwnd, state in this.Tracked.Clone() {
             try {
                 if IsObject(state.gui)
@@ -108,10 +122,12 @@ class PinIndicator {
 
         try ConfigManager.Save()
 
-        if enabled
+        if enabled {
             this.ScanTopmostWindows()
-        else
+            this._EnsureWinEventHook()
+        } else {
             this.Clear()
+        }
     }
 
     ; One-shot discovery of already-pinned windows.
@@ -173,6 +189,9 @@ class PinIndicator {
             if this.IsTrackable(hwnd)
                 this.Track(hwnd)
         }
+
+        if this.Enabled
+            this._EnsureWinEventHook()
     }
 
     ; -----------------------------------------------------------------------
@@ -351,6 +370,123 @@ class PinIndicator {
         }
     }
 
+    ; Subscribe to window-show notifications instead of polling every window.
+    ; The hook stays active while the feature is enabled, even with no tracked
+    ; badges, so a newly created HWND can be discovered when the app shows it.
+    static _EnsureWinEventHook() {
+        if !this.Enabled || this.WinEventHook
+            return this.WinEventHook != 0
+
+        if !IsObject(this.WinEventCallback) {
+            this.WinEventCallback := ObjBindMethod(this, "_OnWinEvent")
+
+            try {
+                this.WinEventProc := CallbackCreate(
+                    this.WinEventCallback,
+                    "Fast",
+                    7
+                )
+            } catch {
+                this.WinEventCallback := ""
+                return false
+            }
+        }
+
+        if !IsObject(this.EventProcessCallback)
+            this.EventProcessCallback := ObjBindMethod(this, "_ProcessPendingWindowEvents")
+
+        try {
+            this.WinEventHook := DllCall(
+                "user32\SetWinEventHook",
+                "UInt", this.EVENT_OBJECT_SHOW,
+                "UInt", this.EVENT_OBJECT_SHOW,
+                "Ptr", 0,
+                "Ptr", this.WinEventProc,
+                "UInt", 0,
+                "UInt", 0,
+                "UInt", 0,
+                "Ptr"
+            )
+        } catch {
+            this.WinEventHook := 0
+        }
+
+        if this.WinEventHook
+            return true
+
+        if this.WinEventProc {
+            try CallbackFree(this.WinEventProc)
+            this.WinEventProc := 0
+        }
+
+        this.WinEventCallback := ""
+        this.EventProcessCallback := ""
+        return false
+    }
+
+    static _StopWinEventHook() {
+        if IsObject(this.EventProcessCallback)
+            try SetTimer(this.EventProcessCallback, 0)
+
+        this.PendingWindowEvents := Map()
+
+        if this.WinEventHook {
+            try DllCall(
+                "user32\UnhookWinEvent",
+                "Ptr", this.WinEventHook,
+                "Int"
+            )
+            this.WinEventHook := 0
+        }
+
+        if this.WinEventProc {
+            try CallbackFree(this.WinEventProc)
+            this.WinEventProc := 0
+        }
+
+        this.WinEventCallback := ""
+        this.EventProcessCallback := ""
+    }
+
+    ; WinEventProc is deliberately lightweight: collect visible-object events
+    ; and coalesce them into one short deferred pass outside the native callback.
+    static _OnWinEvent(hook, event, hwnd, idObject, idChild, eventThread, eventTime) {
+        if (
+            !this.Enabled
+            || event != this.EVENT_OBJECT_SHOW
+            || !hwnd
+            || idObject != this.OBJID_WINDOW
+            || idChild != this.CHILDID_SELF
+            || !IsObject(this.EventProcessCallback)
+        )
+            return
+
+        hadPendingEvents := this.PendingWindowEvents.Count > 0
+        this.PendingWindowEvents[hwnd] := true
+
+        if !hadPendingEvents {
+            try SetTimer(this.EventProcessCallback, -this.EVENT_DEBOUNCE_MS)
+        }
+    }
+
+    static _ProcessPendingWindowEvents(*) {
+        if !this.Enabled {
+            this.PendingWindowEvents := Map()
+            return
+        }
+
+        pending := this.PendingWindowEvents
+        this.PendingWindowEvents := Map()
+
+        for hwnd in pending {
+            try {
+                if this.IsTrackable(hwnd)
+                    this.Track(hwnd)
+            } catch {
+            }
+        }
+    }
+
     static _Tick(*) {
         if !this.Enabled || this.Tracked.Count == 0 {
             this._StopTimer()
@@ -376,13 +512,6 @@ class PinIndicator {
             return
         }
 
-        ; Recheck the target's role during tracking too. A transient shell or
-        ; utility window must lose its badge if it is no longer an app window.
-        if !this.IsBadgeCandidate(hwnd) {
-            this.Untrack(hwnd)
-            return
-        }
-
         state := this.Tracked[hwnd]
         minimized := false
         try
@@ -390,8 +519,11 @@ class PinIndicator {
         catch
             minimized := false
 
+        ; Handle invisibility before checking any mutable window styles. Some
+        ; applications change ownership / tool-window styles while hiding; that
+        ; must not erase a pin we already verified for this live HWND.
         ; Minimized and hidden windows keep their tracked pin state. Hide the
-        ; independent badge while its target is not on screen.
+        ; independent badge while the target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
             this._SetBadgeVisible(hwnd, false)
