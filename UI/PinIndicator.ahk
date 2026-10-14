@@ -723,8 +723,10 @@ class PinIndicator {
                 state.transitionPhase := this.TRANSITION_MINIMIZING
                 if !state.transitionStartedAt
                     state.transitionStartedAt := A_TickCount
+                this._ClearBadgeZOrderRetry(hwnd)
             }
-            this._ClearBadgeZOrderRetry(hwnd)
+            ; A restore notification can precede the actual visible state.
+            ; Keep its retry alive while waiting for the HWND to reappear.
             this._SetBadgeVisible(hwnd, false)
             return
         }
@@ -739,6 +741,11 @@ class PinIndicator {
             state.transitionStartedAt := 0
             state.wasMinimized := false
         }
+
+        ; Remember a restore phase that is being completed by this visible
+        ; maintenance pass, even if an earlier bounded wait expired while the
+        ; target was still minimized.
+        restoringWindow := state.transitionPhase == this.TRANSITION_RESTORING
 
         ; Some applications / window managers drop WS_EX_TOPMOST on restore.
         ; The tracked pin is the source of truth across that transition, so
@@ -811,6 +818,12 @@ class PinIndicator {
         }
 
         this._SetBadgeVisible(hwnd, true)
+
+        ; If the target became visible after the retry window expired, start a
+        ; fresh bounded Z-order settle window now that the target can participate
+        ; in Z-order placement. This avoids relying on another foreground event.
+        if restoringWindow
+            this._ScheduleBadgeZOrderRetries(hwnd)
     }
 
     ; Place the detached badge immediately above its target in the current
@@ -884,9 +897,11 @@ class PinIndicator {
         if !this.Tracked.Has(hwnd)
             return
 
+        now := A_TickCount
         this.BadgeZOrderRetries[hwnd] := {
             attemptsRemaining: this.ZOrderRetryAttempts,
-            nextAttemptAt: A_TickCount
+            nextAttemptAt: now,
+            deadlineAt: now + this.TransitionTimeoutMs
         }
     }
 
@@ -911,6 +926,18 @@ class PinIndicator {
             minimized := false
 
         if minimized || !WindowIsVisible(hwnd) {
+            state := this.Tracked[hwnd]
+            if (
+                state.transitionPhase == this.TRANSITION_RESTORING
+                && now < retry.deadlineAt
+            ) {
+                ; Do not consume a Z-order attempt while Windows still reports
+                ; the target minimized/hidden. Wait only until the bounded
+                ; restore deadline; a later visible pass can perform the tries.
+                retry.nextAttemptAt := now + this.ZOrderRetryIntervalMs
+                return
+            }
+
             this._ClearBadgeZOrderRetry(hwnd)
             return
         }
