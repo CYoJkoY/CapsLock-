@@ -767,6 +767,21 @@ class PinIndicator {
 
         now := A_TickCount
 
+        ; A minimize-start notification may be cancelled before the target
+        ; actually becomes hidden. Do not leave that pre-minimize latch active
+        ; indefinitely; clear it after the same bounded transition interval.
+        if (
+            state.transitionPhase == this.TRANSITION_MINIMIZING
+            && !state.transitionSawHidden
+            && state.transitionStartedAt
+            && now - state.transitionStartedAt >= this.TransitionTimeoutMs
+        ) {
+            state.transitionPhase := this.TRANSITION_NONE
+            state.transitionStartedAt := 0
+            state.wasMinimized := false
+            state.badgeRecreatedForTransition := false
+        }
+
         ; If an app restores without delivering MINIMIZEEND/SHOW, the prior
         ; hidden observation still proves this is the same restore lifecycle.
         if state.transitionPhase == this.TRANSITION_MINIMIZING && state.transitionSawHidden {
