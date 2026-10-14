@@ -836,10 +836,9 @@ class PinIndicator {
             && restoreAge >= this.TransitionTimeoutMs
             && this.IsTopmost(hwnd)
 
-        ; Some applications / window managers drop WS_EX_TOPMOST on restore.
-        ; The tracked pin is the source of truth across that transition, so
-        ; restore topmost once before considering the badge stale. Outside a
-        ; minimize/hidden cycle, an external unpin still removes the badge.
+        ; Some applications drop WS_EX_TOPMOST while restoring. Reassert it
+        ; only when this same tracked HWND was observed hidden/minimized and the
+        ; bounded restore phase is still active; otherwise the live style wins.
         if !this.IsTopmost(hwnd) {
             if !state.topmostLostSince
                 state.topmostLostSince := now
