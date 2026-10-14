@@ -795,14 +795,9 @@ class PinIndicator {
         ; the target may still alter styles and Z-order after that frame.
         restoringWindow := state.transitionPhase == this.TRANSITION_RESTORING
         restoreAge := restoringWindow ? now - state.transitionStartedAt : 0
-        if restoringWindow && restoreAge >= this.TransitionTimeoutMs && this.IsTopmost(hwnd) {
-            state.transitionPhase := this.TRANSITION_NONE
-            state.transitionStartedAt := 0
-            state.transitionSawHidden := false
-            state.badgeRecreatedForTransition := false
-            state.wasMinimized := false
-            restoringWindow := false
-        }
+        restoreSettled := restoringWindow
+            && restoreAge >= this.TransitionTimeoutMs
+            && this.IsTopmost(hwnd)
 
         ; Some applications / window managers drop WS_EX_TOPMOST on restore.
         ; The tracked pin is the source of truth across that transition, so
@@ -885,6 +880,19 @@ class PinIndicator {
         }
 
         this._SetBadgeVisible(hwnd, true)
+
+        ; Finish the restore state only after this pass has re-created (if
+        ; needed), positioned, and shown the badge. Clearing it before this point
+        ; could skip the one required rebuild when the first visible pass arrives
+        ; after the settling deadline.
+        if restoreSettled && this.Tracked.Has(hwnd) {
+            state := this.Tracked[hwnd]
+            state.transitionPhase := this.TRANSITION_NONE
+            state.transitionStartedAt := 0
+            state.transitionSawHidden := false
+            state.badgeRecreatedForTransition := false
+            state.wasMinimized := false
+        }
 
         ; If the target became visible after the retry window expired, start a
         ; fresh bounded Z-order settle window now that the target can participate
