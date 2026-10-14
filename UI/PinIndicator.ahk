@@ -534,7 +534,7 @@ class PinIndicator {
                 eventState.shown := true
         }
 
-        if !IsSet(this.EventProcessScheduled) || !this.EventProcessScheduled {
+        if !this.EventProcessScheduled {
             this.EventProcessScheduled := true
             try SetTimer(this.EventProcessCallback, -this.EVENT_DEBOUNCE_MS)
         }
