@@ -320,6 +320,16 @@ class PinIndicator {
     ; -----------------------------------------------------------------------
 
     static _CreateBadge(hwnd) {
+        targetPid := WindowSafePid(hwnd)
+        targetClass := ""
+        try
+            targetClass := WinGetClass("ahk_id " hwnd)
+        catch
+            targetClass := ""
+
+        if !targetPid || targetClass == ""
+            return ""
+
         dpi := this.GetDpi(hwnd)
         scale := dpi / this.DefaultDpi
         size := Max(12, Round(this.BaseSize * scale))
@@ -359,6 +369,8 @@ class PinIndicator {
 
         return {
             gui: badge,
+            targetPid: targetPid,
+            targetClass: targetClass,
             x: -2000,
             y: -2000,
             size: size,
@@ -569,7 +581,11 @@ class PinIndicator {
                 state.transitionSawHidden := event == this.EVENT_OBJECT_HIDE
                 state.badgeRecreatedForTransition := false
                 this._ClearBadgeZOrderRetry(hwnd)
-            } else if event == this.EVENT_SYSTEM_MINIMIZEEND || event == this.EVENT_OBJECT_SHOW {
+            } else if event == this.EVENT_SYSTEM_MINIMIZEEND || (
+                event == this.EVENT_OBJECT_SHOW
+                && state.transitionPhase == this.TRANSITION_MINIMIZING
+                && state.transitionSawHidden
+            ) {
                 state.wasMinimized := true
                 if state.transitionPhase != this.TRANSITION_RESTORING {
                     state.transitionPhase := this.TRANSITION_RESTORING
@@ -629,7 +645,11 @@ class PinIndicator {
             try {
                 if this.Tracked.Has(hwnd) {
                     state := this.Tracked[hwnd]
-                    restoreEvent := eventState.minimizeEnd || eventState.shown
+                    restoreEvent := eventState.minimizeEnd || (
+                        eventState.shown
+                        && state.transitionPhase == this.TRANSITION_RESTORING
+                        && state.transitionSawHidden
+                    )
                     retryZOrder := restoreEvent || eventState.foreground
 
                     ; Preserve the tracked pin during a minimize/hide transition.
@@ -739,6 +759,23 @@ class PinIndicator {
         }
 
         state := this.Tracked[hwnd]
+        currentPid := WindowSafePid(hwnd)
+        currentClass := ""
+        try
+            currentClass := WinGetClass("ahk_id " hwnd)
+        catch
+            currentClass := ""
+
+        identityChanged :=
+            (state.targetPid && currentPid && state.targetPid != currentPid)
+            || (state.targetClass != "" && currentClass != "" && state.targetClass != currentClass)
+        if identityChanged {
+            this.Untrack(hwnd)
+            if this.IsTrackable(hwnd)
+                this.Track(hwnd)
+            return
+        }
+
         minimized := false
         try
             minimized := WinGetMinMax("ahk_id " hwnd) == -1
@@ -809,22 +846,29 @@ class PinIndicator {
 
             restoreProtectionActive :=
                 state.transitionPhase == this.TRANSITION_RESTORING
+                && state.transitionSawHidden
                 && now - state.transitionStartedAt < this.TransitionTimeoutMs
             transitionInProgress :=
-                restoreProtectionActive || state.transitionPhase == this.TRANSITION_MINIMIZING
+                restoreProtectionActive
+                || (
+                    state.transitionPhase == this.TRANSITION_MINIMIZING
+                    && state.transitionSawHidden
+                )
 
-            ; Only reassert the topmost style while there is positive evidence of
-            ; a minimize/restore transition. Outside that state, wait for the
-            ; grace interval to distinguish a transient style read from a real
-            ; external unpin; eagerly re-pinning here would undo legitimate unpins.
+            ; A missing topmost bit permits recovery only when this same HWND was
+            ; observed hidden/minimized. A generic SHOW event is not enough proof.
             if transitionInProgress
                 try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
 
             if this.IsTopmost(hwnd) {
                 state.topmostLostSince := 0
-            } else if !transitionInProgress
-                && now - state.topmostLostSince >= this.TopmostLossGraceMs {
-                this.Untrack(hwnd)
+            } else {
+                ; Never render a pin badge over a target that is not actually
+                ; topmost, even while waiting out the external-unpin grace period.
+                this._SetBadgeVisible(hwnd, false)
+                if !transitionInProgress
+                    && now - state.topmostLostSince >= this.TopmostLossGraceMs
+                    this.Untrack(hwnd)
                 return
             }
         } else {
@@ -1087,6 +1131,8 @@ class PinIndicator {
         if !IsObject(replacement)
             return false
 
+        replacement.targetPid := state.targetPid
+        replacement.targetClass := state.targetClass
         replacement.wasMinimized := state.wasMinimized
         replacement.transitionPhase := state.transitionPhase
         replacement.transitionStartedAt := state.transitionStartedAt
