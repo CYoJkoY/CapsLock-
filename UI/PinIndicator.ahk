@@ -48,6 +48,10 @@ class PinIndicator {
     static EVENT_DEBOUNCE_MS          := 50
     static ZOrderRetryIntervalMs      := 50
     static ZOrderRetryAttempts        := 16
+    static TRANSITION_NONE            := 0
+    static TRANSITION_MINIMIZING       := 1
+    static TRANSITION_RESTORING        := 2
+    static TransitionTimeoutMs         := 2500
 
     ; --- Runtime state ---
     static Enabled              := true
@@ -359,7 +363,9 @@ class PinIndicator {
             size: size,
             offset: offset,
             visible: true,
-            wasMinimized: false
+            wasMinimized: false,
+            transitionPhase: this.TRANSITION_NONE,
+            transitionStartedAt: 0
         }
     }
 
@@ -547,6 +553,23 @@ class PinIndicator {
             && (idObject != this.OBJID_WINDOW || idChild != this.CHILDID_SELF)
             return
 
+        ; Latch the transition before deferring event processing. The 16 ms
+        ; maintenance timer must not interpret a temporary WS_EX_TOPMOST change
+        ; as an intentional unpin during the 50 ms event debounce window.
+        if this.Tracked.Has(hwnd) {
+            state := this.Tracked[hwnd]
+            if event == this.EVENT_SYSTEM_MINIMIZESTART || event == this.EVENT_OBJECT_HIDE {
+                state.wasMinimized := true
+                state.transitionPhase := this.TRANSITION_MINIMIZING
+                state.transitionStartedAt := A_TickCount
+                this._ClearBadgeZOrderRetry(hwnd)
+            } else if event == this.EVENT_SYSTEM_MINIMIZEEND || event == this.EVENT_OBJECT_SHOW {
+                state.wasMinimized := true
+                state.transitionPhase := this.TRANSITION_RESTORING
+                state.transitionStartedAt := A_TickCount
+            }
+        }
+
         ; Keep the event kinds, not just the HWND. A single debounced batch can
         ; contain both minimize-start and minimize-end (or hide and show); losing
         ; that sequence would make the restore path indistinguishable from a
@@ -603,6 +626,11 @@ class PinIndicator {
                     ; A new restore/show event will start a fresh bounded retry.
                     if eventState.minimizeStart || eventState.hidden {
                         state.wasMinimized := true
+                        if !restoreEvent {
+                            state.transitionPhase := this.TRANSITION_MINIMIZING
+                            if !state.transitionStartedAt
+                                state.transitionStartedAt := A_TickCount
+                        }
                         this._ClearBadgeZOrderRetry(hwnd)
                         this._SetBadgeVisible(hwnd, false)
                     }
@@ -610,7 +638,10 @@ class PinIndicator {
                     ; Restore/show must explicitly enter the recovery path even
                     ; if start/hide and end/show were coalesced into one batch.
                     if restoreEvent && this.Tracked.Has(hwnd) {
-                        this.Tracked[hwnd].wasMinimized := true
+                        state := this.Tracked[hwnd]
+                        state.wasMinimized := true
+                        state.transitionPhase := this.TRANSITION_RESTORING
+                        state.transitionStartedAt := A_TickCount
                         this._UpdateBadge(hwnd)
                     }
 
@@ -688,17 +719,40 @@ class PinIndicator {
         ; independent badge while the target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
-            this._ClearBadgeZOrderRetry(hwnd)
+            if state.transitionPhase != this.TRANSITION_RESTORING {
+                state.transitionPhase := this.TRANSITION_MINIMIZING
+                if !state.transitionStartedAt
+                    state.transitionStartedAt := A_TickCount
+                this._ClearBadgeZOrderRetry(hwnd)
+            }
+            ; A restore notification can precede the actual visible state.
+            ; Keep its retry alive while waiting for the HWND to reappear.
             this._SetBadgeVisible(hwnd, false)
             return
         }
+
+        ; A start/hide event may occasionally be cancelled or not followed by a
+        ; matching end/show event. Bound that protection while the target stays
+        ; visible so a stale transition cannot preserve an externally removed pin.
+        if state.transitionPhase == this.TRANSITION_MINIMIZING
+            && state.transitionStartedAt
+            && A_TickCount - state.transitionStartedAt >= this.TransitionTimeoutMs {
+            state.transitionPhase := this.TRANSITION_NONE
+            state.transitionStartedAt := 0
+            state.wasMinimized := false
+        }
+
+        ; Remember a restore phase that is being completed by this visible
+        ; maintenance pass, even if an earlier bounded wait expired while the
+        ; target was still minimized.
+        restoringWindow := state.transitionPhase == this.TRANSITION_RESTORING
 
         ; Some applications / window managers drop WS_EX_TOPMOST on restore.
         ; The tracked pin is the source of truth across that transition, so
         ; restore topmost once before considering the badge stale. Outside a
         ; minimize/hidden cycle, an external unpin still removes the badge.
         if !this.IsTopmost(hwnd) {
-            if !state.wasMinimized {
+            if !state.wasMinimized && state.transitionPhase == this.TRANSITION_NONE {
                 this.Untrack(hwnd)
                 return
             }
@@ -726,11 +780,20 @@ class PinIndicator {
             return
         }
 
+        ; Keep the existing recovery contract: force recreation after a hide /
+        ; minimize cycle, but let _EnsureBadgeWindow defer recreation while the
+        ; minimize-start event has arrived before the target is actually hidden.
         if !this._EnsureBadgeWindow(hwnd, state.wasMinimized)
             return
 
         state := this.Tracked[hwnd]
-        state.wasMinimized := false
+        if state.transitionPhase == this.TRANSITION_RESTORING {
+            state.wasMinimized := false
+            state.transitionPhase := this.TRANSITION_NONE
+            state.transitionStartedAt := 0
+        } else if state.transitionPhase == this.TRANSITION_NONE {
+            state.wasMinimized := false
+        }
         offset := state.offset
         size := state.size
 
@@ -755,6 +818,12 @@ class PinIndicator {
         }
 
         this._SetBadgeVisible(hwnd, true)
+
+        ; If the target became visible after the retry window expired, start a
+        ; fresh bounded Z-order settle window now that the target can participate
+        ; in Z-order placement. This avoids relying on another foreground event.
+        if restoringWindow
+            this._ScheduleBadgeZOrderRetries(hwnd)
     }
 
     ; Place the detached badge immediately above its target in the current
@@ -828,9 +897,11 @@ class PinIndicator {
         if !this.Tracked.Has(hwnd)
             return
 
+        now := A_TickCount
         this.BadgeZOrderRetries[hwnd] := {
             attemptsRemaining: this.ZOrderRetryAttempts,
-            nextAttemptAt: A_TickCount
+            nextAttemptAt: now,
+            deadlineAt: now + this.TransitionTimeoutMs
         }
     }
 
@@ -854,8 +925,42 @@ class PinIndicator {
         catch
             minimized := false
 
-        if minimized || !WindowIsVisible(hwnd) || !this.IsTopmost(hwnd) {
+        if minimized || !WindowIsVisible(hwnd) {
+            state := this.Tracked[hwnd]
+            if (
+                state.transitionPhase == this.TRANSITION_RESTORING
+                && now < retry.deadlineAt
+            ) {
+                ; Do not consume a Z-order attempt while Windows still reports
+                ; the target minimized/hidden. Wait only until the bounded
+                ; restore deadline; a later visible pass can perform the tries.
+                retry.nextAttemptAt := now + this.ZOrderRetryIntervalMs
+                return
+            }
+
             this._ClearBadgeZOrderRetry(hwnd)
+            return
+        }
+
+        ; A temporarily absent WS_EX_TOPMOST bit is part of the restore race,
+        ; not proof that the user unpinned the window. _Tick() has just tried
+        ; to restore the target's topmost style; keep the bounded retry alive
+        ; while transition protection is active so it can place the badge after
+        ; the target regains its expected style.
+        if !this.IsTopmost(hwnd) {
+            state := this.Tracked[hwnd]
+            if !state.wasMinimized && state.transitionPhase == this.TRANSITION_NONE {
+                this._ClearBadgeZOrderRetry(hwnd)
+                return
+            }
+
+            retry.attemptsRemaining -= 1
+            if retry.attemptsRemaining <= 0 {
+                this._ClearBadgeZOrderRetry(hwnd)
+                return
+            }
+
+            retry.nextAttemptAt := now + this.ZOrderRetryIntervalMs
             return
         }
 
@@ -882,11 +987,16 @@ class PinIndicator {
         } catch {
         }
 
-        if !forceRecreate && badgeHwnd && WindowHandleAlive(badgeHwnd)
-            return true
+        if badgeHwnd && WindowHandleAlive(badgeHwnd) {
+            ; EVENT_SYSTEM_MINIMIZESTART may precede actual native minimization.
+            ; Do not destroy a still-visible badge in that lead-in, even though
+            ; the caller has already latched wasMinimized for race protection.
+            if !forceRecreate || state.transitionPhase == this.TRANSITION_MINIMIZING
+                return true
+        }
 
-        ; Rebuild after every minimize / hide cycle so a stale popup cannot
-        ; keep the indicator hidden after the target is restored.
+        ; Rebuild after every completed minimize / hide cycle so a stale popup
+        ; cannot keep the indicator hidden after the target is restored.
         if IsObject(state.gui)
             try state.gui.Destroy()
 
@@ -895,6 +1005,8 @@ class PinIndicator {
             return false
 
         replacement.wasMinimized := state.wasMinimized
+        replacement.transitionPhase := state.transitionPhase
+        replacement.transitionStartedAt := state.transitionStartedAt
         this.Tracked[hwnd] := replacement
         return true
     }
