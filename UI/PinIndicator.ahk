@@ -204,13 +204,13 @@ class PinIndicator {
 
         try {
             style := DllCall(
-                "user32\\GetWindowLongPtrW",
+                "user32\GetWindowLongPtrW",
                 "Ptr", hwnd,
                 "Int", -16, ; GWL_STYLE
                 "Ptr"
             )
             exStyle := DllCall(
-                "user32\\GetWindowLongPtrW",
+                "user32\GetWindowLongPtrW",
                 "Ptr", hwnd,
                 "Int", -20, ; GWL_EXSTYLE
                 "Ptr"
@@ -221,11 +221,11 @@ class PinIndicator {
                 return false
 
             ; Owned popups include transient previews, menus, and utility dialogs.
-            owner := DllCall("user32\\GetWindow", "Ptr", hwnd, "UInt", 4, "Ptr") ; GW_OWNER
+            owner := DllCall("user32\GetWindow", "Ptr", hwnd, "UInt", 4, "Ptr") ; GW_OWNER
             if owner
                 return false
 
-            root := DllCall("user32\\GetAncestor", "Ptr", hwnd, "UInt", 2, "Ptr") ; GA_ROOT
+            root := DllCall("user32\GetAncestor", "Ptr", hwnd, "UInt", 2, "Ptr") ; GA_ROOT
             if root != hwnd
                 return false
         } catch {
