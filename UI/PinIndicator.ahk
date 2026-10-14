@@ -38,6 +38,7 @@ class PinIndicator {
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
     static DefaultDpi           := 96
+    static EVENT_SYSTEM_FOREGROUND    := 0x0003
     static EVENT_SYSTEM_MINIMIZESTART := 0x0016
     static EVENT_SYSTEM_MINIMIZEEND   := 0x0017
     static EVENT_OBJECT_SHOW          := 0x8002
@@ -52,6 +53,7 @@ class PinIndicator {
     static TimerCallback        := ""
     static WinEventHook         := 0
     static WinEventSystemHook   := 0
+    static WinEventForegroundHook := 0
     static WinEventProc         := 0
     static WinEventCallback     := ""
     static EventProcessCallback := ""
@@ -382,7 +384,7 @@ class PinIndicator {
         if !this.Enabled
             return false
 
-        if this.WinEventHook && this.WinEventSystemHook
+        if this.WinEventHook && this.WinEventSystemHook && this.WinEventForegroundHook
             return true
 
         if !IsObject(this.WinEventCallback) {
@@ -442,7 +444,28 @@ class PinIndicator {
             }
         }
 
-        if this.WinEventHook || this.WinEventSystemHook
+        ; Taskbar-button restore can primarily surface as a foreground
+        ; transition. Listen separately so a badge can be raised after Explorer
+        ; changes the topmost-window Z-order while toggling the taskbar button.
+        if !this.WinEventForegroundHook {
+            try {
+                this.WinEventForegroundHook := DllCall(
+                    "user32\SetWinEventHook",
+                    "UInt", this.EVENT_SYSTEM_FOREGROUND,
+                    "UInt", this.EVENT_SYSTEM_FOREGROUND,
+                    "Ptr", 0,
+                    "Ptr", this.WinEventProc,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "Ptr"
+                )
+            } catch {
+                this.WinEventForegroundHook := 0
+            }
+        }
+
+        if this.WinEventHook || this.WinEventSystemHook || this.WinEventForegroundHook
             return true
 
         if this.WinEventProc {
@@ -480,6 +503,15 @@ class PinIndicator {
             this.WinEventSystemHook := 0
         }
 
+        if this.WinEventForegroundHook {
+            try DllCall(
+                "user32\UnhookWinEvent",
+                "Ptr", this.WinEventForegroundHook,
+                "Int"
+            )
+            this.WinEventForegroundHook := 0
+        }
+
         if this.WinEventProc {
             try CallbackFree(this.WinEventProc)
             this.WinEventProc := 0
@@ -499,8 +531,9 @@ class PinIndicator {
             event == this.EVENT_OBJECT_SHOW || event == this.EVENT_OBJECT_HIDE
         isSystemMinimizeEvent :=
             event == this.EVENT_SYSTEM_MINIMIZESTART || event == this.EVENT_SYSTEM_MINIMIZEEND
+        isForegroundEvent := event == this.EVENT_SYSTEM_FOREGROUND
 
-        if !isObjectVisibilityEvent && !isSystemMinimizeEvent
+        if !isObjectVisibilityEvent && !isSystemMinimizeEvent && !isForegroundEvent
             return
 
         ; Object events are emitted for child/accessibility objects too. Only
@@ -518,7 +551,8 @@ class PinIndicator {
                 minimizeStart: false,
                 minimizeEnd: false,
                 hidden: false,
-                shown: false
+                shown: false,
+                foreground: false
             }
         }
 
@@ -532,6 +566,8 @@ class PinIndicator {
                 eventState.hidden := true
             case this.EVENT_OBJECT_SHOW:
                 eventState.shown := true
+            case this.EVENT_SYSTEM_FOREGROUND:
+                eventState.foreground := true
         }
 
         if !this.EventProcessScheduled {
@@ -572,13 +608,28 @@ class PinIndicator {
                         state.wasMinimized := true
                         this._UpdateBadge(hwnd)
                     }
+
+                    ; Explorer can promote the app window above its detached
+                    ; badge when restoring it from the taskbar button. Even if
+                    ; the badge still reports native visibility, explicitly
+                    ; put it at the top of the topmost band after foreground
+                    ; transitions so it cannot remain behind the restored app.
+                    if eventState.foreground && this.Tracked.Has(hwnd) {
+                        this._UpdateBadge(hwnd)
+                        this._RaiseBadge(hwnd)
+                    }
                     continue
                 }
 
                 ; A newly visible replacement HWND can be discovered from its
                 ; show/restore event, but only after passing strict filters.
-                if (eventState.minimizeEnd || eventState.shown) && this.IsTrackable(hwnd)
+                if (
+                    (eventState.minimizeEnd || eventState.shown || eventState.foreground)
+                    && this.IsTrackable(hwnd)
+                ) {
                     this.Track(hwnd)
+                    this._RaiseBadge(hwnd)
+                }
             } catch {
             }
         }
@@ -695,6 +746,38 @@ class PinIndicator {
         }
 
         this._SetBadgeVisible(hwnd, true)
+    }
+
+    ; Keep the detached badge above a restored, foreground topmost target.
+    ; This is intentionally event-triggered rather than part of the 16 ms
+    ; geometry loop, avoiding extra Z-order churn during normal window use.
+    static _RaiseBadge(hwnd) {
+        if !this.Tracked.Has(hwnd)
+            return
+
+        state := this.Tracked[hwnd]
+        badgeHwnd := 0
+        try {
+            if IsObject(state.gui)
+                badgeHwnd := state.gui.Hwnd
+        } catch {
+        }
+
+        if !badgeHwnd || !WindowHandleAlive(badgeHwnd)
+            return
+
+        try DllCall(
+            "user32\SetWindowPos",
+            "Ptr", badgeHwnd,
+            "Ptr", -1, ; HWND_TOPMOST
+            "Int", 0,
+            "Int", 0,
+            "Int", 0,
+            "Int", 0,
+            "UInt", 0x0001 | 0x0002 | 0x0010 ; SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+            ,
+            "Int"
+        )
     }
 
     static _EnsureBadgeWindow(hwnd, forceRecreate := false) {
