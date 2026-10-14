@@ -230,6 +230,27 @@ FocusFullHistorySearch() {
     Send("^a")
 }
 
+; Escape clears an active search first; an empty search closes the dialog.
+HandleFullHistoryEscape(myGui) {
+    if !IsObject(myGui)
+        return
+
+    if !myGui.HasProp("SearchBox") {
+        CloseFullHistoryGui(myGui)
+        return
+    }
+
+    if (myGui.SearchBox.Text != "") {
+        myGui.SearchBox.Text := ""
+        AppState.MAX_FULL_HISTORY_DISPLAY := 50
+        RefreshFullHistoryList()
+        myGui.SearchBox.Focus()
+        return
+    }
+
+    CloseFullHistoryGui(myGui)
+}
+
 ; Jump to the first or last result without changing focus away from the ListView.
 MoveFullHistorySelectionToBoundary(toLast := false) {
     myGui := AppState.FullHistoryGui
