@@ -137,6 +137,7 @@ Space:: ToggleFullHistoryFocusedCheck()
 Home:: MoveFullHistorySelectionToBoundary(false)
 End:: MoveFullHistorySelectionToBoundary(true)
 ^f:: FocusFullHistorySearch()
+^c:: CopyFocusedFullHistoryEntry()
 #HotIf
 
 #HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
