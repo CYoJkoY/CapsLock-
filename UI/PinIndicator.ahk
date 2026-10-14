@@ -37,14 +37,21 @@ class PinIndicator {
     static UpdateInterval := 16        ; near-frame updates keep the badge attached while dragging
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
-    static DefaultDpi       := 96
-    static DiscoveryInterval := 1000   ; recover topmost windows whose HWND was recreated
+    static DefaultDpi           := 96
+    static EVENT_OBJECT_SHOW    := 0x8002
+    static OBJID_WINDOW         := 0
+    static CHILDID_SELF         := 0
+    static EVENT_DEBOUNCE_MS    := 50
 
     ; --- Runtime state ---
-    static Enabled           := true
-    static Tracked           := Map()  ; hwnd -> badge geometry, visibility, and restore state
-    static TimerCallback     := ""
-    static DiscoveryCallback := ""
+    static Enabled              := true
+    static Tracked              := Map()  ; hwnd -> badge geometry, visibility, and restore state
+    static TimerCallback        := ""
+    static WinEventHook         := 0
+    static WinEventProc         := 0
+    static WinEventCallback     := ""
+    static EventProcessCallback := ""
+    static PendingWindowEvents  := Map()
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -59,7 +66,7 @@ class PinIndicator {
 
         if this.Enabled {
             this.ScanTopmostWindows()
-            this._EnsureDiscoveryTimer()
+            this._EnsureWinEventHook()
         }
     }
 
@@ -73,9 +80,11 @@ class PinIndicator {
             }
         }
 
+        ; Stop receiving global window notifications before tearing down badge GUIs.
+        this._StopWinEventHook()
+
         this.Tracked := Map()
         this._StopTimer()
-        this._StopDiscoveryTimer()
     }
 
     ; -----------------------------------------------------------------------
@@ -115,7 +124,7 @@ class PinIndicator {
 
         if enabled {
             this.ScanTopmostWindows()
-            this._EnsureDiscoveryTimer()
+            this._EnsureWinEventHook()
         } else {
             this.Clear()
         }
@@ -182,7 +191,7 @@ class PinIndicator {
         }
 
         if this.Enabled
-            this._EnsureDiscoveryTimer()
+            this._EnsureWinEventHook()
     }
 
     ; -----------------------------------------------------------------------
@@ -267,7 +276,6 @@ class PinIndicator {
 
         this.Tracked[hwnd] := state
         this._EnsureTimer()
-        this._EnsureDiscoveryTimer()
         this._UpdateBadge(hwnd)
         return true
     }
@@ -362,31 +370,121 @@ class PinIndicator {
         }
     }
 
-    ; Keep discovery alive at a low cadence even when no badge is currently
-    ; tracked. Apps can destroy/recreate their HWND while hidden; scanning only
-    ; while a badge exists would make the replacement window invisible forever.
-    static _EnsureDiscoveryTimer() {
-        if !this.Enabled || IsObject(this.DiscoveryCallback)
-            return
+    ; Subscribe to window-show notifications instead of polling every window.
+    ; The hook stays active while the feature is enabled, even with no tracked
+    ; badges, so a newly created HWND can be discovered when the app shows it.
+    static _EnsureWinEventHook() {
+        if !this.Enabled || this.WinEventHook
+            return this.WinEventHook != 0
 
-        this.DiscoveryCallback := ObjBindMethod(this, "_DiscoverTopmostWindows")
-        SetTimer(this.DiscoveryCallback, this.DiscoveryInterval)
+        if !IsObject(this.WinEventCallback) {
+            this.WinEventCallback := ObjBindMethod(this, "_OnWinEvent")
+
+            try {
+                this.WinEventProc := CallbackCreate(
+                    this.WinEventCallback,
+                    "Fast",
+                    7
+                )
+            } catch {
+                this.WinEventCallback := ""
+                return false
+            }
+        }
+
+        if !IsObject(this.EventProcessCallback)
+            this.EventProcessCallback := ObjBindMethod(this, "_ProcessPendingWindowEvents")
+
+        try {
+            this.WinEventHook := DllCall(
+                "user32\SetWinEventHook",
+                "UInt", this.EVENT_OBJECT_SHOW,
+                "UInt", this.EVENT_OBJECT_SHOW,
+                "Ptr", 0,
+                "Ptr", this.WinEventProc,
+                "UInt", 0,
+                "UInt", 0,
+                "UInt", 0,
+                "Ptr"
+            )
+        } catch {
+            this.WinEventHook := 0
+        }
+
+        if this.WinEventHook
+            return true
+
+        if this.WinEventProc {
+            try CallbackFree(this.WinEventProc)
+            this.WinEventProc := 0
+        }
+
+        this.WinEventCallback := ""
+        this.EventProcessCallback := ""
+        return false
     }
 
-    static _StopDiscoveryTimer() {
-        if IsObject(this.DiscoveryCallback) {
-            SetTimer(this.DiscoveryCallback, 0)
-            this.DiscoveryCallback := ""
+    static _StopWinEventHook() {
+        if IsObject(this.EventProcessCallback)
+            try SetTimer(this.EventProcessCallback, 0)
+
+        this.PendingWindowEvents := Map()
+
+        if this.WinEventHook {
+            try DllCall(
+                "user32\UnhookWinEvent",
+                "Ptr", this.WinEventHook,
+                "Int"
+            )
+            this.WinEventHook := 0
+        }
+
+        if this.WinEventProc {
+            try CallbackFree(this.WinEventProc)
+            this.WinEventProc := 0
+        }
+
+        this.WinEventCallback := ""
+        this.EventProcessCallback := ""
+    }
+
+    ; WinEventProc is deliberately lightweight: collect visible-object events
+    ; and coalesce them into one short deferred pass outside the native callback.
+    static _OnWinEvent(hook, event, hwnd, idObject, idChild, eventThread, eventTime) {
+        if (
+            !this.Enabled
+            || event != this.EVENT_OBJECT_SHOW
+            || !hwnd
+            || idObject != this.OBJID_WINDOW
+            || idChild != this.CHILDID_SELF
+            || !IsObject(this.EventProcessCallback)
+        )
+            return
+
+        hadPendingEvents := this.PendingWindowEvents.Count > 0
+        this.PendingWindowEvents[hwnd] := true
+
+        if !hadPendingEvents {
+            try SetTimer(this.EventProcessCallback, -this.EVENT_DEBOUNCE_MS)
         }
     }
 
-    static _DiscoverTopmostWindows(*) {
+    static _ProcessPendingWindowEvents(*) {
         if !this.Enabled {
-            this._StopDiscoveryTimer()
+            this.PendingWindowEvents := Map()
             return
         }
 
-        this.ScanTopmostWindows()
+        pending := this.PendingWindowEvents
+        this.PendingWindowEvents := Map()
+
+        for hwnd in pending {
+            try {
+                if this.IsTrackable(hwnd)
+                    this.Track(hwnd)
+            } catch {
+            }
+        }
     }
 
     static _Tick(*) {
