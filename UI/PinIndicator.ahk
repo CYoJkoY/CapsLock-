@@ -46,6 +46,8 @@ class PinIndicator {
     static OBJID_WINDOW               := 0
     static CHILDID_SELF               := 0
     static EVENT_DEBOUNCE_MS          := 50
+    static ZOrderRetryIntervalMs      := 50
+    static ZOrderRetryAttempts        := 16
 
     ; --- Runtime state ---
     static Enabled              := true
@@ -59,6 +61,7 @@ class PinIndicator {
     static EventProcessCallback := ""
     static PendingWindowEvents  := Map()
     static EventProcessScheduled := false
+    static BadgeZOrderRetries    := Map()  ; hwnd -> bounded Z-order retry state
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -91,6 +94,7 @@ class PinIndicator {
         }
 
         this.Tracked := Map()
+        this.BadgeZOrderRetries := Map()
         this._StopTimer()
     }
 
@@ -300,6 +304,7 @@ class PinIndicator {
         }
 
         this.Tracked.Delete(hwnd)
+        this._ClearBadgeZOrderRetry(hwnd)
 
         if this.Tracked.Count == 0
             this._StopTimer()
@@ -591,44 +596,46 @@ class PinIndicator {
             try {
                 if this.Tracked.Has(hwnd) {
                     state := this.Tracked[hwnd]
+                    restoreEvent := eventState.minimizeEnd || eventState.shown
+                    retryZOrder := restoreEvent || eventState.foreground
 
-                    ; Start/hide is a real state transition. Preserve the pin
-                    ; and hide the detached badge without letting a style change
-                    ; during the transition untrack the target.
+                    ; Preserve the tracked pin during a minimize/hide transition.
+                    ; A new restore/show event will start a fresh bounded retry.
                     if eventState.minimizeStart || eventState.hidden {
                         state.wasMinimized := true
+                        this._ClearBadgeZOrderRetry(hwnd)
                         this._SetBadgeVisible(hwnd, false)
                     }
 
                     ; Restore/show must explicitly enter the recovery path even
                     ; if start/hide and end/show were coalesced into one batch.
-                    ; This rechecks native visibility/topmost and recreates a
-                    ; badge that the shell may have hidden along with the target.
-                    if eventState.minimizeEnd || eventState.shown {
-                        state.wasMinimized := true
+                    if restoreEvent && this.Tracked.Has(hwnd) {
+                        this.Tracked[hwnd].wasMinimized := true
                         this._UpdateBadge(hwnd)
                     }
 
-                    ; Explorer can promote the app window above its detached
-                    ; badge when restoring it from the taskbar button. Even if
-                    ; the badge still reports native visibility, explicitly
-                    ; put it at the top of the topmost band after foreground
-                    ; transitions so it cannot remain behind the restored app.
-                    if eventState.foreground && this.Tracked.Has(hwnd) {
+                    ; The shell can still change Z-order after the foreground
+                    ; notification. Reconcile the badge now, then let the
+                    ; existing frame timer retry only this HWND for a short,
+                    ; bounded period rather than raising it continuously.
+                    if eventState.foreground && this.Tracked.Has(hwnd)
                         this._UpdateBadge(hwnd)
-                        this._RaiseBadge(hwnd)
-                    }
+
+                    if retryZOrder && this.Tracked.Has(hwnd)
+                        this._ScheduleBadgeZOrderRetries(hwnd)
                     continue
                 }
 
                 ; A newly visible replacement HWND can be discovered from its
-                ; show/restore event, but only after passing strict filters.
+                ; show/restore/foreground event, but only after passing the
+                ; strict candidate and topmost filters.
                 if (
                     (eventState.minimizeEnd || eventState.shown || eventState.foreground)
                     && this.IsTrackable(hwnd)
                 ) {
                     this.Track(hwnd)
-                    this._RaiseBadge(hwnd)
+                    if this.Tracked.Has(hwnd)
+                        this._ScheduleBadgeZOrderRetries(hwnd)
                 }
             } catch {
             }
@@ -650,9 +657,10 @@ class PinIndicator {
         ; Clone first: _UpdateBadge() may delete from Tracked when a window was
         ; closed or unpinned from the outside.
         for hwnd, state in this.Tracked.Clone() {
-            try
+            try {
                 this._UpdateBadge(hwnd)
-            catch {
+                this._ProcessBadgeZOrderRetry(hwnd)
+            } catch {
             }
         }
     }
@@ -680,6 +688,7 @@ class PinIndicator {
         ; independent badge while the target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
+            this._ClearBadgeZOrderRetry(hwnd)
             this._SetBadgeVisible(hwnd, false)
             return
         }
@@ -748,12 +757,12 @@ class PinIndicator {
         this._SetBadgeVisible(hwnd, true)
     }
 
-    ; Keep the detached badge above a restored, foreground topmost target.
-    ; This is intentionally event-triggered rather than part of the 16 ms
-    ; geometry loop, avoiding extra Z-order churn during normal window use.
+    ; Place the detached badge immediately above its target in the current
+    ; Z order. This preserves the order of unrelated topmost windows and never
+    ; activates the badge.
     static _RaiseBadge(hwnd) {
         if !this.Tracked.Has(hwnd)
-            return
+            return false
 
         state := this.Tracked[hwnd]
         badgeHwnd := 0
@@ -764,20 +773,101 @@ class PinIndicator {
         }
 
         if !badgeHwnd || !WindowHandleAlive(badgeHwnd)
+            return false
+
+        previousHwnd := 0
+        try
+            previousHwnd := DllCall(
+                "user32\GetWindow",
+                "Ptr", hwnd,
+                "UInt", 3, ; GW_HWNDPREV
+                "Ptr"
+            )
+        catch
+            previousHwnd := 0
+
+        ; If the badge already precedes the target, it is in the correct spot.
+        if previousHwnd == badgeHwnd
+            return true
+
+        ; Inserting after the window currently above the target keeps this
+        ; badge in the topmost band without jumping ahead of every topmost app.
+        insertAfter := -1 ; HWND_TOPMOST fallback
+        if previousHwnd && WindowHandleAlive(previousHwnd) && this.IsTopmost(previousHwnd)
+            insertAfter := previousHwnd
+
+        try {
+            return DllCall(
+                "user32\SetWindowPos",
+                "Ptr", badgeHwnd,
+                "Ptr", insertAfter,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "Int", 0,
+                "UInt", 0x0001 | 0x0002 | 0x0010 | 0x0200 ; SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER
+                ,
+                "Int"
+            ) != 0
+        } catch {
+            return false
+        }
+    }
+
+    ; Map.Delete throws when a key is absent; cleanup paths can run before a
+    ; retry has been scheduled, so make clearing idempotent.
+    static _ClearBadgeZOrderRetry(hwnd) {
+        if this.BadgeZOrderRetries.Has(hwnd)
+            this.BadgeZOrderRetries.Delete(hwnd)
+    }
+
+    ; Begin a short retry window after restore/show/foreground events. The
+    ; existing geometry timer drives retries, so no new timer runs in the idle
+    ; state and no whole-desktop scan is introduced.
+    static _ScheduleBadgeZOrderRetries(hwnd) {
+        if !this.Tracked.Has(hwnd)
             return
 
-        try DllCall(
-            "user32\SetWindowPos",
-            "Ptr", badgeHwnd,
-            "Ptr", -1, ; HWND_TOPMOST
-            "Int", 0,
-            "Int", 0,
-            "Int", 0,
-            "Int", 0,
-            "UInt", 0x0001 | 0x0002 | 0x0010 ; SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
-            ,
-            "Int"
-        )
+        this.BadgeZOrderRetries[hwnd] := {
+            attemptsRemaining: this.ZOrderRetryAttempts,
+            nextAttemptAt: A_TickCount
+        }
+    }
+
+    static _ProcessBadgeZOrderRetry(hwnd) {
+        if !this.BadgeZOrderRetries.Has(hwnd)
+            return
+
+        if !this.Tracked.Has(hwnd) {
+            this._ClearBadgeZOrderRetry(hwnd)
+            return
+        }
+
+        retry := this.BadgeZOrderRetries[hwnd]
+        now := A_TickCount
+        if now < retry.nextAttemptAt
+            return
+
+        minimized := false
+        try
+            minimized := WinGetMinMax("ahk_id " hwnd) == -1
+        catch
+            minimized := false
+
+        if minimized || !WindowIsVisible(hwnd) || !this.IsTopmost(hwnd) {
+            this._ClearBadgeZOrderRetry(hwnd)
+            return
+        }
+
+        this._RaiseBadge(hwnd)
+        retry.attemptsRemaining -= 1
+
+        if retry.attemptsRemaining <= 0 {
+            this._ClearBadgeZOrderRetry(hwnd)
+            return
+        }
+
+        retry.nextAttemptAt := now + this.ZOrderRetryIntervalMs
     }
 
     static _EnsureBadgeWindow(hwnd, forceRecreate := false) {
