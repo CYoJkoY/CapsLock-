@@ -38,16 +38,20 @@ class PinIndicator {
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
     static DefaultDpi           := 96
-    static EVENT_OBJECT_SHOW    := 0x8002
-    static OBJID_WINDOW         := 0
-    static CHILDID_SELF         := 0
-    static EVENT_DEBOUNCE_MS    := 50
+    static EVENT_SYSTEM_MINIMIZESTART := 0x0016
+    static EVENT_SYSTEM_MINIMIZEEND   := 0x0017
+    static EVENT_OBJECT_SHOW          := 0x8002
+    static EVENT_OBJECT_HIDE          := 0x8003
+    static OBJID_WINDOW               := 0
+    static CHILDID_SELF               := 0
+    static EVENT_DEBOUNCE_MS          := 50
 
     ; --- Runtime state ---
     static Enabled              := true
     static Tracked              := Map()  ; hwnd -> badge geometry, visibility, and restore state
     static TimerCallback        := ""
     static WinEventHook         := 0
+    static WinEventSystemHook   := 0
     static WinEventProc         := 0
     static WinEventCallback     := ""
     static EventProcessCallback := ""
@@ -374,8 +378,11 @@ class PinIndicator {
     ; The hook stays active while the feature is enabled, even with no tracked
     ; badges, so a newly created HWND can be discovered when the app shows it.
     static _EnsureWinEventHook() {
-        if !this.Enabled || this.WinEventHook
-            return this.WinEventHook != 0
+        if !this.Enabled
+            return false
+
+        if this.WinEventHook && this.WinEventSystemHook
+            return true
 
         if !IsObject(this.WinEventCallback) {
             this.WinEventCallback := ObjBindMethod(this, "_OnWinEvent")
@@ -395,23 +402,46 @@ class PinIndicator {
         if !IsObject(this.EventProcessCallback)
             this.EventProcessCallback := ObjBindMethod(this, "_ProcessPendingWindowEvents")
 
-        try {
-            this.WinEventHook := DllCall(
-                "user32\SetWinEventHook",
-                "UInt", this.EVENT_OBJECT_SHOW,
-                "UInt", this.EVENT_OBJECT_SHOW,
-                "Ptr", 0,
-                "Ptr", this.WinEventProc,
-                "UInt", 0,
-                "UInt", 0,
-                "UInt", 0,
-                "Ptr"
-            )
-        } catch {
-            this.WinEventHook := 0
+        ; Object visibility events cover explicit hide/show calls.
+        if !this.WinEventHook {
+            try {
+                this.WinEventHook := DllCall(
+                    "user32\SetWinEventHook",
+                    "UInt", this.EVENT_OBJECT_SHOW,
+                    "UInt", this.EVENT_OBJECT_HIDE,
+                    "Ptr", 0,
+                    "Ptr", this.WinEventProc,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "Ptr"
+                )
+            } catch {
+                this.WinEventHook := 0
+            }
         }
 
-        if this.WinEventHook
+        ; Native minimize/restore has a dedicated system event pair. Listening
+        ; to it avoids depending solely on the badge's frame-update timer.
+        if !this.WinEventSystemHook {
+            try {
+                this.WinEventSystemHook := DllCall(
+                    "user32\SetWinEventHook",
+                    "UInt", this.EVENT_SYSTEM_MINIMIZESTART,
+                    "UInt", this.EVENT_SYSTEM_MINIMIZEEND,
+                    "Ptr", 0,
+                    "Ptr", this.WinEventProc,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "UInt", 0,
+                    "Ptr"
+                )
+            } catch {
+                this.WinEventSystemHook := 0
+            }
+        }
+
+        if this.WinEventHook || this.WinEventSystemHook
             return true
 
         if this.WinEventProc {
@@ -439,6 +469,15 @@ class PinIndicator {
             this.WinEventHook := 0
         }
 
+        if this.WinEventSystemHook {
+            try DllCall(
+                "user32\UnhookWinEvent",
+                "Ptr", this.WinEventSystemHook,
+                "Int"
+            )
+            this.WinEventSystemHook := 0
+        }
+
         if this.WinEventProc {
             try CallbackFree(this.WinEventProc)
             this.WinEventProc := 0
@@ -448,17 +487,24 @@ class PinIndicator {
         this.EventProcessCallback := ""
     }
 
-    ; WinEventProc is deliberately lightweight: collect visible-object events
-    ; and coalesce them into one short deferred pass outside the native callback.
+    ; WinEventProc is deliberately lightweight: queue relevant window events
+    ; and coalesce them into a short deferred pass outside the native callback.
     static _OnWinEvent(hook, event, hwnd, idObject, idChild, eventThread, eventTime) {
-        if (
-            !this.Enabled
-            || event != this.EVENT_OBJECT_SHOW
-            || !hwnd
-            || idObject != this.OBJID_WINDOW
-            || idChild != this.CHILDID_SELF
-            || !IsObject(this.EventProcessCallback)
-        )
+        if !this.Enabled || !hwnd || !IsObject(this.EventProcessCallback)
+            return
+
+        isObjectVisibilityEvent :=
+            event == this.EVENT_OBJECT_SHOW || event == this.EVENT_OBJECT_HIDE
+        isSystemMinimizeEvent :=
+            event == this.EVENT_SYSTEM_MINIMIZESTART || event == this.EVENT_SYSTEM_MINIMIZEEND
+
+        if !isObjectVisibilityEvent && !isSystemMinimizeEvent
+            return
+
+        ; Object events are emitted for child/accessibility objects too. Only
+        ; use the top-level window's own show/hide events for discovery.
+        if isObjectVisibilityEvent
+            && (idObject != this.OBJID_WINDOW || idChild != this.CHILDID_SELF)
             return
 
         hadPendingEvents := this.PendingWindowEvents.Count > 0
@@ -480,6 +526,16 @@ class PinIndicator {
 
         for hwnd in pending {
             try {
+                ; A native restore event must refresh an existing tracked badge,
+                ; not merely call Track(), which is intentionally a no-op for
+                ; HWNDs already present in the map.
+                if this.Tracked.Has(hwnd) {
+                    this._UpdateBadge(hwnd)
+                    continue
+                }
+
+                ; Minimize-end can also be the first notification we receive for
+                ; a window whose handle was replaced while it was unavailable.
                 if this.IsTrackable(hwnd)
                     this.Track(hwnd)
             } catch {
