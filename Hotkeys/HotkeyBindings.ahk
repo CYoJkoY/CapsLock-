@@ -129,14 +129,15 @@ Enter:: PasteSelectedFromFullHistory()
 NumpadEnter:: PasteSelectedFromFullHistory()
 #HotIf
 
-; List-only actions: Space toggles a checkbox, Delete removes the focused row,
-; and Ctrl+A toggles visible checks. Search Edit keeps native editing behavior.
+; List-only actions: Space toggles a checkbox, Ctrl+Shift+L loads more rows,
+; Delete removes the focused row, and Ctrl+A toggles visible checks. Search Edit keeps native editing behavior.
 #HotIf FullHistoryListFocused()
 Space:: ToggleFullHistoryFocusedCheck()
 ^a:: ToggleFullHistorySelectAll()
 Home:: MoveFullHistorySelectionToBoundary(false)
 End:: MoveFullHistorySelectionToBoundary(true)
 ^f:: FocusFullHistorySearch()
+^+l:: LoadMoreFullHistoryEntries()
 ^c:: CopyFocusedFullHistoryEntry()
 ^+c:: CopySelectedFullHistoryEntriesAsText()
 ^+p:: PreviewFocusedFullHistoryEntry()

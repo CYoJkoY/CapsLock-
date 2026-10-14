@@ -99,7 +99,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     myGui.btnDeleteSelected := btnDelete
 
     btnLoadMore := ThemeHelper.AddButton(myGui, "x+12 yp w100", "⬇️ " Lang("GUI_FULL_LOAD_MORE", "", "Load More"))
-    btnLoadMore.OnEvent("Click", OnLoadMoreClicked)
+    btnLoadMore.OnEvent("Click", LoadMoreFullHistoryEntries)
     myGui.btnLoadMore := btnLoadMore
 
     myGui.SetFont("s8 c" Theme.TextMuted, Theme.Font)
@@ -125,7 +125,7 @@ CloseFullHistoryGui(myGui) {
     AppState.TargetWindow := 0
 }
 
-OnLoadMoreClicked(btn, info) {
+LoadMoreFullHistoryEntries(args*) {
     AppState.MAX_FULL_HISTORY_DISPLAY += 50
     RefreshFullHistoryList(true)
 }
