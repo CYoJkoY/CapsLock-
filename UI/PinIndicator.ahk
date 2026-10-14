@@ -179,17 +179,61 @@ class PinIndicator {
     ; Tracking
     ; -----------------------------------------------------------------------
 
-    ; A window gets a badge when it is a live, manageable, topmost window.
-    ; WindowIsManageable() already excludes the shell surfaces and every
-    ; window that belongs to CapsLock- itself.
+    ; A persistent badge belongs only to a real application window, not to
+    ; taskbar thumbnails, utility popups, or other transient topmost surfaces.
     static IsTrackable(hwnd) {
-        if !hwnd
+        return this.IsBadgeCandidate(hwnd) && this.IsTopmost(hwnd)
+    }
+
+    ; WS_EX_TOPMOST is not enough to identify a user-pinnable application
+    ; window: taskbar hover previews and popup/tool windows can carry it too.
+    ; Restrict badges to standalone top-level application windows.
+    static IsBadgeCandidate(hwnd) {
+        if !hwnd || !WindowIsManageable(hwnd)
             return false
 
-        if !WindowIsManageable(hwnd)
+        className := ""
+        try
+            className := WinGetClass("ahk_id " hwnd)
+        catch
             return false
 
-        return this.IsTopmost(hwnd)
+        ; Windows creates these shell surfaces for taskbar / task-switcher previews.
+        if className == "TaskListThumbnailWnd" || className == "MultitaskingViewFrame"
+            return false
+
+        try {
+            style := DllCall(
+                "user32\GetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -16, ; GWL_STYLE
+                "Ptr"
+            )
+            exStyle := DllCall(
+                "user32\GetWindowLongPtrW",
+                "Ptr", hwnd,
+                "Int", -20, ; GWL_EXSTYLE
+                "Ptr"
+            )
+
+            ; Ignore child controls, tool windows, and no-activate overlays.
+            if (style & 0x40000000) || (exStyle & (0x80 | 0x08000000))
+                return false
+
+            ; Owned popups include transient previews, menus, and utility dialogs.
+            owner := DllCall("user32\GetWindow", "Ptr", hwnd, "UInt", 4, "Ptr") ; GW_OWNER
+            if owner
+                return false
+
+            root := DllCall("user32\GetAncestor", "Ptr", hwnd, "UInt", 2, "Ptr") ; GA_ROOT
+            if root != hwnd
+                return false
+        } catch {
+            ; Failing to classify a window must not turn it into a badge target.
+            return false
+        }
+
+        return true
     }
 
     static IsTopmost(hwnd) {
@@ -328,6 +372,13 @@ class PinIndicator {
             return
 
         if !WindowHandleAlive(hwnd) {
+            this.Untrack(hwnd)
+            return
+        }
+
+        ; Recheck the target's role during tracking too. A transient shell or
+        ; utility window must lose its badge if it is no longer an app window.
+        if !this.IsBadgeCandidate(hwnd) {
             this.Untrack(hwnd)
             return
         }
