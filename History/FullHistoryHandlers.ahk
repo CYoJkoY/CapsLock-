@@ -174,6 +174,45 @@ PasteSelectedFromFullHistoryText() {
     PasteAsPlainText(combined, Lang("MSG_PASTE_MULTI_COMPLETE", "", textList.Length))
 }
 
+; Paste the focused history entry as literal text instead of smart-paste routing.
+PasteFocusedFullHistoryEntryAsText() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0, "Selected")
+    if !row {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndexText := lv.GetText(row, 1)
+    if !(historyIndexText ~= "^\d+$") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndex := Integer(historyIndexText)
+    if (historyIndex < 1 || historyIndex > AppState.History.Length) {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyItem := AppState.History[historyIndex]
+    if !IsObject(historyItem) || !historyItem.Has("text") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    if !EnsureFullHistoryTargetWindow()
+        return
+
+    PasteAsPlainText(historyItem["text"], Lang("MSG_PASTE_COMPLETE"))
+}
+
 OnSelectAllClicked(chk, info) {
     SetFullHistoryRowsChecked(chk.Gui, chk.Value ? true : false)
 }

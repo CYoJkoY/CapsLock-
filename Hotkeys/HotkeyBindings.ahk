@@ -138,6 +138,7 @@ Home:: MoveFullHistorySelectionToBoundary(false)
 End:: MoveFullHistorySelectionToBoundary(true)
 ^f:: FocusFullHistorySearch()
 ^c:: CopyFocusedFullHistoryEntry()
+^Enter:: PasteFocusedFullHistoryEntryAsText()
 Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
