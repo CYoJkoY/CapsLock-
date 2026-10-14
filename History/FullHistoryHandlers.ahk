@@ -72,6 +72,42 @@ CopyFocusedFullHistoryEntry() {
     CopyHistoryEntryToClipboard(AppState.History[historyIndex])
 }
 
+; Preview the focused full-history row without invoking paste or batch-selection behavior.
+PreviewFocusedFullHistoryEntry() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0, "Selected")
+    if !row {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndexText := lv.GetText(row, 1)
+    if !(historyIndexText ~= "^\d+$") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndex := Integer(historyIndexText)
+    if (historyIndex < 1 || historyIndex > AppState.History.Length) {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyItem := AppState.History[historyIndex]
+    if !IsObject(historyItem) || !historyItem.Has("text") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    ShowPreviewGui(historyItem["text"])
+}
+
 ; Copy checked history rows as one plain-text block without adding the result to history.
 CopySelectedFullHistoryEntriesAsText() {
     myGui := AppState.FullHistoryGui
