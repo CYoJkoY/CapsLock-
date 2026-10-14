@@ -773,7 +773,11 @@ class PinIndicator {
             return
         }
 
-        if !this._EnsureBadgeWindow(hwnd, state.wasMinimized)
+        ; A minimize-start event can arrive before the window is actually hidden.
+        ; Do not recreate the badge during that lead-in; recreate only during
+        ; restore, or when a completed hide/minimize cycle is being recovered.
+        forceRecreate := state.wasMinimized && state.transitionPhase != this.TRANSITION_MINIMIZING
+        if !this._EnsureBadgeWindow(hwnd, forceRecreate)
             return
 
         state := this.Tracked[hwnd]
