@@ -19,7 +19,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     myGui := Gui("+Resize +AlwaysOnTop +MinSize680x500", Lang("GUI_FULL_TITLE"))
     ThemeHelper.StyleGui(myGui)
     myGui.OnEvent("Close", (*) => CloseFullHistoryGui(myGui))
-    myGui.OnEvent("Escape", (*) => CloseFullHistoryGui(myGui))
+    myGui.OnEvent("Escape", (*) => HandleFullHistoryEscape(myGui))
     myGui.OnEvent("Size", ResizeFullHistoryGui)
 
     margin := 16
