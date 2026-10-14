@@ -417,15 +417,29 @@ EnsureFullHistoryTargetWindow() {
 }
 
 OnDeleteSelected(btn, info) {
-    myGui := btn.Gui
-    lv := myGui.ListView
+    DeleteSelectedFullHistoryEntries(btn.Gui)
+}
+
+; Delete checked rows in descending history-index order so removing one entry
+; cannot shift the index of another checked entry that has not been processed.
+DeleteSelectedFullHistoryEntries(guiObj := "") {
+    if !IsObject(guiObj)
+        guiObj := AppState.FullHistoryGui
+    if !IsObject(guiObj) || !guiObj.HasProp("ListView")
+        return
+
+    lv := guiObj.ListView
     indices := []
 
     row := 0
     while row := lv.GetNext(row, "Checked") {
         realIdx := lv.GetText(row, 1)
-        if realIdx ~= "^\d+$"
-            indices.Push(Integer(realIdx))
+        if !(realIdx ~= "^\d+$")
+            continue
+
+        idx := Integer(realIdx)
+        if idx >= 1 && idx <= AppState.History.Length
+            indices.Push(idx)
     }
 
     if indices.Length == 0 {

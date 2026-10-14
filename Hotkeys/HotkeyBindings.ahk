@@ -141,6 +141,7 @@ End:: MoveFullHistorySelectionToBoundary(true)
 ^+c:: CopySelectedFullHistoryEntriesAsText()
 ^Enter:: PasteFocusedFullHistoryEntryAsText()
 ^+Enter:: PasteSelectedFromFullHistoryText()
+^+Delete:: DeleteSelectedFullHistoryEntries()
 Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
