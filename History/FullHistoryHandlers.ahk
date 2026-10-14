@@ -72,6 +72,36 @@ CopyFocusedFullHistoryEntry() {
     CopyHistoryEntryToClipboard(AppState.History[historyIndex])
 }
 
+; Delete only the focused result row, without applying checked-row batch behavior.
+DeleteFocusedFullHistoryEntry() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0, "Selected")
+    if !row {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndexText := lv.GetText(row, 1)
+    if !(historyIndexText ~= "^\\d+$") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndex := Integer(historyIndexText)
+    if (historyIndex < 1 || historyIndex > AppState.History.Length) {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    DeleteFromFullHistory(historyIndex)
+}
+
 PasteSelectedFromFullHistory() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
