@@ -800,20 +800,22 @@ class PinIndicator {
             restoreProtectionActive :=
                 state.transitionPhase == this.TRANSITION_RESTORING
                 && now - state.transitionStartedAt < this.TransitionTimeoutMs
+            transitionInProgress :=
+                restoreProtectionActive || state.transitionPhase == this.TRANSITION_MINIMIZING
 
-            ; Do not destroy a tracked badge on the first missing style read.
-            ; Windows/Explorer can clear WS_EX_TOPMOST transiently during restore.
-            ; Reassert it while the state settles, and only classify an external
-            ; unpin after the style has stayed absent beyond a grace interval.
-            try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
-            if !this.IsTopmost(hwnd) {
-                if !restoreProtectionActive
-                    && now - state.topmostLostSince >= this.TopmostLossGraceMs {
-                    this.Untrack(hwnd)
-                    return
-                }
-            } else {
+            ; Only reassert the topmost style while there is positive evidence of
+            ; a minimize/restore transition. Outside that state, wait for the
+            ; grace interval to distinguish a transient style read from a real
+            ; external unpin; eagerly re-pinning here would undo legitimate unpins.
+            if transitionInProgress
+                try WinSetAlwaysOnTop(1, "ahk_id " hwnd)
+
+            if this.IsTopmost(hwnd) {
                 state.topmostLostSince := 0
+            } else if !transitionInProgress
+                && now - state.topmostLostSince >= this.TopmostLossGraceMs {
+                this.Untrack(hwnd)
+                return
             }
         } else {
             state.topmostLostSince := 0
