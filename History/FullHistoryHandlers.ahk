@@ -434,7 +434,7 @@ DeleteSelectedFullHistoryEntries(guiObj := "") {
     row := 0
     while row := lv.GetNext(row, "Checked") {
         realIdx := lv.GetText(row, 1)
-        if !(realIdx ~= "^\\d+$")
+        if !(realIdx ~= "^\d+$")
             continue
 
         idx := Integer(realIdx)
