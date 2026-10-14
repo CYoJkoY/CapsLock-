@@ -72,6 +72,41 @@ CopyFocusedFullHistoryEntry() {
     CopyHistoryEntryToClipboard(AppState.History[historyIndex])
 }
 
+; Copy checked history rows as one plain-text block without adding the result to history.
+CopySelectedFullHistoryEntriesAsText() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    textList := []
+    row := 0
+    while row := lv.GetNext(row, "Checked") {
+        historyIndexText := lv.GetText(row, 1)
+        if !(historyIndexText ~= "^\d+$")
+            continue
+
+        historyIndex := Integer(historyIndexText)
+        if (historyIndex < 1 || historyIndex > AppState.History.Length)
+            continue
+
+        historyItem := AppState.History[historyIndex]
+        if !IsObject(historyItem) || !historyItem.Has("text") || historyItem["text"] == ""
+            continue
+
+        textList.Push(historyItem["text"])
+    }
+
+    if textList.Length == 0 {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    AppState.IgnoreNextClipChange := true
+    A_Clipboard := Join(textList, "`n")
+    ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1200)
+}
+
 ; Delete only the focused result row, without applying checked-row batch behavior.
 DeleteFocusedFullHistoryEntry() {
     myGui := AppState.FullHistoryGui
