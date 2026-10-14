@@ -42,6 +42,36 @@ CopyHistoryEntryToClipboard(historyItem) {
     ShowToolTip(Lang("MSG_COPIED", , "Copied!"), 1200)
 }
 
+; Copy the focused result row without invoking paste or batch-selection behavior.
+CopyFocusedFullHistoryEntry() {
+    myGui := AppState.FullHistoryGui
+    if !IsObject(myGui) || !myGui.HasProp("ListView")
+        return
+
+    lv := myGui.ListView
+    row := lv.GetNext(0, "Focused")
+    if !row
+        row := lv.GetNext(0, "Selected")
+    if !row {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndexText := lv.GetText(row, 1)
+    if !(historyIndexText ~= "^\d+$") {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    historyIndex := Integer(historyIndexText)
+    if (historyIndex < 1 || historyIndex > AppState.History.Length) {
+        ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
+        return
+    }
+
+    CopyHistoryEntryToClipboard(AppState.History[historyIndex])
+}
+
 PasteSelectedFromFullHistory() {
     myGui := AppState.FullHistoryGui
     lv := myGui.ListView
