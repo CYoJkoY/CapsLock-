@@ -129,8 +129,8 @@ Enter:: PasteSelectedFromFullHistory()
 NumpadEnter:: PasteSelectedFromFullHistory()
 #HotIf
 
-; Space toggles one checkbox; Ctrl+A toggles all currently visible checkboxes.
-; This context is limited to the ListView so the search box keeps normal editing.
+; List-only actions: Space toggles a checkbox, Delete removes the focused row,
+; and Ctrl+A toggles visible checks. Search Edit keeps native editing behavior.
 #HotIf FullHistoryListFocused()
 Space:: ToggleFullHistoryFocusedCheck()
 ^a:: ToggleFullHistorySelectAll()
@@ -138,6 +138,7 @@ Home:: MoveFullHistorySelectionToBoundary(false)
 End:: MoveFullHistorySelectionToBoundary(true)
 ^f:: FocusFullHistorySearch()
 ^c:: CopyFocusedFullHistoryEntry()
+Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
 #HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
