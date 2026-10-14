@@ -83,7 +83,7 @@ CopySelectedFullHistoryEntriesAsText() {
     row := 0
     while row := lv.GetNext(row, "Checked") {
         historyIndexText := lv.GetText(row, 1)
-        if !(historyIndexText ~= "^\\d+$")
+        if !(historyIndexText ~= "^\d+$")
             continue
 
         historyIndex := Integer(historyIndexText)
