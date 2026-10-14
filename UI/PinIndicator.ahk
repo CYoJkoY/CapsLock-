@@ -304,7 +304,7 @@ class PinIndicator {
         }
 
         this.Tracked.Delete(hwnd)
-        this.BadgeZOrderRetries.Delete(hwnd)
+        this._ClearBadgeZOrderRetry(hwnd)
 
         if this.Tracked.Count == 0
             this._StopTimer()
@@ -603,7 +603,7 @@ class PinIndicator {
                     ; A new restore/show event will start a fresh bounded retry.
                     if eventState.minimizeStart || eventState.hidden {
                         state.wasMinimized := true
-                        this.BadgeZOrderRetries.Delete(hwnd)
+                        this._ClearBadgeZOrderRetry(hwnd)
                         this._SetBadgeVisible(hwnd, false)
                     }
 
@@ -688,7 +688,7 @@ class PinIndicator {
         ; independent badge while the target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
-            this.BadgeZOrderRetries.Delete(hwnd)
+            this._ClearBadgeZOrderRetry(hwnd)
             this._SetBadgeVisible(hwnd, false)
             return
         }
@@ -814,6 +814,13 @@ class PinIndicator {
         }
     }
 
+    ; Map.Delete throws when a key is absent; cleanup paths can run before a
+    ; retry has been scheduled, so make clearing idempotent.
+    static _ClearBadgeZOrderRetry(hwnd) {
+        if this.BadgeZOrderRetries.Has(hwnd)
+            this.BadgeZOrderRetries.Delete(hwnd)
+    }
+
     ; Begin a short retry window after restore/show/foreground events. The
     ; existing geometry timer drives retries, so no new timer runs in the idle
     ; state and no whole-desktop scan is introduced.
@@ -832,7 +839,7 @@ class PinIndicator {
             return
 
         if !this.Tracked.Has(hwnd) {
-            this.BadgeZOrderRetries.Delete(hwnd)
+            this._ClearBadgeZOrderRetry(hwnd)
             return
         }
 
@@ -848,7 +855,7 @@ class PinIndicator {
             minimized := false
 
         if minimized || !WindowIsVisible(hwnd) || !this.IsTopmost(hwnd) {
-            this.BadgeZOrderRetries.Delete(hwnd)
+            this._ClearBadgeZOrderRetry(hwnd)
             return
         }
 
@@ -856,7 +863,7 @@ class PinIndicator {
         retry.attemptsRemaining -= 1
 
         if retry.attemptsRemaining <= 0 {
-            this.BadgeZOrderRetries.Delete(hwnd)
+            this._ClearBadgeZOrderRetry(hwnd)
             return
         }
 
