@@ -56,6 +56,7 @@ class PinIndicator {
     static WinEventCallback     := ""
     static EventProcessCallback := ""
     static PendingWindowEvents  := Map()
+    static EventProcessScheduled := false
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -459,6 +460,7 @@ class PinIndicator {
             try SetTimer(this.EventProcessCallback, 0)
 
         this.PendingWindowEvents := Map()
+        this.EventProcessScheduled := false
 
         if this.WinEventHook {
             try DllCall(
@@ -507,15 +509,40 @@ class PinIndicator {
             && (idObject != this.OBJID_WINDOW || idChild != this.CHILDID_SELF)
             return
 
-        hadPendingEvents := this.PendingWindowEvents.Count > 0
-        this.PendingWindowEvents[hwnd] := true
+        ; Keep the event kinds, not just the HWND. A single debounced batch can
+        ; contain both minimize-start and minimize-end (or hide and show); losing
+        ; that sequence would make the restore path indistinguishable from a
+        ; normal topmost check.
+        if !this.PendingWindowEvents.Has(hwnd) {
+            this.PendingWindowEvents[hwnd] := {
+                minimizeStart: false,
+                minimizeEnd: false,
+                hidden: false,
+                shown: false
+            }
+        }
 
-        if !hadPendingEvents {
+        eventState := this.PendingWindowEvents[hwnd]
+        switch event {
+            case this.EVENT_SYSTEM_MINIMIZESTART:
+                eventState.minimizeStart := true
+            case this.EVENT_SYSTEM_MINIMIZEEND:
+                eventState.minimizeEnd := true
+            case this.EVENT_OBJECT_HIDE:
+                eventState.hidden := true
+            case this.EVENT_OBJECT_SHOW:
+                eventState.shown := true
+        }
+
+        if !this.EventProcessScheduled {
+            this.EventProcessScheduled := true
             try SetTimer(this.EventProcessCallback, -this.EVENT_DEBOUNCE_MS)
         }
     }
 
     static _ProcessPendingWindowEvents(*) {
+        this.EventProcessScheduled := false
+
         if !this.Enabled {
             this.PendingWindowEvents := Map()
             return
@@ -524,22 +551,42 @@ class PinIndicator {
         pending := this.PendingWindowEvents
         this.PendingWindowEvents := Map()
 
-        for hwnd in pending {
+        for hwnd, eventState in pending {
             try {
-                ; A native restore event must refresh an existing tracked badge,
-                ; not merely call Track(), which is intentionally a no-op for
-                ; HWNDs already present in the map.
                 if this.Tracked.Has(hwnd) {
-                    this._UpdateBadge(hwnd)
+                    state := this.Tracked[hwnd]
+
+                    ; Start/hide is a real state transition. Preserve the pin
+                    ; and hide the detached badge without letting a style change
+                    ; during the transition untrack the target.
+                    if eventState.minimizeStart || eventState.hidden {
+                        state.wasMinimized := true
+                        this._SetBadgeVisible(hwnd, false)
+                    }
+
+                    ; Restore/show must explicitly enter the recovery path even
+                    ; if start/hide and end/show were coalesced into one batch.
+                    ; This rechecks native visibility/topmost and recreates a
+                    ; badge that the shell may have hidden along with the target.
+                    if eventState.minimizeEnd || eventState.shown {
+                        state.wasMinimized := true
+                        this._UpdateBadge(hwnd)
+                    }
                     continue
                 }
 
-                ; Minimize-end can also be the first notification we receive for
-                ; a window whose handle was replaced while it was unavailable.
-                if this.IsTrackable(hwnd)
+                ; A newly visible replacement HWND can be discovered from its
+                ; show/restore event, but only after passing strict filters.
+                if (eventState.minimizeEnd || eventState.shown) && this.IsTrackable(hwnd)
                     this.Track(hwnd)
             } catch {
             }
+        }
+
+        ; An event may have arrived during processing after the snapshot above.
+        if this.PendingWindowEvents.Count && !this.EventProcessScheduled {
+            this.EventProcessScheduled := true
+            try SetTimer(this.EventProcessCallback, -this.EVENT_DEBOUNCE_MS)
         }
     }
 
