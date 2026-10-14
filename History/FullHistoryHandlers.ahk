@@ -58,7 +58,7 @@ CopyFocusedFullHistoryEntry() {
     }
 
     historyIndexText := lv.GetText(row, 1)
-    if !(historyIndexText ~= "^\\d+$") {
+    if !(historyIndexText ~= "^\d+$") {
         ShowToolTip(Lang("MSG_SELECT_ITEM"), 1200)
         return
     }
