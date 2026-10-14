@@ -72,6 +72,9 @@ class PinIndicator {
 
     ; Tear everything down. Called on exit and when the feature is disabled.
     static Clear() {
+        ; Stop receiving global window notifications before tearing down badge GUIs.
+        this._StopWinEventHook()
+
         for hwnd, state in this.Tracked.Clone() {
             try {
                 if IsObject(state.gui)
@@ -79,9 +82,6 @@ class PinIndicator {
             } catch {
             }
         }
-
-        ; Stop receiving global window notifications before tearing down badge GUIs.
-        this._StopWinEventHook()
 
         this.Tracked := Map()
         this._StopTimer()
