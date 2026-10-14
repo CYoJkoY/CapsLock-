@@ -37,12 +37,14 @@ class PinIndicator {
     static UpdateInterval := 16        ; near-frame updates keep the badge attached while dragging
     static BaseSize       := 22        ; badge edge length at 96 DPI
     static BaseOffset     := 4         ; gap from the window corner at 96 DPI
-    static DefaultDpi     := 96
+    static DefaultDpi       := 96
+    static DiscoveryInterval := 1000   ; recover topmost windows whose HWND was recreated
 
     ; --- Runtime state ---
-    static Enabled        := true
-    static Tracked        := Map()     ; hwnd -> badge geometry, visibility, and restore state
-    static TimerCallback  := ""
+    static Enabled           := true
+    static Tracked           := Map()  ; hwnd -> badge geometry, visibility, and restore state
+    static TimerCallback     := ""
+    static DiscoveryCallback := ""
 
     ; -----------------------------------------------------------------------
     ; Lifecycle
@@ -55,8 +57,10 @@ class PinIndicator {
         this.Tracked := Map()
         this.TimerCallback := ""
 
-        if this.Enabled
+        if this.Enabled {
             this.ScanTopmostWindows()
+            this._EnsureDiscoveryTimer()
+        }
     }
 
     ; Tear everything down. Called on exit and when the feature is disabled.
@@ -71,6 +75,7 @@ class PinIndicator {
 
         this.Tracked := Map()
         this._StopTimer()
+        this._StopDiscoveryTimer()
     }
 
     ; -----------------------------------------------------------------------
@@ -108,10 +113,12 @@ class PinIndicator {
 
         try ConfigManager.Save()
 
-        if enabled
+        if enabled {
             this.ScanTopmostWindows()
-        else
+            this._EnsureDiscoveryTimer()
+        } else {
             this.Clear()
+        }
     }
 
     ; One-shot discovery of already-pinned windows.
@@ -173,6 +180,9 @@ class PinIndicator {
             if this.IsTrackable(hwnd)
                 this.Track(hwnd)
         }
+
+        if this.Enabled
+            this._EnsureDiscoveryTimer()
     }
 
     ; -----------------------------------------------------------------------
@@ -257,6 +267,7 @@ class PinIndicator {
 
         this.Tracked[hwnd] := state
         this._EnsureTimer()
+        this._EnsureDiscoveryTimer()
         this._UpdateBadge(hwnd)
         return true
     }
@@ -351,6 +362,33 @@ class PinIndicator {
         }
     }
 
+    ; Keep discovery alive at a low cadence even when no badge is currently
+    ; tracked. Apps can destroy/recreate their HWND while hidden; scanning only
+    ; while a badge exists would make the replacement window invisible forever.
+    static _EnsureDiscoveryTimer() {
+        if !this.Enabled || IsObject(this.DiscoveryCallback)
+            return
+
+        this.DiscoveryCallback := ObjBindMethod(this, "_DiscoverTopmostWindows")
+        SetTimer(this.DiscoveryCallback, this.DiscoveryInterval)
+    }
+
+    static _StopDiscoveryTimer() {
+        if IsObject(this.DiscoveryCallback) {
+            SetTimer(this.DiscoveryCallback, 0)
+            this.DiscoveryCallback := ""
+        }
+    }
+
+    static _DiscoverTopmostWindows(*) {
+        if !this.Enabled {
+            this._StopDiscoveryTimer()
+            return
+        }
+
+        this.ScanTopmostWindows()
+    }
+
     static _Tick(*) {
         if !this.Enabled || this.Tracked.Count == 0 {
             this._StopTimer()
@@ -376,13 +414,6 @@ class PinIndicator {
             return
         }
 
-        ; Recheck the target's role during tracking too. A transient shell or
-        ; utility window must lose its badge if it is no longer an app window.
-        if !this.IsBadgeCandidate(hwnd) {
-            this.Untrack(hwnd)
-            return
-        }
-
         state := this.Tracked[hwnd]
         minimized := false
         try
@@ -390,8 +421,11 @@ class PinIndicator {
         catch
             minimized := false
 
+        ; Handle invisibility before checking any mutable window styles. Some
+        ; applications change ownership / tool-window styles while hiding; that
+        ; must not erase a pin we already verified for this live HWND.
         ; Minimized and hidden windows keep their tracked pin state. Hide the
-        ; independent badge while its target is not on screen.
+        ; independent badge while the target is not on screen.
         if minimized || !WindowIsVisible(hwnd) {
             state.wasMinimized := true
             this._SetBadgeVisible(hwnd, false)
