@@ -1037,7 +1037,12 @@ class PinIndicator {
         } catch {
         }
 
-        if forceRecreate && state.badgeRecreatedForTransition
+        if (
+            forceRecreate
+            && state.badgeRecreatedForTransition
+            && badgeHwnd
+            && WindowHandleAlive(badgeHwnd)
+        )
             return true
 
         if badgeHwnd && WindowHandleAlive(badgeHwnd) {
