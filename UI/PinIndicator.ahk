@@ -773,11 +773,10 @@ class PinIndicator {
             return
         }
 
-        ; A minimize-start event can arrive before the window is actually hidden.
-        ; Do not recreate the badge during that lead-in; recreate only during
-        ; restore, or when a completed hide/minimize cycle is being recovered.
-        forceRecreate := state.wasMinimized && state.transitionPhase != this.TRANSITION_MINIMIZING
-        if !this._EnsureBadgeWindow(hwnd, forceRecreate)
+        ; Keep the existing recovery contract: force recreation after a hide /
+        ; minimize cycle, but let _EnsureBadgeWindow defer recreation while the
+        ; minimize-start event has arrived before the target is actually hidden.
+        if !this._EnsureBadgeWindow(hwnd, state.wasMinimized)
             return
 
         state := this.Tracked[hwnd]
@@ -961,11 +960,16 @@ class PinIndicator {
         } catch {
         }
 
-        if !forceRecreate && badgeHwnd && WindowHandleAlive(badgeHwnd)
-            return true
+        if badgeHwnd && WindowHandleAlive(badgeHwnd) {
+            ; EVENT_SYSTEM_MINIMIZESTART may precede actual native minimization.
+            ; Do not destroy a still-visible badge in that lead-in, even though
+            ; the caller has already latched wasMinimized for race protection.
+            if !forceRecreate || state.transitionPhase == this.TRANSITION_MINIMIZING
+                return true
+        }
 
-        ; Rebuild after every minimize / hide cycle so a stale popup cannot
-        ; keep the indicator hidden after the target is restored.
+        ; Rebuild after every completed minimize / hide cycle so a stale popup
+        ; cannot keep the indicator hidden after the target is restored.
         if IsObject(state.gui)
             try state.gui.Destroy()
 
