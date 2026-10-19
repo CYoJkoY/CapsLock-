@@ -93,7 +93,7 @@ QuickPhraseOpenManager(selectorGui) {
 }
 
 QuickPhraseRefreshSelector(myGui) {
-    result := QuickPhraseRefreshList(myGui, 100, false, false)
+    result := QuickPhraseRefreshList(myGui, 100, false, true)
     if !IsObject(result)
         return
 
@@ -1410,15 +1410,51 @@ QuickPhraseRefreshManager(myGui) {
 QuickPhraseRefreshOpenViews() {
     manager := AppState.QuickPhraseManagerGui
     if IsObject(manager) {
-        try QuickPhraseRefreshManager(manager)
+        try {
+            QuickPhraseRefreshGroupFilter(manager)
+            QuickPhraseRefreshManager(manager)
+        }
     }
 
     selector := AppState.QuickPhraseGui
     if IsObject(selector) {
-        try QuickPhraseRefreshSelector(selector)
+        try {
+            QuickPhraseRefreshGroupFilter(selector)
+            QuickPhraseRefreshSelector(selector)
+        }
     }
 }
 
+QuickPhraseRefreshGroupFilter(myGui) {
+    if !IsObject(myGui) || !myGui.HasProp("GroupFilter")
+        return
+    if myGui.HasProp("RefreshingGroupFilter") && myGui.RefreshingGroupFilter
+        return
+
+    groupFilter := myGui.GroupFilter
+    if !IsObject(groupFilter)
+        return
+
+    myGui.RefreshingGroupFilter := true
+    try {
+        selectedGroup := Trim(groupFilter.Text)
+        options := QuickPhraseCategoryOptions()
+        groupFilter.Delete()
+        for option in options
+            groupFilter.Add(option)
+
+        selectedIndex := 1
+        for index, option in options {
+            if StrCompare(option, selectedGroup, false) == 0 {
+                selectedIndex := index
+                break
+            }
+        }
+        groupFilter.Choose(selectedIndex)
+    } finally {
+        myGui.RefreshingGroupFilter := false
+    }
+}
 QuickPhraseSelectedPhrase(myGui) {
     row := myGui.ListView.GetNext(0, "Focused")
     if !row
