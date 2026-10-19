@@ -93,6 +93,7 @@ class ThemeHelper {
             cref: cref,
             fgRef: this.RgbToColorRef(fgColor),
             parentBgRef: this.RgbToColorRef(parentBg),
+            parentBg: parentBg,
             style: style,
             text: ctrl.Text
         }
@@ -108,9 +109,13 @@ class ThemeHelper {
         bgColor := this.ButtonColor(style)
         fgColor := this.ButtonTextColor(style)
         if (parentBg == "") {
-            parentBgRef := this._btnData.Has(hwnd)
-                ? this._btnData[hwnd].parentBgRef
-                : this.RgbToColorRef(Theme.Background)
+            if this._btnData.Has(hwnd) {
+                parentBg := this._btnData[hwnd].parentBg
+                parentBgRef := this._btnData[hwnd].parentBgRef
+            } else {
+                parentBg := Theme.Background
+                parentBgRef := this.RgbToColorRef(parentBg)
+            }
         } else {
             parentBgRef := this.RgbToColorRef(parentBg)
         }
@@ -120,6 +125,7 @@ class ThemeHelper {
             cref: cref,
             fgRef: this.RgbToColorRef(fgColor),
             parentBgRef: parentBgRef,
+            parentBg: parentBg,
             style: style,
             text: ctrl.Text
         }
@@ -456,11 +462,23 @@ class ThemeHelper {
         this._penCache := Map()
     }
 
-    ; Drop everything derived from the previously active palette. Buttons and
-    ; text caches are rebuilt lazily with the new colours.
+    ; Drop everything derived from the previously active palette. Rebuild
+    ; button colour references for live controls before the next redraw. The
+    ; draw callback can run while a window is being recreated, so leaving a
+    ; live HWND with stale or missing metadata makes theme transitions fragile.
     static RefreshThemeResources() {
         this.ReleaseResources()
-        this._btnData := Map()
+        for hwnd, data in this._btnData.Clone() {
+            if !WinExist("ahk_id " hwnd) {
+                this._btnData.Delete(hwnd)
+                continue
+            }
+
+            data.cref := this.RgbToColorRef(this.ButtonColor(data.style))
+            data.fgRef := this.RgbToColorRef(this.ButtonTextColor(data.style))
+            data.parentBgRef := this.RgbToColorRef(data.parentBg)
+            this._btnData[hwnd] := data
+        }
     }
 }
 

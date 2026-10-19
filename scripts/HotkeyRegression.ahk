@@ -516,6 +516,12 @@ CheckThemeTokenArchitecture(root) {
         InStr(stateText, "THEME_") == 0,
         "presentation tokens stay out of persisted application state"
     )
+    Check(
+        InStr(helperText, "static RefreshThemeResources()") > 0
+            && InStr(helperText, "for hwnd, data in this._btnData.Clone()") > 0
+            && InStr(helperText, "data.parentBgRef := this.RgbToColorRef(data.parentBg)") > 0,
+        "theme refresh rebuilds live button draw metadata before redraws"
+    )
 }
 
 CheckQuickPhraseRegressions(root) {
