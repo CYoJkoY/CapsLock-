@@ -57,7 +57,7 @@ ShowQuickPhraseSelector() {
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseSelector(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseSelector(myGui))
     search.OnEvent("Change", (*) => QuickPhraseRefreshSelector(myGui))
-    groupFilter.OnEvent("Change", (*) => QuickPhraseRefreshSelector(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseGroupFilterChanged(myGui))
     useBtn.OnEvent("Click", (*) => QuickPhraseUseSelected(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseUseSelected(myGui))
     manageBtn.OnEvent("Click", (*) => QuickPhraseOpenManager(myGui))
@@ -90,6 +90,16 @@ CloseQuickPhraseSelector(myGui) {
 QuickPhraseOpenManager(selectorGui) {
     try selectorGui.Hide()
     ShowQuickPhraseManager(true)
+}
+
+QuickPhraseGroupFilterChanged(myGui) {
+    if IsObject(myGui) && myGui.HasProp("RefreshingGroupFilter") && myGui.RefreshingGroupFilter
+        return
+
+    if myGui == AppState.QuickPhraseManagerGui
+        QuickPhraseRefreshManager(myGui)
+    else
+        QuickPhraseRefreshSelector(myGui)
 }
 
 QuickPhraseRefreshSelector(myGui) {
@@ -1373,7 +1383,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.ListView := list
     myGui.ReturnToSelector := returnToSelector
     search.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
-    groupFilter.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseGroupFilterChanged(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseEditSelected(myGui))
     newBtn.OnEvent("Click", (*) => QuickPhraseCreateNew())
     editBtn.OnEvent("Click", (*) => QuickPhraseEditSelected(myGui))
@@ -1439,7 +1449,8 @@ QuickPhraseRefreshGroupFilter(myGui) {
     try {
         selectedGroup := Trim(groupFilter.Text)
         options := QuickPhraseCategoryOptions()
-        groupFilter.Delete()
+        while groupFilter.GetCount() > 0
+            groupFilter.Delete(1)
         for option in options
             groupFilter.Add(option)
 
