@@ -518,6 +518,39 @@ CheckThemeTokenArchitecture(root) {
     )
 }
 
+CheckQuickPhraseRegressions(root) {
+    phraseText := ReadText(root "\UI\QuickPhraseGui.ahk")
+    menuText := ReadText(root "\History\CustomMenu.ahk")
+    rootText := ReadText(root "\CapsLock-.ahk")
+
+    Check(
+        InStr(phraseText, "groupFilter := myGui.Add(" . Chr(34) . "DropDownList" . Chr(34)) > 0
+            && InStr(phraseText, "myGui.GroupFilter := groupFilter") > 0
+            && InStr(phraseText, "QuickPhraseGroupFilterChanged(myGui)") > 0,
+        "quick phrase selector and manager expose a shared group filter"
+    )
+    Check(
+        InStr(phraseText, "phrasesForView := allPhrases") > 0
+            && InStr(phraseText, "QuickPhraseFilterAndSort(phrasesForView") > 0
+            && InStr(phraseText, "return allPhrases") > 0
+            && InStr(phraseText, "QuickPhraseComparePhrases(left, right)") > 0,
+        "quick phrase views preserve Store order and use it as the search tie-breaker"
+    )
+    Check(
+        InStr(rootText, "QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)") > 0
+            && InStr(phraseText, "QuickPhraseRefreshGroupFilter(manager)") > 0
+            && InStr(phraseText, "QuickPhraseRefreshGroupFilter(selector)") > 0,
+        "quick phrase Store changes refresh open lists and group options"
+    )
+    Check(
+        InStr(menuText, "x0 y" ) > 0
+            && InStr(menuText, "w menuW") > 0
+            && InStr(menuText, "w subMenuW") > 0
+            && InStr(menuText, "w nestedMenuW") > 0,
+        "custom menu hover surfaces cover all three menu row widths"
+    )
+}
+
 ; ---------------------------------------------------------------------------
 ; 7: every source file is reachable
 ; ---------------------------------------------------------------------------
@@ -577,6 +610,7 @@ Main() {
     CheckPinIndicatorRegressions(root)
     CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
+    CheckQuickPhraseRegressions(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")
