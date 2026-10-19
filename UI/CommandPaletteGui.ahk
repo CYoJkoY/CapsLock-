@@ -325,7 +325,7 @@ class CommandPaletteGui {
                     matchScore := 1000 - recentRank
             }
 
-            rankedEntry := {item: commandEntry, score: matchScore}
+            rankedEntry := { item: commandEntry, score: matchScore }
             insertIndex := rankedCommands.Length + 1
             for rankedIndex, existingRank in rankedCommands {
                 if matchScore > existingRank.score {
@@ -365,11 +365,11 @@ class CommandPaletteGui {
         categoryText := StrLower(commandEntry.category)
         shortcutText := StrLower(commandEntry.shortcut)
         keywordText := StrLower(commandEntry.keywords)
-        searchableText := labelText " "
+        searchableText := (labelText " "
             descriptionText " "
             categoryText " "
             shortcutText " "
-            keywordText
+            keywordText)
 
         ; Multi-term search uses AND semantics across the existing searchable
         ; fields: every term must be present somewhere in the indexed text.
@@ -486,7 +486,7 @@ class CommandPaletteGui {
         totalCount := this.Commands.Length
         this.Status.Text := visibleCount == 0
             ? Lang("GUI_COMMAND_PALETTE_EMPTY")
-            : Lang("GUI_COMMAND_PALETTE_STATUS", "", visibleCount, totalCount)
+                : Lang("GUI_COMMAND_PALETTE_STATUS", "", visibleCount, totalCount)
     }
 
     static MoveSelection(delta) {
