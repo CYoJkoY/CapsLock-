@@ -539,7 +539,9 @@ CheckQuickPhraseRegressions(root) {
     Check(
         InStr(rootText, "QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)") > 0
             && InStr(phraseText, "QuickPhraseRefreshGroupFilter(manager)") > 0
-            && InStr(phraseText, "QuickPhraseRefreshGroupFilter(selector)") > 0,
+            && InStr(phraseText, "QuickPhraseRefreshGroupFilter(selector)") > 0
+            && InStr(phraseText, "selectedIndexBeforeRefresh := groupFilter.Value") > 0
+            && InStr(phraseText, "if selectedIndexBeforeRefresh > 1") > 0,
         "quick phrase Store changes refresh open lists and group options"
     )
     Check(

@@ -1341,6 +1341,7 @@ QuickPhraseRefreshGroupFilter(myGui) {
 
     myGui.RefreshingGroupFilter := true
     try {
+        selectedIndexBeforeRefresh := groupFilter.Value
         selectedGroup := Trim(groupFilter.Text)
         options := QuickPhraseCategoryOptions()
         while groupFilter.GetCount() > 0
@@ -1349,10 +1350,14 @@ QuickPhraseRefreshGroupFilter(myGui) {
             groupFilter.Add(option)
 
         selectedIndex := 1
-        for index, option in options {
-            if StrCompare(option, selectedGroup, false) == 0 {
-                selectedIndex := index
-                break
+        if selectedIndexBeforeRefresh > 1 {
+            for index, option in options {
+                if index < 2
+                    continue
+                if StrCompare(option, selectedGroup, false) == 0 {
+                    selectedIndex := index
+                    break
+                }
             }
         }
         groupFilter.Choose(selectedIndex)
