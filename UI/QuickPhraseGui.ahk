@@ -176,7 +176,9 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 continue
             phrases.Push(phrase)
         }
-        return QuickPhraseSortPhrases(phrases)
+        ; QuickPhraseStore keeps phrases in persisted order. Filtering
+        ; preserves that order, so do not sort the same data again.
+        return phrases
     }
 
     ; Normalize whitespace so tabs/newlines work like ordinary spaces.
@@ -197,7 +199,9 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
             phrases.Push(phrase)
         ; Both views use the stored order. Recent usage is metadata and must
         ; not change the order shown by the selector.
-        return QuickPhraseSortPhrases(phrases)
+        ; QuickPhraseStore keeps phrases in persisted order. Filtering
+        ; preserves that order, so do not sort the same data again.
+        return phrases
     }
 
     ; Rank a derived list; never mutate the store's backing array.
@@ -455,63 +459,7 @@ QuickPhraseCompareRanked(left, right) {
     return QuickPhraseComparePhrases(left.phrase, right.phrase)
 }
 
-QuickPhraseSortPhrases(phrases) {
-    count := phrases.Length
-    if count < 2
-        return phrases
-
-    ; Heap sort keeps refreshes O(n log n) with constant auxiliary memory.
-    root := count // 2
-    while root > 0 {
-        QuickPhraseSiftDown(phrases, root, count)
-        root -= 1
-    }
-
-    heapEnd := count
-    while heapEnd > 1 {
-        temp := phrases[1]
-        phrases[1] := phrases[heapEnd]
-        phrases[heapEnd] := temp
-        heapEnd -= 1
-        QuickPhraseSiftDown(phrases, 1, heapEnd)
-    }
-
-    return phrases
-}
-
-QuickPhraseSiftDown(phrases, root, heapEnd) {
-    while root * 2 <= heapEnd {
-        child := root * 2
-        if (
-            child < heapEnd
-            && QuickPhraseComparePhrases(phrases[child], phrases[child + 1]) < 0
-        ) {
-            child += 1
-        }
-
-        if QuickPhraseComparePhrases(phrases[root], phrases[child]) >= 0
-            return
-
-        temp := phrases[root]
-        phrases[root] := phrases[child]
-        phrases[child] := temp
-        root := child
-    }
-}
-
 QuickPhraseComparePhrases(left, right) {
-    leftCategory := left.category
-    rightCategory := right.category
-
-    if leftCategory == "" && rightCategory != ""
-        return 1
-    if leftCategory != "" && rightCategory == ""
-        return -1
-
-    categoryCompare := StrCompare(leftCategory, rightCategory, false)
-    if categoryCompare != 0
-        return categoryCompare
-
     if left.order != right.order
         return left.order < right.order ? -1 : 1
 
