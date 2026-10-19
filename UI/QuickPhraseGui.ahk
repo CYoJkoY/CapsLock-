@@ -30,8 +30,10 @@ ShowQuickPhraseSelector() {
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
-    search := myGui.Add("Edit", "w640 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w420 r1 y+12 " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w210 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
         "w640 r12 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -49,11 +51,13 @@ ShowQuickPhraseSelector() {
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
+    myGui.GroupFilter := groupFilter
     myGui.ListView := list
     myGui.Status := status
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseSelector(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseSelector(myGui))
     search.OnEvent("Change", (*) => QuickPhraseRefreshSelector(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseRefreshSelector(myGui))
     useBtn.OnEvent("Click", (*) => QuickPhraseUseSelected(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseUseSelected(myGui))
     manageBtn.OnEvent("Click", (*) => QuickPhraseOpenManager(myGui))
@@ -89,7 +93,7 @@ QuickPhraseOpenManager(selectorGui) {
 }
 
 QuickPhraseRefreshSelector(myGui) {
-    result := QuickPhraseRefreshList(myGui, 100, false, true)
+    result := QuickPhraseRefreshList(myGui, 100, false, false)
     if !IsObject(result)
         return
 
@@ -112,7 +116,13 @@ QuickPhraseRefreshList(myGui, previewLength, selectFirst := false, rankByRelevan
 
     selectedId := QuickPhraseGetSelectedId(list)
     allPhrases := QuickPhraseStore.GetAll()
-    phrases := QuickPhraseFilterAndSort(allPhrases, searchBox.Text, rankByRelevance)
+    group := myGui.HasProp("GroupFilter") ? myGui.GroupFilter.Text : ""
+    filteredByGroup := []
+    for phrase in allPhrases {
+        if QuickPhraseGroupMatches(phrase, group)
+            filteredByGroup.Push(phrase)
+    }
+    phrases := QuickPhraseFilterAndSort(filteredByGroup, searchBox.Text, rankByRelevance)
 
     list.Delete()
     selectedRow := 0
@@ -185,8 +195,9 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
         phrases := []
         for phrase in allPhrases
             phrases.Push(phrase)
-        phrases := QuickPhraseSortPhrases(phrases)
-        return QuickPhrasePrioritizeRecent(phrases)
+        ; Both views use the stored order. Recent usage is metadata and must
+        ; not change the order shown by the selector.
+        return QuickPhraseSortPhrases(phrases)
     }
 
     ; Rank a derived list; never mutate the store's backing array.
@@ -204,6 +215,26 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
     for item in ranked
         phrases.Push(item.phrase)
     return phrases
+}
+
+QuickPhraseCategoryOptions() {
+    categories := [Lang("GUI_QUICK_PHRASE_ALL_GROUPS", "All groups")]
+    seen := Map()
+    for phrase in QuickPhraseStore.GetAll() {
+        category := Trim(phrase.category)
+        if category == "" || seen.Has(category)
+            continue
+        seen[category] := true
+        categories.Push(category)
+    }
+    return categories
+}
+
+QuickPhraseGroupMatches(phrase, group) {
+    group := Trim(group)
+    if group == "" || group == Lang("GUI_QUICK_PHRASE_ALL_GROUPS", "All groups")
+        return true
+    return StrCompare(Trim(phrase.category), group, false) == 0
 }
 
 
@@ -1367,8 +1398,10 @@ ShowQuickPhraseManager(returnToSelector := false) {
     )
     ThemeHelper.AddSeparator(myGui, 700)
 
-    search := myGui.Add("Edit", "w700 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w470 r1 y+12 " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w220 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
         "w700 r14 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -1388,9 +1421,11 @@ ShowQuickPhraseManager(returnToSelector := false) {
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
+    myGui.GroupFilter := groupFilter
     myGui.ListView := list
     myGui.ReturnToSelector := returnToSelector
     search.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseEditSelected(myGui))
     newBtn.OnEvent("Click", (*) => QuickPhraseCreateNew())
     editBtn.OnEvent("Click", (*) => QuickPhraseEditSelected(myGui))
