@@ -543,10 +543,9 @@ CheckQuickPhraseRegressions(root) {
         "quick phrase Store changes refresh open lists and group options"
     )
     Check(
-        InStr(menuText, "x0 y" ) > 0
-            && InStr(menuText, "w menuW") > 0
-            && InStr(menuText, "w subMenuW") > 0
-            && InStr(menuText, "w nestedMenuW") > 0,
+        InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " curY " . Chr(34) . " w" . Chr(34) . " menuW") > 0
+            && InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " subCurY " . Chr(34) . " w" . Chr(34) . " subMenuW") > 0
+            && InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " curY " . Chr(34) . " w" . Chr(34) . " nestedMenuW") > 0,
         "custom menu hover surfaces cover all three menu row widths"
     )
 }
