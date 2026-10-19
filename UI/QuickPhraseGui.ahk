@@ -30,8 +30,10 @@ ShowQuickPhraseSelector() {
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
-    search := myGui.Add("Edit", "w640 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w420 r1 y+12 " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w210 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
         "w640 r12 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -49,11 +51,13 @@ ShowQuickPhraseSelector() {
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
+    myGui.GroupFilter := groupFilter
     myGui.ListView := list
     myGui.Status := status
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseSelector(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseSelector(myGui))
     search.OnEvent("Change", (*) => QuickPhraseRefreshSelector(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseGroupFilterChanged(myGui))
     useBtn.OnEvent("Click", (*) => QuickPhraseUseSelected(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseUseSelected(myGui))
     manageBtn.OnEvent("Click", (*) => QuickPhraseOpenManager(myGui))
@@ -88,6 +92,16 @@ QuickPhraseOpenManager(selectorGui) {
     ShowQuickPhraseManager(true)
 }
 
+QuickPhraseGroupFilterChanged(myGui) {
+    if IsObject(myGui) && myGui.HasProp("RefreshingGroupFilter") && myGui.RefreshingGroupFilter
+        return
+
+    if myGui == AppState.QuickPhraseManagerGui
+        QuickPhraseRefreshManager(myGui)
+    else
+        QuickPhraseRefreshSelector(myGui)
+}
+
 QuickPhraseRefreshSelector(myGui) {
     result := QuickPhraseRefreshList(myGui, 100, false, true)
     if !IsObject(result)
@@ -112,7 +126,16 @@ QuickPhraseRefreshList(myGui, previewLength, selectFirst := false, rankByRelevan
 
     selectedId := QuickPhraseGetSelectedId(list)
     allPhrases := QuickPhraseStore.GetAll()
-    phrases := QuickPhraseFilterAndSort(allPhrases, searchBox.Text, rankByRelevance)
+    group := QuickPhraseSelectedGroup(myGui)
+    phrasesForView := allPhrases
+    if group != "" {
+        phrasesForView := []
+        for phrase in allPhrases {
+            if QuickPhraseGroupMatches(phrase, group)
+                phrasesForView.Push(phrase)
+        }
+    }
+    phrases := QuickPhraseFilterAndSort(phrasesForView, searchBox.Text, rankByRelevance)
 
     list.Delete()
     selectedRow := 0
@@ -166,7 +189,9 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 continue
             phrases.Push(phrase)
         }
-        return QuickPhraseSortPhrases(phrases)
+        ; QuickPhraseStore keeps phrases in persisted order. Filtering
+        ; preserves that order, so do not sort the same data again.
+        return phrases
     }
 
     ; Normalize whitespace so tabs/newlines work like ordinary spaces.
@@ -179,14 +204,10 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 terms.Push(term)
     }
 
-    ; Recent-use priority applies only to the empty query. Keep the stored
-    ; category/order/name sort for every phrase outside the recent list.
+    ; Keep the stored order for an empty query. Search terms use the
+    ; relevance ranking below, with stored order as the tie-breaker.
     if !terms.Length {
-        phrases := []
-        for phrase in allPhrases
-            phrases.Push(phrase)
-        phrases := QuickPhraseSortPhrases(phrases)
-        return QuickPhrasePrioritizeRecent(phrases)
+        return allPhrases
     }
 
     ; Rank a derived list; never mutate the store's backing array.
@@ -206,115 +227,36 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
     return phrases
 }
 
-
-QuickPhraseLoadRecentIds() {
-    raw := ""
-    try {
-        raw := IniRead(
-            AppState.ConfigFile,
-            "QuickPhraseSelector",
-            "recentPhraseIds",
-            ""
-        )
-    } catch {
-        return []
-    }
-
-    recentIds := []
+QuickPhraseCategoryOptions() {
+    categories := [Lang("GUI_QUICK_PHRASE_ALL_GROUPS", "All groups")]
     seen := Map()
-    for rawId in StrSplit(raw, ",") {
-        idText := Trim(rawId)
-        if !(idText ~= "^[1-9]\d{0,9}$")
+    for phrase in QuickPhraseStore.GetAll() {
+        category := Trim(phrase.category)
+        categoryKey := StrLower(category)
+        if category == "" || seen.Has(categoryKey)
             continue
-
-        phraseId := Integer(idText)
-        if seen.Has(phraseId)
-            continue
-
-        seen[phraseId] := true
-        recentIds.Push(phraseId)
-        if recentIds.Length >= 5
-            break
+        seen[categoryKey] := true
+        categories.Push(category)
     }
-
-    return recentIds
+    return categories
 }
 
-QuickPhrasePrioritizeRecent(phrases) {
-    if !phrases.Length
-        return phrases
+QuickPhraseSelectedGroup(myGui) {
+    if !IsObject(myGui) || !myGui.HasProp("GroupFilter")
+        return ""
 
-    recentIds := QuickPhraseLoadRecentIds()
-    if !recentIds.Length
-        return phrases
+    groupFilter := myGui.GroupFilter
+    if !IsObject(groupFilter) || groupFilter.Value == 1
+        return ""
 
-    phraseById := Map()
-    for phrase in phrases
-        phraseById[phrase.id] := phrase
-
-    prioritized := []
-    seen := Map()
-    for phraseId in recentIds {
-        if !phraseById.Has(phraseId)
-            continue
-
-        prioritized.Push(phraseById[phraseId])
-        seen[phraseId] := true
-    }
-
-    if !prioritized.Length
-        return phrases
-
-    for phrase in phrases {
-        if seen.Has(phrase.id)
-            continue
-        prioritized.Push(phrase)
-    }
-
-    return prioritized
+    return Trim(groupFilter.Text)
 }
 
-QuickPhraseRememberRecent(phraseId) {
-    ; Recency is local UI metadata, not phrase content or Cloud Sync data.
-    try {
-        if phraseId < 1
-            return false
-
-        availableIds := Map()
-        for phrase in QuickPhraseStore.GetAll()
-            availableIds[phrase.id] := true
-
-        if !availableIds.Has(phraseId)
-            return false
-
-        updated := [phraseId]
-        for recentId in QuickPhraseLoadRecentIds() {
-            if recentId == phraseId || !availableIds.Has(recentId)
-                continue
-
-            updated.Push(recentId)
-            if updated.Length >= 5
-                break
-        }
-
-        serialized := ""
-        for recentId in updated {
-            if serialized != ""
-                serialized .= ","
-            serialized .= recentId
-        }
-
-        IniWrite(
-            serialized,
-            AppState.ConfigFile,
-            "QuickPhraseSelector",
-            "recentPhraseIds"
-        )
+QuickPhraseGroupMatches(phrase, group) {
+    group := Trim(group)
+    if group == ""
         return true
-    } catch {
-        ; A config failure must not interrupt a successful phrase insertion.
-        return false
-    }
+    return StrCompare(Trim(phrase.category), group, false) == 0
 }
 
 QuickPhraseMatchesFilter(phrase, filter) {
@@ -424,63 +366,7 @@ QuickPhraseCompareRanked(left, right) {
     return QuickPhraseComparePhrases(left.phrase, right.phrase)
 }
 
-QuickPhraseSortPhrases(phrases) {
-    count := phrases.Length
-    if count < 2
-        return phrases
-
-    ; Heap sort keeps refreshes O(n log n) with constant auxiliary memory.
-    root := count // 2
-    while root > 0 {
-        QuickPhraseSiftDown(phrases, root, count)
-        root -= 1
-    }
-
-    heapEnd := count
-    while heapEnd > 1 {
-        temp := phrases[1]
-        phrases[1] := phrases[heapEnd]
-        phrases[heapEnd] := temp
-        heapEnd -= 1
-        QuickPhraseSiftDown(phrases, 1, heapEnd)
-    }
-
-    return phrases
-}
-
-QuickPhraseSiftDown(phrases, root, heapEnd) {
-    while root * 2 <= heapEnd {
-        child := root * 2
-        if (
-            child < heapEnd
-            && QuickPhraseComparePhrases(phrases[child], phrases[child + 1]) < 0
-        ) {
-            child += 1
-        }
-
-        if QuickPhraseComparePhrases(phrases[root], phrases[child]) >= 0
-            return
-
-        temp := phrases[root]
-        phrases[root] := phrases[child]
-        phrases[child] := temp
-        root := child
-    }
-}
-
 QuickPhraseComparePhrases(left, right) {
-    leftCategory := left.category
-    rightCategory := right.category
-
-    if leftCategory == "" && rightCategory != ""
-        return 1
-    if leftCategory != "" && rightCategory == ""
-        return -1
-
-    categoryCompare := StrCompare(leftCategory, rightCategory, false)
-    if categoryCompare != 0
-        return categoryCompare
-
     if left.order != right.order
         return left.order < right.order ? -1 : 1
 
@@ -616,9 +502,6 @@ QuickPhraseExecutePhrase(phrase) {
         )
         return
     }
-
-    if ok
-        QuickPhraseRememberRecent(phrase.id)
 
     if !ok {
         ShowToolTip(
@@ -1367,8 +1250,10 @@ ShowQuickPhraseManager(returnToSelector := false) {
     )
     ThemeHelper.AddSeparator(myGui, 700)
 
-    search := myGui.Add("Edit", "w700 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w470 r1 y+12 " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w220 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
         "w700 r14 y+10 -Multi " ThemeHelper.GetLVOptions(),
@@ -1388,9 +1273,11 @@ ShowQuickPhraseManager(returnToSelector := false) {
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
+    myGui.GroupFilter := groupFilter
     myGui.ListView := list
     myGui.ReturnToSelector := returnToSelector
     search.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
+    groupFilter.OnEvent("Change", (*) => QuickPhraseGroupFilterChanged(myGui))
     list.OnEvent("DoubleClick", (*) => QuickPhraseEditSelected(myGui))
     newBtn.OnEvent("Click", (*) => QuickPhraseCreateNew())
     editBtn.OnEvent("Click", (*) => QuickPhraseEditSelected(myGui))
@@ -1427,15 +1314,57 @@ QuickPhraseRefreshManager(myGui) {
 QuickPhraseRefreshOpenViews() {
     manager := AppState.QuickPhraseManagerGui
     if IsObject(manager) {
-        try QuickPhraseRefreshManager(manager)
+        try {
+            QuickPhraseRefreshGroupFilter(manager)
+            QuickPhraseRefreshManager(manager)
+        }
     }
 
     selector := AppState.QuickPhraseGui
     if IsObject(selector) {
-        try QuickPhraseRefreshSelector(selector)
+        try {
+            QuickPhraseRefreshGroupFilter(selector)
+            QuickPhraseRefreshSelector(selector)
+        }
     }
 }
 
+QuickPhraseRefreshGroupFilter(myGui) {
+    if !IsObject(myGui) || !myGui.HasProp("GroupFilter")
+        return
+    if myGui.HasProp("RefreshingGroupFilter") && myGui.RefreshingGroupFilter
+        return
+
+    groupFilter := myGui.GroupFilter
+    if !IsObject(groupFilter)
+        return
+
+    myGui.RefreshingGroupFilter := true
+    try {
+        selectedIndexBeforeRefresh := groupFilter.Value
+        selectedGroup := Trim(groupFilter.Text)
+        options := QuickPhraseCategoryOptions()
+        while groupFilter.GetCount() > 0
+            groupFilter.Delete(1)
+        for option in options
+            groupFilter.Add(option)
+
+        selectedIndex := 1
+        if selectedIndexBeforeRefresh > 1 {
+            for index, option in options {
+                if index < 2
+                    continue
+                if StrCompare(option, selectedGroup, false) == 0 {
+                    selectedIndex := index
+                    break
+                }
+            }
+        }
+        groupFilter.Choose(selectedIndex)
+    } finally {
+        myGui.RefreshingGroupFilter := false
+    }
+}
 QuickPhraseSelectedPhrase(myGui) {
     row := myGui.ListView.GetNext(0, "Focused")
     if !row
