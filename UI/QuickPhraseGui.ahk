@@ -126,13 +126,16 @@ QuickPhraseRefreshList(myGui, previewLength, selectFirst := false, rankByRelevan
 
     selectedId := QuickPhraseGetSelectedId(list)
     allPhrases := QuickPhraseStore.GetAll()
-    group := myGui.HasProp("GroupFilter") ? myGui.GroupFilter.Text : ""
-    filteredByGroup := []
-    for phrase in allPhrases {
-        if QuickPhraseGroupMatches(phrase, group)
-            filteredByGroup.Push(phrase)
+    group := QuickPhraseSelectedGroup(myGui)
+    phrasesForView := allPhrases
+    if group != "" {
+        phrasesForView := []
+        for phrase in allPhrases {
+            if QuickPhraseGroupMatches(phrase, group)
+                phrasesForView.Push(phrase)
+        }
     }
-    phrases := QuickPhraseFilterAndSort(filteredByGroup, searchBox.Text, rankByRelevance)
+    phrases := QuickPhraseFilterAndSort(phrasesForView, searchBox.Text, rankByRelevance)
 
     list.Delete()
     selectedRow := 0
@@ -201,17 +204,10 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 terms.Push(term)
     }
 
-    ; Recent-use priority applies only to the empty query. Keep the stored
-    ; category/order/name sort for every phrase outside the recent list.
+    ; Keep the stored order for an empty query. Search terms use the
+    ; relevance ranking below, with stored order as the tie-breaker.
     if !terms.Length {
-        phrases := []
-        for phrase in allPhrases
-            phrases.Push(phrase)
-        ; Both views use the stored order. Recent usage is metadata and must
-        ; not change the order shown by the selector.
-        ; QuickPhraseStore keeps phrases in persisted order. Filtering
-        ; preserves that order, so do not sort the same data again.
-        return phrases
+        return allPhrases
     }
 
     ; Rank a derived list; never mutate the store's backing array.
@@ -236,130 +232,31 @@ QuickPhraseCategoryOptions() {
     seen := Map()
     for phrase in QuickPhraseStore.GetAll() {
         category := Trim(phrase.category)
-        if category == "" || seen.Has(category)
+        categoryKey := StrLower(category)
+        if category == "" || seen.Has(categoryKey)
             continue
-        seen[category] := true
+        seen[categoryKey] := true
         categories.Push(category)
     }
     return categories
 }
 
+QuickPhraseSelectedGroup(myGui) {
+    if !IsObject(myGui) || !myGui.HasProp("GroupFilter")
+        return ""
+
+    groupFilter := myGui.GroupFilter
+    if !IsObject(groupFilter) || groupFilter.Value == 1
+        return ""
+
+    return Trim(groupFilter.Text)
+}
+
 QuickPhraseGroupMatches(phrase, group) {
     group := Trim(group)
-    if group == "" || group == Lang("GUI_QUICK_PHRASE_ALL_GROUPS", "All groups")
+    if group == ""
         return true
     return StrCompare(Trim(phrase.category), group, false) == 0
-}
-
-
-QuickPhraseLoadRecentIds() {
-    raw := ""
-    try {
-        raw := IniRead(
-            AppState.ConfigFile,
-            "QuickPhraseSelector",
-            "recentPhraseIds",
-            ""
-        )
-    } catch {
-        return []
-    }
-
-    recentIds := []
-    seen := Map()
-    for rawId in StrSplit(raw, ",") {
-        idText := Trim(rawId)
-        if !(idText ~= "^[1-9]\d{0,9}$")
-            continue
-
-        phraseId := Integer(idText)
-        if seen.Has(phraseId)
-            continue
-
-        seen[phraseId] := true
-        recentIds.Push(phraseId)
-        if recentIds.Length >= 5
-            break
-    }
-
-    return recentIds
-}
-
-QuickPhrasePrioritizeRecent(phrases) {
-    if !phrases.Length
-        return phrases
-
-    recentIds := QuickPhraseLoadRecentIds()
-    if !recentIds.Length
-        return phrases
-
-    phraseById := Map()
-    for phrase in phrases
-        phraseById[phrase.id] := phrase
-
-    prioritized := []
-    seen := Map()
-    for phraseId in recentIds {
-        if !phraseById.Has(phraseId)
-            continue
-
-        prioritized.Push(phraseById[phraseId])
-        seen[phraseId] := true
-    }
-
-    if !prioritized.Length
-        return phrases
-
-    for phrase in phrases {
-        if seen.Has(phrase.id)
-            continue
-        prioritized.Push(phrase)
-    }
-
-    return prioritized
-}
-
-QuickPhraseRememberRecent(phraseId) {
-    ; Recency is local UI metadata, not phrase content or Cloud Sync data.
-    try {
-        if phraseId < 1
-            return false
-
-        availableIds := Map()
-        for phrase in QuickPhraseStore.GetAll()
-            availableIds[phrase.id] := true
-
-        if !availableIds.Has(phraseId)
-            return false
-
-        updated := [phraseId]
-        for recentId in QuickPhraseLoadRecentIds() {
-            if recentId == phraseId || !availableIds.Has(recentId)
-                continue
-
-            updated.Push(recentId)
-            if updated.Length >= 5
-                break
-        }
-
-        serialized := ""
-        for recentId in updated {
-            if serialized != ""
-                serialized .= ","
-            serialized .= recentId
-        }
-
-        IniWrite(
-            serialized,
-            AppState.ConfigFile,
-            "QuickPhraseSelector",
-            "recentPhraseIds"
-        )
-        return true
-    } catch {
-        ; A config failure must not interrupt a successful phrase insertion.
-        return false
-    }
 }
 
 QuickPhraseMatchesFilter(phrase, filter) {
@@ -605,9 +502,6 @@ QuickPhraseExecutePhrase(phrase) {
         )
         return
     }
-
-    if ok
-        QuickPhraseRememberRecent(phrase.id)
 
     if !ok {
         ShowToolTip(
