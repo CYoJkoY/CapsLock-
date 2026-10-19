@@ -236,9 +236,11 @@ class CustomMenu {
                 continue
             }
 
+            ; The hover surface belongs to the complete menu row so no strips
+            ; of the menu background remain visible at either edge.
             bgCtrl := myGui.Add(
                 "Text",
-                "x4 y" curY " w" (menuW - 8) " h" itemH " +0x0100 Background" Theme.Surface
+                "x0 y" curY " w" menuW " h" itemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := myGui.Add(
@@ -481,7 +483,7 @@ class CustomMenu {
 
             bgCtrl := subMyGui.Add(
                 "Text",
-                "x4 y" subCurY " w" (subMenuW - 8) " h" subItemH " +0x0100 Background" Theme.Surface
+                "x0 y" subCurY " w" subMenuW " h" subItemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := subMyGui.Add(
@@ -642,7 +644,7 @@ class CustomMenu {
 
             bgCtrl := nestedGui.Add(
                 "Text",
-                "x4 y" curY " w" (nestedMenuW - 8) " h" nestedItemH " +0x0100 Background" Theme.Surface
+                "x0 y" curY " w" nestedMenuW " h" nestedItemH " +0x0100 Background" Theme.Surface
             )
 
             txtCtrl := nestedGui.Add(
