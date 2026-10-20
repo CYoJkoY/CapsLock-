@@ -30,13 +30,13 @@ ShowQuickPhraseSelector() {
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
-    search := myGui.Add("Edit", "w420 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w420 r1 y+12 xm " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
     groupFilter := myGui.Add("DropDownList", "x+10 yp w210 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
     ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
-        "w640 r12 y+10 -Multi " ThemeHelper.GetLVOptions(),
+        "w640 r12 y+10 xm -Multi " ThemeHelper.GetLVOptions(),
         ["ID", Lang("GUI_QUICK_PHRASE_COL_NAME", "Name"), Lang("GUI_QUICK_PHRASE_COL_CATEGORY", "Category"), Lang("GUI_QUICK_PHRASE_COL_PREVIEW", "Preview")]
     )
     list.ModifyCol(1, 0)
@@ -45,8 +45,8 @@ ShowQuickPhraseSelector() {
     list.ModifyCol(4, 330)
     ThemeHelper.StyleListView(list)
 
-    status := myGui.Add("Text", "w640 y+8", "")
-    useBtn := ThemeHelper.AddButton(myGui, "Default w110 y+12", "✓ " Lang("GUI_QUICK_PHRASE_USE", "Use"), "primary")
+    status := myGui.Add("Text", "w640 y+8 xm", "")
+    useBtn := ThemeHelper.AddButton(myGui, "Default w110 y+12 xm", "✓ " Lang("GUI_QUICK_PHRASE_USE", "Use"), "primary")
     manageBtn := ThemeHelper.AddButton(myGui, "x+8 yp w110", "📝 " Lang("GUI_QUICK_PHRASE_MANAGE", "Manage"))
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
@@ -1250,13 +1250,13 @@ ShowQuickPhraseManager(returnToSelector := false) {
     )
     ThemeHelper.AddSeparator(myGui, 700)
 
-    search := myGui.Add("Edit", "w470 r1 y+12 " ThemeHelper.GetEditOptions(), "")
+    search := myGui.Add("Edit", "w470 r1 y+12 xm " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
     groupFilter := myGui.Add("DropDownList", "x+10 yp w220 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
     ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
-        "w700 r14 y+10 -Multi " ThemeHelper.GetLVOptions(),
+        "w700 r14 y+10 xm -Multi " ThemeHelper.GetLVOptions(),
         ["ID", Lang("GUI_QUICK_PHRASE_COL_NAME", "Name"), Lang("GUI_QUICK_PHRASE_COL_CATEGORY", "Category"), Lang("GUI_QUICK_PHRASE_COL_PREVIEW", "Preview")]
     )
     list.ModifyCol(1, 0)
@@ -1265,7 +1265,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
     list.ModifyCol(4, 340)
     ThemeHelper.StyleListView(list)
 
-    newBtn := ThemeHelper.AddButton(myGui, "Default w100 y+12", "＋ " Lang("GUI_QUICK_PHRASE_NEW", "New"), "primary")
+    newBtn := ThemeHelper.AddButton(myGui, "Default w100 y+12 xm", "＋ " Lang("GUI_QUICK_PHRASE_NEW", "New"), "primary")
     editBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "✎ " Lang("GUI_QUICK_PHRASE_EDIT", "Edit"))
     delBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑 " Lang("GUI_QUICK_PHRASE_DELETE", "Delete"), "danger")
     upBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "↑ " Lang("GUI_QUICK_PHRASE_MOVE_UP", "Move Up"))
