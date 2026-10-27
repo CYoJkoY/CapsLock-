@@ -581,8 +581,8 @@ SetSpotlightActivation(mode, *) {
 ; --- Always-on-top indicator (CapsLock + T) ---
 
 ; Master switch for the persistent pin badge. Toggling it on also picks up
-; windows that were pinned while it was disabled, so the indicator never
-; starts out out of sync with the real topmost state.
+; windows that CapsLock + T pinned while it was disabled, so the indicator
+; stays in sync with the shortcut instead of with the topmost style.
 ToggleAlwaysOnTopIndicator(*) {
     next := !AppState.AlwaysOnTopIndicator
     PinIndicator.SetEnabled(next)

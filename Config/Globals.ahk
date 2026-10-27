@@ -106,8 +106,9 @@ class AppState {
     static WindowSwitcherDensities := ["compact", "normal", "spacious"]
 
     ; --- Always-on-top indicator ---
-    ; Persistent pin badge on every pinned window (CapsLock + T). Without it the
-    ; pinned state is only visible for the lifetime of the OSD toast.
+    ; Persistent pin badge on the windows CapsLock + T pinned. Windows that are
+    ; topmost for any other reason are not badged. Without the badge the pinned
+    ; state is only visible for the lifetime of the OSD toast.
     static AlwaysOnTopIndicator := true
 
     ; --- Spotlight (CapsLock + O) ---

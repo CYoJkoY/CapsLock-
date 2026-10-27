@@ -9,15 +9,20 @@
 ; remembering which state it was in.
 ;
 ; PinIndicator keeps a small click-through badge on the title bar of every
-; topmost window it manages:
+; window the shortcut pinned:
 ;
-;     pinned    -> badge visible
-;     unpinned  -> no badge
+;     pinned with CapsLock + T  -> badge visible
+;     anything else topmost     -> no badge
 ;
 ; The two states therefore stay distinguishable at a glance, and the badge is
 ; small enough (about 22 px at 96 DPI) that it never hides content.
 ;
 ; Guarantees
+;   * Only windows pinned through CapsLock + T are badged. A window that is
+;     topmost because of another program, its own settings, or a system
+;     surface is never adopted, because WS_EX_TOPMOST says nothing about who
+;     asked for it. Ownership lives in an explicit set that only the shortcut
+;     entry point writes to, and every tracking path is guarded by it.
 ;   * The tracked set is re-validated against the *real* WS_EX_TOPMOST style
 ;     on every tick, so a window unpinned by any other program (or by
 ;     restarting an app) loses its badge instead of showing a stale one.
@@ -57,6 +62,7 @@ class PinIndicator {
     ; --- Runtime state ---
     static Enabled              := true
     static Tracked              := Map()  ; hwnd -> badge geometry, visibility, and restore state
+    static OwnedWindows         := Map()  ; hwnd -> true, windows pinned with CapsLock + T
     static TimerCallback        := ""
     static WinEventHook         := 0
     static WinEventSystemHook   := 0
@@ -72,21 +78,26 @@ class PinIndicator {
     ; Lifecycle
     ; -----------------------------------------------------------------------
 
-    ; Reads the persisted setting and picks up windows that were already
-    ; pinned before the script started (or before the feature was enabled).
+    ; Reads the persisted setting. Nothing is discovered here: a window that is
+    ; already topmost when the script starts was pinned by something else, so
+    ; it stays unbadged until CapsLock + T pins it in this session.
     static Init() {
         this.Enabled := AppState.AlwaysOnTopIndicator ? true : false
         this.Tracked := Map()
+        this.OwnedWindows := Map()
+        this.PendingWindowEvents := Map()
+        this.BadgeZOrderRetries := Map()
+        this.EventProcessScheduled := false
         this.TimerCallback := ""
 
-        if this.Enabled {
-            this.ScanTopmostWindows()
+        if this.Enabled
             this._EnsureWinEventHook()
-        }
     }
 
     ; Tear everything down. Called on exit and when the feature is disabled.
-    static Clear() {
+    ; keepOwnership keeps the shortcut-owned set so re-enabling the badge only
+    ; restores those windows; exit drops it with the rest of the session state.
+    static Clear(keepOwnership := false) {
         ; Stop receiving global window notifications before tearing down badge GUIs.
         this._StopWinEventHook()
 
@@ -101,6 +112,9 @@ class PinIndicator {
         this.Tracked := Map()
         this.BadgeZOrderRetries := Map()
         this._StopTimer()
+
+        if !keepOwnership
+            this.OwnedWindows := Map()
     }
 
     ; -----------------------------------------------------------------------
@@ -109,20 +123,29 @@ class PinIndicator {
 
     static IsEnabled() => this.Enabled
 
-    ; CapsLock + T entry point. Adds or removes the badge so the visible state
-    ; always matches the window style that was just applied.
+    ; CapsLock + T entry point, and the only place that claims a window.
+    ; Adds or removes the badge so the visible state always matches the window
+    ; style that was just applied.
     static Refresh(hwnd := 0) {
         if !hwnd
             hwnd := WinExist("A")
         if !hwnd
             return
 
-        if !this.Enabled
-            return
+        ; Record ownership even while the badge is disabled: the shortcut still
+        ; pinned the window, and re-enabling the indicator has to restore this
+        ; window rather than every topmost window on the desktop.
+        pinnedByShortcut := this.IsBadgeCandidate(hwnd) && this.IsTopmost(hwnd)
 
-        if this.IsTrackable(hwnd)
-            this.Track(hwnd)
-        else if this.Tracked.Has(hwnd)
+        if pinnedByShortcut {
+            this.OwnedWindows[hwnd] := true
+            if this.Enabled
+                this.Track(hwnd)
+            return
+        }
+
+        this._DropOwnership(hwnd)
+        if this.Tracked.Has(hwnd)
             this.Untrack(hwnd)
     }
 
@@ -139,25 +162,34 @@ class PinIndicator {
         try ConfigManager.Save()
 
         if enabled {
-            this.ScanTopmostWindows()
+            this.ReconcileOwnedWindows()
             this._EnsureWinEventHook()
         } else {
-            this.Clear()
+            this.Clear(true)
         }
     }
 
-    ; One-shot discovery of already-pinned windows.
-    static ScanTopmostWindows() {
+    ; Re-apply badges for the windows this session pinned with CapsLock + T.
+    ; Windows that became topmost through any other path are left alone: the
+    ; badge reports the shortcut, not the topmost bit.
+    static ReconcileOwnedWindows() {
         count := 0
-        try {
-            for hwnd in WinGetList() {
-                if !this.IsTrackable(hwnd)
+
+        for hwnd in this.OwnedWindows.Clone() {
+            try {
+                if !WindowHandleAlive(hwnd) || !this.IsTrackable(hwnd) {
+                    this._DropOwnership(hwnd)
+                    if this.Tracked.Has(hwnd)
+                        this.Untrack(hwnd)
                     continue
+                }
+
                 if this.Track(hwnd)
                     count++
+            } catch {
             }
-        } catch {
         }
+
         return count
     }
 
@@ -195,19 +227,11 @@ class PinIndicator {
         if !this.Enabled
             return
 
-        saved := []
-        for hwnd, state in this.Tracked
-            saved.Push(hwnd)
-
-        this.Clear()
-
-        for hwnd in saved {
-            if this.IsTrackable(hwnd)
-                this.Track(hwnd)
-        }
-
-        if this.Enabled
-            this._EnsureWinEventHook()
+        ; Ownership survives the rebuild, so only the windows pinned with
+        ; CapsLock + T come back.
+        this.Clear(true)
+        this.ReconcileOwnedWindows()
+        this._EnsureWinEventHook()
     }
 
     ; -----------------------------------------------------------------------
@@ -283,6 +307,12 @@ class PinIndicator {
         if !hwnd
             return false
 
+        ; A persistent badge is proof that CapsLock + T pinned this window.
+        ; Refuse every other caller so no discovery path can badge a window
+        ; that another program or the system made topmost.
+        if !this.OwnedWindows.Has(hwnd)
+            return false
+
         if this.Tracked.Has(hwnd)
             return true
 
@@ -297,6 +327,8 @@ class PinIndicator {
     }
 
     static Untrack(hwnd) {
+        this._DropOwnership(hwnd)
+
         if !this.Tracked.Has(hwnd)
             return
 
@@ -313,6 +345,13 @@ class PinIndicator {
 
         if this.Tracked.Count == 0
             this._StopTimer()
+    }
+
+    ; Map.Delete throws when a key is absent, and the ownership set is cleared
+    ; from several cleanup paths, so removal has to be idempotent.
+    static _DropOwnership(hwnd) {
+        if this.OwnedWindows.Has(hwnd)
+            this.OwnedWindows.Delete(hwnd)
     }
 
     ; -----------------------------------------------------------------------
@@ -695,10 +734,12 @@ class PinIndicator {
                 }
 
                 ; A newly visible replacement HWND can be discovered from its
-                ; show/restore/foreground event, but only after passing the
+                ; show/restore/foreground event, but only for a window this
+                ; session pinned with CapsLock + T, and only after passing the
                 ; strict candidate and topmost filters.
                 if (
                     (eventState.minimizeEnd || eventState.shown || eventState.foreground)
+                    && this.OwnedWindows.Has(hwnd)
                     && this.IsTrackable(hwnd)
                 ) {
                     this.Track(hwnd)
@@ -770,9 +811,10 @@ class PinIndicator {
             (state.targetPid && currentPid && state.targetPid != currentPid)
             || (state.targetClass != "" && currentClass != "" && state.targetClass != currentClass)
         if identityChanged {
+            ; Untrack() also releases the shortcut ownership: the HWND now
+            ; belongs to a different window, so its pin is no longer ours to
+            ; badge. A later CapsLock + T press claims it again.
             this.Untrack(hwnd)
-            if this.IsTrackable(hwnd)
-                this.Track(hwnd)
             return
         }
 

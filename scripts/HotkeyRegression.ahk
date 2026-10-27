@@ -479,6 +479,26 @@ CheckPinIndicatorRegressions(root) {
             && InStr(pinText, "+Owner") == 0,
         "pin badge follows rapid movement and cannot be hidden with its owner during restore"
     )
+
+    ; The badge is shortcut feedback, not a mirror of WS_EX_TOPMOST. Only the
+    ; CapsLock + T entry point may claim a window, and no discovery path may
+    ; adopt a window that is topmost for some other reason.
+    Check(
+        InStr(pinText, "static OwnedWindows         := Map()") > 0
+            && InStr(pinText, "if !this.OwnedWindows.Has(hwnd)") > 0
+            && InStr(pinText, "&& this.OwnedWindows.Has(hwnd)") > 0
+            && InStr(pinText, "ScanTopmostWindows") == 0,
+        "pin badge is limited to windows pinned with CapsLock + T"
+    )
+
+    ; Disabling the indicator must keep the owned set so re-enabling it
+    ; restores only shortcut-pinned windows, and theme rebuilds must do the same.
+    Check(
+        InStr(pinText, "static Clear(keepOwnership := false)") > 0
+            && InStr(pinText, "this.Clear(true)") > 0
+            && InStr(pinText, "this.ReconcileOwnedWindows()") > 0,
+        "owned windows survive a disable or theme rebuild and are re-tracked from the owned set"
+    )
 }
 
 CheckShiftLayerToastRegressions(root) {
