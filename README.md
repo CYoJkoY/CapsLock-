@@ -257,12 +257,15 @@ reports that it is unavailable instead of starting.
 
 CapsLock also acts as a compact window-control layer:
 
-- `T` toggles always-on-top and reports the state through OSD and sound feedback. A pinned window also keeps a
-  small click-through pin badge on its title bar, so the pinned and unpinned states stay distinguishable after the
-  toast disappears. The badge follows the window when it moves, resizes, is minimized, or is dragged to another
-  monitor, is scaled to the window's DPI, and disappears on its own if anything else clears the top-most style.
-  Pinned windows are also listed under Always-on-top in the tray menu, where a click unpins one; the badge itself
-  can be turned off from the same sub-menu.
+- `T` toggles always-on-top and reports the state through OSD and sound feedback. A window pinned this way also
+  keeps a small click-through pin badge on its title bar, so the pinned and unpinned states stay distinguishable
+  after the toast disappears. Only windows pinned with `CapsLock + T` are badged and listed: a window that another
+  program or the system made topmost stays unmarked, and pressing `T` on it unpins it first, exactly as before.
+  The badge follows the window when it moves, resizes, is minimized, or is dragged to another monitor, is scaled
+  to the window's DPI, and disappears on its own if anything else clears the top-most style. Badges are rebuilt
+  when CapsLock- reloads only for windows pinned again with `T`, because ownership is tracked per session. Pinned
+  windows are also listed under Always-on-top in the tray menu, where a click unpins one; the badge itself can be
+  turned off from the same sub-menu.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
 - `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
