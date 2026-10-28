@@ -548,6 +548,16 @@ CheckThemeTokenArchitecture(root) {
             && InStr(helperText, "ThemeHelper.RgbToColorRef(Theme.Text)") > 0,
         "dark ListView headers opt into custom draw with the palette text colour"
     )
+    Check(
+        InStr(helperText, "if headerHwnd && this.IsDark()") > 0
+            && InStr(helperText, "this._InstallHeaderTextColor(ctrl, headerHwnd)") > 0
+            && InStr(
+                helperText,
+                "CallbackCreate(_ThemeHelper_DrawListViewHeader, " . Chr(34) . "Fast" . Chr(34)
+                    . ", 6)"
+            ) > 0,
+        "header colouring is installed only for dark lists with a header control"
+    )
 }
 
 CheckQuickPhraseRegressions(root) {
@@ -575,6 +585,27 @@ CheckQuickPhraseRegressions(root) {
                 "if QuickPhraseCompareDefault(entries[root], entries[child]) >= 0"
             ) > 0,
         "quick phrase views group empty queries by category and keep search tie-breaking"
+    )
+    Check(
+        InStr(phraseText, "QuickPhraseSortRankedPhrases(ranked)") > 0
+            && InStr(
+                phraseText,
+                "&& QuickPhraseCompareRanked(entries[child], entries[child + 1]) < 0"
+            ) > 0
+            && InStr(
+                phraseText,
+                "if QuickPhraseCompareRanked(entries[root], entries[child]) >= 0"
+            ) > 0
+            && InStr(phraseText, "return QuickPhraseComparePhrases(left.phrase, right.phrase)") > 0,
+        "ranked search sorts through both comparator calls and ties by phrase order"
+    )
+    sortRankedPosition := InStr(phraseText, "QuickPhraseSortRankedPhrases(ranked)")
+    rebuildPosition := sortRankedPosition
+        ? InStr(phraseText, "for item in ranked", true, sortRankedPosition + 1)
+        : 0
+    Check(
+        rebuildPosition > sortRankedPosition,
+        "non-empty searches sort ranked matches before rebuilding the result list"
     )
     Check(
         InStr(rootText, "QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)") > 0
