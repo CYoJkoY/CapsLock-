@@ -178,7 +178,11 @@ q:: Send("^{PgUp}")
 e:: Send("^{PgDn}")
 #HotIf
 
-#HotIf CapsLockShortcutGroupAvailable("window") && !WindowHole.IsActive()
+; The opacity controls stay available while Window Hole is active: the hole
+; only removes a region of the window, so changing the layered alpha still
+; applies to the remaining surface. Keeping them enabled preserves the
+; previous behaviour of CapsLock + left/right drag and the middle-click toggle.
+#HotIf CapsLockShortcutGroupAvailable("window")
 LButton:: {
     AdjustOpacity(20)
     if KeyWait("LButton", "T0.3")

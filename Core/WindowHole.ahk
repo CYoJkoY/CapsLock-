@@ -1681,9 +1681,8 @@ class WindowHole {
             geometryLastRefreshTick: 0,
             originalNCRenderingPolicy: 0,
             hadOriginalNCRenderingPolicy: false,
+            ncRenderingPolicyChanged: false,
             visualPrepared: false,
-            originalOpacity: 255,
-            hadOriginalOpacity: false,
             originalCornerPreference: 0,
             hadOriginalCornerPreference: false,
             originalSystemBackdropType: 0,
@@ -1787,32 +1786,25 @@ class WindowHole {
         ; a custom window region is used. Keep the visual state changes scoped
         ; to the Window Hole session and restore every captured attribute on exit.
 
-        ; A window may already be partially transparent because of the
-        ; CapsLock opacity controls. Window Hole needs an opaque source
-        ; surface so the excluded region is the only visual gap.
-        try {
-            opacity := WinGetTransparent("ahk_id " hwnd)
-            if IsNumber(opacity) {
-                state.hadOriginalOpacity := true
-                state.originalOpacity := Integer(opacity)
-
-                if state.originalOpacity < 255
-                    WinSetTransparent(255, "ahk_id " hwnd)
-            }
-        } catch {
-        }
-
         ; A custom external region must not coexist with DWM-rendered
         ; non-client/backdrop pixels. Apply these policies once at session
         ; start, but never force SWP_FRAMECHANGED on Chromium while the hole
         ; is moving.
-        if state.hadOriginalNCRenderingPolicy {
-            this._DwmSetIntAttribute(
-                hwnd,
-                this.DWM_NCRENDERING_POLICY,
-                this.DWMNCRP_DISABLED
-            )
-        }
+        ;
+        ; Electron and Chromium windows built on a no-redirection-bitmap
+        ; surface reject DwmGetWindowAttribute for this policy even though
+        ; DwmSetWindowAttribute accepts it. Without DWMNCRP_DISABLED such a
+        ; window keeps painting its opaque backdrop into the region cut out by
+        ; the hole, which shows up as a black patch. Apply the policy
+        ; unconditionally and only record the previous value when it is
+        ; readable, so the restore path can return a readable value or fall
+        ; back to the window-style default.
+        if this._DwmSetIntAttribute(
+            hwnd,
+            this.DWM_NCRENDERING_POLICY,
+            this.DWMNCRP_DISABLED
+        )
+            state.ncRenderingPolicyChanged := true
 
         if this._DwmGetIntAttribute(hwnd, this.DWM_SYSTEMBACKDROP_TYPE, &backdropType) {
             state.hadOriginalSystemBackdropType := true
@@ -1844,12 +1836,17 @@ class WindowHole {
             return
 
         if WinExist("ahk_id " hwnd) {
-            ; Restore the exact DWM state captured at session start.
-            if state.hadOriginalNCRenderingPolicy
+            ; Restore the exact DWM state captured at session start. When the
+            ; policy was not readable, restore DWMNCRP_USEWINDOWSTYLE so the
+            ; window follows its own style again instead of keeping the
+            ; disabled policy for the rest of the session.
+            if state.ncRenderingPolicyChanged
                 this._DwmSetIntAttribute(
                     hwnd,
                     this.DWM_NCRENDERING_POLICY,
-                    state.originalNCRenderingPolicy
+                    state.hadOriginalNCRenderingPolicy
+                        ? state.originalNCRenderingPolicy
+                        : 0
                 )
 
             if state.hadOriginalSystemBackdropType
@@ -1865,9 +1862,6 @@ class WindowHole {
                     this.DWM_WINDOW_CORNER_PREFERENCE,
                     state.originalCornerPreference
                 )
-
-            if state.hadOriginalOpacity
-                try WinSetTransparent(state.originalOpacity, "ahk_id " hwnd)
 
             frameChanged := !state.isChromium
             this._RefreshWindow(hwnd, frameChanged, state.isChromium)
