@@ -79,7 +79,11 @@ class ImageTools {
             suffix := "_" operation
         outputPath := this._UniqueOutputPath(outputDirectory, nameWithoutExtension suffix, outputFormat)
 
-        arguments := this._QuoteArgument(exe) " " this._QuoteArgument(path) " -strip -quality " quality " " this._QuoteArgument(outputPath)
+        arguments := this._QuoteArgument(exe) " " this._QuoteArgument(path)
+        if (outputFormat == "jpg" || outputFormat == "jpeg") {
+            arguments .= " -background white -alpha remove"
+        }
+        arguments .= " -strip -quality " quality " " this._QuoteArgument(outputPath)
         this._Run(arguments, outputPath, path, result)
     }
 
@@ -90,7 +94,11 @@ class ImageTools {
         for path in paths {
             arguments .= " " this._QuoteArgument(path)
         }
-        arguments .= " -append -strip -quality " quality " " this._QuoteArgument(outputPath)
+        arguments .= " -append"
+        if (outputFormat == "jpg" || outputFormat == "jpeg") {
+            arguments .= " -background white -alpha remove"
+        }
+        arguments .= " -strip -quality " quality " " this._QuoteArgument(outputPath)
         this._Run(arguments, outputPath, "merge", result)
     }
 
