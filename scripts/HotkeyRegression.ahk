@@ -564,9 +564,16 @@ CheckQuickPhraseRegressions(root) {
     Check(
         InStr(phraseText, "phrasesForView := allPhrases") > 0
             && InStr(phraseText, "QuickPhraseFilterAndSort(phrasesForView") > 0
-            && InStr(phraseText, "QuickPhraseSortByCategory(phrases)") > 0
-            && InStr(phraseText, "QuickPhraseSortByCategory(allPhrases)") > 0
-            && InStr(phraseText, "QuickPhraseCompareDefault(left, right)") > 0,
+            && InStr(phraseText, "return QuickPhraseSortByCategory(phrases)") > 0
+            && InStr(phraseText, "return QuickPhraseSortByCategory(allPhrases)") > 0
+            && InStr(
+                phraseText,
+                "&& QuickPhraseCompareDefault(entries[child], entries[child + 1]) < 0"
+            ) > 0
+            && InStr(
+                phraseText,
+                "if QuickPhraseCompareDefault(entries[root], entries[child]) >= 0"
+            ) > 0,
         "quick phrase views group empty queries by category and keep search tie-breaking"
     )
     Check(
