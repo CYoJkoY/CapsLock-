@@ -11,7 +11,8 @@
 ; The script exits with 0 when every check passes and with 1 when at least one
 ; fails, so it works as a CI gate. It never opens a window, never registers a
 ; hotkey and never loads CapsLock-.ahk: every check reads and cross-references
-; the sources, which keeps the run fast and side-effect free on a build agent.
+; the sources, apart from the quick phrase ranking probe, which calls the
+; module's ordering helpers with fixed data.
 ;
 ; Checks
 ;   1. every #Include target resolves to an existing file
@@ -36,6 +37,11 @@ global gFailures := []
 ; scanned: the repository root can also hold test scripts and the AutoHotkey
 ; runtime unpacked by CI, which are not application modules.
 global gSourceFolders := ["Config", "Core", "Hotkeys", "History", "Tray", "UI", "Utils"]
+
+; The ordering module is intentionally free of GUI and Store dependencies, so
+; the ranking probe below can include it directly and execute the same helpers
+; the application uses.
+#Include "..\UI\QuickPhraseOrder.ahk"
 
 ; ---------------------------------------------------------------------------
 ; Framework
@@ -139,6 +145,14 @@ JoinList(items) {
     for index, item in items
         text .= (index > 1 ? ", " : "") . item
     return text
+}
+
+; Renders the ids of a quick phrase result list for a check diagnostic.
+DescribeQuickPhraseIds(phrases) {
+    ids := ""
+    for phrase in phrases
+        ids .= (ids == "" ? "" : ",") . phrase.id
+    return "[" . ids . "]"
 }
 
 ; ---------------------------------------------------------------------------
@@ -562,6 +576,7 @@ CheckThemeTokenArchitecture(root) {
 
 CheckQuickPhraseRegressions(root) {
     phraseText := ReadText(root "\UI\QuickPhraseGui.ahk")
+    orderText := ReadText(root "\UI\QuickPhraseOrder.ahk")
     menuText := ReadText(root "\History\CustomMenu.ahk")
     rootText := ReadText(root "\CapsLock-.ahk")
 
@@ -574,38 +589,84 @@ CheckQuickPhraseRegressions(root) {
     Check(
         InStr(phraseText, "phrasesForView := allPhrases") > 0
             && InStr(phraseText, "QuickPhraseFilterAndSort(phrasesForView") > 0
-            && InStr(phraseText, "return QuickPhraseSortByCategory(phrases)") > 0
-            && InStr(phraseText, "return QuickPhraseSortByCategory(allPhrases)") > 0
+            && InStr(orderText, "return QuickPhraseSortByCategory(phrases)") > 0
+            && InStr(orderText, "return QuickPhraseSortByCategory(allPhrases)") > 0
             && InStr(
-                phraseText,
+                orderText,
                 "&& QuickPhraseCompareDefault(entries[child], entries[child + 1]) < 0"
             ) > 0
             && InStr(
-                phraseText,
+                orderText,
                 "if QuickPhraseCompareDefault(entries[root], entries[child]) >= 0"
             ) > 0,
         "quick phrase views group empty queries by category and keep search tie-breaking"
     )
     Check(
-        InStr(phraseText, "QuickPhraseSortRankedPhrases(ranked)") > 0
+        InStr(orderText, "QuickPhraseSortRankedPhrases(ranked)") > 0
             && InStr(
-                phraseText,
+                orderText,
                 "&& QuickPhraseCompareRanked(entries[child], entries[child + 1]) < 0"
             ) > 0
             && InStr(
-                phraseText,
+                orderText,
                 "if QuickPhraseCompareRanked(entries[root], entries[child]) >= 0"
             ) > 0
-            && InStr(phraseText, "return QuickPhraseComparePhrases(left.phrase, right.phrase)") > 0,
+            && InStr(orderText, "return QuickPhraseComparePhrases(left.phrase, right.phrase)") > 0,
         "ranked search sorts through both comparator calls and ties by phrase order"
     )
-    sortRankedPosition := InStr(phraseText, "QuickPhraseSortRankedPhrases(ranked)")
-    rebuildPosition := sortRankedPosition
-        ? InStr(phraseText, "for item in ranked", true, sortRankedPosition + 1)
-        : 0
+    ; The ordering module is included at the top of this script, so these checks
+    ; run the same code the application uses. The fixed phrases have unequal
+    ; scores and the input lists the lower-scoring content match first, so a
+    ; missing sort cannot pass.
+    mixed := [
+        { id: 11, name: "Send template", category: "", content: "alpha notes", order: 1 },
+        { id: 12, name: "Alpha checklist", category: "", content: "steps", order: 2 },
+        { id: 13, name: "Release note", category: "alpha", content: "misc", order: 3 }
+    ]
+    rankedResult := QuickPhraseFilterAndSort(mixed, "alpha", true)
     Check(
-        rebuildPosition > sortRankedPosition,
-        "non-empty searches sort ranked matches before rebuilding the result list"
+        rankedResult.Length == 3
+            && rankedResult[1].id == 12
+            && rankedResult[2].id == 13
+            && rankedResult[3].id == 11,
+        "ranked search puts the higher-scoring phrase first",
+        DescribeQuickPhraseIds(rankedResult)
+    )
+    ties := [
+        { id: 21, name: "Second entry", category: "", content: "beta", order: 2 },
+        { id: 22, name: "First entry", category: "", content: "beta", order: 1 }
+    ]
+    tiedResult := QuickPhraseFilterAndSort(ties, "beta", true)
+    Check(
+        tiedResult.Length == 2 && tiedResult[1].id == 22 && tiedResult[2].id == 21,
+        "equal ranked scores keep the stored phrase order",
+        DescribeQuickPhraseIds(tiedResult)
+    )
+    unordered := [
+        { id: 31, name: "Beta one", category: "beta", content: "", order: 2 },
+        { id: 32, name: "Alpha two", category: "Alpha", content: "", order: 1 },
+        { id: 33, name: "Raw note", category: "", content: "", order: 3 },
+        { id: 34, name: "Alpha one", category: "alpha", content: "", order: 2 }
+    ]
+    categoryResult := QuickPhraseFilterAndSort(unordered, "")
+    Check(
+        categoryResult.Length == 4
+            && categoryResult[1].id == 32
+            && categoryResult[2].id == 34
+            && categoryResult[3].id == 31
+            && categoryResult[4].id == 33,
+        "empty query groups categories in order and keeps stored order within a group",
+        DescribeQuickPhraseIds(categoryResult)
+    )
+    Check(
+        unordered[1].id == 31 && unordered[2].id == 32 && unordered[4].id == 34,
+        "sorting does not reorder the caller's phrase array"
+    )
+    Check(
+        QuickPhraseGroupMatches({ category: "Work" }, " work ") == true
+            && QuickPhraseGroupMatches({ category: "Work" }, "personal") == false
+            && QuickPhraseGroupMatches({ category: "" }, "") == true,
+        "group filter matches categories case-insensitively and empty selects all"
     )
     Check(
         InStr(rootText, "QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)") > 0
@@ -644,8 +705,13 @@ CheckEveryFileIncluded(root, files) {
     referenced := Map()
 
     for path in files {
-        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+`"([^`"]+)`"[ \t]*$")
-            referenced[StrLower(StrReplace(match.groups[1], "/", "\"))] := true
+        SplitPath(path, , &directory)
+        for match in AllMatches(ReadText(path), "m)^[ \t]*#Include[ \t]+`"([^`"]+)`"[ \t]*$") {
+            ; Resolve against the including file, then normalise to a path
+            ; relative to the repository root so nested folders compare evenly.
+            absolute := directory . "\" . StrReplace(match.groups[1], "/", "\")
+            referenced[StrLower(StrReplace(absolute, root . "\", ""))] := true
+        }
     }
 
     orphan := []
