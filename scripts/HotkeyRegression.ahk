@@ -578,6 +578,19 @@ CheckQuickPhraseRegressions(root) {
     )
 }
 
+CheckImageToolsHotkeys(root) {
+    bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
+    reference := ReadText(root "\Hotkeys\HotkeyReference.ahk")
+    Check(
+        InStr(bindings, "i:: ImageToolsGui.Toggle()") > 0
+            && InStr(bindings, "i:: SettingsGui.Toggle()") == 0
+            && InStr(bindings, ",:: SettingsGui.Toggle()") > 0
+            && InStr(reference, "keys: " . Chr(34) . "CapsLock + I" . Chr(34)) > 0
+            && InStr(reference, "keys: " . Chr(34) . "CapsLock + ," . Chr(34)) > 0,
+        "CapsLock+I opens image tools and CapsLock+Comma opens settings"
+    )
+}
+
 ; ---------------------------------------------------------------------------
 ; 7: every source file is reachable
 ; ---------------------------------------------------------------------------
@@ -638,6 +651,7 @@ Main() {
     CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
     CheckQuickPhraseRegressions(root)
+    CheckImageToolsHotkeys(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")

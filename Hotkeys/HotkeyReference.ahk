@@ -229,9 +229,16 @@ class HotkeyReference {
             },
             {
                 cat: "CHEAT_CAT_HELP",
-                keys: "CapsLock + I / ,",
+                keys: "CapsLock + ,",
                 desc: "CHEAT_ACT_SETTINGS",
                 action: ((*) => SettingsGui.Show())
+            },
+            {
+                cat: "CHEAT_CAT_FILES",
+                keys: "CapsLock + I",
+                desc: "CHEAT_ACT_IMAGE_TOOLS",
+                descDefault: "Open ImageMagick image tools",
+                action: ((*) => ImageToolsGui.Toggle())
             }
         ]
     }

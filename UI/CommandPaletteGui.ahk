@@ -97,10 +97,20 @@ class CommandPaletteGui {
             label: Lang("MENU_SETTINGS"),
             category: Lang("SET_NAV_GENERAL"),
             description: Lang("GUI_SETTINGS_TITLE"),
-            shortcut: "CapsLock + I / ,",
+            shortcut: "CapsLock + ,",
             keywords: "settings preferences configuration controls",
             restoreTarget: false,
             action: (*) => ShowSettingsGui()
+        })
+        commands.Push({
+            id: "image-tools",
+            label: Lang("GUI_IMAGE_TOOLS_TITLE", "ImageMagick Image Tools"),
+            category: Lang("CHEAT_CAT_FILES"),
+            description: Lang("GUI_IMAGE_TOOLS_SUBTITLE", "Compress, merge vertically, or convert images. Source files are kept unchanged."),
+            shortcut: "CapsLock + I",
+            keywords: "image imagemagick compress combine merge convert format",
+            restoreTarget: false,
+            action: (*) => ImageToolsGui.Toggle()
         })
         commands.Push({
             id: "quick-phrase-manager",
