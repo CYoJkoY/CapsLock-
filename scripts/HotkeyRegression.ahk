@@ -542,6 +542,12 @@ CheckThemeTokenArchitecture(root) {
             && InStr(helperText, "data.parentBgRef := this.RgbToColorRef(data.parentBg)") > 0,
         "theme refresh rebuilds live button draw metadata before redraws"
     )
+    Check(
+        InStr(helperText, "_InstallHeaderTextColor(ctrl, headerHwnd)") > 0
+            && InStr(helperText, "_ThemeHelper_DrawListViewHeader") > 0
+            && InStr(helperText, "ThemeHelper.RgbToColorRef(Theme.Text)") > 0,
+        "dark ListView headers opt into custom draw with the palette text colour"
+    )
 }
 
 CheckQuickPhraseRegressions(root) {
