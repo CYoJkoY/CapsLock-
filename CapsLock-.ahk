@@ -84,6 +84,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\WindowSwitcherGui.ahk"
 #Include "UI\CloudSyncGui.ahk"
 #Include "UI\CloudSyncConflictGui.ahk"
+#Include "UI\QuickPhraseOrder.ahk"
 #Include "UI\QuickPhraseGui.ahk"
 #Include "UI\ApplicationProfilesGui.ahk"
 #Include "UI\SettingsGui.ahk"

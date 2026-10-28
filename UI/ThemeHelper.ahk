@@ -17,6 +17,7 @@ class ThemeHelper {
     static _hooked          := false
     static _dimControls     := Map()
     static _surfaceControls := Map()
+    static _headerSubclasses := Map()
 
     ; True while the dark palette is active. Shared helpers use this instead of
     ; hard-coding dark-only behaviour so both themes stay consistent.
@@ -184,11 +185,52 @@ class ThemeHelper {
     }
 
     static StyleListView(ctrl) {
+        if !IsObject(ctrl)
+            return
+
         this.StyleScrollbar(ctrl)
         headerHwnd := SendMessage(0x101F, 0, 0, ctrl.Hwnd)
         if headerHwnd
             this._SetWindowTheme(headerHwnd, this.ThemeClass("itemsview"))
+        if headerHwnd && this.IsDark()
+            this._InstallHeaderTextColor(ctrl, headerHwnd)
         ctrl.Redraw()
+    }
+
+    ; The header control has no text-colour message. Intercept its custom-draw
+    ; notifications on the owning ListView instead and paint the label with the
+    ; palette text colour. The system header is left untouched in light mode.
+    static _InstallHeaderTextColor(ctrl, headerHwnd) {
+        hwnd := ctrl.Hwnd
+        if this._headerSubclasses.Has(hwnd) {
+            this._headerSubclasses[hwnd].header := headerHwnd
+            return
+        }
+
+        callback := 0
+        try {
+            callback := CallbackCreate(_ThemeHelper_DrawListViewHeader, "Fast", 6)
+            installed := DllCall(
+                "comctl32\SetWindowSubclass",
+                "ptr", hwnd,
+                "ptr", callback,
+                "uptr", 1,
+                "uptr", 0,
+                "int"
+            )
+        } catch {
+            if callback
+                try CallbackFree(callback)
+            return
+        }
+
+        if !installed {
+            try CallbackFree(callback)
+            return
+        }
+
+        ; Keep the callback reference alive for as long as the control exists.
+        this._headerSubclasses[hwnd] := {callback: callback, header: headerHwnd}
     }
 
     static StyleScrollbar(ctrl) {
@@ -598,6 +640,65 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldFont, "ptr")
 
     return 1
+}
+
+; ListView forwards its header's NM_CUSTOMDRAW notification through WM_NOTIFY.
+; Returning CDRF_NOTIFYITEMDRAW here opts into the per-column draw stage, where
+; the header text colour can be set before the system draws the label.
+_ThemeHelper_DrawListViewHeader(hwnd, msg, wParam, lParam, id, data) {
+    if (msg == 0x0082 && ThemeHelper._headerSubclasses.Has(hwnd)) {
+        callback := ThemeHelper._headerSubclasses[hwnd].callback
+        ThemeHelper._headerSubclasses.Delete(hwnd)
+        try DllCall(
+            "comctl32\RemoveWindowSubclass",
+            "ptr", hwnd,
+            "ptr", callback,
+            "uptr", id
+        )
+        ; CallbackFree must not run while its callback is still on the stack.
+        SetTimer(() => _ThemeHelper_ReleaseHeaderCallback(callback), -1)
+    }
+
+    if (
+        msg == 0x004E
+        && ThemeHelper.IsDark()
+        && ThemeHelper._headerSubclasses.Has(hwnd)
+    ) {
+        state := ThemeHelper._headerSubclasses[hwnd]
+        if (
+            NumGet(lParam + 0, "Ptr") == state.header
+            && NumGet(lParam + A_PtrSize * 2, "Int") == -12
+        ) {
+            stage := NumGet(lParam + A_PtrSize * 3, "UInt")
+            if stage == 1
+                return 0x20
+
+            if stage == 0x10001 {
+                hdcOffset := A_PtrSize * 3 + (A_PtrSize == 8 ? 8 : 4)
+                hdc := NumGet(lParam + hdcOffset, "Ptr")
+                DllCall(
+                    "gdi32\SetTextColor",
+                    "ptr", hdc,
+                    "uint", ThemeHelper.RgbToColorRef(Theme.Text)
+                )
+                DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)
+                return 0x2
+            }
+        }
+    }
+
+    return DllCall(
+        "comctl32\DefSubclassProc",
+        "ptr", hwnd,
+        "uint", msg,
+        "uptr", wParam,
+        "ptr", lParam,
+        "ptr"
+    )
+}
+
+_ThemeHelper_ReleaseHeaderCallback(callback) {
+    try CallbackFree(callback)
 }
 
 _ThemeHelper_CtlColorStatic(wParam, lParam, msg, hwnd) {
