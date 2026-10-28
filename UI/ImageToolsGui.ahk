@@ -44,7 +44,8 @@ class ImageToolsGui {
         myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
         myGui.Add("Text", "xm y+12 w590", Lang("GUI_IMAGE_TOOLS_INPUT", "Input images"))
         myGui.SetFont("s9 c" Theme.Text, Theme.Font)
-        list := myGui.Add("ListView", "xm y+6 w590 h150 " ThemeHelper.GetLVOptions(), [Lang("GUI_IMAGE_TOOLS_SOURCE_FILE", "Source file")])
+        ; Source paths form a single-column list, so a header and grid are unnecessary.
+        list := myGui.Add("ListView", "xm y+6 w590 h150 " ThemeHelper.GetLVOptionsPlain("-Hdr"), [Lang("GUI_IMAGE_TOOLS_SOURCE_FILE", "Source file")])
         list.ModifyCol(1, 574)
         ThemeHelper.StyleListView(list)
 
@@ -99,7 +100,7 @@ class ImageToolsGui {
         this.Paths := []
         this.Instance := myGui
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
-        myGui.Show("w622 h530")
+        myGui.Show("AutoSize Center")
     }
 
     static Close() {
