@@ -292,7 +292,7 @@ The integration supports a broad list of Pandoc input/output formats, expands fo
 
 ImageMagick is used for image-to-PDF workflows when required by smart paste.
 
-Press `CapsLock + I` to open the image tools panel. Select one or more images to compress or convert, or at least two images to merge vertically, then choose an output folder. The panel writes new files with unique names and leaves the originals unchanged. Configure `magick.exe` in Settings → Tools before using these operations.
+Press `CapsLock + I` to open the image tools panel. Select one or more images to compress or convert, or at least two images to merge vertically, then choose an output folder. The panel writes new files with unique names and leaves the originals unchanged. Configure `magick.exe` in Settings > Tools before using these operations.
 
 ImageMagick is optional; the core application remains usable without it.
 
