@@ -181,7 +181,8 @@ QuickPhraseGetSelectedId(list) {
 QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
     filter := Trim(query)
 
-    ; The manager retains its original literal-substring search and sort.
+    ; The manager retains its literal-substring search. With no query, both
+    ; views use the same category-first presentation order.
     if !rankByRelevance {
         phrases := []
         for phrase in allPhrases {
@@ -189,8 +190,8 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 continue
             phrases.Push(phrase)
         }
-        ; QuickPhraseStore keeps phrases in persisted order. Filtering
-        ; preserves that order, so do not sort the same data again.
+        if filter == ""
+            return QuickPhraseSortByCategory(phrases)
         return phrases
     }
 
@@ -204,10 +205,10 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
                 terms.Push(term)
     }
 
-    ; Keep the stored order for an empty query. Search terms use the
-    ; relevance ranking below, with stored order as the tie-breaker.
+    ; Group an empty query by category. Search terms use the relevance
+    ; ranking below, with stored order as the tie-breaker.
     if !terms.Length {
-        return allPhrases
+        return QuickPhraseSortByCategory(allPhrases)
     }
 
     ; Rank a derived list; never mutate the store's backing array.
@@ -225,6 +226,71 @@ QuickPhraseFilterAndSort(allPhrases, query, rankByRelevance := false) {
     for item in ranked
         phrases.Push(item.phrase)
     return phrases
+}
+
+; Sorts a derived copy so the Store's backing array is never reordered.
+QuickPhraseSortByCategory(phrases) {
+    sorted := []
+    for phrase in phrases
+        sorted.Push(phrase)
+
+    count := sorted.Length
+    if count < 2
+        return sorted
+
+    root := count // 2
+    while root > 0 {
+        QuickPhraseCategorySiftDown(sorted, root, count)
+        root -= 1
+    }
+
+    heapEnd := count
+    while heapEnd > 1 {
+        temp := sorted[1]
+        sorted[1] := sorted[heapEnd]
+        sorted[heapEnd] := temp
+        heapEnd -= 1
+        QuickPhraseCategorySiftDown(sorted, 1, heapEnd)
+    }
+
+    return sorted
+}
+
+QuickPhraseCategorySiftDown(entries, root, heapEnd) {
+    while root * 2 <= heapEnd {
+        child := root * 2
+        if (
+            child < heapEnd
+            && QuickPhraseCompareDefault(entries[child], entries[child + 1]) < 0
+        ) {
+            child += 1
+        }
+
+        if QuickPhraseCompareDefault(entries[root], entries[child]) >= 0
+            return
+
+        temp := entries[root]
+        entries[root] := entries[child]
+        entries[child] := temp
+        root := child
+    }
+}
+
+; Category names sort case-insensitively; uncategorized phrases follow every
+; named group. Within a group the manager's persisted order stays primary.
+QuickPhraseCompareDefault(left, right) {
+    leftCategory := Trim(left.category)
+    rightCategory := Trim(right.category)
+    leftUncategorized := leftCategory == ""
+    rightUncategorized := rightCategory == ""
+    if leftUncategorized != rightUncategorized
+        return leftUncategorized ? 1 : -1
+
+    categoryCompare := StrCompare(leftCategory, rightCategory, false)
+    if categoryCompare != 0
+        return categoryCompare
+
+    return QuickPhraseComparePhrases(left, right)
 }
 
 QuickPhraseCategoryOptions() {

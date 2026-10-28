@@ -558,9 +558,10 @@ CheckQuickPhraseRegressions(root) {
     Check(
         InStr(phraseText, "phrasesForView := allPhrases") > 0
             && InStr(phraseText, "QuickPhraseFilterAndSort(phrasesForView") > 0
-            && InStr(phraseText, "return allPhrases") > 0
-            && InStr(phraseText, "QuickPhraseComparePhrases(left, right)") > 0,
-        "quick phrase views preserve Store order and use it as the search tie-breaker"
+            && InStr(phraseText, "QuickPhraseSortByCategory(phrases)") > 0
+            && InStr(phraseText, "QuickPhraseSortByCategory(allPhrases)") > 0
+            && InStr(phraseText, "QuickPhraseCompareDefault(left, right)") > 0,
+        "quick phrase views group empty queries by category and keep search tie-breaking"
     )
     Check(
         InStr(rootText, "QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)") > 0
