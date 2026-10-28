@@ -495,12 +495,20 @@ class WindowHole {
                 return true
 
             try {
+                restoreExStyle := originalExStyle
+
+                if !originalWasLayered {
+                    currentAlpha := WinGetTransparent(hwnd)
+                    if currentAlpha != "" && currentAlpha != 255
+                        restoreExStyle |= 0x00080000 ; WS_EX_LAYERED
+                }
+
                 DllCall(
                     "SetWindowLongPtrW",
                     "Ptr", hwnd,
                     "Int", -20 ; GWL_EXSTYLE
                     ,
-                    "Ptr", originalExStyle,
+                    "Ptr", restoreExStyle,
                     "Ptr"
                 )
 
