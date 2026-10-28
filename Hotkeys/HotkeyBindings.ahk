@@ -234,7 +234,7 @@ r:: CommandPaletteGui.Show()
 h:: HotkeyReferenceGui.Toggle()
 F1:: HotkeyReferenceGui.Toggle()
 ,:: SettingsGui.Toggle()
-i:: SettingsGui.Toggle()
+i:: ImageToolsGui.Toggle()
 #HotIf
 
 #HotIf CapsLockShortcutGroupAvailable("visual")

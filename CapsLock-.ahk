@@ -51,6 +51,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\FileValidation.ahk"
 #Include "Core\FileOperations.ahk"
 #Include "Core\ImageToPdf.ahk"
+#Include "Core\ImageTools.ahk"
 #Include "Core\Cleanup.ahk"
 #Include "Core\WindowUtils.ahk"
 #Include "Core\WindowFullScreen.ahk"
@@ -86,6 +87,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\QuickPhraseGui.ahk"
 #Include "UI\ApplicationProfilesGui.ahk"
 #Include "UI\SettingsGui.ahk"
+#Include "UI\ImageToolsGui.ahk"
 #Include "UI\CommandPaletteGui.ahk"
 
 Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLocalChanged"))
