@@ -132,8 +132,10 @@ class ShiftLayerToast {
     static Timer := ""
     static StartedAt := 0
     static Duration := 0
+    static StaticMode := false
 
     static Show(duration := 2000, targetHwnd := 0) {
+        this.StaticMode := false
         this.Duration := Max(1, Integer(duration))
         this.StartedAt := A_TickCount
 
@@ -166,6 +168,38 @@ class ShiftLayerToast {
         return true
     }
 
+    ; Persistent variant used by modal layers. The indicator stays at full
+    ; width and deliberately never starts the countdown timer, so it reports
+    ; state instead of remaining time.
+    static ShowStatic(targetHwnd := 0) {
+        this.StaticMode := true
+        this.StartedAt := 0
+        this.Duration := 0
+
+        if IsObject(this.Timer) {
+            try SetTimer(this.Timer, 0)
+            this.Timer := ""
+        }
+
+        if !this._EnsureGui() {
+            this.Hide()
+            return false
+        }
+
+        this._GetPlacement(targetHwnd, &x, &y)
+        try {
+            this.Fill.Move(0, 0, this.Width, this.Height)
+            this.Gui.Show(
+                "x" x " y" y " w" this.Width " h" this.Height " NoActivate"
+            )
+        } catch {
+            this.Hide()
+            return false
+        }
+
+        return true
+    }
+
     static Hide() {
         if IsObject(this.Timer) {
             try SetTimer(this.Timer, 0)
@@ -179,6 +213,7 @@ class ShiftLayerToast {
         this.Fill := ""
         this.StartedAt := 0
         this.Duration := 0
+        this.StaticMode := false
     }
 
     static _EnsureGui() {
@@ -258,6 +293,9 @@ class ShiftLayerToast {
     }
 
     static _Tick(*) {
+        if this.StaticMode
+            return
+
         if !IsObject(this.Gui) || !IsObject(this.Fill) {
             this.Hide()
             return

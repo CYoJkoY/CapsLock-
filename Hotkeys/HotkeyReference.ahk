@@ -192,6 +192,44 @@ class HotkeyReference {
                 action: ""
             },
 
+            ; Mouse control mode
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "CapsLock ON, then Shift",
+                desc: "CHEAT_ACT_MOUSE_TOGGLE",
+                action: ((*) => MouseControl.Toggle())
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "W / A / S / D",
+                desc: "CHEAT_ACT_MOUSE_MOVE",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "J / K / L",
+                desc: "CHEAT_ACT_MOUSE_CLICK",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "I / M",
+                desc: "CHEAT_ACT_MOUSE_SCROLL",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "Alt + I / M",
+                desc: "CHEAT_ACT_MOUSE_SCROLL_FAST",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "Shift / Esc",
+                desc: "CHEAT_ACT_MOUSE_EXIT",
+                action: ""
+            },
+
             ; Visual effects
             {
                 cat: "CHEAT_CAT_VISUAL",

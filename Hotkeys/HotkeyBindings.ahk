@@ -14,12 +14,14 @@
 CapsLockHotkeysAvailable() {
     return GetKeyState("CapsLock", "P")
         && !AppState.QuickPhraseTransactionActive
+        && !MouseControl.Active
         && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
 }
 
 CapsLockShortcutGroupAvailable(groupId) {
     return GetKeyState("CapsLock", "P")
         && !AppState.QuickPhraseTransactionActive
+        && !MouseControl.Active
         && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow(groupId)
 }
 
@@ -147,16 +149,51 @@ End:: MoveFullHistorySelectionToBoundary(true)
 Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
-#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
+#HotIf GetKeyState("CapsLock", "P") && !MouseControl.Active && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
 j:: JumpToLine()
-#HotIf GetKeyState("CapsLock", "P") && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("window")
+#HotIf GetKeyState("CapsLock", "P") && !MouseControl.Active && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("window")
 k:: TerminateProcessByPid()
 #HotIf
 
 ; Shift arms the existing sequential modifier layer; the action hotkeys below
-; apply their own per-application group policy.
-#HotIf CapsLockHotkeysAvailable()
+; apply their own per-application group policy. The layer is unavailable while
+; the native CapsLock light is on because Shift then controls the mouse layer.
+#HotIf CapsLockHotkeysAvailable() && !MouseControl.EntryAvailable()
 ~Shift:: ActivateShiftLayer()
+#HotIf
+
+; Modal mouse control. The wildcard Shift binding catches both Shift keys and
+; every modifier combination; the movement and button keys restore their own
+; native behavior as soon as the mode exits.
+#HotIf MouseControl.EntryAvailable() || MouseControl.Active
+*Shift:: MouseControl.ToggleFromShift()
+#HotIf
+
+~*Shift up:: MouseControl.ShiftReleased()
+
+#HotIf MouseControl.Active
+*Esc:: MouseControl.Stop()
+
+*w:: MouseControl.UpdateMovementTimer()
+*w up:: MouseControl.UpdateMovementTimer()
+*a:: MouseControl.UpdateMovementTimer()
+*a up:: MouseControl.UpdateMovementTimer()
+*s:: MouseControl.UpdateMovementTimer()
+*s up:: MouseControl.UpdateMovementTimer()
+*d:: MouseControl.UpdateMovementTimer()
+*d up:: MouseControl.UpdateMovementTimer()
+
+*j:: MouseControl.PressButton("left")
+*j up:: MouseControl.ReleaseButton("left")
+*k:: MouseControl.PressButton("middle")
+*k up:: MouseControl.ReleaseButton("middle")
+*l:: MouseControl.PressButton("right")
+*l up:: MouseControl.ReleaseButton("right")
+
+*i:: MouseControl.StartScroll("up")
+*i up:: MouseControl.StopScroll("up")
+*m:: MouseControl.StartScroll("down")
+*m up:: MouseControl.StopScroll("down")
 #HotIf
 
 #HotIf CapsLockShortcutGroupAvailable("text")
