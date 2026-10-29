@@ -4,6 +4,8 @@ class ImageToolsGui {
     static Instance := 0
     static Paths := []
     static OperationValues := ["compress", "merge", "convert"]
+    static AutoOutputDirectory := true
+    static AutoFillInProgress := false
 
     static IsOpen() {
         if !IsObject(this.Instance) {
@@ -96,8 +98,11 @@ class ImageToolsGui {
         browseButton.OnEvent("Click", (*) => this.BrowseOutputDirectory())
         runButton.OnEvent("Click", (*) => this.RunOperation())
         closeButton.OnEvent("Click", (*) => this.Close())
+        outputDirectory.OnEvent("Change", (*) => this.OutputDirectoryChanged())
 
         this.Paths := []
+        this.AutoOutputDirectory := true
+        this.AutoFillInProgress := false
         this.Instance := myGui
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("AutoSize Center")
@@ -127,6 +132,7 @@ class ImageToolsGui {
             return
         }
 
+        added := false
         for path in selected {
             if !FileExist(path) || InStr(FileExist(path), "D") {
                 continue
@@ -136,6 +142,10 @@ class ImageToolsGui {
             }
             this.Paths.Push(path)
             this.Instance.ImageList.Add(, path)
+            added := true
+        }
+        if added {
+            this._RefreshAutoOutputDirectory()
         }
         this.Instance.Status.Text := Lang("GUI_IMAGE_TOOLS_SELECTED", "{1} image(s) selected. Existing source files will not be modified.", this.Paths.Length)
     }
@@ -164,6 +174,7 @@ class ImageToolsGui {
             list.Delete(row)
             this._RemovePath(selectedPath)
         }
+        this._RefreshAutoOutputDirectory()
         this.Instance.Status.Text := Lang("GUI_IMAGE_TOOLS_COUNT", "{1} image(s) selected.", this.Paths.Length)
     }
 
@@ -173,6 +184,7 @@ class ImageToolsGui {
         }
         this.Paths := []
         this.Instance.ImageList.Delete()
+        this._RefreshAutoOutputDirectory()
         this.Instance.Status.Text := Lang("GUI_IMAGE_TOOLS_LIST_CLEARED", "Image list cleared.")
     }
 
@@ -182,8 +194,15 @@ class ImageToolsGui {
         }
         selectedDirectory := DirSelect("", 1, Lang("GUI_IMAGE_TOOLS_OUTPUT_FOLDER_SELECT", "Select output folder"))
         if (selectedDirectory != "") {
-            this.Instance.OutputDirectory.Value := selectedDirectory
+            this.AutoOutputDirectory := false
+            this._SetOutputDirectory(selectedDirectory)
         }
+    }
+
+    static OutputDirectoryChanged() {
+        if this.AutoFillInProgress
+            return
+        this.AutoOutputDirectory := false
     }
 
     static RunOperation() {
@@ -243,6 +262,21 @@ class ImageToolsGui {
         if (selectedIndex < 1 || selectedIndex > this.OperationValues.Length)
             return ""
         return this.OperationValues[selectedIndex]
+    }
+
+    static _RefreshAutoOutputDirectory() {
+        if !this.AutoOutputDirectory
+            return
+        this._SetOutputDirectory(ImageTools.DefaultOutputDirectory(this.Paths))
+    }
+
+    static _SetOutputDirectory(value) {
+        this.AutoFillInProgress := true
+        try {
+            this.Instance.OutputDirectory.Value := value
+        } finally {
+            this.AutoFillInProgress := false
+        }
     }
 
     static _HasPath(candidate) {

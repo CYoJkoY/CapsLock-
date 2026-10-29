@@ -3,6 +3,26 @@
 class ImageTools {
     static SupportedFormats := ["jpg", "jpeg", "png", "webp", "gif", "tif", "tiff", "bmp"]
 
+    static DefaultOutputDirectory(paths) {
+        if !(paths is Array)
+            return ""
+
+        for path in paths {
+            if !(path is String)
+                continue
+
+            normalized := Trim(path)
+            if (normalized == "")
+                continue
+
+            SplitPath(normalized, , &directory)
+            if (directory != "")
+                return directory
+        }
+
+        return ""
+    }
+
     static Execute(paths, operation, outputFormat, quality, outputDirectory) {
         result := { succeeded: 0, failed: 0, outputs: [], errors: [] }
 
