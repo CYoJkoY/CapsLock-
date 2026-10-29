@@ -6,7 +6,7 @@ class GitHubGistProvider extends CloudSyncProvider {
     static FileName := "capslock-sync.json"
 
     Connect(config := "") {
-        token := CloudSyncCredentials.Get("gist", "token", "")
+        token := Trim(CloudSyncCredentials.Get("gist", "token", ""))
         if token == ""
             throw Error("GitHub Gist access token is not configured.")
 
@@ -27,22 +27,42 @@ class GitHubGistProvider extends CloudSyncProvider {
     ValidateConnection() {
         this.Connect()
 
-        if AppState.CloudSyncTarget == ""
-            return true
+        target := Trim(AppState.CloudSyncTarget)
+        if target == "" {
+            response := HttpClient.Request(
+                "GET",
+                this.ApiBase "/gists?per_page=1",
+                this._Headers(Trim(CloudSyncCredentials.Get("gist", "token", ""))),
+                "",
+                10000
+            )
 
-        response := this._GetGist(AppState.CloudSyncTarget)
-        return HttpClient.IsSuccess(response)
+            if !HttpClient.IsSuccess(response)
+                throw Error(this._ErrorMessage(response, "GitHub Gist permission validation failed."))
+
+            return true
+        }
+
+        response := this._GetGist(target)
+        if response.status == 404
+            throw Error("The configured GitHub Gist could not be found.")
+
+        if !HttpClient.IsSuccess(response)
+            throw Error(this._ErrorMessage(response, "GitHub Gist validation failed."))
+
+        return true
     }
 
     GetTarget() {
-        return AppState.CloudSyncTarget
+        return Trim(AppState.CloudSyncTarget)
     }
 
     Download() {
-        if AppState.CloudSyncTarget == ""
+        target := Trim(AppState.CloudSyncTarget)
+        if target == ""
             return { exists: false }
 
-        response := this._GetGist(AppState.CloudSyncTarget)
+        response := this._GetGist(target)
 
         if response.status == 404
             throw Error("The configured GitHub Gist could not be found.")
@@ -97,10 +117,11 @@ class GitHubGistProvider extends CloudSyncProvider {
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
-        token := CloudSyncCredentials.Get("gist", "token", "")
+        token := Trim(CloudSyncCredentials.Get("gist", "token", ""))
         if token == ""
             throw Error("GitHub Gist access token is not configured.")
 
+        target := Trim(AppState.CloudSyncTarget)
         body := Map()
         files := Map()
         myfile := Map()
@@ -108,7 +129,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         files[this.FileName] := myfile
         body["files"] := files
 
-        if AppState.CloudSyncTarget == "" {
+        if target == "" {
             body["description"] := "CapsLock- Cloud Sync"
             body["public"] := false
 
@@ -134,7 +155,7 @@ class GitHubGistProvider extends CloudSyncProvider {
             ; parameter. Revalidate the resource immediately before PATCH when the
             ; last observed HTTP ETag is available.
             if expectedRevision != "" {
-                current := this._GetGist(AppState.CloudSyncTarget)
+                current := this._GetGist(target)
                 if !HttpClient.IsSuccess(current)
                     throw Error("Could not revalidate the configured GitHub Gist before upload.")
 
@@ -145,7 +166,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
             response := HttpClient.Request(
                 "PATCH",
-                this.ApiBase "/gists/" AppState.CloudSyncTarget,
+                this.ApiBase "/gists/" target,
                 this._Headers(token),
                 Json.Stringify(body, false),
                 15000
@@ -164,9 +185,9 @@ class GitHubGistProvider extends CloudSyncProvider {
             : ""
 
         providerRevision := this._Header(response.headers, "ETag")
-        if providerRevision == "" && AppState.CloudSyncTarget != "" {
+        if providerRevision == "" && Trim(AppState.CloudSyncTarget) != "" {
             try {
-                refreshed := this._GetGist(AppState.CloudSyncTarget)
+                refreshed := this._GetGist(Trim(AppState.CloudSyncTarget))
                 if HttpClient.IsSuccess(refreshed)
                     providerRevision := this._Header(refreshed.headers, "ETag")
             } catch {
@@ -190,10 +211,10 @@ class GitHubGistProvider extends CloudSyncProvider {
     }
 
     _GetGist(id) {
-        token := CloudSyncCredentials.Get("gist", "token", "")
+        token := Trim(CloudSyncCredentials.Get("gist", "token", ""))
         return HttpClient.Request(
             "GET",
-            this.ApiBase "/gists/" id,
+            this.ApiBase "/gists/" Trim(id),
             this._Headers(token),
             "",
             10000
@@ -205,7 +226,9 @@ class GitHubGistProvider extends CloudSyncProvider {
         headers["Accept"] := "application/vnd.github+json"
         headers["User-Agent"] := "CapsLock-CloudSync"
         headers["X-GitHub-Api-Version"] := "2026-03-10"
+        headers["Content-Type"] := "application/json"
 
+        token := Trim(token)
         if token != ""
             headers["Authorization"] := "Bearer " token
 

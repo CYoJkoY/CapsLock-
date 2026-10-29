@@ -6,7 +6,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
     static FileName := "capslock-sync.json"
 
     Connect(config := "") {
-        token := CloudSyncCredentials.Get("github", "token", "")
+        token := Trim(CloudSyncCredentials.Get("github", "token", ""))
         if token == ""
             throw Error("GitHub repository access token is not configured.")
 
@@ -41,7 +41,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
             AppState.CloudSyncGitHubRepository,
             AppState.CloudSyncGitHubPath,
             AppState.CloudSyncGitHubBranch,
-            CloudSyncCredentials.Get("github", "token", "")
+            Trim(CloudSyncCredentials.Get("github", "token", ""))
         )
 
         switch response.status {
@@ -70,7 +70,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         response := HttpClient.Request(
             "GET",
             url,
-            this._Headers(CloudSyncCredentials.Get("github", "token", "")),
+            this._Headers(Trim(CloudSyncCredentials.Get("github", "token", ""))),
             "",
             10000
         )
@@ -107,7 +107,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
     Upload(packageText, fingerprint := "", expectedRevision := "") {
         this.Connect()
 
-        token := CloudSyncCredentials.Get("github", "token", "")
+        token := Trim(CloudSyncCredentials.Get("github", "token", ""))
         owner := AppState.CloudSyncGitHubOwner
         repo := AppState.CloudSyncGitHubRepository
         path := AppState.CloudSyncGitHubPath
@@ -184,7 +184,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         headers["Accept"] := "application/vnd.github+json"
         headers["User-Agent"] := "CapsLock-CloudSync"
         headers["X-GitHub-Api-Version"] := "2026-03-10"
-        headers["Authorization"] := "Bearer " token
+        headers["Authorization"] := "Bearer " Trim(token)
         headers["Content-Type"] := "application/json"
         return headers
     }

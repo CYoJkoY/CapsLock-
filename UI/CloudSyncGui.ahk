@@ -371,6 +371,9 @@ ShowCloudSyncSettings(*) {
     }
 
     LoadFields() {
+        enabled.Value := AppState.CloudSyncEnabled ? 1 : 0
+        autoSync.Value := AppState.CloudSyncAutoEnabled ? 1 : 0
+
         gistTarget.Text := AppState.CloudSyncProvider == "gist"
             ? AppState.CloudSyncTarget
             : ""
@@ -416,8 +419,9 @@ ShowCloudSyncSettings(*) {
                 AppState.CloudSyncProvider := "gist"
                 AppState.CloudSyncTarget := Trim(gistTarget.Text)
 
-                if gistToken.Text != "" {
-                    if !CloudSyncCredentials.Set("gist", "token", gistToken.Text) {
+                gistTokenValue := Trim(gistToken.Text)
+                if gistTokenValue != "" {
+                    if !CloudSyncCredentials.Set("gist", "token", gistTokenValue) {
                         ShowToolTip(Lang("MSG_CLOUD_SYNC_CREDENTIAL_SAVE_FAILED", "Could not save the encrypted credential."), 2200)
                         return false
                     }
@@ -431,8 +435,9 @@ ShowCloudSyncSettings(*) {
                 AppState.CloudSyncGitHubBranch := Trim(repoBranch.Text)
                 AppState.CloudSyncGitHubPath := Trim(repoPath.Text)
 
-                if repoToken.Text != "" {
-                    if !CloudSyncCredentials.Set("github", "token", repoToken.Text) {
+                repoTokenValue := Trim(repoToken.Text)
+                if repoTokenValue != "" {
+                    if !CloudSyncCredentials.Set("github", "token", repoTokenValue) {
                         ShowToolTip(Lang("MSG_CLOUD_SYNC_CREDENTIAL_SAVE_FAILED", "Could not save the encrypted credential."), 2200)
                         return false
                     }
@@ -512,10 +517,15 @@ ShowCloudSyncSettings(*) {
             }
         }
 
-        if CloudSyncCoordinator.Connect()
+        if CloudSyncCoordinator.Connect() {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_CONNECTED", "Cloud Sync connection validated."), 1800)
-        else
-            ShowToolTip(Lang("MSG_CLOUD_SYNC_AUTH_FAILED", "Cloud Sync connection failed."), 2200)
+            LoadFields()
+        } else {
+            errorText := Lang("MSG_CLOUD_SYNC_AUTH_FAILED", "Cloud Sync connection failed.")
+            if (AppState.CloudSyncLastError != "")
+                errorText .= " " AppState.CloudSyncLastError
+            ShowToolTip(errorText, 3200)
+        }
 
         status.Text := CloudSyncCoordinator.GetStatusText()
         ProviderFields()
@@ -531,6 +541,9 @@ ShowCloudSyncSettings(*) {
             ShowToolTip(Lang("MSG_CLOUD_SYNC_SUCCESS", "Cloud Sync completed successfully."), 2000)
         else
             ShowToolTip(Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention."), 2400)
+
+        if (provider.Text == "GitHub Gist")
+            gistTarget.Text := AppState.CloudSyncTarget
 
         status.Text := CloudSyncCoordinator.GetStatusText()
         ProviderFields()
