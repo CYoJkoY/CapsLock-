@@ -576,6 +576,51 @@ CheckThemeTokenArchitecture(root) {
     )
 }
 
+CheckCloudSyncRegressions(root) {
+    guiText := ReadText(root "\UI\CloudSyncGui.ahk")
+    Check(
+        InStr(guiText, "enabled.Value := AppState.CloudSyncEnabled ? 1 : 0") > 0
+            && InStr(guiText, "autoSync.Value := AppState.CloudSyncAutoEnabled ? 1 : 0") > 0,
+        "cloud sync dialog restores saved checkbox states"
+    )
+    Check(
+        InStr(guiText, "gistTokenValue := Trim(gistToken.Text)") > 0
+            && InStr(guiText, "CloudSyncCredentials.Set(" . Chr(34) . "gist" . Chr(34)) > 0,
+        "cloud sync dialog trims the gist token before saving"
+    )
+    Check(
+        InStr(guiText, "gistTarget.Text := AppState.CloudSyncTarget") > 0
+            && InStr(guiText, "if (provider.Text == " . Chr(34) . "GitHub Gist" . Chr(34) . ")") > 0,
+        "cloud sync dialog refreshes the gist target after synchronization"
+    )
+    Check(
+        InStr(guiText, "errorText .= " . Chr(34) . " " . Chr(34) . " AppState.CloudSyncLastError") > 0,
+        "cloud sync connection failures include the provider error"
+    )
+
+    coordinatorText := ReadText(root "\Core\CloudSyncCoordinator.ahk")
+    Check(
+        RegExMatch(coordinatorText,
+            "s)static Connect\(\*\).*?static ResetProvider",
+            &connectMatch) > 0
+            && InStr(connectMatch[0], "if !AppState.CloudSyncEnabled") == 0
+            && InStr(
+                connectMatch[0],
+                "this._SetState(AppState.CloudSyncEnabled ? " . Chr(34) . "connected" . Chr(34)
+                    . " : " . Chr(34) . "disabled" . Chr(34) . ")"
+            ) > 0,
+        "cloud sync connection validation does not require the enable switch"
+    )
+
+    providerText := ReadText(root "\Core\Providers\GitHubGistProvider.ahk")
+    Check(
+        InStr(providerText, "token := Trim(CloudSyncCredentials.Get(" . Chr(34) . "gist" . Chr(34)) > 0
+            && InStr(providerText, "headers[" . Chr(34) . "Content-Type" . Chr(34) . "] := " . Chr(34) . "application/json" . Chr(34)) > 0
+            && InStr(providerText, "this.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
+        "gist provider trims tokens, sends JSON, and validates gist permissions"
+    )
+}
+
 CheckQuickPhraseRegressions(root) {
     phraseText := ReadText(root "\UI\QuickPhraseGui.ahk")
     orderText := ReadText(root "\UI\QuickPhraseOrder.ahk")
@@ -790,6 +835,7 @@ Main() {
     CheckPinIndicatorRegressions(root)
     CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
+    CheckCloudSyncRegressions(root)
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)

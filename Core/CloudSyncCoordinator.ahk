@@ -126,16 +126,11 @@ class CloudSyncCoordinator {
         if this.Syncing
             return false
 
-        if !AppState.CloudSyncEnabled {
-            this._SetState("disabled")
-            return false
-        }
-
         try {
             provider := this._GetProvider()
             if provider.ValidateConnection() != true
                 throw Error("Cloud Sync provider validation failed.")
-            this._SetState("connected")
+            this._SetState(AppState.CloudSyncEnabled ? "connected" : "disabled")
             return true
         } catch as err {
             this._HandleFailure(err)
@@ -502,12 +497,12 @@ class CloudSyncCoordinator {
     static _IsProviderConfigured() {
         switch StrLower(Trim(AppState.CloudSyncProvider)) {
             case "gist":
-                return CloudSyncCredentials.Get("gist", "token", "") != ""
+                return Trim(CloudSyncCredentials.Get("gist", "token", "")) != ""
 
             case "github":
                 return AppState.CloudSyncGitHubOwner != ""
                 && AppState.CloudSyncGitHubRepository != ""
-                && CloudSyncCredentials.Get("github", "token", "") != ""
+                && Trim(CloudSyncCredentials.Get("github", "token", "")) != ""
 
             case "google-drive":
                 return AppState.CloudSyncGoogleClientId != ""
