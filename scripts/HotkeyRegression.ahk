@@ -42,6 +42,8 @@ global gSourceFolders := ["Config", "Core", "Hotkeys", "History", "Tray", "UI", 
 ; the ranking probe below can include it directly and execute the same helpers
 ; the application uses.
 #Include "..\UI\QuickPhraseOrder.ahk"
+#Include "..\Config\Globals.ahk"
+#Include "..\Core\ImageTools.ahk"
 
 ; ---------------------------------------------------------------------------
 ; Framework
@@ -697,6 +699,33 @@ CheckImageToolsHotkeys(root) {
     )
 }
 
+CheckImageToolsDefaultOutput(root) {
+    Check(
+        ImageTools.DefaultOutputDirectory([]) == "",
+        "image tools default output is empty for an empty path list"
+    )
+    Check(
+        ImageTools.DefaultOutputDirectory(["C:\Images\a.png"]) == "C:\Images",
+        "image tools default output uses the first image directory"
+    )
+    Check(
+        ImageTools.DefaultOutputDirectory(["", 42, "D:\Sets\b.png", "E:\Other\c.png"]) == "D:\Sets",
+        "image tools default output skips unusable entries and keeps the first image directory"
+    )
+    Check(
+        ImageTools.DefaultOutputDirectory("C:\Images\a.png") == "",
+        "image tools default output rejects a non-array path list"
+    )
+
+    guiText := ReadText(root "\UI\ImageToolsGui.ahk")
+    Check(
+        InStr(guiText, "outputDirectory.OnEvent(" . Chr(34) . "Change" . Chr(34)) > 0
+            && InStr(guiText, "this.AutoOutputDirectory := false") > 0
+            && InStr(guiText, "this._RefreshAutoOutputDirectory()") > 0,
+        "image tools wire automatic output directory selection to manual overrides"
+    )
+}
+
 ; ---------------------------------------------------------------------------
 ; 7: every source file is reachable
 ; ---------------------------------------------------------------------------
@@ -763,6 +792,7 @@ Main() {
     CheckThemeTokenArchitecture(root)
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
+    CheckImageToolsDefaultOutput(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")
