@@ -12,6 +12,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 
+#Include "Core\MouseControl.ahk"
 #Include "Hotkeys\HotkeyBindings.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
 #Include "Hotkeys\PasteHandler.ahk"
@@ -116,6 +117,7 @@ OnExit((*) => (
     WindowHole.Stop(),
     Spotlight.Stop(),
     Zoom.Stop(),
+    MouseControl.Stop(),
     DeactivateShiftLayer(),
     PinIndicator.Clear(),
     RestoreManagedWindows(),

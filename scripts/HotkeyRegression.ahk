@@ -45,6 +45,29 @@ global gSourceFolders := ["Config", "Core", "Hotkeys", "History", "Tray", "UI", 
 #Include "..\Config\Globals.ahk"
 #Include "..\Core\ImageTools.ahk"
 
+; MouseControl.ahk is included stand-alone so its pure vector helper can be
+; exercised. These minimal stubs stand in for the application modules it
+; touches so the include stays loadable outside the full application.
+class ApplicationProfiles {
+    static IsHotkeysEnabledForActiveWindow() {
+        return true
+    }
+}
+
+class ShiftLayerToast {
+    static ShowStatic(*) {
+        return true
+    }
+
+    static Hide() {
+    }
+}
+
+DeactivateShiftLayer(*) {
+}
+
+#Include "..\Core\MouseControl.ahk"
+
 ; ---------------------------------------------------------------------------
 ; Framework
 ; ---------------------------------------------------------------------------
@@ -771,6 +794,134 @@ CheckImageToolsDefaultOutput(root) {
     )
 }
 
+CheckMouseControlRegressions(root) {
+    moduleText := ReadText(root "\Core\MouseControl.ahk")
+    bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
+    rootText := ReadText(root "\CapsLock-.ahk")
+    osdText := ReadText(root "\UI\OSD.ahk")
+
+    ; The vector helper is pure and can be exercised directly. Cardinal input
+    ; must have unit length and every diagonal must be normalized to the same
+    ; length, otherwise diagonal movement would outrun a single direction.
+    up := MouseControl.MovementVector(true, false, false, false)
+    left := MouseControl.MovementVector(false, true, false, false)
+    down := MouseControl.MovementVector(false, false, true, false)
+    right := MouseControl.MovementVector(false, false, false, true)
+    Check(
+        up.x == 0 && up.y == -1
+            && left.x == -1 && left.y == 0
+            && down.x == 0 && down.y == 1
+            && right.x == 1 && right.y == 0,
+        "mouse movement vectors map W / A / S / D to up / left / down / right"
+    )
+
+    diagonals := [
+        MouseControl.MovementVector(true, true, false, false),
+        MouseControl.MovementVector(true, false, false, true),
+        MouseControl.MovementVector(false, true, true, false),
+        MouseControl.MovementVector(false, false, true, true)
+    ]
+    diagonalOk := true
+    for vector in diagonals {
+        length := Sqrt(vector.x * vector.x + vector.y * vector.y)
+        if Abs(length - 1) > 0.0001
+            diagonalOk := false
+    }
+    Check(
+        diagonalOk
+            && diagonals[1].x < 0 && diagonals[1].y < 0
+            && diagonals[2].x > 0 && diagonals[2].y < 0
+            && diagonals[3].x < 0 && diagonals[3].y > 0
+            && diagonals[4].x > 0 && diagonals[4].y > 0,
+        "diagonal mouse movement is normalized in all four directions"
+    )
+
+    zero := MouseControl.MovementVector(false, false, false, false)
+    canceledX := MouseControl.MovementVector(false, true, false, true)
+    canceledY := MouseControl.MovementVector(true, false, true, false)
+    Check(
+        zero.x == 0 && zero.y == 0
+            && canceledX.x == 0 && canceledX.y == 0
+            && canceledY.x == 0 && canceledY.y == 0,
+        "opposing or empty mouse directions produce no movement"
+    )
+
+    Check(
+        InStr(moduleText, "static NativeCapsLockOn()") > 0
+            && InStr(moduleText, "GetKeyState(" . Chr(34) . "CapsLock" . Chr(34) . ", " . Chr(34) . "T" . Chr(34) . ")") > 0
+            && InStr(moduleText, "!AppState.QuickPhraseTransactionActive") > 0
+            && InStr(moduleText, "ApplicationProfiles.IsHotkeysEnabledForActiveWindow()") > 0,
+        "mouse control entry requires an enabled CapsLock layer and the native light"
+    )
+
+    Check(
+        InStr(rootText, "#Include " . Chr(34) . "Core\MouseControl.ahk" . Chr(34)) > 0
+            && InStr(rootText, "MouseControl.Stop()") > 0,
+        "mouse control is included and stopped during application shutdown"
+    )
+
+    Check(
+        InStr(bindings, "#HotIf MouseControl.EntryAvailable() || MouseControl.Active") > 0
+            && InStr(bindings, "*Shift:: MouseControl.ToggleFromShift()") > 0
+            && InStr(bindings, "~*Shift up:: MouseControl.ShiftReleased()") > 0
+            && InStr(bindings, "*Esc:: MouseControl.Stop()") > 0,
+        "Shift toggles mouse control and Esc exits it"
+    )
+
+    movementWired := true
+    for key in ["w", "a", "s", "d"] {
+        downPattern := "*" key ":: MouseControl.UpdateMovementTimer()"
+        upPattern := "*" key " up:: MouseControl.UpdateMovementTimer()"
+        if InStr(bindings, downPattern) == 0 || InStr(bindings, upPattern) == 0
+            movementWired := false
+    }
+    Check(movementWired, "W / A / S / D drive the movement timer on press and release")
+
+    buttonsWired := true
+    for pair in [["j", "left"], ["k", "middle"], ["l", "right"]] {
+        downPattern := "*" pair[1] ":: MouseControl.PressButton(" . Chr(34) . pair[2] . Chr(34) . ")"
+        upPattern := "*" pair[1] " up:: MouseControl.ReleaseButton(" . Chr(34) . pair[2] . Chr(34) . ")"
+        if InStr(bindings, downPattern) == 0 || InStr(bindings, upPattern) == 0
+            buttonsWired := false
+    }
+    Check(buttonsWired, "J / K / L hold and release the left / middle / right mouse buttons")
+
+    Check(
+        InStr(bindings, "*i:: MouseControl.StartScroll(" . Chr(34) . "up" . Chr(34) . ")") > 0
+            && InStr(bindings, "*i up:: MouseControl.StopScroll(" . Chr(34) . "up" . Chr(34) . ")") > 0
+            && InStr(bindings, "*m:: MouseControl.StartScroll(" . Chr(34) . "down" . Chr(34) . ")") > 0
+            && InStr(bindings, "*m up:: MouseControl.StopScroll(" . Chr(34) . "down" . Chr(34) . ")") > 0
+            && InStr(moduleText, "GetKeyState(" . Chr(34) . "Alt" . Chr(34) . ", " . Chr(34) . "P" . Chr(34) . ")") > 0,
+        "I / M repeat wheel scrolling and Alt selects the larger step"
+    )
+
+    Check(
+        InStr(moduleText, "this._ReleaseAllButtons()") > 0
+            && InStr(moduleText, "ShiftLayerToast.Hide()") > 0
+            && InStr(moduleText, "this._StopMovementTimer()") > 0
+            && InStr(moduleText, "this._StopScrollTimer()") > 0,
+        "stopping mouse control releases buttons and stops every timer"
+    )
+
+    Check(
+        InStr(bindings, "&& !MouseControl.Active") > 0
+            && InStr(bindings, "#HotIf CapsLockHotkeysAvailable() && !MouseControl.EntryAvailable()") > 0,
+        "the normal CapsLock and sequential Shift layers are disabled in mouse mode"
+    )
+
+    staticStart := InStr(osdText, "static ShowStatic(")
+    staticEnd := staticStart ? InStr(osdText, "static Hide()", false, staticStart) : 0
+    staticSection := (staticStart && staticEnd) ? SubStr(osdText, staticStart, staticEnd - staticStart) : ""
+    Check(
+        staticStart && staticEnd
+            && InStr(osdText, "static StaticMode := false") > 0
+            && InStr(osdText, "if this.StaticMode") > 0
+            && InStr(staticSection, "this.UpdateInterval") == 0
+            && InStr(staticSection, "this._Tick()") == 0,
+        "the mouse mode indicator is a static bar without a countdown timer"
+    )
+}
+
 ; ---------------------------------------------------------------------------
 ; 7: every source file is reachable
 ; ---------------------------------------------------------------------------
@@ -839,6 +990,7 @@ Main() {
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
+    CheckMouseControlRegressions(root)
     CheckEveryFileIncluded(root, files)
 
     Say("")
