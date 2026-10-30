@@ -23,6 +23,8 @@
 ;      binding in Hotkeys\HotkeyBindings.ahk
 ;   6. every setting ConfigManager loads is also saved, and vice versa
 ;   7. every source file under the project folders is #Included somewhere
+;   8. mouse control entry timing, speed clamping, and horizontal scrolling
+;   9. cloud sync provider fields, credential dialog, and a temp-config round trip
 ;
 ; Deliberately not covered
 ;   * language keys that are composed at run time, for example
@@ -52,6 +54,22 @@ class ApplicationProfiles {
     static IsHotkeysEnabledForActiveWindow() {
         return true
     }
+
+    ; ConfigManager normalizes these two fields while loading and serializes
+    ; the group map while saving. The round-trip probe below only asserts the
+    ; Cloud Sync target and the mouse speed, so empty results keep the probe
+    ; independent of the real profile rules.
+    static NormalizeDisabledExecutables(value) {
+        return []
+    }
+
+    static NormalizeDisabledGroups(value) {
+        return Map()
+    }
+
+    static SerializeDisabledGroups(value) {
+        return ""
+    }
 }
 
 class ShiftLayerToast {
@@ -67,6 +85,65 @@ DeactivateShiftLayer(*) {
 }
 
 #Include "..\Core\MouseControl.ahk"
+
+; MethodsUtils and the Cloud Sync providers are included for their real
+; implementation, but their collaborators live in the full application. These
+; empty stand-ins keep the include graph resolvable and the warnings focused on
+; code this script actually runs; none of these stubs is called.
+class OSD {
+}
+
+class ClipboardHelper {
+}
+
+class CleanupManager {
+}
+
+class HistoryManager {
+}
+
+class CloudSyncCoordinator {
+}
+
+class CloudSyncCredentials {
+}
+
+class CloudSyncModel {
+}
+
+class HttpClient {
+}
+
+class GoogleOAuth {
+}
+
+class Json {
+}
+
+ActivateAndPaste(*) {
+}
+
+RegExEscape(*) {
+}
+
+UriEncode(*) {
+}
+
+UriEncodePath(*) {
+}
+
+Base64DecodeText(*) {
+}
+
+Base64EncodeText(*) {
+}
+
+#Include "..\Utils\MethodsUtils.ahk"
+#Include "..\Config\ConfigManager.ahk"
+#Include "..\Core\CloudSyncProvider.ahk"
+#Include "..\Core\Providers\GitHubGistProvider.ahk"
+#Include "..\Core\Providers\GitHubRepositoryProvider.ahk"
+#Include "..\Core\Providers\GoogleDriveProvider.ahk"
 
 ; ---------------------------------------------------------------------------
 ; Framework
@@ -625,6 +702,30 @@ CheckCloudSyncRegressions(root) {
         "cloud sync connection failures include the provider error"
     )
 
+    ; An empty credential field preserves the stored secret, so the dialog has
+    ; to say so and reload the WebDAV username it can display. The labels are
+    ; refreshed after both loading and saving.
+    Check(
+        InStr(guiText, "webdavUser.Text := CloudSyncCredentials.Get(" . Chr(34) . "webdav" . Chr(34) . ", " . Chr(34) . "username" . Chr(34) . ", " . Chr(34) . Chr(34) . ")") > 0
+            && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_SAVED") > 0
+            && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_HINT") > 0
+            && InStr(guiText, "********") == 0,
+        "cloud sync dialog restores the WebDAV username and explains blank secrets"
+    )
+    loadSection := SectionBetween(guiText, "LoadFields() {", "SaveSettings(*) {")
+    saveSection := SectionBetween(guiText, "SaveSettings(*) {", "Connect(*) {")
+    Check(
+        InStr(loadSection, "RefreshCredentialLabels()") > 0
+            && InStr(saveSection, "RefreshCredentialLabels()") > 0,
+        "credential labels refresh after loading and saving"
+    )
+    Check(
+        InStr(guiText, "if SaveSettings()") > 0
+            && InStr(guiText, "MSG_CLOUD_SYNC_SETTINGS_SAVED") > 0
+            && InStr(guiText, "[credentialHint]") > 0,
+        "the save button reports success only when saving succeeds"
+    )
+
     coordinatorText := ReadText(root "\Core\CloudSyncCoordinator.ahk")
     Check(
         RegExMatch(coordinatorText,
@@ -646,6 +747,89 @@ CheckCloudSyncRegressions(root) {
             && InStr(providerText, "this.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
         "gist provider trims tokens, sends JSON, and validates gist permissions"
     )
+}
+
+; Returns the text from "startNeedle" up to "endNeedle", or "" when either
+; anchor is missing. Used to assert that a call sits in a specific section.
+SectionBetween(text, startNeedle, endNeedle) {
+    start := InStr(text, startNeedle)
+    end := InStr(text, endNeedle)
+    if (!start || !end || end <= start)
+        return ""
+    return SubStr(text, start, end - start)
+}
+
+; Provider fields used to be class variables, which AHK v2 does not expose
+; through an instance. Instantiating each provider catches that regression
+; without any network access.
+CheckCloudSyncProviderInstances() {
+    gist := GitHubGistProvider()
+    repo := GitHubRepositoryProvider()
+    drive := GoogleDriveProvider()
+
+    Check(
+        gist.Name == "gist"
+            && gist.ApiBase == "https://api.github.com"
+            && gist.FileName == "capslock-sync.json"
+            && gist.HasProp("ApiBase") && gist.HasProp("FileName"),
+        "GitHub Gist provider exposes its endpoint and file name on the instance"
+    )
+    Check(
+        repo.Name == "github"
+            && repo.ApiBase == "https://api.github.com"
+            && repo.FileName == "capslock-sync.json",
+        "GitHub repository provider exposes its endpoint and file name on the instance"
+    )
+    Check(
+        drive.Name == "google-drive"
+            && drive.FileName == "capslock-sync.json",
+        "Google Drive provider exposes its file name on the instance"
+    )
+}
+
+; Saves and reloads one unique INI under A_Temp so the real Config.ini and the
+; encrypted credential store stay untouched.
+CheckConfigCloudSyncRoundTrip() {
+    previousConfigFile := AppState.ConfigFile
+    previousTarget := AppState.CloudSyncTarget
+    previousProvider := AppState.CloudSyncProvider
+    previousSpeed := AppState.MouseControlSpeedPercent
+    tempPath := A_Temp "\capslock-196-config-" A_TickCount ".ini"
+
+    try {
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+
+        AppState.ConfigFile := tempPath
+        AppState.CloudSyncProvider := "gist"
+        AppState.CloudSyncTarget := "gist-round-trip-196"
+        AppState.MouseControlSpeedPercent := 150
+        ConfigManager.Save(false)
+
+        Check(FileExist(tempPath), "temporary config is written", tempPath)
+
+        AppState.CloudSyncTarget := ""
+        AppState.MouseControlSpeedPercent := 20
+        ConfigManager.Load()
+
+        Check(
+            AppState.CloudSyncTarget == "gist-round-trip-196",
+            "cloud sync target survives a save and load round trip",
+            "got '" AppState.CloudSyncTarget "'"
+        )
+        Check(
+            AppState.MouseControlSpeedPercent == 150,
+            "mouse speed survives a save and load round trip",
+            "got " AppState.MouseControlSpeedPercent
+        )
+    } finally {
+        AppState.ConfigFile := previousConfigFile
+        AppState.CloudSyncTarget := previousTarget
+        AppState.CloudSyncProvider := previousProvider
+        AppState.MouseControlSpeedPercent := previousSpeed
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+    }
 }
 
 CheckQuickPhraseRegressions(root) {
@@ -1057,6 +1241,8 @@ Main() {
     CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
     CheckCloudSyncRegressions(root)
+    CheckCloudSyncProviderInstances()
+    CheckConfigCloudSyncRoundTrip()
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)

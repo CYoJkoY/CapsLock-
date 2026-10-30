@@ -146,6 +146,16 @@ class AppState {
     static CloudSyncInterval := 30
     static CloudSyncEncryptionEnabled := false
     static CloudSyncDeviceName := ""
+    static CloudSyncGitHubOwner := ""
+    static CloudSyncGitHubRepository := ""
+    static CloudSyncGitHubBranch := "main"
+    static CloudSyncGitHubPath := "CapsLockSync/capslock-sync.json"
+    static CloudSyncWebDavUrl := ""
+    static CloudSyncWebDavPath := "capslock-sync.json"
+    static CloudSyncGoogleClientId := ""
+    static CloudSyncOneDriveClientId := ""
+    static CloudSyncOneDriveTenant := "common"
+    static CloudSyncOneDrivePath := "CapsLock-/capslock-sync.json"
     static CloudSyncState := "disabled"
     static CloudSyncLastSuccess := ""
     static CloudSyncConflict := false

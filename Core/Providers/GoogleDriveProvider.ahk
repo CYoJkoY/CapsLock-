@@ -2,7 +2,7 @@
 
 class GoogleDriveProvider extends CloudSyncProvider {
     Name := "google-drive"
-    static FileName := "capslock-sync.json"
+    FileName := "capslock-sync.json"
 
     Connect(config := "") {
         token := GoogleOAuth.GetAccessToken()

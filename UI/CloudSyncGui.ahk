@@ -56,12 +56,33 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleComboBox(provider)
 
+    ; An empty credential field keeps the encrypted value that is already
+    ; stored, so the dialog explains that rule once instead of showing a
+    ; masked secret in an ordinary text or password control.
+    CredentialLabel(baseText, providerKey, key) {
+        if CloudSyncCredentials.Get(providerKey, key, "") != ""
+            return baseText " (" Lang("GUI_CLOUD_SYNC_CREDENTIAL_SAVED", "saved") ")"
+        return baseText
+    }
+
+    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+    credentialHint := myGui.AddText(
+        "w620 y+8",
+        Lang(
+            "GUI_CLOUD_SYNC_CREDENTIAL_HINT",
+            "Leave a credential field blank to keep the saved value. Secrets stay encrypted on this device."
+        )
+    )
+    ThemeHelper.MarkDim(credentialHint)
+    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+
     ; --- Provider-specific fields ---
     gistTargetLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_TARGET", "Target") " (Gist ID; leave blank to create automatically)")
     gistTarget := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(gistTarget)
 
-    gistTokenLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
+    gistTokenBase := Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token")
+    gistTokenLabel := myGui.AddText("w620 y+8", CredentialLabel(gistTokenBase, "gist", "token"))
     gistToken := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(gistToken)
 
@@ -81,7 +102,8 @@ ShowCloudSyncSettings(*) {
     repoPath := myGui.Add("Edit", "x326 yp w310 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoPath)
 
-    repoTokenLabel := myGui.AddText("x16 y+8 w620", Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token"))
+    repoTokenBase := Lang("GUI_CLOUD_SYNC_GITHUB_TOKEN", "GitHub token")
+    repoTokenLabel := myGui.AddText("x16 y+8 w620", CredentialLabel(repoTokenBase, "github", "token"))
     repoToken := myGui.Add("Edit", "Password x16 y+6 w620 r1 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(repoToken)
 
@@ -127,11 +149,13 @@ ShowCloudSyncSettings(*) {
     webdavPath := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavPath)
 
-    webdavUserLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_WEBDAV_USERNAME", "Username"))
+    webdavUserBase := Lang("GUI_CLOUD_SYNC_WEBDAV_USERNAME", "Username")
+    webdavUserLabel := myGui.AddText("w620 y+8", CredentialLabel(webdavUserBase, "webdav", "username"))
     webdavUser := myGui.Add("Edit", "w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavUser)
 
-    webdavPasswordLabel := myGui.AddText("w620 y+8", Lang("GUI_CLOUD_SYNC_WEBDAV_PASSWORD", "Password"))
+    webdavPasswordBase := Lang("GUI_CLOUD_SYNC_WEBDAV_PASSWORD", "Password")
+    webdavPasswordLabel := myGui.AddText("w620 y+8", CredentialLabel(webdavPasswordBase, "webdav", "password"))
     webdavPassword := myGui.Add("Edit", "Password w620 r1 y+6 " ThemeHelper.GetEditOptions())
     ThemeHelper.StyleEdit(webdavPassword)
 
@@ -228,6 +252,7 @@ ShowCloudSyncSettings(*) {
 
     ; One element = one "row"; controls within a row share the same baseline y
     rows := [
+        [credentialHint],
         [gistTargetLabel], [gistTarget],
         [gistTokenLabel], [gistToken],
         [repoOwnerLabel, repoNameLabel], [repoOwner, repoName],
@@ -252,7 +277,7 @@ ShowCloudSyncSettings(*) {
 
     ; Per-row "gap from the previous row", one-to-one withrows
     gaps := [
-        12, 6,   12, 6,   12, 6,   10, 6,   10, 6,
+        8,   12, 6,   12, 6,   12, 6,   10, 6,   10, 6,
         12, 6,   10, 6,   12,
         12, 6,   10, 6,   10, 6,   12,
         12, 6,   10, 6,   10, 6,   10, 6,
@@ -370,6 +395,13 @@ ShowCloudSyncSettings(*) {
         }
     }
 
+    RefreshCredentialLabels() {
+        gistTokenLabel.Text := CredentialLabel(gistTokenBase, "gist", "token")
+        repoTokenLabel.Text := CredentialLabel(repoTokenBase, "github", "token")
+        webdavUserLabel.Text := CredentialLabel(webdavUserBase, "webdav", "username")
+        webdavPasswordLabel.Text := CredentialLabel(webdavPasswordBase, "webdav", "password")
+    }
+
     LoadFields() {
         enabled.Value := AppState.CloudSyncEnabled ? 1 : 0
         autoSync.Value := AppState.CloudSyncAutoEnabled ? 1 : 0
@@ -394,7 +426,7 @@ ShowCloudSyncSettings(*) {
 
         webdavUrl.Text := AppState.CloudSyncWebDavUrl
         webdavPath.Text := AppState.CloudSyncWebDavPath
-        webdavUser.Text := ""
+        webdavUser.Text := CloudSyncCredentials.Get("webdav", "username", "")
         webdavPassword.Text := ""
 
         device.Text := CloudSyncIdentity.GetName()
@@ -409,6 +441,8 @@ ShowCloudSyncSettings(*) {
         provider.Text := labels.Has(AppState.CloudSyncProvider)
             ? labels[AppState.CloudSyncProvider]
             : "GitHub Gist"
+
+        RefreshCredentialLabels()
     }
 
     SaveSettings(*) {
@@ -472,7 +506,7 @@ ShowCloudSyncSettings(*) {
                         return false
                     }
 
-                webdavUser.Text := ""
+                webdavUser.Text := CloudSyncCredentials.Get("webdav", "username", "")
                 webdavPassword.Text := ""
         }
 
@@ -496,6 +530,7 @@ ShowCloudSyncSettings(*) {
         else
             CloudSyncCoordinator.StopAutoSync()
 
+        RefreshCredentialLabels()
         return true
     }
 
@@ -597,10 +632,13 @@ ShowCloudSyncSettings(*) {
 
     googleAuthorize.OnEvent("Click", AuthorizeGoogle)
     oneDriveAuthorize.OnEvent("Click", AuthorizeOneDrive)
-    saveBtn.OnEvent("Click", (*) => (
-        SaveSettings(),
+    SaveFromButton(*) {
+        if SaveSettings()
+            ShowToolTip(Lang("MSG_CLOUD_SYNC_SETTINGS_SAVED", "Cloud Sync settings saved."), 1600)
         status.Text := CloudSyncCoordinator.GetStatusText()
-    ))
+    }
+
+    saveBtn.OnEvent("Click", SaveFromButton)
     connectBtn.OnEvent("Click", Connect)
     syncBtn.OnEvent("Click", Sync)
     resetBtn.OnEvent("Click", Reset)

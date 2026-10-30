@@ -2,8 +2,8 @@
 
 class GitHubRepositoryProvider extends CloudSyncProvider {
     Name := "github"
-    static ApiBase := "https://api.github.com"
-    static FileName := "capslock-sync.json"
+    ApiBase := "https://api.github.com"
+    FileName := "capslock-sync.json"
 
     Connect(config := "") {
         token := Trim(CloudSyncCredentials.Get("github", "token", ""))
