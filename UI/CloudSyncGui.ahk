@@ -275,7 +275,7 @@ ShowCloudSyncSettings(*) {
         [saveBtn, connectBtn, syncBtn, resetBtn, disconnectBtn, closeBtn]
     ]
 
-    ; Per-row "gap from the previous row", one-to-one withrows
+    ; Per-row "gap from the previous row", one-to-one with rows
     gaps := [
         8,   12, 6,   12, 6,   12, 6,   10, 6,   10, 6,
         12, 6,   10, 6,   12,
@@ -519,7 +519,20 @@ ShowCloudSyncSettings(*) {
         else 
             interval.Text := String(AppState.CloudSyncInterval)
 
-        ConfigManager.Save(false)
+        try {
+            ConfigManager.Save(false)
+        } catch as err {
+            RefreshCredentialLabels()
+            ShowToolTip(
+                Lang(
+                    "MSG_CLOUD_SYNC_SAVE_FAILED",
+                    "Could not save Cloud Sync settings."
+                ) " " err.Message,
+                3200
+            )
+            return false
+        }
+
         CloudSyncIdentity.Initialize()
 
         if previousProviderKey != CloudSyncCoordinator.GetProviderConfigKey()

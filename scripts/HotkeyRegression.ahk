@@ -56,9 +56,9 @@ class ApplicationProfiles {
     }
 
     ; ConfigManager normalizes these two fields while loading and serializes
-    ; the group map while saving. The round-trip probe below only asserts the
-    ; Cloud Sync target and the mouse speed, so empty results keep the probe
-    ; independent of the real profile rules.
+    ; the group map while saving. The round-trip probe below asserts Cloud Sync
+    ; and mouse settings, so empty profile results keep it independent of the
+    ; real application rules.
     static NormalizeDisabledExecutables(value) {
         return []
     }
@@ -726,6 +726,16 @@ CheckCloudSyncRegressions(root) {
         "the save button reports success only when saving succeeds"
     )
 
+    saveCall := InStr(saveSection, "ConfigManager.Save(false)")
+    tryCall := InStr(saveSection, "try {")
+    catchCall := InStr(saveSection, "} catch as err {")
+    Check(
+        tryCall > 0 && saveCall > tryCall && catchCall > saveCall
+            && InStr(saveSection, "MSG_CLOUD_SYNC_SAVE_FAILED") > catchCall
+            && InStr(saveSection, "return false", false, catchCall) > catchCall,
+        "configuration save failures return false after showing a localized error"
+    )
+
     coordinatorText := ReadText(root "\Core\CloudSyncCoordinator.ahk")
     Check(
         RegExMatch(coordinatorText,
@@ -791,9 +801,31 @@ CheckCloudSyncProviderInstances() {
 ; encrypted credential store stay untouched.
 CheckConfigCloudSyncRoundTrip() {
     previousConfigFile := AppState.ConfigFile
-    previousTarget := AppState.CloudSyncTarget
-    previousProvider := AppState.CloudSyncProvider
-    previousSpeed := AppState.MouseControlSpeedPercent
+    fields := Map(
+        "CloudSyncGitHubOwner", "owner-196",
+        "CloudSyncGitHubRepository", "repository-196",
+        "CloudSyncGitHubBranch", "branch-196",
+        "CloudSyncGitHubPath", "sync/path-196.json",
+        "CloudSyncWebDavUrl", "https://dav.example.test/196",
+        "CloudSyncWebDavPath", "dav/path-196.json",
+        "CloudSyncGoogleClientId", "google-client-196",
+        "CloudSyncOneDriveClientId", "onedrive-client-196",
+        "CloudSyncOneDriveTenant", "tenant-196",
+        "CloudSyncOneDrivePath", "onedrive/path-196.json"
+    )
+    previous := Map(
+        "CloudSyncTarget", AppState.CloudSyncTarget,
+        "CloudSyncProvider", AppState.CloudSyncProvider,
+        "MouseControlSpeedPercent", AppState.MouseControlSpeedPercent
+    )
+    for field in fields {
+        previous[field] := AppState.%field%
+        Check(
+            AppState.HasProp(field),
+            "cloud sync state declares " field,
+            "missing from Config/Globals.ahk"
+        )
+    }
     tempPath := A_Temp "\capslock-196-config-" A_TickCount ".ini"
 
     try {
@@ -803,12 +835,16 @@ CheckConfigCloudSyncRoundTrip() {
         AppState.ConfigFile := tempPath
         AppState.CloudSyncProvider := "gist"
         AppState.CloudSyncTarget := "gist-round-trip-196"
+        for field, value in fields
+            AppState.%field% := value
         AppState.MouseControlSpeedPercent := 150
         ConfigManager.Save(false)
 
         Check(FileExist(tempPath), "temporary config is written", tempPath)
 
         AppState.CloudSyncTarget := ""
+        for field in fields
+            AppState.%field% := ""
         AppState.MouseControlSpeedPercent := 20
         ConfigManager.Load()
 
@@ -822,11 +858,54 @@ CheckConfigCloudSyncRoundTrip() {
             "mouse speed survives a save and load round trip",
             "got " AppState.MouseControlSpeedPercent
         )
+        for field, expected in fields {
+            actual := AppState.%field%
+            Check(
+                actual == expected,
+                field " survives a save and load round trip",
+                "got '" actual "'"
+            )
+        }
     } finally {
         AppState.ConfigFile := previousConfigFile
-        AppState.CloudSyncTarget := previousTarget
-        AppState.CloudSyncProvider := previousProvider
-        AppState.MouseControlSpeedPercent := previousSpeed
+        for field, value in previous
+            AppState.%field% := value
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+    }
+}
+
+; A fresh installation has no Config.ini, so Load() returns before assigning
+; any field. Save() must still write every declared default without throwing.
+CheckConfigFreshInstallSave() {
+    previousConfigFile := AppState.ConfigFile
+    tempPath := A_Temp "\capslock-196-fresh-" A_TickCount ".ini"
+
+    try {
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+
+        AppState.ConfigFile := tempPath
+        saveError := ""
+        try {
+            ConfigManager.Load()
+            ConfigManager.Save(false)
+        } catch as err {
+            saveError := err.Message
+        }
+
+        Check(
+            saveError == "",
+            "a fresh install can load defaults and save without throwing",
+            saveError
+        )
+        Check(
+            FileExist(tempPath),
+            "a fresh install creates its configuration file",
+            tempPath
+        )
+    } finally {
+        AppState.ConfigFile := previousConfigFile
         if FileExist(tempPath)
             FileDelete(tempPath)
     }
@@ -1243,6 +1322,7 @@ Main() {
     CheckCloudSyncRegressions(root)
     CheckCloudSyncProviderInstances()
     CheckConfigCloudSyncRoundTrip()
+    CheckConfigFreshInstallSave()
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
