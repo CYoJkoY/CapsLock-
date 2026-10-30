@@ -174,6 +174,12 @@ class ConfigManager {
             8, 100
         )
 
+        ; ---- Mouse Control ----
+        mouseSpeed := IniRead(cfg, "MouseControl", "speedPercent", "100")
+        AppState.MouseControlSpeedPercent := IsNumber(mouseSpeed)
+            ? MouseControl.NormalizeSpeedPercent(Integer(mouseSpeed))
+            : 100
+
         ; ---- Window Switcher ----
         AppState.WindowSwitcherShowIcons :=
             IniRead(cfg, "WindowSwitcher", "showIcons", "1") == "1"
@@ -265,6 +271,14 @@ class ConfigManager {
         IniWrite(AppState.ZoomFactor, cfg, "Zoom", "factor")
         IniWrite(AppState.ZoomActivation, cfg, "Zoom", "activation")
         IniWrite(AppState.ZoomUpdateInterval, cfg, "Zoom", "updateInterval")
+
+        ; ---- Mouse Control ----
+        IniWrite(
+            MouseControl.NormalizeSpeedPercent(AppState.MouseControlSpeedPercent),
+            cfg,
+            "MouseControl",
+            "speedPercent"
+        )
 
         ; ---- Window Switcher ----
         IniWrite(AppState.WindowSwitcherShowIcons ? "1" : "0", cfg, "WindowSwitcher", "showIcons")

@@ -55,7 +55,7 @@ AutoHotkey v1 is not supported.
 
 All bindings below use `CapsLock` as the modifier unless noted otherwise.
 
-Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigger: press `CapsLock + Shift` first to arm the layer, then press the target key within 2 seconds. This layer is available while the native CapsLock light is off. While the light is on, `Shift` toggles mouse control mode instead.
+Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigger: press `CapsLock + Shift` first to arm the layer, then press the target key within 2 seconds. This layer is available while the native CapsLock light is off. While the light is on, tapping `Shift` twice enters mouse control mode, and one `Shift` or `Esc` leaves it.
 
 | Category     | Shortcut                   | Action                                                                                                        |
 | :----------- | :------------------------- | :------------------------------------------------------------------------------------------------------------ |
@@ -93,21 +93,24 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 | Settings     | `,`                        | Open the settings center                                                                                      |
 | ImageMagick  | `I`                        | Open image tools for compression, vertical merging, and format conversion                                     |
-| Mouse        | `CapsLock ON, then Shift`  | Toggle mouse control mode; press `Shift` or `Esc` to exit                                                    |
+| Mouse        | `CapsLock ON, then Shift twice` | Enter mouse control mode; press `Shift` or `Esc` to exit                                                 |
 | Mouse        | `W / A / S / D`            | Move the cursor up / left / down / right                                                                      |
 | Mouse        | `J / K / L`                | Hold the left / middle / right mouse button                                                                   |
 | Mouse        | `I / M`                    | Scroll up / down; hold to repeat                                                                              |
 | Mouse        | `Alt + I / M`              | Scroll faster                                                                                                 |
+| Mouse        | `Q / E`                    | Scroll left / right; hold to repeat                                                                           |
+| Mouse        | `Alt + Q / E`              | Scroll horizontally faster                                                                                    |
 
 The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
 
 ### Mouse control mode
 
-While the native CapsLock light is on, `Shift` toggles a modal mouse control mode. A persistent blue bar at the top center of the active monitor stays at full width instead of counting down. Press `Shift` or `Esc` to exit.
+While the native CapsLock light is on, tapping `Shift` twice within 450 ms enters a modal mouse control mode. A persistent blue bar at the top center of the active monitor stays at full width instead of counting down. Press `Shift` or `Esc` to exit.
 
-- `W`, `A`, `S`, and `D` move the cursor up, left, down, and right at a constant speed. Combining two directions produces diagonal movement with the same total speed as one direction.
+- `W`, `A`, `S`, and `D` move the cursor up, left, down, and right at a constant speed. Combining two directions produces diagonal movement with the same total speed as one direction. The Settings center has a cursor speed field that accepts 20 to 300 percent, with 100 percent as the default.
 - `J`, `K`, and `L` hold the left, middle, and right mouse buttons. Keep a key pressed to drag with that button.
 - `I` and `M` scroll up and down. Hold either key for continuous scrolling; add `Alt` for a larger step.
+- `Q` and `E` scroll left and right. Hold either key for continuous horizontal scrolling; add `Alt` for a larger step.
 - Exiting the mode releases every held mouse button, stops movement and scrolling, and hides the indicator. Turning the native CapsLock light off also exits the mode.
 
 ### Command palette
@@ -286,7 +289,7 @@ CapsLock also acts as a compact window-control layer:
 - `S`, `2`, and `Num2` minimize the active window.
 - `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
 - `Shift`, then `S`, `2`, or `Num2` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under Hidden windows in the CapsLock- tray menu, where one click restores a window and Restore all hidden windows brings every hidden window back.
-- Both shift-layer actions use a sequential trigger: press and hold `CapsLock + Shift` to activate the shift layer (a 2-second window), then press the target key. This avoids key-conflict issues on certain keyboard layouts where simultaneous `CapsLock + Shift + letter` combinations could not be detected reliably. The layer is unavailable while the native CapsLock light is on, because `Shift` then toggles mouse control mode.
+- Both shift-layer actions use a sequential trigger: press and hold `CapsLock + Shift` to activate the shift layer (a 2-second window), then press the target key. This avoids key-conflict issues on certain keyboard layouts where simultaneous `CapsLock + Shift + letter` combinations could not be detected reliably. The layer is unavailable while the native CapsLock light is on, because tapping `Shift` twice then enters mouse control mode.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.

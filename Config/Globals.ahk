@@ -129,6 +129,11 @@ class AppState {
 
     static ZoomActivations := ["hold", "toggle"]
 
+    ; --- Mouse Control ---
+    static MouseControlSpeedPercent := 100
+    static MouseControlSpeedMin := 20
+    static MouseControlSpeedMax := 300
+
     ; --- Pandoc Settings ---
     static PandocExe := ""
     static PandocOutputFormat := "docx"

@@ -442,14 +442,18 @@ CheckConfigRoundTrip(root) {
 CollectIniPairs(text, kind) {
     pairs := Map()
 
-    for match in AllMatches(text, "(Ini" kind "\()") {
+    ; Calls can span several lines, so trim and collapse the whitespace that
+    ; sits around each argument before comparing the quoted literals.
+    for match in AllMatches(text, "(Ini" kind "\s*\()") {
         start := match.pos + match.len
         closing := FindClosingParen(text, start)
 
         if !closing
             continue
 
-        args := SplitArguments(SubStr(text, start, closing - start))
+        args := []
+        for arg in SplitArguments(SubStr(text, start, closing - start))
+            args.Push(RegExReplace(arg, "\s+", " "))
 
         if (kind == "Read" && args.Length >= 3)
             pairs[Unquote(args[2]) "|" Unquote(args[3])] := true
@@ -893,6 +897,72 @@ CheckMouseControlRegressions(root) {
             && InStr(bindings, "*m up:: MouseControl.StopScroll(" . Chr(34) . "down" . Chr(34) . ")") > 0
             && InStr(moduleText, "GetKeyState(" . Chr(34) . "Alt" . Chr(34) . ", " . Chr(34) . "P" . Chr(34) . ")") > 0,
         "I / M repeat wheel scrolling and Alt selects the larger step"
+    )
+
+    ; Double Shift is a timing gesture, so the boundary is exercised through
+    ; the pure helper instead of a synthetic keyboard. Zero, reversed, and
+    ; late input must all be rejected; exactly the window is still a pair.
+    Check(
+        MouseControl.ShiftEntryWindow == 450
+            && MouseControl.IsDoubleShiftWithinWindow(0, 100) == false
+            && MouseControl.IsDoubleShiftWithinWindow(100, 0) == false
+            && MouseControl.IsDoubleShiftWithinWindow(5000, 4000) == false
+            && MouseControl.IsDoubleShiftWithinWindow(1000, 1450) == true
+            && MouseControl.IsDoubleShiftWithinWindow(1000, 1451) == false,
+        "double Shift accepts exactly the entry window and rejects zero or reversed ticks"
+    )
+    Check(
+        InStr(bindings, "*Shift:: MouseControl.ToggleFromShift()") > 0
+            && InStr(moduleText, "static ToggleFromShift(*)") > 0
+            && InStr(moduleText, "if this.Active {") > 0
+            && InStr(moduleText, "this.LastShiftTick := now") > 0,
+        "a single Shift exits while two taps within the window enter mouse control"
+    )
+
+    ; Speed normalization is pure and runs on load, save, and every movement
+    ; tick, so the range guard is checked directly.
+    Check(
+        MouseControl.NormalizeSpeedPercent(100) == 100
+            && MouseControl.NormalizeSpeedPercent(20) == 20
+            && MouseControl.NormalizeSpeedPercent(300) == 300,
+        "cursor speed accepts values inside the 20 to 300 range"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("not a number") == 100
+            && MouseControl.NormalizeSpeedPercent("") == 100,
+        "invalid cursor speed falls back to 100 percent"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent(1) == 20
+            && MouseControl.NormalizeSpeedPercent(19) == 20
+            && MouseControl.NormalizeSpeedPercent(301) == 300
+            && MouseControl.NormalizeSpeedPercent(9999) == 300,
+        "cursor speed clamps to the configured minimum and maximum"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("150") == 150,
+        "numeric cursor speed text is accepted"
+    )
+
+    ; Horizontal wheel input needs its own bindings, flag, repeat timer, and
+    ; Alt fast step, and Stop() must tear the timer down like the vertical one.
+    Check(
+        InStr(bindings, "*q:: MouseControl.StartHorizontalScroll(" . Chr(34) . "left" . Chr(34) . ")") > 0
+            && InStr(bindings, "*q up:: MouseControl.StopHorizontalScroll(" . Chr(34) . "left" . Chr(34) . ")") > 0
+            && InStr(bindings, "*e:: MouseControl.StartHorizontalScroll(" . Chr(34) . "right" . Chr(34) . ")") > 0
+            && InStr(bindings, "*e up:: MouseControl.StopHorizontalScroll(" . Chr(34) . "right" . Chr(34) . ")") > 0,
+        "Q / E start and stop horizontal scrolling in both directions"
+    )
+    Check(
+        InStr(moduleText, "this._MouseEvent(0x1000, 0, 0, right ? step : -step)") > 0
+            && InStr(moduleText, "static HorizontalScrollTick(*)") > 0
+            && InStr(moduleText, "step := GetKeyState(" . Chr(34) . "Alt" . Chr(34) . ", " . Chr(34) . "P" . Chr(34) . ") ? this.ScrollFastStep : this.ScrollStep") > 0,
+        "horizontal scrolling uses MOUSEEVENTF_HWHEEL and the Alt fast step"
+    )
+    Check(
+        InStr(moduleText, "this._StopHorizontalScrollTimer()") > 0
+            && InStr(moduleText, "static _StopHorizontalScrollTimer()") > 0,
+        "stopping mouse control stops the horizontal scroll timer"
     )
 
     Check(

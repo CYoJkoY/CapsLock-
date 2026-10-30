@@ -195,7 +195,7 @@ class HotkeyReference {
             ; Mouse control mode
             {
                 cat: "CHEAT_CAT_MOUSE",
-                keys: "CapsLock ON, then Shift",
+                keys: "CapsLock ON, then Shift twice",
                 desc: "CHEAT_ACT_MOUSE_TOGGLE",
                 action: ((*) => MouseControl.Toggle())
             },
@@ -221,6 +221,18 @@ class HotkeyReference {
                 cat: "CHEAT_CAT_MOUSE",
                 keys: "Alt + I / M",
                 desc: "CHEAT_ACT_MOUSE_SCROLL_FAST",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "Q / E",
+                desc: "CHEAT_ACT_MOUSE_SCROLL_HORIZONTAL",
+                action: ""
+            },
+            {
+                cat: "CHEAT_CAT_MOUSE",
+                keys: "Alt + Q / E",
+                desc: "CHEAT_ACT_MOUSE_SCROLL_HORIZONTAL_FAST",
                 action: ""
             },
             {
