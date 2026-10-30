@@ -36,6 +36,12 @@ class CloudSyncSerializer {
         general["language"] := String(AppState.CurrentLanguage)
         config["General"] := general
 
+        mouseControl := Map()
+        mouseControl["speedPercent"] := String(
+            MouseControl.NormalizeSpeedPercent(AppState.MouseControlSpeedPercent)
+        )
+        config["MouseControl"] := mouseControl
+
         imageMagick := Map()
         imageMagick["Path"] := String(AppState.ImageMagickExe)
         config["ImageMagick"] := imageMagick

@@ -23,6 +23,8 @@
 ;      binding in Hotkeys\HotkeyBindings.ahk
 ;   6. every setting ConfigManager loads is also saved, and vice versa
 ;   7. every source file under the project folders is #Included somewhere
+;   8. mouse control entry timing, speed clamping, and horizontal scrolling
+;   9. cloud sync provider fields, credential dialog, and a temp-config round trip
 ;
 ; Deliberately not covered
 ;   * language keys that are composed at run time, for example
@@ -52,6 +54,22 @@ class ApplicationProfiles {
     static IsHotkeysEnabledForActiveWindow() {
         return true
     }
+
+    ; ConfigManager normalizes these two fields while loading and serializes
+    ; the group map while saving. The round-trip probe below asserts Cloud Sync
+    ; and mouse settings, so empty profile results keep it independent of the
+    ; real application rules.
+    static NormalizeDisabledExecutables(value) {
+        return []
+    }
+
+    static NormalizeDisabledGroups(value) {
+        return Map()
+    }
+
+    static SerializeDisabledGroups(value) {
+        return ""
+    }
 }
 
 class ShiftLayerToast {
@@ -67,6 +85,65 @@ DeactivateShiftLayer(*) {
 }
 
 #Include "..\Core\MouseControl.ahk"
+
+; MethodsUtils and the Cloud Sync providers are included for their real
+; implementation, but their collaborators live in the full application. These
+; empty stand-ins keep the include graph resolvable and the warnings focused on
+; code this script actually runs; none of these stubs is called.
+class OSD {
+}
+
+class ClipboardHelper {
+}
+
+class CleanupManager {
+}
+
+class HistoryManager {
+}
+
+class CloudSyncCoordinator {
+}
+
+class CloudSyncCredentials {
+}
+
+class CloudSyncModel {
+}
+
+class HttpClient {
+}
+
+class GoogleOAuth {
+}
+
+class Json {
+}
+
+ActivateAndPaste(*) {
+}
+
+RegExEscape(*) {
+}
+
+UriEncode(*) {
+}
+
+UriEncodePath(*) {
+}
+
+Base64DecodeText(*) {
+}
+
+Base64EncodeText(*) {
+}
+
+#Include "..\Utils\MethodsUtils.ahk"
+#Include "..\Config\ConfigManager.ahk"
+#Include "..\Core\CloudSyncProvider.ahk"
+#Include "..\Core\Providers\GitHubGistProvider.ahk"
+#Include "..\Core\Providers\GitHubRepositoryProvider.ahk"
+#Include "..\Core\Providers\GoogleDriveProvider.ahk"
 
 ; ---------------------------------------------------------------------------
 ; Framework
@@ -442,14 +519,18 @@ CheckConfigRoundTrip(root) {
 CollectIniPairs(text, kind) {
     pairs := Map()
 
-    for match in AllMatches(text, "(Ini" kind "\()") {
+    ; Calls can span several lines, so trim and collapse the whitespace that
+    ; sits around each argument before comparing the quoted literals.
+    for match in AllMatches(text, "(Ini" kind "\s*\()") {
         start := match.pos + match.len
         closing := FindClosingParen(text, start)
 
         if !closing
             continue
 
-        args := SplitArguments(SubStr(text, start, closing - start))
+        args := []
+        for arg in SplitArguments(SubStr(text, start, closing - start))
+            args.Push(RegExReplace(arg, "\s+", " "))
 
         if (kind == "Read" && args.Length >= 3)
             pairs[Unquote(args[2]) "|" Unquote(args[3])] := true
@@ -621,6 +702,40 @@ CheckCloudSyncRegressions(root) {
         "cloud sync connection failures include the provider error"
     )
 
+    ; An empty credential field preserves the stored secret, so the dialog has
+    ; to say so and reload the WebDAV username it can display. The labels are
+    ; refreshed after both loading and saving.
+    Check(
+        InStr(guiText, "webdavUser.Text := CloudSyncCredentials.Get(" . Chr(34) . "webdav" . Chr(34) . ", " . Chr(34) . "username" . Chr(34) . ", " . Chr(34) . Chr(34) . ")") > 0
+            && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_SAVED") > 0
+            && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_HINT") > 0
+            && InStr(guiText, "********") == 0,
+        "cloud sync dialog restores the WebDAV username and explains blank secrets"
+    )
+    loadSection := SectionBetween(guiText, "LoadFields() {", "SaveSettings(*) {")
+    saveSection := SectionBetween(guiText, "SaveSettings(*) {", "Connect(*) {")
+    Check(
+        InStr(loadSection, "RefreshCredentialLabels()") > 0
+            && InStr(saveSection, "RefreshCredentialLabels()") > 0,
+        "credential labels refresh after loading and saving"
+    )
+    Check(
+        InStr(guiText, "if SaveSettings()") > 0
+            && InStr(guiText, "MSG_CLOUD_SYNC_SETTINGS_SAVED") > 0
+            && InStr(guiText, "[credentialHint]") > 0,
+        "the save button reports success only when saving succeeds"
+    )
+
+    saveCall := InStr(saveSection, "ConfigManager.Save(false)")
+    tryCall := InStr(saveSection, "try {")
+    catchCall := InStr(saveSection, "} catch as err {")
+    Check(
+        tryCall > 0 && saveCall > tryCall && catchCall > saveCall
+            && InStr(saveSection, "MSG_CLOUD_SYNC_SAVE_FAILED") > catchCall
+            && InStr(saveSection, "return false", false, catchCall) > catchCall,
+        "configuration save failures return false after showing a localized error"
+    )
+
     coordinatorText := ReadText(root "\Core\CloudSyncCoordinator.ahk")
     Check(
         RegExMatch(coordinatorText,
@@ -642,6 +757,158 @@ CheckCloudSyncRegressions(root) {
             && InStr(providerText, "this.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
         "gist provider trims tokens, sends JSON, and validates gist permissions"
     )
+}
+
+; Returns the text from "startNeedle" up to "endNeedle", or "" when either
+; anchor is missing. Used to assert that a call sits in a specific section.
+SectionBetween(text, startNeedle, endNeedle) {
+    start := InStr(text, startNeedle)
+    end := InStr(text, endNeedle)
+    if (!start || !end || end <= start)
+        return ""
+    return SubStr(text, start, end - start)
+}
+
+; Provider fields used to be class variables, which AHK v2 does not expose
+; through an instance. Instantiating each provider catches that regression
+; without any network access.
+CheckCloudSyncProviderInstances() {
+    gist := GitHubGistProvider()
+    repo := GitHubRepositoryProvider()
+    drive := GoogleDriveProvider()
+
+    Check(
+        gist.Name == "gist"
+            && gist.ApiBase == "https://api.github.com"
+            && gist.FileName == "capslock-sync.json"
+            && gist.HasProp("ApiBase") && gist.HasProp("FileName"),
+        "GitHub Gist provider exposes its endpoint and file name on the instance"
+    )
+    Check(
+        repo.Name == "github"
+            && repo.ApiBase == "https://api.github.com"
+            && repo.FileName == "capslock-sync.json",
+        "GitHub repository provider exposes its endpoint and file name on the instance"
+    )
+    Check(
+        drive.Name == "google-drive"
+            && drive.FileName == "capslock-sync.json",
+        "Google Drive provider exposes its file name on the instance"
+    )
+}
+
+; Saves and reloads one unique INI under A_Temp so the real Config.ini and the
+; encrypted credential store stay untouched.
+CheckConfigCloudSyncRoundTrip() {
+    previousConfigFile := AppState.ConfigFile
+    fields := Map(
+        "CloudSyncGitHubOwner", "owner-196",
+        "CloudSyncGitHubRepository", "repository-196",
+        "CloudSyncGitHubBranch", "branch-196",
+        "CloudSyncGitHubPath", "sync/path-196.json",
+        "CloudSyncWebDavUrl", "https://dav.example.test/196",
+        "CloudSyncWebDavPath", "dav/path-196.json",
+        "CloudSyncGoogleClientId", "google-client-196",
+        "CloudSyncOneDriveClientId", "onedrive-client-196",
+        "CloudSyncOneDriveTenant", "tenant-196",
+        "CloudSyncOneDrivePath", "onedrive/path-196.json"
+    )
+    previous := Map(
+        "CloudSyncTarget", AppState.CloudSyncTarget,
+        "CloudSyncProvider", AppState.CloudSyncProvider,
+        "MouseControlSpeedPercent", AppState.MouseControlSpeedPercent
+    )
+    for field in fields {
+        previous[field] := AppState.%field%
+        Check(
+            AppState.HasProp(field),
+            "cloud sync state declares " field,
+            "missing from Config/Globals.ahk"
+        )
+    }
+    tempPath := A_Temp "\capslock-196-config-" A_TickCount ".ini"
+
+    try {
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+
+        AppState.ConfigFile := tempPath
+        AppState.CloudSyncProvider := "gist"
+        AppState.CloudSyncTarget := "gist-round-trip-196"
+        for field, value in fields
+            AppState.%field% := value
+        AppState.MouseControlSpeedPercent := 150
+        ConfigManager.Save(false)
+
+        Check(FileExist(tempPath), "temporary config is written", tempPath)
+
+        AppState.CloudSyncTarget := ""
+        for field in fields
+            AppState.%field% := ""
+        AppState.MouseControlSpeedPercent := 20
+        ConfigManager.Load()
+
+        Check(
+            AppState.CloudSyncTarget == "gist-round-trip-196",
+            "cloud sync target survives a save and load round trip",
+            "got '" AppState.CloudSyncTarget "'"
+        )
+        Check(
+            AppState.MouseControlSpeedPercent == 150,
+            "mouse speed survives a save and load round trip",
+            "got " AppState.MouseControlSpeedPercent
+        )
+        for field, expected in fields {
+            actual := AppState.%field%
+            Check(
+                actual == expected,
+                field " survives a save and load round trip",
+                "got '" actual "'"
+            )
+        }
+    } finally {
+        AppState.ConfigFile := previousConfigFile
+        for field, value in previous
+            AppState.%field% := value
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+    }
+}
+
+; A fresh installation has no Config.ini, so Load() returns before assigning
+; any field. Save() must still write every declared default without throwing.
+CheckConfigFreshInstallSave() {
+    previousConfigFile := AppState.ConfigFile
+    tempPath := A_Temp "\capslock-196-fresh-" A_TickCount ".ini"
+
+    try {
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+
+        AppState.ConfigFile := tempPath
+        saveError := ""
+        try {
+            ConfigManager.Load()
+            ConfigManager.Save(false)
+        } catch as err {
+            saveError := err.Message
+        }
+
+        Check(
+            saveError == "",
+            "a fresh install can load defaults and save without throwing",
+            saveError
+        )
+        Check(
+            FileExist(tempPath),
+            "a fresh install creates its configuration file",
+            tempPath
+        )
+    } finally {
+        AppState.ConfigFile := previousConfigFile
+        if FileExist(tempPath)
+            FileDelete(tempPath)
+    }
 }
 
 CheckQuickPhraseRegressions(root) {
@@ -895,6 +1162,84 @@ CheckMouseControlRegressions(root) {
         "I / M repeat wheel scrolling and Alt selects the larger step"
     )
 
+    ; Double Shift is a timing gesture, so the boundary is exercised through
+    ; the pure helper instead of a synthetic keyboard. Zero, reversed, and
+    ; late input must all be rejected; exactly the window is still a pair.
+    Check(
+        MouseControl.ShiftEntryWindow == 450
+            && MouseControl.IsDoubleShiftWithinWindow(0, 100) == false
+            && MouseControl.IsDoubleShiftWithinWindow(100, 0) == false
+            && MouseControl.IsDoubleShiftWithinWindow(5000, 4000) == false
+            && MouseControl.IsDoubleShiftWithinWindow(1000, 1450) == true
+            && MouseControl.IsDoubleShiftWithinWindow(1000, 1451) == false,
+        "double Shift accepts exactly the entry window and rejects zero or reversed ticks"
+    )
+    Check(
+        InStr(bindings, "*Shift:: MouseControl.ToggleFromShift()") > 0
+            && InStr(moduleText, "static ToggleFromShift(*)") > 0
+            && InStr(moduleText, "if this.Active {") > 0
+            && InStr(moduleText, "this.LastShiftTick := now") > 0,
+        "a single Shift exits while two taps within the window enter mouse control"
+    )
+
+    ; Speed normalization is pure and runs on load, save, and every movement
+    ; tick, so the range guard is checked directly.
+    Check(
+        MouseControl.NormalizeSpeedPercent(100) == 100
+            && MouseControl.NormalizeSpeedPercent(20) == 20
+            && MouseControl.NormalizeSpeedPercent(300) == 300,
+        "cursor speed accepts values inside the 20 to 300 range"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("not a number") == 100
+            && MouseControl.NormalizeSpeedPercent("") == 100,
+        "invalid cursor speed falls back to 100 percent"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent(1) == 20
+            && MouseControl.NormalizeSpeedPercent(19) == 20
+            && MouseControl.NormalizeSpeedPercent(301) == 300
+            && MouseControl.NormalizeSpeedPercent(9999) == 300,
+        "cursor speed clamps to the configured minimum and maximum"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("150") == 150,
+        "numeric cursor speed text is accepted"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("1e309") == 300
+            && MouseControl.NormalizeSpeedPercent("1e1000") == 300
+            && MouseControl.NormalizeSpeedPercent("9223372036854775808") == 300
+            && MouseControl.NormalizeSpeedPercent("999999999999999999999") == 300,
+        "positive speed overflow clamps to the maximum instead of wrapping"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("-1e309") == 20
+            && MouseControl.NormalizeSpeedPercent("0x10") == 20,
+        "negative overflow and hexadecimal speed text clamp to the minimum"
+    )
+
+    ; Horizontal wheel input needs its own bindings, flag, repeat timer, and
+    ; Alt fast step, and Stop() must tear the timer down like the vertical one.
+    Check(
+        InStr(bindings, "*q:: MouseControl.StartHorizontalScroll(" . Chr(34) . "left" . Chr(34) . ")") > 0
+            && InStr(bindings, "*q up:: MouseControl.StopHorizontalScroll(" . Chr(34) . "left" . Chr(34) . ")") > 0
+            && InStr(bindings, "*e:: MouseControl.StartHorizontalScroll(" . Chr(34) . "right" . Chr(34) . ")") > 0
+            && InStr(bindings, "*e up:: MouseControl.StopHorizontalScroll(" . Chr(34) . "right" . Chr(34) . ")") > 0,
+        "Q / E start and stop horizontal scrolling in both directions"
+    )
+    Check(
+        InStr(moduleText, "this._MouseEvent(0x1000, 0, 0, right ? step : -step)") > 0
+            && InStr(moduleText, "static HorizontalScrollTick(*)") > 0
+            && InStr(moduleText, "step := GetKeyState(" . Chr(34) . "Alt" . Chr(34) . ", " . Chr(34) . "P" . Chr(34) . ") ? this.ScrollFastStep : this.ScrollStep") > 0,
+        "horizontal scrolling uses MOUSEEVENTF_HWHEEL and the Alt fast step"
+    )
+    Check(
+        InStr(moduleText, "this._StopHorizontalScrollTimer()") > 0
+            && InStr(moduleText, "static _StopHorizontalScrollTimer()") > 0,
+        "stopping mouse control stops the horizontal scroll timer"
+    )
+
     Check(
         InStr(moduleText, "this._ReleaseAllButtons()") > 0
             && InStr(moduleText, "ShiftLayerToast.Hide()") > 0
@@ -987,6 +1332,9 @@ Main() {
     CheckShiftLayerToastRegressions(root)
     CheckThemeTokenArchitecture(root)
     CheckCloudSyncRegressions(root)
+    CheckCloudSyncProviderInstances()
+    CheckConfigCloudSyncRoundTrip()
+    CheckConfigFreshInstallSave()
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)

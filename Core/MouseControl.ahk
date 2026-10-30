@@ -4,17 +4,20 @@
 ; Mouse control mode
 ;
 ; A modal pointer layer that is available while the native CapsLock light is
-; on. Shift enters or exits, Esc exits. Cursor movement is vector-based so a
-; diagonal key pair travels at the same speed as a single direction. Mouse
-; buttons and the wheel are injected through Win32 mouse_event, which keeps
-; the generated input away from this script's own CapsLock mouse hotkeys.
+; on. A double tap of Shift enters, while a single Shift or Esc exits. Cursor
+; movement is vector-based so a diagonal key pair travels at the same speed as
+; a single direction. Mouse buttons and the wheel are injected through Win32
+; mouse_event, which keeps the generated input away from this script's own
+; CapsLock mouse hotkeys.
 ; ---------------------------------------------------------------------------
 class MouseControl {
     static Active := false
     static ShiftHeld := false
+    static LastShiftTick := 0
     static ButtonsDown := Map()
     static MovementTimer := ""
     static ScrollTimer := ""
+    static HorizontalScrollTimer := ""
     static CapsLockTimer := ""
     static ResidualX := 0.0
     static ResidualY := 0.0
@@ -25,6 +28,7 @@ class MouseControl {
     static ScrollStep := 120
     static ScrollFastStep := 480
     static CapsLockCheckInterval := 250
+    static ShiftEntryWindow := 450
 
     ; The native CapsLock light is the mode's availability gate. The physical
     ; key state is deliberately not used here because CapsLock remains a
@@ -44,19 +48,43 @@ class MouseControl {
         return this.Active
     }
 
-    ; Shift is both the entry and exit trigger. The physical-key latch stops
-    ; keyboard auto-repeat from toggling the mode repeatedly while Shift is
-    ; held down; the unconditional Shift-up hotkey clears the latch.
+    ; A double tap of Shift enters the mode; one Shift exits it. The physical-key
+    ; latch stops keyboard auto-repeat from counting as another tap, while the
+    ; unconditional Shift-up hotkey only clears that latch. The first-tap
+    ; timestamp survives Shift release so the second tap can complete the pair.
     static ToggleFromShift(*) {
         if this.ShiftHeld
             return false
 
         this.ShiftHeld := true
+
+        if this.Active {
+            this.LastShiftTick := 0
+            return this.Stop()
+        }
+
+        now := A_TickCount
+        if !this.IsDoubleShiftWithinWindow(this.LastShiftTick, now) {
+            this.LastShiftTick := now
+            return false
+        }
+
+        this.LastShiftTick := 0
         return this.Toggle()
     }
 
     static ShiftReleased(*) {
         this.ShiftHeld := false
+    }
+
+    ; Pure timing helper so the entry gesture can be tested without a keyboard.
+    ; A zero or reversed timestamp never forms a pair.
+    static IsDoubleShiftWithinWindow(firstTick, secondTick) {
+        if !(firstTick is Integer) || !(secondTick is Integer)
+            return false
+        if (firstTick <= 0 || secondTick < firstTick)
+            return false
+        return (secondTick - firstTick) <= this.ShiftEntryWindow
     }
 
     static Toggle() {
@@ -65,8 +93,10 @@ class MouseControl {
             return false
         }
 
-        if !this.EntryAvailable()
+        if !this.EntryAvailable() {
+            this.LastShiftTick := 0
             return false
+        }
 
         return this.Start()
     }
@@ -80,6 +110,7 @@ class MouseControl {
         DeactivateShiftLayer()
 
         this.Active := true
+        this.LastShiftTick := 0
         this.ButtonsDown := Map()
         this.ResidualX := 0.0
         this.ResidualY := 0.0
@@ -95,6 +126,10 @@ class MouseControl {
     }
 
     static Stop(*) {
+        ; A shutdown or programmatic stop also discards half of a Shift pair, so
+        ; a tap from an earlier session cannot complete a new double tap.
+        this.LastShiftTick := 0
+
         if !this.Active
             return false
 
@@ -104,6 +139,7 @@ class MouseControl {
 
         this._StopMovementTimer()
         this._StopScrollTimer()
+        this._StopHorizontalScrollTimer()
         this._ReleaseAllButtons()
         this.ResidualX := 0.0
         this.ResidualY := 0.0
@@ -141,6 +177,24 @@ class MouseControl {
         }
 
         return { x: dx * 1.0, y: dy * 1.0 }
+    }
+
+    static NormalizeSpeedPercent(value) {
+        if !IsNumber(value)
+            return 100
+
+        ; IsNumber also accepts scientific notation and hexadecimal text.
+        ; Convert before rounding so values beyond the integer range clamp to
+        ; the configured bound instead of wrapping to a negative number.
+        numeric := value * 1.0
+        if (numeric != numeric)
+            return 100
+
+        if (numeric <= AppState.MouseControlSpeedMin)
+            return AppState.MouseControlSpeedMin
+        if (numeric >= AppState.MouseControlSpeedMax)
+            return AppState.MouseControlSpeedMax
+        return Round(numeric)
     }
 
     static UpdateMovementTimer(*) {
@@ -185,8 +239,9 @@ class MouseControl {
         if vector.y == 0
             this.ResidualY := 0.0
 
-        this.ResidualX += vector.x * this.MoveStep
-        this.ResidualY += vector.y * this.MoveStep
+        multiplier := this.NormalizeSpeedPercent(AppState.MouseControlSpeedPercent) / 100
+        this.ResidualX += vector.x * this.MoveStep * multiplier
+        this.ResidualY += vector.y * this.MoveStep * multiplier
 
         dx := Round(this.ResidualX)
         dy := Round(this.ResidualY)
@@ -336,6 +391,65 @@ class MouseControl {
         if IsObject(this.ScrollTimer) {
             try SetTimer(this.ScrollTimer, 0)
             this.ScrollTimer := ""
+        }
+    }
+
+    ; Horizontal wheel input uses MOUSEEVENTF_HWHEEL (0x1000). Positive data
+    ; scrolls right and negative data scrolls left, matching the native wheel
+    ; convention used by the vertical path above.
+    static StartHorizontalScroll(direction) {
+        if !this.Active
+            return false
+        if (direction != "left" && direction != "right")
+            return false
+        if !this._HorizontalScrollKeysHeld()
+            return false
+
+        if IsObject(this.HorizontalScrollTimer)
+            return true
+
+        this.HorizontalScrollTimer := ObjBindMethod(this, "HorizontalScrollTick")
+        SetTimer(this.HorizontalScrollTimer, this.ScrollInterval)
+        this.HorizontalScrollTick()
+        return true
+    }
+
+    static StopHorizontalScroll(direction := "") {
+        if (direction != "" && direction != "left" && direction != "right")
+            return false
+        if !this._HorizontalScrollKeysHeld()
+            this._StopHorizontalScrollTimer()
+        return true
+    }
+
+    static HorizontalScrollTick(*) {
+        if !this.Active {
+            this._StopHorizontalScrollTimer()
+            return
+        }
+
+        left := GetKeyState("q", "P")
+        right := GetKeyState("e", "P")
+
+        if (left && right)
+            return
+        if (!left && !right) {
+            this._StopHorizontalScrollTimer()
+            return
+        }
+
+        step := GetKeyState("Alt", "P") ? this.ScrollFastStep : this.ScrollStep
+        this._MouseEvent(0x1000, 0, 0, right ? step : -step)
+    }
+
+    static _HorizontalScrollKeysHeld() {
+        return GetKeyState("q", "P") || GetKeyState("e", "P")
+    }
+
+    static _StopHorizontalScrollTimer() {
+        if IsObject(this.HorizontalScrollTimer) {
+            try SetTimer(this.HorizontalScrollTimer, 0)
+            this.HorizontalScrollTimer := ""
         }
     }
 

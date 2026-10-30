@@ -163,8 +163,9 @@ k:: TerminateProcessByPid()
 #HotIf
 
 ; Modal mouse control. The wildcard Shift binding catches both Shift keys and
-; every modifier combination; the movement and button keys restore their own
-; native behavior as soon as the mode exits.
+; every modifier combination; two taps within the entry window are needed to
+; enter, while a single tap exits. The movement and button keys restore their
+; own native behavior as soon as the mode exits.
 #HotIf MouseControl.EntryAvailable() || MouseControl.Active
 *Shift:: MouseControl.ToggleFromShift()
 #HotIf
@@ -194,6 +195,11 @@ k:: TerminateProcessByPid()
 *i up:: MouseControl.StopScroll("up")
 *m:: MouseControl.StartScroll("down")
 *m up:: MouseControl.StopScroll("down")
+
+*q:: MouseControl.StartHorizontalScroll("left")
+*q up:: MouseControl.StopHorizontalScroll("left")
+*e:: MouseControl.StartHorizontalScroll("right")
+*e up:: MouseControl.StopHorizontalScroll("right")
 #HotIf
 
 #HotIf CapsLockShortcutGroupAvailable("text")

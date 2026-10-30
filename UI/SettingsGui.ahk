@@ -366,6 +366,25 @@ class SettingsGui {
             "📁 " . Lang("SET_BTN_OPEN_CONFIG")
         )
         btnOpenCfg.OnEvent("Click", (*) => Run("explorer.exe " . Chr(34) . A_ScriptDir . "\configs" . Chr(34)))
+
+        ; Section 3: Mouse Control
+        this._AddSectionTitle(myGui, p, cx, 440, Lang("SET_SEC_MOUSE"))
+        this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 464, cw, 64))
+
+        this._AddCardLabel(
+            myGui, p, cx + 18, 482, 360,
+            "🖱️  " . Lang("SET_LBL_MOUSE_SPEED")
+        )
+        edMouseSpeed := this._AddCardEdit(
+            myGui, p, cx + 410, 480, 96,
+            AppState.MouseControlSpeedPercent, "Number"
+        )
+        this.controls["mouseControlSpeed"] := edMouseSpeed
+
+        this._AddCardLabel(
+            myGui, p, cx + 516, 484, 90,
+            "%  " . AppState.MouseControlSpeedMin . "-" . AppState.MouseControlSpeedMax, true
+        )
     }
 
     ; =======================================================================
@@ -942,6 +961,13 @@ class SettingsGui {
             wantAuto := c["autoStart"].Value == 1
             if (wantAuto != IsAutoStartEnabled())
                 ToggleAutoStart()
+        }
+
+        if c.Has("mouseControlSpeed") {
+            AppState.MouseControlSpeedPercent := MouseControl.NormalizeSpeedPercent(
+                c["mouseControlSpeed"].Value
+            )
+            c["mouseControlSpeed"].Value := String(AppState.MouseControlSpeedPercent)
         }
 
         ; --- 2. Clipboard & History ---
