@@ -176,9 +176,7 @@ class ConfigManager {
 
         ; ---- Mouse Control ----
         mouseSpeed := IniRead(cfg, "MouseControl", "speedPercent", "100")
-        AppState.MouseControlSpeedPercent := IsNumber(mouseSpeed)
-            ? MouseControl.NormalizeSpeedPercent(Integer(mouseSpeed))
-            : 100
+        AppState.MouseControlSpeedPercent := MouseControl.NormalizeSpeedPercent(mouseSpeed)
 
         ; ---- Window Switcher ----
         AppState.WindowSwitcherShowIcons :=

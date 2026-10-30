@@ -1206,6 +1206,18 @@ CheckMouseControlRegressions(root) {
         MouseControl.NormalizeSpeedPercent("150") == 150,
         "numeric cursor speed text is accepted"
     )
+    Check(
+        MouseControl.NormalizeSpeedPercent("1e309") == 300
+            && MouseControl.NormalizeSpeedPercent("1e1000") == 300
+            && MouseControl.NormalizeSpeedPercent("9223372036854775808") == 300
+            && MouseControl.NormalizeSpeedPercent("999999999999999999999") == 300,
+        "positive speed overflow clamps to the maximum instead of wrapping"
+    )
+    Check(
+        MouseControl.NormalizeSpeedPercent("-1e309") == 20
+            && MouseControl.NormalizeSpeedPercent("0x10") == 20,
+        "negative overflow and hexadecimal speed text clamp to the minimum"
+    )
 
     ; Horizontal wheel input needs its own bindings, flag, repeat timer, and
     ; Alt fast step, and Stop() must tear the timer down like the vertical one.

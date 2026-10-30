@@ -183,12 +183,18 @@ class MouseControl {
         if !IsNumber(value)
             return 100
 
-        percent := Round(value)
-        if (percent < AppState.MouseControlSpeedMin)
+        ; IsNumber also accepts scientific notation and hexadecimal text.
+        ; Convert before rounding so values beyond the integer range clamp to
+        ; the configured bound instead of wrapping to a negative number.
+        numeric := value * 1.0
+        if (numeric != numeric)
+            return 100
+
+        if (numeric <= AppState.MouseControlSpeedMin)
             return AppState.MouseControlSpeedMin
-        if (percent > AppState.MouseControlSpeedMax)
+        if (numeric >= AppState.MouseControlSpeedMax)
             return AppState.MouseControlSpeedMax
-        return percent
+        return Round(numeric)
     }
 
     static UpdateMovementTimer(*) {
