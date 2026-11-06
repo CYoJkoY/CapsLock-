@@ -831,6 +831,29 @@ CheckCloudSyncProviderInstances() {
     )
 }
 
+CheckCloudSyncOAuthTokenValidity() {
+    validExpiry := DateAdd(A_NowUTC, 3600, "Seconds")
+    nearExpiry := DateAdd(A_NowUTC, 30, "Seconds")
+    expired := DateAdd(A_NowUTC, -60, "Seconds")
+
+    Check(
+        CloudSyncProvider.IsAccessTokenValid("access-token", validExpiry),
+        "OAuth tokens with more than 60 seconds remaining are reused"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("access-token", nearExpiry),
+        "OAuth tokens within the 60-second refresh window are refreshed"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("access-token", expired),
+        "expired OAuth tokens are refreshed"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("", validExpiry),
+        "OAuth tokens without an access token are invalid"
+    )
+}
+
 ; Saves and reloads one unique INI under A_Temp so the real Config.ini and the
 ; encrypted credential store stay untouched.
 CheckConfigCloudSyncRoundTrip() {
@@ -1392,6 +1415,7 @@ Main() {
     CheckThemeTokenArchitecture(root)
     CheckCloudSyncRegressions(root)
     CheckCloudSyncProviderInstances()
+    CheckCloudSyncOAuthTokenValidity()
     CheckConfigCloudSyncRoundTrip()
     CheckConfigFreshInstallSave()
     CheckQuickPhraseRegressions(root)

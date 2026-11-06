@@ -3,6 +3,16 @@
 class CloudSyncProvider {
     Name := ""
 
+    static IsAccessTokenValid(accessToken, expiresAt, minimumValiditySeconds := 60) {
+        if accessToken == "" || expiresAt == ""
+            return false
+
+        try
+            return DateDiff(expiresAt, A_NowUTC, "Seconds") > minimumValiditySeconds
+        catch
+            return false
+    }
+
     Connect(config := "") {
         throw Error("Provider does not implement Connect().")
     }

@@ -73,9 +73,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         result["text"] := response.body
         result["fingerprint"] := package["integrity"]["contentHash"]
         result["revision"] := package["revision"]["id"]
-        result["providerRevision"] := IsObject(metadata)
-            ? metadata.Get("version", "")
-            : ""
+        result["providerRevision"] := metadata["version"]
         return result
     }
 
@@ -148,9 +146,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
             ? fingerprint
                 : package["integrity"]["contentHash"]
         result["revision"] := package["revision"]["id"]
-        result["providerRevision"] := IsObject(metadata)
-            ? metadata.Get("version", "")
-            : ""
+        result["providerRevision"] := metadata["version"]
         return result
     }
 
@@ -198,13 +194,18 @@ class GoogleDriveProvider extends CloudSyncProvider {
         )
 
         if !HttpClient.IsSuccess(response)
-            return ""
+            throw Error("Google Drive version lookup failed. HTTP " response.status)
 
         try {
-            return Json.Parse(response.body)
-        } catch {
-            return ""
+            metadata := Json.Parse(response.body)
+        } catch as err {
+            throw Error("Google Drive returned invalid file metadata: " err.Message)
         }
+
+        if !IsObject(metadata) || !metadata.Has("version") || metadata["version"] == ""
+            throw Error("Google Drive did not return a file version.")
+
+        return metadata
     }
 
     _PersistTarget() {
