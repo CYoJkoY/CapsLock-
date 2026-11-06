@@ -46,6 +46,21 @@ class CloudSyncProvider {
         throw Error("Provider does not implement Upload().")
     }
 
+    PersistTarget(target) {
+        AppState.CloudSyncTarget := String(target)
+
+        try {
+            IniWrite(
+                AppState.CloudSyncTarget,
+                AppState.ConfigFile,
+                "CloudSync",
+                "target"
+            )
+        } catch as err {
+            throw Error("Could not persist the cloud sync target: " err.Message)
+        }
+    }
+
     Disconnect() {
         throw Error("Provider does not implement Disconnect().")
     }

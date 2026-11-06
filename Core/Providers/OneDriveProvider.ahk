@@ -37,18 +37,7 @@ class OneDriveProvider extends CloudSyncProvider {
         if path == ""
             path := "CapsLock-/capslock-sync.json"
 
-        metadataResponse := HttpClient.Request(
-            "GET",
-            "https://graph.microsoft.com/v1.0/me/drive/root:/"
-            UriEncodePath(path)
-            "?$select=id,name,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl",
-            Map(
-                "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
-                "Accept", "application/json"
-            ),
-            "",
-            10000
-        )
+        metadataResponse := this._GetMetadata(path)
 
         if metadataResponse.status == 404
             return Map("exists", false)
@@ -57,6 +46,10 @@ class OneDriveProvider extends CloudSyncProvider {
             throw Error("OneDrive target lookup failed.")
 
         metadata := Json.Parse(metadataResponse.body)
+        etag := metadata.Get("eTag", "")
+        if etag == ""
+            throw Error("OneDrive did not return a file ETag.")
+
         downloadUrl := metadata.Get("@microsoft.graph.downloadUrl", "")
         if downloadUrl == ""
             throw Error("OneDrive did not return a download URL.")
@@ -72,6 +65,15 @@ class OneDriveProvider extends CloudSyncProvider {
         if !HttpClient.IsSuccess(downloadResponse)
             throw Error("OneDrive download failed.")
 
+        metadataAfterDownloadResponse := this._GetMetadata(path)
+        if !HttpClient.IsSuccess(metadataAfterDownloadResponse)
+            throw Error("Could not verify the OneDrive sync file after download.")
+
+        metadataAfterDownload := Json.Parse(metadataAfterDownloadResponse.body)
+        currentEtag := metadataAfterDownload.Get("eTag", "")
+        if currentEtag == "" || currentEtag != etag
+            throw Error("The OneDrive sync file changed while it was being downloaded.")
+
         package := CloudSyncModel.Deserialize(downloadResponse.body)
         if !CloudSyncModel.VerifyPackage(package)
             throw Error("The OneDrive file is not a valid CapsLock sync package.")
@@ -81,7 +83,7 @@ class OneDriveProvider extends CloudSyncProvider {
         result["text"] := downloadResponse.body
         result["fingerprint"] := package["integrity"]["contentHash"]
         result["revision"] := package["revision"]["id"]
-        result["providerRevision"] := metadata.Get("eTag", "")
+        result["providerRevision"] := currentEtag
         return result
     }
 
@@ -133,5 +135,20 @@ class OneDriveProvider extends CloudSyncProvider {
 
     Disconnect() {
         return OneDriveOAuth.Disconnect()
+    }
+
+    _GetMetadata(path) {
+        return HttpClient.Request(
+            "GET",
+            "https://graph.microsoft.com/v1.0/me/drive/root:/"
+            UriEncodePath(path)
+            "?$select=id,name,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl",
+            Map(
+                "Authorization", "Bearer " OneDriveOAuth.GetAccessToken(),
+                "Accept", "application/json"
+            ),
+            "",
+            10000
+        )
     }
 }
