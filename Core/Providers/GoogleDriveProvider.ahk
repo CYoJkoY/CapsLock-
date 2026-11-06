@@ -41,9 +41,12 @@ class GoogleDriveProvider extends CloudSyncProvider {
                 return Map("exists", false)
             }
 
-            AppState.CloudSyncTarget := fileId
-            this._PersistTarget()
+            this.PersistTarget(fileId)
         }
+
+        metadataBeforeDownload := this._GetMetadata(fileId, true)
+        if metadataBeforeDownload.Get("missing", false)
+            return Map("exists", false)
 
         url := "https://www.googleapis.com/drive/v3/files/" fileId "?alt=media"
         response := HttpClient.Request(
@@ -66,16 +69,19 @@ class GoogleDriveProvider extends CloudSyncProvider {
         if !CloudSyncModel.VerifyPackage(package)
             throw Error("The Google Drive file is not a valid CapsLock sync package.")
 
-        metadata := this._GetMetadata(fileId)
+        metadataAfterDownload := this._GetMetadata(fileId, true)
+        if metadataAfterDownload.Get("missing", false)
+            throw Error("The Google Drive sync file was removed while it was being downloaded.")
+
+        if metadataBeforeDownload["version"] != metadataAfterDownload["version"]
+            throw Error("The Google Drive sync file changed while it was being downloaded.")
 
         result := Map()
         result["exists"] := true
         result["text"] := response.body
         result["fingerprint"] := package["integrity"]["contentHash"]
         result["revision"] := package["revision"]["id"]
-        result["providerRevision"] := IsObject(metadata)
-            ? metadata.Get("version", "")
-            : ""
+        result["providerRevision"] := metadataAfterDownload["version"]
         return result
     }
 
@@ -107,8 +113,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
             if fileId == ""
                 throw Error("Google Drive did not return a file ID.")
 
-            AppState.CloudSyncTarget := fileId
-            this._PersistTarget()
+            this.PersistTarget(fileId)
         }
 
         ; Drive v3 exposes a monotonically increasing file version, but the
@@ -148,9 +153,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
             ? fingerprint
                 : package["integrity"]["contentHash"]
         result["revision"] := package["revision"]["id"]
-        result["providerRevision"] := IsObject(metadata)
-            ? metadata.Get("version", "")
-            : ""
+        result["providerRevision"] := metadata["version"]
         return result
     }
 
@@ -185,7 +188,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         return files[1].Get("id", "")
     }
 
-    _GetMetadata(fileId) {
+    _GetMetadata(fileId, allowMissing := false) {
         url := "https://www.googleapis.com/drive/v3/files/" fileId "?fields=id,name,version,modifiedTime"
         response := HttpClient.Request(
             "GET",
@@ -197,24 +200,22 @@ class GoogleDriveProvider extends CloudSyncProvider {
             10000
         )
 
+        if allowMissing && response.status == 404
+            return Map("missing", true)
+
         if !HttpClient.IsSuccess(response)
-            return ""
+            throw Error("Google Drive version lookup failed. HTTP " response.status)
 
         try {
-            return Json.Parse(response.body)
-        } catch {
-            return ""
+            metadata := Json.Parse(response.body)
+        } catch as err {
+            throw Error("Google Drive returned invalid file metadata: " err.Message)
         }
+
+        if !IsObject(metadata) || !metadata.Has("version") || metadata["version"] == ""
+            throw Error("Google Drive did not return a file version.")
+
+        return metadata
     }
 
-    _PersistTarget() {
-        try IniWrite(
-            AppState.CloudSyncTarget,
-            AppState.ConfigFile,
-            "CloudSync",
-            "target"
-        )
-        catch {
-        }
-    }
 }

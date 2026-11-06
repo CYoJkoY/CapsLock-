@@ -72,13 +72,8 @@ class OneDriveOAuth {
         accessToken := CloudSyncCredentials.Get("onedrive", "accessToken", "")
         expiresAt := CloudSyncCredentials.Get("onedrive", "expiresAt", "")
 
-        if accessToken != "" && expiresAt != "" {
-            try {
-                if DateDiff(A_NowUTC, expiresAt, "Seconds") > 60
-                    return accessToken
-            } catch {
-            }
-        }
+        if CloudSyncProvider.IsAccessTokenValid(accessToken, expiresAt)
+            return accessToken
 
         refreshToken := CloudSyncCredentials.Get("onedrive", "refreshToken", "")
         if refreshToken == ""

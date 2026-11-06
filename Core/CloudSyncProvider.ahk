@@ -3,6 +3,16 @@
 class CloudSyncProvider {
     Name := ""
 
+    static IsAccessTokenValid(accessToken, expiresAt, minimumValiditySeconds := 60) {
+        if accessToken == "" || expiresAt == ""
+            return false
+
+        try
+            return DateDiff(expiresAt, A_NowUTC, "Seconds") > minimumValiditySeconds
+        catch
+            return false
+    }
+
     Connect(config := "") {
         throw Error("Provider does not implement Connect().")
     }
@@ -34,6 +44,21 @@ class CloudSyncProvider {
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
         throw Error("Provider does not implement Upload().")
+    }
+
+    PersistTarget(target) {
+        AppState.CloudSyncTarget := String(target)
+
+        try {
+            IniWrite(
+                AppState.CloudSyncTarget,
+                AppState.ConfigFile,
+                "CloudSync",
+                "target"
+            )
+        } catch as err {
+            throw Error("Could not persist the cloud sync target: " err.Message)
+        }
     }
 
     Disconnect() {

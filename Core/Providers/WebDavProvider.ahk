@@ -104,22 +104,42 @@ class WebDavProvider extends CloudSyncProvider {
         return true
     }
 
-    ; WebDAV PUT doesn't create parent collections automatically,
-    ; so a direct PUT to a path with subdirectories fails with 409/404.
-    ; 405 = parent collection already exists, 409 = an intermediate level is  missing
-    ; — both are safe to ignore;
-    ; the real outcome is decided by the following PUT.
+    ; WebDAV PUT doesn't create parent collections automatically. Create each
+    ; parent in order so nested paths work even when no ancestor exists yet.
     _EnsureParentCollection() {
-        url := this._Url()
         base := this._BaseUrl()
-        parent := SubStr(url, 1, InStr(url, "/", , -1) - 1)
-
-        if parent == "" || parent == base || parent == url
+        path := Trim(AppState.CloudSyncWebDavPath, "/")
+        if base == "" || path == ""
             return
 
-        try
-            HttpClient.Request("MKCOL", parent, this._Headers(), "", 10000)
-        catch {
+        segments := StrSplit(path, "/")
+        if segments.Length < 2
+            return
+
+        collectionUrl := base
+        loop segments.Length - 1 {
+            segment := segments[A_Index]
+            if segment == ""
+                continue
+
+            collectionUrl .= "/" UriEncode(segment)
+            response := HttpClient.Request(
+                "MKCOL",
+                collectionUrl,
+                this._Headers(),
+                "",
+                10000
+            )
+
+            ; 405 is the WebDAV response for an already existing collection.
+            if response.status == 405
+                continue
+
+            if !HttpClient.IsSuccess(response)
+                throw Error(
+                    "Could not create WebDAV collection " collectionUrl
+                    ". HTTP " response.status
+                )
         }
     }
 

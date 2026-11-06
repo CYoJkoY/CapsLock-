@@ -106,13 +106,33 @@ class CloudSyncCoordinator {
 }
 
 class CloudSyncCredentials {
+    static Get(provider, key, default := "") {
+        return "test-token"
+    }
 }
 
 class CloudSyncModel {
 }
 
 class HttpClient {
+    static Request(method, url, headers, body, timeout) {
+        global gCloudSyncTestRequestUrl, gCloudSyncTestRequests, gCloudSyncTestStatuses
+        gCloudSyncTestRequestUrl := url
+        gCloudSyncTestRequests.Push({ method: method, url: url })
+        status := gCloudSyncTestStatuses.Length > 0
+            ? gCloudSyncTestStatuses.RemoveAt(1)
+            : 200
+        return { status: status, body: "", headers: "" }
+    }
+
+    static IsSuccess(response) {
+        return response.status >= 200 && response.status < 300
+    }
 }
+
+global gCloudSyncTestRequestUrl := ""
+global gCloudSyncTestRequests := []
+global gCloudSyncTestStatuses := []
 
 class GoogleOAuth {
 }
@@ -123,13 +143,12 @@ class Json {
 ActivateAndPaste(*) {
 }
 
-RegExEscape(*) {
+UriEncode(text) {
+    return String(text)
 }
 
-UriEncode(*) {
-}
-
-UriEncodePath(*) {
+UriEncodePath(text) {
+    return String(text)
 }
 
 Base64DecodeText(*) {
@@ -144,6 +163,7 @@ Base64EncodeText(*) {
 #Include "..\Core\Providers\GitHubGistProvider.ahk"
 #Include "..\Core\Providers\GitHubRepositoryProvider.ahk"
 #Include "..\Core\Providers\GoogleDriveProvider.ahk"
+#Include "..\Core\Providers\WebDavProvider.ahk"
 
 ; ---------------------------------------------------------------------------
 ; Framework
@@ -766,8 +786,34 @@ CheckCloudSyncRegressions(root) {
     Check(
         InStr(providerText, "token := Trim(CloudSyncCredentials.Get(" . Chr(34) . "gist" . Chr(34)) > 0
             && InStr(providerText, "headers[" . Chr(34) . "Content-Type" . Chr(34) . "] := " . Chr(34) . "application/json" . Chr(34)) > 0
-            && InStr(providerText, "this.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
+            && InStr(providerText, "GitHubGistProvider.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
         "gist provider trims tokens, sends JSON, and validates gist permissions"
+    )
+
+    gistDownload := SectionBetween(providerText, "    Download() {", "    Upload(")
+    Check(
+        InStr(gistDownload, "rawResponse.body") > 0
+            && InStr(gistDownload, "currentRevision != providerRevision") > InStr(gistDownload, "rawResponse.body")
+            && InStr(gistDownload, "GitHub Gist changed while it was being downloaded") > 0,
+        "truncated Gist downloads verify the ETag again after fetching raw content"
+    )
+
+    driveText := ReadText(root "\Core\Providers\GoogleDriveProvider.ahk")
+    driveDownload := SectionBetween(driveText, "    Download() {", "    Upload(")
+    Check(
+        InStr(driveDownload, "metadataBeforeDownload := this._GetMetadata(fileId, true)") > 0
+            && InStr(driveDownload, "metadataAfterDownload := this._GetMetadata(fileId, true)") > InStr(driveDownload, "?alt=media")
+            && InStr(driveDownload, "metadataBeforeDownload[" . Chr(34) . "version" . Chr(34) . "] != metadataAfterDownload[") > 0,
+        "Google Drive downloads verify that the file version stayed stable around the media request"
+    )
+
+    oneDriveText := ReadText(root "\Core\Providers\OneDriveProvider.ahk")
+    oneDriveDownload := SectionBetween(oneDriveText, "    Download() {", "    Upload(")
+    Check(
+        InStr(oneDriveDownload, "etag := metadata.Get(" . Chr(34) . "eTag" . Chr(34)) > 0
+            && InStr(oneDriveDownload, "metadataAfterDownloadResponse := this._GetMetadata(path)") > InStr(oneDriveDownload, "downloadResponse := HttpClient.Request(")
+            && InStr(oneDriveDownload, "currentEtag != etag") > 0,
+        "OneDrive downloads verify the file ETag again after retrieving its content"
     )
 }
 
@@ -785,16 +831,24 @@ SectionBetween(text, startNeedle, endNeedle) {
 ; through an instance. Instantiating each provider catches that regression
 ; without any network access.
 CheckCloudSyncProviderInstances() {
+    global gCloudSyncTestRequestUrl
+
     gist := GitHubGistProvider()
     repo := GitHubRepositoryProvider()
     drive := GoogleDriveProvider()
 
     Check(
         gist.Name == "gist"
-            && gist.ApiBase == "https://api.github.com"
+            && GitHubGistProvider.ApiBase == "https://api.github.com"
             && gist.FileName == "capslock-sync.json"
-            && gist.HasProp("ApiBase") && gist.HasProp("FileName"),
-        "GitHub Gist provider exposes its endpoint and file name on the instance"
+            && gist.HasProp("FileName"),
+        "GitHub Gist provider exposes its static endpoint and instance file name"
+    )
+    gCloudSyncTestRequestUrl := ""
+    Check(
+        gist.Connect()
+            && gCloudSyncTestRequestUrl == "https://api.github.com/user",
+        "GitHub Gist Connect reads the class-qualified ApiBase and builds the authentication request"
     )
     Check(
         repo.Name == "github"
@@ -807,6 +861,103 @@ CheckCloudSyncProviderInstances() {
             && drive.FileName == "capslock-sync.json",
         "Google Drive provider exposes its file name on the instance"
     )
+}
+
+CheckCloudSyncOAuthTokenValidity() {
+    validExpiry := DateAdd(A_NowUTC, 3600, "Seconds")
+    nearExpiry := DateAdd(A_NowUTC, 30, "Seconds")
+    expired := DateAdd(A_NowUTC, -60, "Seconds")
+
+    Check(
+        CloudSyncProvider.IsAccessTokenValid("access-token", validExpiry),
+        "OAuth tokens with more than 60 seconds remaining are reused"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("access-token", nearExpiry),
+        "OAuth tokens within the 60-second refresh window are refreshed"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("access-token", expired),
+        "expired OAuth tokens are refreshed"
+    )
+    Check(
+        !CloudSyncProvider.IsAccessTokenValid("", validExpiry),
+        "OAuth tokens without an access token are invalid"
+    )
+}
+
+CheckCloudSyncTargetPersistence() {
+    originalConfig := AppState.ConfigFile
+    originalTarget := AppState.CloudSyncTarget
+    tempConfig := A_Temp "\capslock-cloud-sync-" A_TickCount ".ini"
+
+    try {
+        AppState.ConfigFile := tempConfig
+        AppState.CloudSyncTarget := ""
+        provider := CloudSyncProvider()
+        provider.PersistTarget("persisted-target")
+
+        Check(
+            AppState.CloudSyncTarget == "persisted-target"
+                && IniRead(tempConfig, "CloudSync", "target", "") == "persisted-target",
+            "cloud sync target persistence updates runtime and configuration state"
+        )
+
+        AppState.ConfigFile := A_Temp
+        AppState.CloudSyncTarget := ""
+        persistenceFailed := false
+        try provider.PersistTarget("unpersistable-target")
+        catch as err
+            persistenceFailed := InStr(err.Message, "Could not persist the cloud sync target") > 0
+
+        Check(
+            persistenceFailed && AppState.CloudSyncTarget == "unpersistable-target",
+            "cloud sync target persistence failures are surfaced while retaining the live target"
+        )
+    } finally {
+        AppState.ConfigFile := originalConfig
+        AppState.CloudSyncTarget := originalTarget
+        try FileDelete(tempConfig)
+    }
+}
+
+CheckWebDavParentCollections() {
+    global gCloudSyncTestRequests, gCloudSyncTestStatuses
+    provider := WebDavProvider()
+    originalUrl := AppState.CloudSyncWebDavUrl
+    originalPath := AppState.CloudSyncWebDavPath
+
+    try {
+        AppState.CloudSyncWebDavUrl := "https://dav.example.test/remote.php/dav/files/user"
+        AppState.CloudSyncWebDavPath := "folder/sub/file.json"
+        gCloudSyncTestRequests := []
+        gCloudSyncTestStatuses := [201, 405]
+        provider._EnsureParentCollection()
+
+        Check(
+            gCloudSyncTestRequests.Length == 2
+                && gCloudSyncTestRequests[1].method == "MKCOL"
+                && gCloudSyncTestRequests[1].url == "https://dav.example.test/remote.php/dav/files/user/folder"
+                && gCloudSyncTestRequests[2].url == "https://dav.example.test/remote.php/dav/files/user/folder/sub",
+            "WebDAV creates nested parent collections in order and accepts existing collections"
+        )
+
+        gCloudSyncTestRequests := []
+        gCloudSyncTestStatuses := [409]
+        failed := false
+        try provider._EnsureParentCollection()
+        catch as err
+            failed := InStr(err.Message, "HTTP 409") > 0
+
+        Check(
+            failed && gCloudSyncTestRequests.Length == 1,
+            "WebDAV surfaces a failed parent collection creation instead of attempting a doomed PUT"
+        )
+    } finally {
+        AppState.CloudSyncWebDavUrl := originalUrl
+        AppState.CloudSyncWebDavPath := originalPath
+        gCloudSyncTestStatuses := []
+    }
 }
 
 ; Saves and reloads one unique INI under A_Temp so the real Config.ini and the
@@ -1370,6 +1521,9 @@ Main() {
     CheckThemeTokenArchitecture(root)
     CheckCloudSyncRegressions(root)
     CheckCloudSyncProviderInstances()
+    CheckCloudSyncOAuthTokenValidity()
+    CheckCloudSyncTargetPersistence()
+    CheckWebDavParentCollections()
     CheckConfigCloudSyncRoundTrip()
     CheckConfigFreshInstallSave()
     CheckQuickPhraseRegressions(root)

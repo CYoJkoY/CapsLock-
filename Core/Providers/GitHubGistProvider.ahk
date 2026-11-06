@@ -2,7 +2,7 @@
 
 class GitHubGistProvider extends CloudSyncProvider {
     Name := "gist"
-    ApiBase := "https://api.github.com"
+    static ApiBase := "https://api.github.com"
     FileName := "capslock-sync.json"
 
     Connect(config := "") {
@@ -12,7 +12,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         response := HttpClient.Request(
             "GET",
-            this.ApiBase "/user",
+            GitHubGistProvider.ApiBase "/user",
             this._Headers(token),
             "",
             10000
@@ -31,7 +31,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         if target == "" {
             response := HttpClient.Request(
                 "GET",
-                this.ApiBase "/gists?per_page=1",
+                GitHubGistProvider.ApiBase "/gists?per_page=1",
                 this._Headers(Trim(CloudSyncCredentials.Get("gist", "token", ""))),
                 "",
                 10000
@@ -80,6 +80,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         fileInfo := files[this.FileName]
         content := fileInfo.Has("content") ? String(fileInfo["content"]) : ""
+        providerRevision := this._Header(response.headers, "ETag")
 
         if fileInfo.Has("truncated") && fileInfo["truncated"] {
             rawUrl := fileInfo.Get("raw_url", "")
@@ -98,6 +99,19 @@ class GitHubGistProvider extends CloudSyncProvider {
                 throw Error("GitHub Gist raw file download failed.")
 
             content := rawResponse.body
+
+            ; The raw URL is a separate request from the Gist API response.
+            ; Confirm the Gist did not change between those reads.
+            if providerRevision == ""
+                throw Error("GitHub did not return an ETag for the truncated Gist.")
+
+            current := this._GetGist(target)
+            currentRevision := this._Header(current.headers, "ETag")
+            if !HttpClient.IsSuccess(current) || currentRevision == ""
+                throw Error("Could not verify the truncated Gist after downloading it.")
+
+            if currentRevision != providerRevision
+                throw Error("The GitHub Gist changed while it was being downloaded.")
         }
 
         package := CloudSyncModel.Deserialize(content)
@@ -112,7 +126,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         result["text"] := content
         result["fingerprint"] := fingerprint
         result["revision"] := revision
-        result["providerRevision"] := this._Header(response.headers, "ETag")
+        result["providerRevision"] := providerRevision
         return result
     }
 
@@ -135,7 +149,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
             response := HttpClient.Request(
                 "POST",
-                this.ApiBase "/gists",
+                GitHubGistProvider.ApiBase "/gists",
                 this._Headers(token),
                 Json.Stringify(body, false),
                 15000
@@ -148,8 +162,7 @@ class GitHubGistProvider extends CloudSyncProvider {
             if !IsObject(gist) || !gist.Has("id")
                 throw Error("GitHub did not return a Gist ID.")
 
-            AppState.CloudSyncTarget := String(gist["id"])
-            this._PersistTarget()
+            this.PersistTarget(gist["id"])
         } else {
             ; GitHub Gist update has no documented server-side SHA compare-and-write
             ; parameter. Revalidate the resource immediately before PATCH when the
@@ -166,7 +179,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
             response := HttpClient.Request(
                 "PATCH",
-                this.ApiBase "/gists/" target,
+                GitHubGistProvider.ApiBase "/gists/" target,
                 this._Headers(token),
                 Json.Stringify(body, false),
                 15000
@@ -214,7 +227,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         token := Trim(CloudSyncCredentials.Get("gist", "token", ""))
         return HttpClient.Request(
             "GET",
-            this.ApiBase "/gists/" Trim(id),
+            GitHubGistProvider.ApiBase "/gists/" Trim(id),
             this._Headers(token),
             "",
             10000
@@ -260,15 +273,4 @@ class GitHubGistProvider extends CloudSyncProvider {
         return fallback " HTTP " response.status
     }
 
-    _PersistTarget() {
-        try {
-            IniWrite(
-                AppState.CloudSyncTarget,
-                AppState.ConfigFile,
-                "CloudSync",
-                "target"
-            )
-        } catch {
-        }
-    }
 }
