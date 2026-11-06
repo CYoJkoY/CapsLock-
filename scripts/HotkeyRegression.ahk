@@ -1073,6 +1073,21 @@ CheckImageToolsDefaultOutput(root) {
     )
 }
 
+CheckImageToPdfCommandOrder(root) {
+    text := ReadText(root "\Core\ImageToPdf.ahk")
+    defIndex := InStr(text, "_RunImageMagickPdf(exe, paths, outputPdf, logFile) {")
+    Check(defIndex > 0, "image pdf declares the ImageMagick runner")
+    endIndex := InStr(text, "_IsImageMagickPdfPolicyError(errorText) {", false, defIndex + 1)
+    Check(endIndex > defIndex, "image pdf runner sits before the policy error probe")
+    runner := SubStr(text, defIndex, endIndex - defIndex)
+    inputIndex := InStr(runner, "pathArgs")
+    orientIndex := InStr(runner, "-auto-orient")
+    Check(
+        inputIndex > 0 && orientIndex > inputIndex,
+        "image pdf passes image inputs before -auto-orient so ImageMagick finds a sequence"
+    )
+}
+
 CheckMouseControlRegressions(root) {
     moduleText := ReadText(root "\Core\MouseControl.ahk")
     bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
@@ -1350,6 +1365,7 @@ Main() {
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
+    CheckImageToPdfCommandOrder(root)
     CheckMouseControlRegressions(root)
     CheckEveryFileIncluded(root, files)
 
