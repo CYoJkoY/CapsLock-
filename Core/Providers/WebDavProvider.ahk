@@ -43,7 +43,7 @@ class WebDavProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return { exists: false }
+            return Map("exists", false)
 
         if !HttpClient.IsSuccess(response)
             throw Error("WebDAV download failed. HTTP " response.status)
@@ -52,13 +52,13 @@ class WebDavProvider extends CloudSyncProvider {
         if !CloudSyncModel.VerifyPackage(package)
             throw Error("The WebDAV file is not a valid CapsLock sync package.")
 
-        return {
-            exists: true,
-            text: response.body,
-            fingerprint: package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: this._Header(response.headers, "ETag")
-        }
+        result := Map()
+        result["exists"] := true
+        result["text"] := response.body
+        result["fingerprint"] := package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := this._Header(response.headers, "ETag")
+        return result
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
@@ -90,14 +90,14 @@ class WebDavProvider extends CloudSyncProvider {
             throw Error("WebDAV upload failed. HTTP " response.status)
 
         package := CloudSyncModel.Deserialize(packageText)
-        return {
-            ok: true,
-            fingerprint: fingerprint != ""
-                ? fingerprint
-                    : package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: this._Header(response.headers, "ETag")
-        }
+        result := Map()
+        result["ok"] := true
+        result["fingerprint"] := fingerprint != ""
+            ? fingerprint
+                : package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := this._Header(response.headers, "ETag")
+        return result
     }
 
     Disconnect() {

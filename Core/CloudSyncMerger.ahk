@@ -32,11 +32,11 @@ class CloudSyncMerger {
         result["config"] := mergedConfig
         result["quickPhrases"] := mergedPhrases
 
-        return {
-            ok: conflicts.Length == 0,
-            value: result,
-            conflicts: conflicts
-        }
+        outcome := Map()
+        outcome["ok"] := conflicts.Length == 0
+        outcome["value"] := result
+        outcome["conflicts"] := conflicts
+        return outcome
     }
 
     static MergeQuickPhrases(base, localData, remoteData, conflicts := "") {
@@ -142,22 +142,22 @@ class CloudSyncMerger {
         conflicts
     ) {
         if hasLocal && hasRemote && this._Equals(localValue, remoteValue)
-            return { present: true, value: localValue }
+            return Map("present", true, "value", localValue)
 
         if this._SameState(hasBaseid, baseValue, hasLocal, localValue)
             return hasRemote
-                ? { present: true, value: remoteValue }
-                    : { present: false }
+                ? Map("present", true, "value", remoteValue)
+                    : Map("present", false)
 
         if this._SameState(hasBaseid, baseValue, hasRemote, remoteValue)
             return hasLocal
-                ? { present: true, value: localValue }
-                    : { present: false }
+                ? Map("present", true, "value", localValue)
+                    : Map("present", false)
 
         ; A key present in base but missing from both local and remote
         ; means both sides removed it — delete it instead of raising a conflict
         if hasBaseid && !hasLocal && !hasRemote
-            return { present: false }
+            return Map("present", false)
 
         if hasLocal && hasRemote
             && this._CanMergeMaps(localValue, remoteValue)
@@ -176,17 +176,17 @@ class CloudSyncMerger {
                 conflicts.Push(item)
 
             if nestedConflicts.Length == 0
-                return { present: true, value: merged }
+                return Map("present", true, "value", merged)
         }
 
-        conflicts.Push({
-            path: path,
-            base: hasBaseid ? baseValue : "",
-            local: hasLocal ? localValue : "",
-            remote: hasRemote ? remoteValue : ""
-        })
+        conflicts.Push(Map(
+            "path", path,
+            "base", hasBaseid ? baseValue : "",
+            "local", hasLocal ? localValue : "",
+            "remote", hasRemote ? remoteValue : ""
+        ))
 
-        return { present: hasLocal, value: localValue }
+        return Map("present", hasLocal, "value", localValue)
     }
 
     static _SameState(hasA, valueA, hasB, valueB) {

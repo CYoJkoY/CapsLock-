@@ -703,14 +703,20 @@ CheckCloudSyncRegressions(root) {
     )
 
     ; An empty credential field preserves the stored secret, so the dialog has
-    ; to say so and reload the WebDAV username it can display. The labels are
-    ; refreshed after both loading and saving.
+    ; to say so, show a mask cue inside the empty password box, and reload the
+    ; WebDAV username it can display. The labels and cues are refreshed after
+    ; both loading and saving.
     Check(
         InStr(guiText, "webdavUser.Text := CloudSyncCredentials.Get(" . Chr(34) . "webdav" . Chr(34) . ", " . Chr(34) . "username" . Chr(34) . ", " . Chr(34) . Chr(34) . ")") > 0
             && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_SAVED") > 0
             && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_HINT") > 0
-            && InStr(guiText, "********") == 0,
-        "cloud sync dialog restores the WebDAV username and explains blank secrets"
+            && InStr(guiText, "CredentialMask := " . Chr(34) . "********" . Chr(34)) > 0,
+        "cloud sync dialog restores the WebDAV username and marks saved secrets"
+    )
+    Check(
+        InStr(guiText, "SetCredentialCue(gistToken, " . Chr(34) . "gist" . Chr(34) . ", " . Chr(34) . "token" . Chr(34) . ")") > 0
+            && InStr(guiText, "0x1501") > 0,
+        "saved credentials show a mask cue inside the password field"
     )
     loadSection := SectionBetween(guiText, "LoadFields() {", "SaveSettings(*) {")
     saveSection := SectionBetween(guiText, "SaveSettings(*) {", "Connect(*) {")
@@ -718,6 +724,12 @@ CheckCloudSyncRegressions(root) {
         InStr(loadSection, "RefreshCredentialLabels()") > 0
             && InStr(saveSection, "RefreshCredentialLabels()") > 0,
         "credential labels refresh after loading and saving"
+    )
+
+    syncSection := SectionBetween(guiText, "Sync(*) {", "Reset(*) {")
+    Check(
+        InStr(syncSection, "AppState.CloudSyncLastError") > 0,
+        "cloud sync failures include the provider error"
     )
     Check(
         InStr(guiText, "if SaveSettings()") > 0

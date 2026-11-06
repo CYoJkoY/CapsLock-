@@ -76,7 +76,7 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return { exists: false }
+            return Map("exists", false)
 
         if !HttpClient.IsSuccess(response)
             throw Error(this._ErrorMessage(response, "GitHub repository download failed."))
@@ -95,13 +95,13 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
             throw Error("The GitHub repository file is not a valid CapsLock sync package.")
 
         sha := metadata.Get("sha", "")
-        return {
-            exists: true,
-            text: content,
-            fingerprint: package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: sha
-        }
+        result := Map()
+        result["exists"] := true
+        result["text"] := content
+        result["fingerprint"] := package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := sha
+        return result
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
@@ -154,14 +154,14 @@ class GitHubRepositoryProvider extends CloudSyncProvider {
         } catch {
         }
 
-        return {
-            ok: true,
-            fingerprint: fingerprint != ""
-                ? fingerprint
-                    : package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: newSha
-        }
+        result := Map()
+        result["ok"] := true
+        result["fingerprint"] := fingerprint != ""
+            ? fingerprint
+                : package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := newSha
+        return result
     }
 
     Disconnect() {
