@@ -116,8 +116,11 @@ _RunImageMagickPdf(exe, paths, outputPdf, logFile) {
     for path in paths
         pathArgs .= '"' path '" '
 
-    ; 原生引号嵌套构造命令行参数
-    commandLine := '"' exe '" -density 150 -auto-orient -quality 95 ' . pathArgs . '"' outputPdf '"'
+    ; ImageMagick parses operators in CLI order, and -auto-orient is a
+    ; setting that requires an image in the current sequence. Passing it
+    ; before the inputs fails with "no images found for operation
+    ; -auto-orient", so the sources come first and the settings follow.
+    commandLine := '"' exe '" ' . pathArgs . '-auto-orient -density 150 -quality 95 "' outputPdf '"'
 
     batchPath := A_Temp "\CapsLock_ImageMagick_" A_TickCount "_" A_MSec ".cmd"
     batch := "@echo off`r`n"

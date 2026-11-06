@@ -38,7 +38,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         if fileId == "" {
             fileId := this._FindFileId()
             if fileId == "" {
-                return { exists: false }
+                return Map("exists", false)
             }
 
             AppState.CloudSyncTarget := fileId
@@ -57,7 +57,7 @@ class GoogleDriveProvider extends CloudSyncProvider {
         )
 
         if response.status == 404
-            return { exists: false }
+            return Map("exists", false)
 
         if !HttpClient.IsSuccess(response)
             throw Error("Google Drive download failed. HTTP " response.status)
@@ -68,15 +68,15 @@ class GoogleDriveProvider extends CloudSyncProvider {
 
         metadata := this._GetMetadata(fileId)
 
-        return {
-            exists: true,
-            text: response.body,
-            fingerprint: package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: IsObject(metadata)
-                ? metadata.Get("version", "")
-                : ""
-        }
+        result := Map()
+        result["exists"] := true
+        result["text"] := response.body
+        result["fingerprint"] := package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := IsObject(metadata)
+            ? metadata.Get("version", "")
+            : ""
+        return result
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
@@ -142,16 +142,16 @@ class GoogleDriveProvider extends CloudSyncProvider {
         package := CloudSyncModel.Deserialize(packageText)
         metadata := this._GetMetadata(fileId)
 
-        return {
-            ok: true,
-            fingerprint: fingerprint != ""
-                ? fingerprint
-                    : package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: IsObject(metadata)
-                ? metadata.Get("version", "")
-                : ""
-        }
+        result := Map()
+        result["ok"] := true
+        result["fingerprint"] := fingerprint != ""
+            ? fingerprint
+                : package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := IsObject(metadata)
+            ? metadata.Get("version", "")
+            : ""
+        return result
     }
 
     Disconnect() {

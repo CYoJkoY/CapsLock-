@@ -273,10 +273,10 @@ class CloudSyncCoordinator {
                 remotePackage["payload"]
             )
 
-            if !merge.ok
-                return this._CreateConflict(localPackage, remotePackage, merge.conflicts)
+            if !merge["ok"]
+                return this._CreateConflict(localPackage, remotePackage, merge["conflicts"])
 
-            mergedPackage := this._BuildPackageFromPayload(merge.value)
+            mergedPackage := this._BuildPackageFromPayload(merge["value"])
 
             currentRemote := provider.Download()
             if !IsObject(currentRemote)
@@ -459,10 +459,10 @@ class CloudSyncCoordinator {
                 conflictPackage["payload"]
             )
 
-            if !merge.ok
+            if !merge["ok"]
                 return false
 
-            mergedPackage := this._BuildPackageFromPayload(merge.value)
+            mergedPackage := this._BuildPackageFromPayload(merge["value"])
             if !CloudSyncStorage.ApplyPackage(mergedPackage)
                 return false
 

@@ -65,6 +65,73 @@ class QuickPhraseStore {
 
     static GetAll() => this._phrases
 
+    static ExportToFile(path) {
+        payload := Map()
+        payload["format"] := "capslock-quick-phrases"
+        payload["version"] := 1
+        payload["phrases"] := CloudSyncSerializer.ExportQuickPhrases()
+        return this._WriteContent(path, Json.Stringify(payload, true))
+    }
+
+    static ImportFromFile(path) {
+        if !FileExist(path)
+            return false
+
+        try payload := Json.Parse(FileRead(path, "UTF-8"))
+        catch
+            return false
+
+        if !(payload is Map) || !payload.Has("phrases") || !(payload["phrases"] is Array)
+            return false
+
+        imported := []
+        for item in payload["phrases"] {
+            if !(item is Map)
+                return false
+
+            if !item.Has("name") || !item.Has("content")
+                return false
+
+            name := Trim(String(item["name"]))
+            content := String(item["content"])
+            if name == "" || content == ""
+                return false
+
+            category := item.Has("category") ? Trim(String(item["category"])) : ""
+            imported.Push({ name: name, category: category, content: content })
+        }
+
+        this._EnsureDirectories()
+        if FileExist(AppState.QuickPhraseFile)
+            FileDelete(AppState.QuickPhraseFile)
+        if DirExist(AppState.QuickPhraseContentDir)
+            Loop Files, AppState.QuickPhraseContentDir "\phrase-*.txt"
+                FileDelete(A_LoopFileFullPath)
+
+        this._phrases := []
+        for item in imported {
+            id := this._NextId()
+            phrase := {
+                id: id,
+                name: item.name,
+                category: item.category,
+                order: id,
+                contentFile: "phrase-" id ".txt",
+                content: item.content
+            }
+            if !this._WriteContent(AppState.QuickPhraseContentDir "\" phrase.contentFile, phrase.content)
+                return false
+            this._WriteMetadata(phrase)
+            this._phrases.Push(phrase)
+        }
+
+        this._Sort()
+        this._NormalizeOrders()
+        this._NotifyChanged()
+        this._NotifySyncDirty()
+        return true
+    }
+
     static SetOnChange(callback) {
         this._onChange := IsObject(callback) ? callback : ""
     }

@@ -57,12 +57,32 @@ ShowCloudSyncSettings(*) {
     ThemeHelper.StyleComboBox(provider)
 
     ; An empty credential field keeps the encrypted value that is already
-    ; stored, so the dialog explains that rule once instead of showing a
-    ; masked secret in an ordinary text or password control.
+    ; stored, so the saved secret is reported both in the label and as a
+    ; native cue banner inside the field. The cue keeps the "already
+    ; filled" cue visible while the password box itself stays empty.
+    CredentialMask := "********"
+
     CredentialLabel(baseText, providerKey, key) {
         if CloudSyncCredentials.Get(providerKey, key, "") != ""
             return baseText " (" Lang("GUI_CLOUD_SYNC_CREDENTIAL_SAVED", "saved") ")"
         return baseText
+    }
+
+    CredentialCue(providerKey, key) {
+        if CloudSyncCredentials.Get(providerKey, key, "") != ""
+            return CredentialMask " " Lang("GUI_CLOUD_SYNC_CREDENTIAL_SAVED", "saved")
+        return ""
+    }
+
+    SetCredentialCue(ctrl, providerKey, key) {
+        DllCall(
+            "SendMessageW",
+            "Ptr", ctrl.Hwnd,
+            "UInt", 0x1501,
+            "Ptr", 1,
+            "Str", CredentialCue(providerKey, key),
+            "Ptr"
+        )
     }
 
     myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
@@ -400,6 +420,10 @@ ShowCloudSyncSettings(*) {
         repoTokenLabel.Text := CredentialLabel(repoTokenBase, "github", "token")
         webdavUserLabel.Text := CredentialLabel(webdavUserBase, "webdav", "username")
         webdavPasswordLabel.Text := CredentialLabel(webdavPasswordBase, "webdav", "password")
+
+        SetCredentialCue(gistToken, "gist", "token")
+        SetCredentialCue(repoToken, "github", "token")
+        SetCredentialCue(webdavPassword, "webdav", "password")
     }
 
     LoadFields() {
@@ -587,8 +611,12 @@ ShowCloudSyncSettings(*) {
 
         if CloudSyncCoordinator.SyncNow()
             ShowToolTip(Lang("MSG_CLOUD_SYNC_SUCCESS", "Cloud Sync completed successfully."), 2000)
-        else
-            ShowToolTip(Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention."), 2400)
+        else {
+            errorText := Lang("MSG_CLOUD_SYNC_FAILED", "Cloud Sync failed or requires attention.")
+            if (AppState.CloudSyncLastError != "")
+                errorText .= " " AppState.CloudSyncLastError
+            ShowToolTip(errorText, 3200)
+        }
 
         if (provider.Text == "GitHub Gist")
             gistTarget.Text := AppState.CloudSyncTarget

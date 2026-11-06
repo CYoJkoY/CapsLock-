@@ -51,7 +51,7 @@ class OneDriveProvider extends CloudSyncProvider {
         )
 
         if metadataResponse.status == 404
-            return { exists: false }
+            return Map("exists", false)
 
         if !HttpClient.IsSuccess(metadataResponse)
             throw Error("OneDrive target lookup failed.")
@@ -76,13 +76,13 @@ class OneDriveProvider extends CloudSyncProvider {
         if !CloudSyncModel.VerifyPackage(package)
             throw Error("The OneDrive file is not a valid CapsLock sync package.")
 
-        return {
-            exists: true,
-            text: downloadResponse.body,
-            fingerprint: package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: metadata.Get("eTag", "")
-        }
+        result := Map()
+        result["exists"] := true
+        result["text"] := downloadResponse.body
+        result["fingerprint"] := package["integrity"]["contentHash"]
+        result["revision"] := package["revision"]["id"]
+        result["providerRevision"] := metadata.Get("eTag", "")
+        return result
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
@@ -121,14 +121,14 @@ class OneDriveProvider extends CloudSyncProvider {
         package := CloudSyncModel.Deserialize(packageText)
         result := Json.Parse(response.body)
 
-        return {
-            ok: true,
-            fingerprint: fingerprint != ""
-                ? fingerprint
-                    : package["integrity"]["contentHash"],
-            revision: package["revision"]["id"],
-            providerRevision: result.Get("eTag", "")
-        }
+        uploadResult := Map()
+        uploadResult["ok"] := true
+        uploadResult["fingerprint"] := fingerprint != ""
+            ? fingerprint
+                : package["integrity"]["contentHash"]
+        uploadResult["revision"] := package["revision"]["id"]
+        uploadResult["providerRevision"] := result.Get("eTag", "")
+        return uploadResult
     }
 
     Disconnect() {

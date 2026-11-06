@@ -703,14 +703,20 @@ CheckCloudSyncRegressions(root) {
     )
 
     ; An empty credential field preserves the stored secret, so the dialog has
-    ; to say so and reload the WebDAV username it can display. The labels are
-    ; refreshed after both loading and saving.
+    ; to say so, show a mask cue inside the empty password box, and reload the
+    ; WebDAV username it can display. The labels and cues are refreshed after
+    ; both loading and saving.
     Check(
         InStr(guiText, "webdavUser.Text := CloudSyncCredentials.Get(" . Chr(34) . "webdav" . Chr(34) . ", " . Chr(34) . "username" . Chr(34) . ", " . Chr(34) . Chr(34) . ")") > 0
             && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_SAVED") > 0
             && InStr(guiText, "GUI_CLOUD_SYNC_CREDENTIAL_HINT") > 0
-            && InStr(guiText, "********") == 0,
-        "cloud sync dialog restores the WebDAV username and explains blank secrets"
+            && InStr(guiText, "CredentialMask := " . Chr(34) . "********" . Chr(34)) > 0,
+        "cloud sync dialog restores the WebDAV username and marks saved secrets"
+    )
+    Check(
+        InStr(guiText, "SetCredentialCue(gistToken, " . Chr(34) . "gist" . Chr(34) . ", " . Chr(34) . "token" . Chr(34) . ")") > 0
+            && InStr(guiText, "0x1501") > 0,
+        "saved credentials show a mask cue inside the password field"
     )
     loadSection := SectionBetween(guiText, "LoadFields() {", "SaveSettings(*) {")
     saveSection := SectionBetween(guiText, "SaveSettings(*) {", "Connect(*) {")
@@ -718,6 +724,12 @@ CheckCloudSyncRegressions(root) {
         InStr(loadSection, "RefreshCredentialLabels()") > 0
             && InStr(saveSection, "RefreshCredentialLabels()") > 0,
         "credential labels refresh after loading and saving"
+    )
+
+    syncSection := SectionBetween(guiText, "Sync(*) {", "Reset(*) {")
+    Check(
+        InStr(syncSection, "AppState.CloudSyncLastError") > 0,
+        "cloud sync failures include the provider error"
     )
     Check(
         InStr(guiText, "if SaveSettings()") > 0
@@ -913,6 +925,7 @@ CheckConfigFreshInstallSave() {
 
 CheckQuickPhraseRegressions(root) {
     phraseText := ReadText(root "\UI\QuickPhraseGui.ahk")
+    storeText := ReadText(root "\Core\QuickPhraseStore.ahk")
     orderText := ReadText(root "\UI\QuickPhraseOrder.ahk")
     menuText := ReadText(root "\History\CustomMenu.ahk")
     rootText := ReadText(root "\CapsLock-.ahk")
@@ -1014,6 +1027,15 @@ CheckQuickPhraseRegressions(root) {
         "quick phrase Store changes refresh open lists and group options"
     )
     Check(
+        InStr(storeText, "static ExportToFile(path)") > 0
+            && InStr(storeText, "static ImportFromFile(path)") > 0
+            && InStr(storeText, "capslock-quick-phrases") > 0
+            && InStr(phraseText, "QuickPhraseExport()") > 0
+            && InStr(phraseText, "QuickPhraseImport(myGui)") > 0
+            && InStr(phraseText, "CONFIRM_QUICK_PHRASE_IMPORT") > 0,
+        "quick phrases support confirmed local JSON export and import"
+    )
+    Check(
         InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " curY " . Chr(34) . " w" . Chr(34) . " menuW") > 0
             && InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " subCurY " . Chr(34) . " w" . Chr(34) . " subMenuW") > 0
             && InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " curY " . Chr(34) . " w" . Chr(34) . " nestedMenuW") > 0,
@@ -1058,6 +1080,21 @@ CheckImageToolsDefaultOutput(root) {
             && InStr(guiText, "this.AutoOutputDirectory := false") > 0
             && InStr(guiText, "this._RefreshAutoOutputDirectory()") > 0,
         "image tools wire automatic output directory selection to manual overrides"
+    )
+}
+
+CheckImageToPdfCommandOrder(root) {
+    text := ReadText(root "\Core\ImageToPdf.ahk")
+    defIndex := InStr(text, "_RunImageMagickPdf(exe, paths, outputPdf, logFile) {")
+    Check(defIndex > 0, "image pdf declares the ImageMagick runner")
+    endIndex := InStr(text, "_IsImageMagickPdfPolicyError(errorText) {", false, defIndex + 1)
+    Check(endIndex > defIndex, "image pdf runner sits before the policy error probe")
+    runner := SubStr(text, defIndex, endIndex - defIndex)
+    inputIndex := InStr(runner, "pathArgs")
+    orientIndex := InStr(runner, "-auto-orient")
+    Check(
+        inputIndex > 0 && orientIndex > inputIndex,
+        "image pdf passes image inputs before -auto-orient so ImageMagick finds a sequence"
     )
 }
 
@@ -1338,6 +1375,7 @@ Main() {
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
+    CheckImageToPdfCommandOrder(root)
     CheckMouseControlRegressions(root)
     CheckEveryFileIncluded(root, files)
 

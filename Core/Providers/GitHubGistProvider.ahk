@@ -60,7 +60,7 @@ class GitHubGistProvider extends CloudSyncProvider {
     Download() {
         target := Trim(AppState.CloudSyncTarget)
         if target == ""
-            return { exists: false }
+            return Map("exists", false)
 
         response := this._GetGist(target)
 
@@ -76,7 +76,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         files := gist["files"]
         if !(files is Map) || !files.Has(this.FileName)
-            return { exists: false }
+            return Map("exists", false)
 
         fileInfo := files[this.FileName]
         content := fileInfo.Has("content") ? String(fileInfo["content"]) : ""
@@ -107,13 +107,13 @@ class GitHubGistProvider extends CloudSyncProvider {
         fingerprint := package["integrity"]["contentHash"]
         revision := package["revision"]["id"]
 
-        return {
-            exists: true,
-            text: content,
-            fingerprint: fingerprint,
-            revision: revision,
-            providerRevision: this._Header(response.headers, "ETag")
-        }
+        result := Map()
+        result["exists"] := true
+        result["text"] := content
+        result["fingerprint"] := fingerprint
+        result["revision"] := revision
+        result["providerRevision"] := this._Header(response.headers, "ETag")
+        return result
     }
 
     Upload(packageText, fingerprint := "", expectedRevision := "") {
@@ -194,16 +194,16 @@ class GitHubGistProvider extends CloudSyncProvider {
             }
         }
 
-        return {
-            ok: true,
-            fingerprint: fingerprint != "" ? fingerprint : (
-                IsObject(package) && package.Has("integrity")
-                    ? package["integrity"]["contentHash"]
-                    : ""
-            ),
-            revision: revision,
-            providerRevision: providerRevision
-        }
+        result := Map()
+        result["ok"] := true
+        result["fingerprint"] := fingerprint != "" ? fingerprint : (
+            IsObject(package) && package.Has("integrity")
+                ? package["integrity"]["contentHash"]
+                : ""
+        )
+        result["revision"] := revision
+        result["providerRevision"] := providerRevision
+        return result
     }
 
     Disconnect() {
