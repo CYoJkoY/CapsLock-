@@ -925,6 +925,7 @@ CheckConfigFreshInstallSave() {
 
 CheckQuickPhraseRegressions(root) {
     phraseText := ReadText(root "\UI\QuickPhraseGui.ahk")
+    storeText := ReadText(root "\Core\QuickPhraseStore.ahk")
     orderText := ReadText(root "\UI\QuickPhraseOrder.ahk")
     menuText := ReadText(root "\History\CustomMenu.ahk")
     rootText := ReadText(root "\CapsLock-.ahk")
@@ -1024,6 +1025,15 @@ CheckQuickPhraseRegressions(root) {
             && InStr(phraseText, "selectedIndexBeforeRefresh := groupFilter.Value") > 0
             && InStr(phraseText, "if selectedIndexBeforeRefresh > 1") > 0,
         "quick phrase Store changes refresh open lists and group options"
+    )
+    Check(
+        InStr(storeText, "static ExportToFile(path)") > 0
+            && InStr(storeText, "static ImportFromFile(path)") > 0
+            && InStr(storeText, "capslock-quick-phrases") > 0
+            && InStr(phraseText, "QuickPhraseExport()") > 0
+            && InStr(phraseText, "QuickPhraseImport(myGui)") > 0
+            && InStr(phraseText, "CONFIRM_QUICK_PHRASE_IMPORT") > 0,
+        "quick phrases support confirmed local JSON export and import"
     )
     Check(
         InStr(menuText, Chr(34) . "x0 y" . Chr(34) . " curY " . Chr(34) . " w" . Chr(34) . " menuW") > 0

@@ -1094,6 +1094,8 @@ ShowQuickPhraseManager(returnToSelector := false) {
     delBtn := ThemeHelper.AddButton(myGui, "x+8 yp w100", "🗑 " Lang("GUI_QUICK_PHRASE_DELETE", "Delete"), "danger")
     upBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "↑ " Lang("GUI_QUICK_PHRASE_MOVE_UP", "Move Up"))
     downBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "↓ " Lang("GUI_QUICK_PHRASE_MOVE_DOWN", "Move Down"))
+    exportBtn := ThemeHelper.AddButton(myGui, "xm y+8 w105", "⇧ " Lang("GUI_QUICK_PHRASE_EXPORT", "Export"))
+    importBtn := ThemeHelper.AddButton(myGui, "x+8 yp w105", "⇩ " Lang("GUI_QUICK_PHRASE_IMPORT", "Import"))
     closeBtn := ThemeHelper.AddButton(myGui, "x+8 yp w90", Lang("GUI_FULL_CLOSE", "Close"))
 
     myGui.SearchBox := search
@@ -1108,6 +1110,8 @@ ShowQuickPhraseManager(returnToSelector := false) {
     delBtn.OnEvent("Click", (*) => QuickPhraseDeleteSelected(myGui))
     upBtn.OnEvent("Click", (*) => QuickPhraseMoveSelected(myGui, -1))
     downBtn.OnEvent("Click", (*) => QuickPhraseMoveSelected(myGui, 1))
+    exportBtn.OnEvent("Click", (*) => QuickPhraseExport())
+    importBtn.OnEvent("Click", (*) => QuickPhraseImport(myGui))
     closeBtn.OnEvent("Click", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseManager(myGui))
     myGui.OnEvent("Close", (*) => CloseQuickPhraseManager(myGui))
@@ -1116,6 +1120,49 @@ ShowQuickPhraseManager(returnToSelector := false) {
     myGui.Show("w740 h590")
     search.Focus()
     QuickPhraseRefreshManager(myGui)
+}
+
+QuickPhraseExport() {
+    path := FileSelect(
+        "S",
+        A_ScriptDir "\QuickPhrases.json",
+        Lang("GUI_QUICK_PHRASE_EXPORT", "Export Quick Phrases"),
+        "JSON files (*.json)"
+    )
+    if path == ""
+        return
+
+    if !QuickPhraseStore.ExportToFile(path) {
+        ShowToolTip(Lang("MSG_QUICK_PHRASE_EXPORT_FAILED", "Failed to export quick phrases."), 2000)
+        return
+    }
+    ShowToolTip(Lang("MSG_QUICK_PHRASE_EXPORTED", "Quick phrases exported."), 1500)
+}
+
+QuickPhraseImport(myGui) {
+    path := FileSelect(
+        "1",
+        ,
+        Lang("GUI_QUICK_PHRASE_IMPORT", "Import Quick Phrases"),
+        "JSON files (*.json)"
+    )
+    if path == ""
+        return
+
+    if MsgBox(
+        Lang("CONFIRM_QUICK_PHRASE_IMPORT", "Importing will replace the current quick phrases. Continue?"),
+        Lang("GUI_QUICK_PHRASE_IMPORT", "Import Quick Phrases"),
+        "YN Icon!"
+    ) != "Yes"
+        return
+
+    if !QuickPhraseStore.ImportFromFile(path) {
+        ShowToolTip(Lang("MSG_QUICK_PHRASE_IMPORT_FAILED", "Failed to import quick phrases."), 2200)
+        return
+    }
+    QuickPhraseRefreshGroupFilter(myGui)
+    QuickPhraseRefreshManager(myGui)
+    ShowToolTip(Lang("MSG_QUICK_PHRASE_IMPORTED", "Quick phrases imported."), 1500)
 }
 
 CloseQuickPhraseManager(myGui) {
