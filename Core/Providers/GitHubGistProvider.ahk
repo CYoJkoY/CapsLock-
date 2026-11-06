@@ -2,7 +2,7 @@
 
 class GitHubGistProvider extends CloudSyncProvider {
     Name := "gist"
-    ApiBase := "https://api.github.com"
+    static ApiBase := "https://api.github.com"
     FileName := "capslock-sync.json"
 
     Connect(config := "") {
@@ -12,7 +12,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
         response := HttpClient.Request(
             "GET",
-            this.ApiBase "/user",
+            GitHubGistProvider.ApiBase "/user",
             this._Headers(token),
             "",
             10000
@@ -31,7 +31,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         if target == "" {
             response := HttpClient.Request(
                 "GET",
-                this.ApiBase "/gists?per_page=1",
+                GitHubGistProvider.ApiBase "/gists?per_page=1",
                 this._Headers(Trim(CloudSyncCredentials.Get("gist", "token", ""))),
                 "",
                 10000
@@ -135,7 +135,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
             response := HttpClient.Request(
                 "POST",
-                this.ApiBase "/gists",
+                GitHubGistProvider.ApiBase "/gists",
                 this._Headers(token),
                 Json.Stringify(body, false),
                 15000
@@ -166,7 +166,7 @@ class GitHubGistProvider extends CloudSyncProvider {
 
             response := HttpClient.Request(
                 "PATCH",
-                this.ApiBase "/gists/" target,
+                GitHubGistProvider.ApiBase "/gists/" target,
                 this._Headers(token),
                 Json.Stringify(body, false),
                 15000
@@ -214,7 +214,7 @@ class GitHubGistProvider extends CloudSyncProvider {
         token := Trim(CloudSyncCredentials.Get("gist", "token", ""))
         return HttpClient.Request(
             "GET",
-            this.ApiBase "/gists/" Trim(id),
+            GitHubGistProvider.ApiBase "/gists/" Trim(id),
             this._Headers(token),
             "",
             10000

@@ -106,13 +106,27 @@ class CloudSyncCoordinator {
 }
 
 class CloudSyncCredentials {
+    static Get(provider, key, default := "") {
+        return "test-token"
+    }
 }
 
 class CloudSyncModel {
 }
 
 class HttpClient {
+    static Request(method, url, headers, body, timeout) {
+        global gCloudSyncTestRequestUrl
+        gCloudSyncTestRequestUrl := url
+        return { status: 200, body: "", headers: "" }
+    }
+
+    static IsSuccess(response) {
+        return response.status == 200
+    }
 }
+
+global gCloudSyncTestRequestUrl := ""
 
 class GoogleOAuth {
 }
@@ -766,7 +780,7 @@ CheckCloudSyncRegressions(root) {
     Check(
         InStr(providerText, "token := Trim(CloudSyncCredentials.Get(" . Chr(34) . "gist" . Chr(34)) > 0
             && InStr(providerText, "headers[" . Chr(34) . "Content-Type" . Chr(34) . "] := " . Chr(34) . "application/json" . Chr(34)) > 0
-            && InStr(providerText, "this.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
+            && InStr(providerText, "GitHubGistProvider.ApiBase " . Chr(34) . "/gists?per_page=1" . Chr(34)) > 0,
         "gist provider trims tokens, sends JSON, and validates gist permissions"
     )
 }
@@ -785,16 +799,24 @@ SectionBetween(text, startNeedle, endNeedle) {
 ; through an instance. Instantiating each provider catches that regression
 ; without any network access.
 CheckCloudSyncProviderInstances() {
+    global gCloudSyncTestRequestUrl
+
     gist := GitHubGistProvider()
     repo := GitHubRepositoryProvider()
     drive := GoogleDriveProvider()
 
     Check(
         gist.Name == "gist"
-            && gist.ApiBase == "https://api.github.com"
+            && GitHubGistProvider.ApiBase == "https://api.github.com"
             && gist.FileName == "capslock-sync.json"
-            && gist.HasProp("ApiBase") && gist.HasProp("FileName"),
-        "GitHub Gist provider exposes its endpoint and file name on the instance"
+            && gist.HasProp("FileName"),
+        "GitHub Gist provider exposes its static endpoint and instance file name"
+    )
+    gCloudSyncTestRequestUrl := ""
+    Check(
+        gist.Connect()
+            && gCloudSyncTestRequestUrl == "https://api.github.com/user",
+        "GitHub Gist Connect reads the class-qualified ApiBase and builds the authentication request"
     )
     Check(
         repo.Name == "github"
