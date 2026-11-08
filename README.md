@@ -92,7 +92,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Browser tabs | `Q / E`                    | Previous / next browser tab                                                                                   |
 | Help         | `H / F1`                   | Open the built-in hotkey reference                                                                            |
 | Settings     | `,`                        | Open the settings center                                                                                      |
-| ImageMagick  | `I`                        | Open image tools for compression, vertical merging, and format conversion                                     |
+| ImageMagick  | `I`                        | Open image tools for compression, merging (vertical, horizontal, grid), and format conversion                 |
 | Mouse        | `CapsLock ON, then Shift twice` | Enter mouse control mode; press `Shift` or `Esc` to exit                                                 |
 | Mouse        | `W / A / S / D`            | Move the cursor up / left / down / right                                                                      |
 | Mouse        | `J / K / L`                | Hold the left / middle / right mouse button                                                                   |
@@ -309,7 +309,7 @@ The integration supports a broad list of Pandoc input/output formats, expands fo
 
 ImageMagick is used for image-to-PDF workflows when required by smart paste.
 
-Press `CapsLock + I` to open the image tools panel. Select one or more images to compress or convert, or at least two images to merge vertically, then choose an output folder. The panel writes new files with unique names and leaves the originals unchanged. Configure `magick.exe` in Settings > Tools before using these operations.
+Press `CapsLock + I` to open the image tools panel. Add images with the file picker or drop them directly onto the window. Use one or more images to compress or convert, or at least two to merge vertically, horizontally, or as a grid with a configurable column count. Merges accept a background colour chosen from the native Windows colour picker together with a separate opacity slider, so transparent padding survives in PNG and WebP output; JPEG drops the alpha channel and keeps the RGB value. An optional output name is used exactly for a single result and gains `_1`, `_2` suffixes for batch runs. The panel writes new files with unique names and leaves the originals unchanged. Configure `magick.exe` in Settings > Tools before using these operations.
 
 ImageMagick is optional; the core application remains usable without it.
 
