@@ -1234,6 +1234,32 @@ CheckImageToolsDefaultOutput(root) {
     )
 }
 
+CheckWindowHoleMousePassthrough(root) {
+    bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
+    guard := "#HotIf CapsLockShortcutGroupAvailable(" Chr(34) "window" Chr(34) ") && !WindowHole.IsActive()"
+    guardIndex := InStr(bindings, guard)
+    Check(guardIndex > 0, "window mouse bindings are disabled while Window Hole is active")
+
+    nextBlock := guardIndex ? InStr(bindings, "#HotIf", false, guardIndex + StrLen(guard)) : 0
+    block := (guardIndex > 0 && nextBlock > guardIndex)
+        ? SubStr(bindings, guardIndex, nextBlock - guardIndex)
+        : ""
+    Check(
+        InStr(block, "LButton::") > 0
+            && InStr(block, "RButton::") > 0
+            && InStr(block, "MButton::") > 0,
+        "left, right, and middle mouse bindings share the Window Hole guard"
+    )
+
+    for name in ["LButton", "RButton", "MButton"] {
+        first := InStr(bindings, Chr(10) name "::")
+        Check(
+            first > 0 && InStr(bindings, Chr(10) name "::", false, first + 1) == 0,
+            name " opacity binding is declared once"
+        )
+    }
+}
+
 CheckImageToPdfCommandOrder(root) {
     text := ReadText(root "\Core\ImageToPdf.ahk")
     defIndex := InStr(text, "_RunImageMagickPdf(exe, paths, outputPdf, logFile) {")
@@ -1529,6 +1555,7 @@ Main() {
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
+    CheckWindowHoleMousePassthrough(root)
     CheckImageToPdfCommandOrder(root)
     CheckMouseControlRegressions(root)
     CheckEveryFileIncluded(root, files)
