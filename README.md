@@ -206,6 +206,7 @@ The current implementation uses a native Win32 window region rather than a visua
 - the configured hole is cut from an eligible top-level window;
 - the revealed lower window remains directly visible through the removed region;
 - the hole follows the pointer while the mode is active;
+- while the hole is active, mouse clicks reach the revealed content, and the mouse-button opacity shortcuts are paused until it closes;
 - supported shapes are **circle**, **rounded rectangle**, and **square**;
 - activation can be **hold** or **toggle**;
 - while Window Hole is active, pressing `1` temporarily minimizes the current focused window, and repeated presses can traverse deeper window layers;
@@ -290,7 +291,7 @@ CapsLock also acts as a compact window-control layer:
 - `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
 - `Shift`, then `S`, `2`, or `Num2` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under Hidden windows in the CapsLock- tray menu, where one click restores a window and Restore all hidden windows brings every hidden window back.
 - Both shift-layer actions use a sequential trigger: press and hold `CapsLock + Shift` to activate the shift layer (a 2-second window), then press the target key. This avoids key-conflict issues on certain keyboard layouts where simultaneous `CapsLock + Shift + letter` combinations could not be detected reliably. The layer is unavailable while the native CapsLock light is on, because tapping `Shift` twice then enters mouse control mode.
-- The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode.
+- The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode. They pause while Window Hole is active so clicks reach the revealed content.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.
 - Both window modes are undone automatically when CapsLock- exits or reloads, so a window is never left frameless or unreachable.

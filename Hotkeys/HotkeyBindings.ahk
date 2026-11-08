@@ -221,11 +221,11 @@ q:: Send("^{PgUp}")
 e:: Send("^{PgDn}")
 #HotIf
 
-; The opacity controls stay available while Window Hole is active: the hole
-; only removes a region of the window, so changing the layered alpha still
-; applies to the remaining surface. Keeping them enabled preserves the
-; previous behaviour of CapsLock + left/right drag and the middle-click toggle.
-#HotIf CapsLockShortcutGroupAvailable("window")
+; Mouse opacity shortcuts must stay off while Window Hole is active. The hole
+; reveals the layer underneath, so clicks inside it have to reach that layer
+; instead of being consumed here. The shortcuts return as soon as the hole
+; closes; keyboard window shortcuts are unaffected.
+#HotIf CapsLockShortcutGroupAvailable("window") && !WindowHole.IsActive()
 LButton:: {
     AdjustOpacity(20)
     if KeyWait("LButton", "T0.3")
