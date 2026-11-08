@@ -1356,9 +1356,17 @@ ImageToolsGridRejected(count, columns) {
 
 CheckWindowHoleMousePassthrough(root) {
     bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
-    guard := "#HotIf CapsLockShortcutGroupAvailable(" Chr(34) "window" Chr(34) ") && !WindowHole.IsActive()"
+    guard := "#HotIf WindowOpacityHotkeysAvailable()"
     guardIndex := InStr(bindings, guard)
     Check(guardIndex > 0, "window mouse bindings are disabled while Window Hole is active")
+    predicateStart := InStr(bindings, "WindowOpacityHotkeysAvailable() {")
+    predicateEnd := InStr(bindings, Chr(10) "}", false, predicateStart)
+    predicate := SubStr(bindings, predicateStart, predicateEnd - predicateStart)
+    holeIndex := InStr(predicate, "!WindowHole.IsActive()")
+    xIndex := InStr(predicate, "!GetKeyState(" Chr(34) "x" Chr(34) ", " Chr(34) "P" Chr(34) ")")
+    profileIndex := InStr(predicate, "CapsLockShortcutGroupAvailable(" Chr(34) "window" Chr(34) ")")
+    Check(holeIndex > 0 && xIndex > holeIndex && profileIndex > xIndex,
+        "opacity guard checks the active hole and physical X before the application profile")
 
     nextBlock := guardIndex ? InStr(bindings, "#HotIf", false, guardIndex + StrLen(guard)) : 0
     block := (guardIndex > 0 && nextBlock > guardIndex)
@@ -1370,6 +1378,9 @@ CheckWindowHoleMousePassthrough(root) {
             && InStr(block, "MButton::") > 0,
         "left, right, and middle mouse bindings share the Window Hole guard"
     )
+    for button in ["LButton", "RButton"]
+        Check(InStr(block, "while WindowOpacityHotkeysAvailable() && GetKeyState(" Chr(34) button Chr(34)) > 0,
+            button " opacity repeat stops when the shared guard becomes false")
 
     for name in ["LButton", "RButton", "MButton"] {
         first := InStr(bindings, Chr(10) name "::")

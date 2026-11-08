@@ -25,6 +25,13 @@ CapsLockShortcutGroupAvailable(groupId) {
         && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow(groupId)
 }
 
+WindowOpacityHotkeysAvailable() {
+    ; Check the hole and physical X before the foreground application profile.
+    return !WindowHole.IsActive()
+        && !GetKeyState("x", "P")
+        && CapsLockShortcutGroupAvailable("window")
+}
+
 QuickPhraseUiActive() {
     if AppState.QuickPhraseTransactionActive
         return true
@@ -221,16 +228,16 @@ q:: Send("^{PgUp}")
 e:: Send("^{PgDn}")
 #HotIf
 
-; Mouse opacity shortcuts must stay off while Window Hole is active. The hole
+; Mouse opacity shortcuts must stay off while X is held or Window Hole is active. The hole
 ; reveals the layer underneath, so clicks inside it have to reach that layer
-; instead of being consumed here. The shortcuts return as soon as the hole
-; closes; keyboard window shortcuts are unaffected.
-#HotIf CapsLockShortcutGroupAvailable("window") && !WindowHole.IsActive()
+; instead of being consumed here. The shortcuts return once X is released and
+; the hole closes; keyboard window shortcuts are unaffected.
+#HotIf WindowOpacityHotkeysAvailable()
 LButton:: {
     AdjustOpacity(20)
     if KeyWait("LButton", "T0.3")
         return
-    while GetKeyState("LButton", "P") {
+    while WindowOpacityHotkeysAvailable() && GetKeyState("LButton", "P") {
         AdjustOpacity(5)
         Sleep(50)
     }
@@ -239,7 +246,7 @@ RButton:: {
     AdjustOpacity(-20)
     if KeyWait("RButton", "T0.3")
         return
-    while GetKeyState("RButton", "P") {
+    while WindowOpacityHotkeysAvailable() && GetKeyState("RButton", "P") {
         AdjustOpacity(-5)
         Sleep(50)
     }
