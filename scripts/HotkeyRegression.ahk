@@ -1234,6 +1234,126 @@ CheckImageToolsDefaultOutput(root) {
     )
 }
 
+CheckImageToolsExtended(root) {
+    core := ReadText(root "\Core\ImageTools.ahk")
+    guiText := ReadText(root "\UI\ImageToolsGui.ahk")
+
+    for operation in ["compress", "merge", "merge_horizontal", "merge_grid", "convert"]
+        Check(
+            InStr(core, Chr(34) operation Chr(34)) > 0,
+            "image tools core names the " operation " operation"
+        )
+    Check(
+        InStr(guiText, "merge_horizontal") > 0 && InStr(guiText, "merge_grid") > 0,
+        "image tools panel offers horizontal and grid merge"
+    )
+
+    ; Names keep the file stem and lose everything Windows cannot store.
+    Check(
+        ImageTools.SanitizeOutputName("  report.png  ") == "report",
+        "image tools output name trims spaces and a supported extension"
+    )
+    Check(
+        ImageTools.SanitizeOutputName("a/b:c*d?.JPG") == "abcd",
+        "image tools output name removes separators and reserved characters"
+    )
+    Check(
+        ImageTools.SanitizeOutputName(Chr(34) "photo.webp" Chr(34)) == "photo",
+        "image tools output name unwraps surrounding quotes"
+    )
+    Check(
+        ImageTools.SanitizeOutputName("   ") == "",
+        "image tools output name falls back to the default for blank input"
+    )
+
+    Check(
+        ImageTools.NormalizeBackground("#00ffff") == "#00FFFF",
+        "image tools merge background uppercases a six digit colour"
+    )
+    Check(
+        ImageTools.NormalizeBackground("#00FFFF80") == "#00FFFF80",
+        "image tools merge background keeps an eight digit colour"
+    )
+    Check(
+        ImageTools.NormalizeBackground("") == "#FFFFFF",
+        "image tools merge background defaults to opaque white"
+    )
+    Check(
+        ImageToolsBackgroundRejected("00FFFF") && ImageToolsBackgroundRejected("#00FFFF80FF")
+            && ImageToolsBackgroundRejected("#GGGGGG"),
+        "image tools merge background rejects malformed colours"
+    )
+
+    rows := ImageTools.GridRowSizes(5, 2)
+    Check(
+        rows.Length == 3 && rows[1] == 2 && rows[2] == 2 && rows[3] == 1,
+        "image tools grid rows fill the column count and keep the remainder"
+    )
+    rows := ImageTools.GridRowSizes(3, 10)
+    Check(
+        rows.Length == 1 && rows[1] == 3,
+        "image tools grid rows collapse to one row when columns exceed the images"
+    )
+    Check(
+        ImageToolsGridRejected(4, 0),
+        "image tools grid rows reject a zero column count"
+    )
+
+    mergeStart := InStr(core, "static _Merge(")
+    mergeEnd := InStr(core, "static _GridGroups(", false, Max(1, mergeStart))
+    mergeBody := SubStr(core, mergeStart, mergeEnd - mergeStart)
+    Check(
+        mergeStart > 0 && mergeEnd > mergeStart
+            && InStr(mergeBody, "-background") > 0
+            && InStr(mergeBody, "+append") > 0
+            && InStr(mergeBody, "-append") > 0,
+        "image tools merge passes the background before the append operators"
+    )
+    Check(
+        InStr(mergeBody, "SubStr(background, 1, 7)") > 0 && InStr(mergeBody, "-alpha remove") > 0,
+        "image tools merge flattens JPEG output onto the RGB background"
+    )
+
+    Check(
+        InStr(guiText, "OnEvent(" Chr(34) "DropFiles" Chr(34)) > 0,
+        "image tools panel accepts dropped files"
+    )
+    Check(
+        InStr(guiText, "GUI_IMAGE_TOOLS_OUTPUT_NAME") > 0 && InStr(guiText, "myGui.OutputName := outputName") > 0,
+        "image tools panel exposes the output name field"
+    )
+    Check(
+        InStr(guiText, "ChooseBackgroundColor()") > 0 && InStr(guiText, "comdlg32\ChooseColorW") > 0,
+        "image tools panel opens the native colour picker"
+    )
+    Check(
+        InStr(guiText, "Range0-100") > 0 && InStr(guiText, "this._ComposeBackground()") > 0,
+        "image tools panel derives the merge alpha from the slider"
+    )
+    Check(
+        InStr(guiText, "this._SyncOperationControls()") > 0,
+        "image tools panel enables controls per operation before showing"
+    )
+}
+
+ImageToolsBackgroundRejected(value) {
+    try {
+        ImageTools.NormalizeBackground(value)
+        return false
+    } catch as err {
+        return err is ValueError
+    }
+}
+
+ImageToolsGridRejected(count, columns) {
+    try {
+        ImageTools.GridRowSizes(count, columns)
+        return false
+    } catch as err {
+        return err is ValueError
+    }
+}
+
 CheckWindowHoleMousePassthrough(root) {
     bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
     guard := "#HotIf CapsLockShortcutGroupAvailable(" Chr(34) "window" Chr(34) ") && !WindowHole.IsActive()"
@@ -1555,6 +1675,7 @@ Main() {
     CheckQuickPhraseRegressions(root)
     CheckImageToolsHotkeys(root)
     CheckImageToolsDefaultOutput(root)
+    CheckImageToolsExtended(root)
     CheckWindowHoleMousePassthrough(root)
     CheckImageToPdfCommandOrder(root)
     CheckMouseControlRegressions(root)
