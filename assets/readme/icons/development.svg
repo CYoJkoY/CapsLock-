@@ -2,6 +2,6 @@
   <title id="title">Development</title>
   <desc id="desc">Code brackets representing source development.</desc>
   <rect x="2" y="2" width="20" height="20" rx="2" fill="#FAF9F5" stroke="#A6382A" stroke-width="1.5"/>
-  <path d="M9 7.25 5.75 12 9 16.75M15 7.25 18.25 12 15 16.75" fill="none" stroke="#15243A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 7.25 5.75 12 9 16.75M15 7.25 18.25 12 15 16.75" fill="none" stroke="#1C1A17" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="m13.25 6.5-2.5 11" fill="none" stroke="#A6382A" stroke-width="1.5" stroke-linecap="round"/>
 </svg>

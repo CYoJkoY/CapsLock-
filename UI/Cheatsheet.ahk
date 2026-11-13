@@ -50,7 +50,7 @@ class HotkeyReferenceGui {
         myGui.OnEvent("Escape", (*) => HotkeyReferenceGui.Close())
         myGui.OnEvent("Size", (g, minmax, w, h) => HotkeyReferenceGui.Resize(g, w, h))
 
-        ThemeHelper.AddTitle(myGui, "⌨ " Lang("CHEAT_TITLE"), 640)
+        ThemeHelper.AddTitle(myGui, Lang("CHEAT_TITLE"), 640)
         ThemeHelper.AddSubtitle(myGui, Lang("CHEAT_HINT"), 640)
         ThemeHelper.AddSeparator(myGui, 640)
 

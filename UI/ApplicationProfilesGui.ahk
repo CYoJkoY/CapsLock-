@@ -332,7 +332,7 @@ class ApplicationProfilesGroupGui {
         ThemeHelper.StyleGui(myGui)
         ThemeHelper.AddTitle(
             myGui,
-            "⌘ " Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName),
+            Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName),
             640
         )
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_APP_PROFILES_GROUPS_HINT"), 640)

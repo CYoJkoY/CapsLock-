@@ -38,7 +38,7 @@ class CommandPaletteGui {
         myGui.OnEvent("Escape", (*) => CommandPaletteGui.Close())
         myGui.OnEvent("Close", (*) => CommandPaletteGui.Close())
 
-        ThemeHelper.AddTitle(myGui, "⌘ " Lang("GUI_COMMAND_PALETTE_TITLE"), 660)
+        ThemeHelper.AddTitle(myGui, Lang("GUI_COMMAND_PALETTE_TITLE"), 660)
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_COMMAND_PALETTE_HINT"), 660)
         ThemeHelper.AddSeparator(myGui, 660)
 

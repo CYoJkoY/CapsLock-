@@ -2,7 +2,7 @@
   <title id="title">Features</title>
   <desc id="desc">Three separated shortcut keys representing keyboard features.</desc>
   <rect x="2" y="2" width="20" height="20" rx="2" fill="#FAF9F5" stroke="#A6382A" stroke-width="1.5"/>
-  <g fill="none" stroke="#15243A" stroke-width="1.5" stroke-linejoin="round">
+  <g fill="none" stroke="#1C1A17" stroke-width="1.5" stroke-linejoin="round">
     <rect x="5" y="8" width="4" height="4" rx="2"/>
     <rect x="10" y="8" width="4" height="4" rx="2"/>
     <rect x="15" y="8" width="4" height="4" rx="2"/>

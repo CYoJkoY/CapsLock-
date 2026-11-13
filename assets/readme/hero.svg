@@ -34,8 +34,8 @@
   <!-- Main message -->
   <g transform="translate(456 76)">
     <text x="0" y="24" fill="#E18C7C" font-family="Cascadia Code, Consolas, monospace" font-size="14" font-weight="700" letter-spacing="3">WINDOWS / AUTOHOTKEY V2</text>
-    <text x="0" y="82" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="700">CapsLock Extended</text>
-    <text x="0" y="120" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="20">One modifier. A complete keyboard-first control layer.</text>
+    <text x="0" y="82" fill="#EDEAE2" font-family="Source Han Serif SC,Noto Serif CJK SC,Georgia,serif" font-size="50" font-weight="700">CapsLock Extended</text>
+    <text x="0" y="120" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="20">One modifier. A complete keyboard-first control layer.</text>
 
     <rect x="0" y="150" width="700" height="2" fill="#3A3733"/>
 
@@ -43,32 +43,32 @@
     <g transform="translate(0 184)">
       <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
       <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
-      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Text control</text>
-      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Words, lines, selection and deletion</text>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="18" font-weight="650">Text control</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="14">Words, lines, selection and deletion</text>
       <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">← →  ↑ ↓  Space  A / D</text>
     </g>
 
     <g transform="translate(344 184)">
       <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
       <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
-      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Clipboard</text>
-      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Plain text, history and smart paste</text>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="18" font-weight="650">Clipboard</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="14">Plain text, history and smart paste</text>
       <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">C  V  Shift+V  F</text>
     </g>
 
     <g transform="translate(0 304)">
       <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
       <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
-      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Window control</text>
-      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Topmost, maximize, minimize and opacity</text>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="18" font-weight="650">Window control</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="14">Topmost, maximize, minimize and opacity</text>
       <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">T  W / 8  S / 2  Mouse</text>
     </g>
 
     <g transform="translate(344 304)">
       <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
       <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
-      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Tabs &amp; documents</text>
-      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Browser tabs, taskbar and Pandoc workflows</text>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="18" font-weight="650">Tabs &amp; documents</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="14">Browser tabs, taskbar and Pandoc workflows</text>
       <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">Q / E  Shift+Q/E  P</text>
     </g>
 
@@ -76,7 +76,7 @@
       <rect width="700" height="42" rx="2" fill="#25272D"/>
       <text x="20" y="27" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="12">CAPSLOCK ×2</text>
       <text x="122" y="27" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="12">→</text>
-      <text x="144" y="27" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="13">native CapsLock remains available</text>
+      <text x="144" y="27" fill="#A39F95" font-family="Source Han Sans SC,Noto Sans CJK SC,Microsoft YaHei,sans-serif" font-size="13">native CapsLock remains available</text>
     </g>
   </g>
 </svg>
