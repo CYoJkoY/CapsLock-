@@ -163,7 +163,7 @@ class WindowFullScreen {
         this.StartWatcher()
         WinActivate("ahk_id " hwnd)
         OSD.ShowNotification(
-            "🖥 " Lang("MSG_BORDERLESS_ON", "Borderless fullscreen"),
+            Lang("MSG_BORDERLESS_ON", "Borderless fullscreen"),
             1500,
             "success"
         )
@@ -205,7 +205,7 @@ class WindowFullScreen {
 
         if !silent {
             OSD.ShowNotification(
-                "🖥 " Lang("MSG_BORDERLESS_OFF", "Windowed"),
+                Lang("MSG_BORDERLESS_OFF", "Windowed"),
                 1500,
                 "info"
             )

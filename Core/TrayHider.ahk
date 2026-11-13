@@ -67,7 +67,7 @@ class TrayHider {
         this.StartWatcher()
 
         OSD.ShowNotification(
-            "🙈 " Lang(
+            Lang(
                 "MSG_TRAY_HIDDEN",
                 "Window hidden — restore it from the CapsLock- tray menu"
             ),
@@ -108,7 +108,7 @@ class TrayHider {
 
         if restored {
             OSD.ShowNotification(
-                "👁 " Lang("MSG_TRAY_RESTORED", "Window restored: {1}", title),
+                Lang("MSG_TRAY_RESTORED", "Window restored: {1}", title),
                 1800,
                 "info"
             )
@@ -181,7 +181,7 @@ class TrayHider {
 
         process := info["process"]
 
-        return "🫥 " title (process != "" ? "  (" process ")" : "")
+        return title (process != "" ? "  (" process ")" : "")
     }
 
     ; --- Helpers ----------------------------------------------------------
