@@ -24,7 +24,7 @@ class ApplicationProfilesGui {
         }
 
         myGui := Gui(
-            "+AlwaysOnTop -MaximizeBox -MinimizeBox +ToolWindow",
+            "-MaximizeBox -MinimizeBox +ToolWindow",
             Lang("GUI_APP_PROFILES_TITLE")
         )
         ThemeHelper.StyleGui(myGui)
@@ -322,8 +322,11 @@ class ApplicationProfilesGroupGui {
             return
 
         this.Close()
+        ownerOption := IsObject(ApplicationProfilesGui.Instance)
+            ? " +Owner" ApplicationProfilesGui.Instance.Hwnd
+            : ""
         myGui := Gui(
-            "+AlwaysOnTop -MaximizeBox -MinimizeBox +ToolWindow",
+            ownerOption " -MaximizeBox -MinimizeBox +ToolWindow",
             Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName)
         )
         ThemeHelper.StyleGui(myGui)

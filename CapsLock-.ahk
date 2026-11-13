@@ -9,6 +9,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 
 #Include "Config\Globals.ahk"
 #Include "Core\ApplicationProfiles.ahk"
+#Include "Core\AppVersion.ahk"
 #Include "Config\Encryption.ahk"
 #Include "Config\ConfigManager.ahk"
 

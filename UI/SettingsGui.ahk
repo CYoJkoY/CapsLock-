@@ -74,7 +74,7 @@ class SettingsGui {
         this.pageControls := Map(1, [], 2, [], 3, [], 4, [], 5, [], 6, [])
         this.controls := Map()
 
-        myGui := Gui("+AlwaysOnTop -MaximizeBox", Lang("GUI_SETTINGS_TITLE"))
+        myGui := Gui("-MaximizeBox", Lang("GUI_SETTINGS_TITLE"))
         ThemeHelper.StyleGui(myGui)
         myGui.MarginX := 0
         myGui.MarginY := 0

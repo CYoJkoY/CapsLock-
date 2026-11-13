@@ -116,10 +116,11 @@ class CloudSyncModel {
     static GetApplicationVersion() {
         try {
             if InStr(StrLower(A_ScriptFullPath), ".exe")
-                return FileGetVersion(A_ScriptFullPath)
+                if (version := FileGetVersion(A_ScriptFullPath)) != ""
+                    return version
         } catch {
         }
 
-        return "source-" A_AhkVersion
+        return AppVersion.Current
     }
 }

@@ -42,7 +42,7 @@ class ImageToolsGui {
         }
 
         ; WS_EX_ACCEPTFILES lets the window receive the DropFiles event.
-        myGui := Gui("+AlwaysOnTop -MaximizeBox +E0x00000010", Lang("GUI_IMAGE_TOOLS_TITLE", "ImageMagick Image Tools"))
+        myGui := Gui("-MaximizeBox +E0x00000010", Lang("GUI_IMAGE_TOOLS_TITLE", "ImageMagick Image Tools"))
         ThemeHelper.StyleGui(myGui)
         ThemeHelper.AddTitle(myGui, Lang("GUI_IMAGE_TOOLS_TITLE", "ImageMagick Image Tools"), 590)
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_IMAGE_TOOLS_SUBTITLE", "Compress, merge vertically, horizontally or as a grid, or convert images. Drop images onto this window. Source files are kept unchanged."), 590)

@@ -1080,6 +1080,14 @@ CheckQuickPhraseRegressions(root) {
     orderText := ReadText(root "\UI\QuickPhraseOrder.ahk")
     menuText := ReadText(root "\History\CustomMenu.ahk")
     rootText := ReadText(root "\CapsLock-.ahk")
+    darkInputText := ReadText(root "\Utils\DarkInputDialog.ahk")
+    profilesText := ReadText(root "\UI\ApplicationProfilesGui.ahk")
+    settingsText := ReadText(root "\UI\SettingsGui.ahk")
+    traySettingsText := ReadText(root "\Tray\TraySettings.ahk")
+    commandPaletteText := ReadText(root "\UI\CommandPaletteGui.ahk")
+    osdText := ReadText(root "\UI\OSD.ahk")
+    appVersionText := ReadText(root "\Core\AppVersion.ahk")
+    cloudModelText := ReadText(root "\Core\CloudSyncModel.ahk")
 
     Check(
         InStr(phraseText, "groupFilter := myGui.Add(" . Chr(34) . "DropDownList" . Chr(34)) > 0
@@ -1174,8 +1182,36 @@ CheckQuickPhraseRegressions(root) {
             && InStr(phraseText, "QuickPhraseRefreshGroupFilter(manager)") > 0
             && InStr(phraseText, "QuickPhraseRefreshGroupFilter(selector)") > 0
             && InStr(phraseText, "selectedIndexBeforeRefresh := groupFilter.Value") > 0
-            && InStr(phraseText, "if selectedIndexBeforeRefresh > 1") > 0,
+            && InStr(phraseText, "if selectedIndexBeforeRefresh > 1") > 0
+            && InStr(phraseText, "Loop myGui.GroupFilterOptionCount") > 0
+            && InStr(phraseText, "groupFilter.Add(options)") > 0
+            && InStr(phraseText, "try QuickPhraseRefreshManager(manager)") > 0
+            && InStr(phraseText, "try QuickPhraseRefreshSelector(selector)") > 0,
         "quick phrase Store changes refresh open lists and group options"
+    )
+    Check(
+        InStr(phraseText, "DarkInputDialog.Confirm(") > 0
+            && InStr(phraseText, "myGui") > 0
+            && InStr(darkInputText, "static Confirm(prompt, title, owner :=") > 0
+            && InStr(darkInputText, "ThemeHelper.ApplyWindowTheme(myGui.Hwnd)") > 0
+            && InStr(darkInputText, "+Owner") > 0
+            && !InStr(darkInputText, "+AlwaysOnTop")
+            && InStr(phraseText, "+Resize +MinSize720x470") > 0,
+        "quick phrase confirmations are themed, owned, and manager is not topmost"
+    )
+    Check(
+        InStr(phraseText, "+AlwaysOnTop") == 0
+            && InStr(profilesText, "+AlwaysOnTop") == 0
+            && InStr(settingsText, "+AlwaysOnTop") == 0
+            && InStr(traySettingsText, "+AlwaysOnTop") == 0
+            && InStr(commandPaletteText, "+AlwaysOnTop") > 0
+            && InStr(osdText, "+AlwaysOnTop") > 0,
+        "ordinary management windows are not topmost while intentional overlays remain so"
+    )
+    Check(
+        InStr(appVersionText, "static Current := " . Chr(34) . "1.12.6") > 0
+            && InStr(cloudModelText, "return AppVersion.Current") > 0,
+        "source application version is explicit for Cloud Sync packages"
     )
     Check(
         InStr(storeText, "static ExportToFile(path)") > 0
