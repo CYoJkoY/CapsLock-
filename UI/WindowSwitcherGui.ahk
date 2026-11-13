@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
 ; WindowSwitcherGui
@@ -111,7 +111,7 @@ class WindowSwitcherGui {
 
         ; The list font is set for this control only, so the row height and
         ; text size follow the configured row density.
-        myGui.SetFont(profile.font " c" Theme.Text, Theme.Font)
+        myGui.SetFont(profile.font " c" Theme.Text, ThemeHelper.ReadingStack())
 
         list := myGui.Add(
             "ListView",
@@ -120,7 +120,7 @@ class WindowSwitcherGui {
             columns
         )
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         ; Full-row selection keeps the highlight readable end to end; double
         ; buffering keeps filtering from flickering.
@@ -144,19 +144,19 @@ class WindowSwitcherGui {
         if this._imageList
             WindowIcons.AttachImageList(this._imageList, list.Hwnd)
 
-        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s8 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         status := myGui.Add(
             "Text",
             "w640 y+8",
             ""
         )
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         ThemeHelper.MarkDim(status)
 
         activateBtn := ThemeHelper.AddButton(
             myGui,
             "Default w110 y+12",
-            "✓ " Lang("GUI_WINDOW_SWITCHER_ACTIVATE", "Activate"),
+            Lang("GUI_WINDOW_SWITCHER_ACTIVATE", "Activate"),
             "primary"
         )
 
@@ -165,13 +165,13 @@ class WindowSwitcherGui {
         closeWinBtn := ThemeHelper.AddButton(
             myGui,
             "x+8 w120",
-            "✕ " Lang("GUI_WINDOW_SWITCHER_CLOSE_WIN", "Close window")
+            Lang("GUI_WINDOW_SWITCHER_CLOSE_WIN", "Close window")
         )
 
         closeBtn := ThemeHelper.AddButton(
             myGui,
             "x+8 w90",
-            "✕ " Lang("GUI_FULL_CLOSE", "Close")
+            Lang("GUI_FULL_CLOSE", "Close")
         )
 
         myGui.SearchBox := search

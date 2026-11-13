@@ -4,79 +4,79 @@
 
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0E1420"/>
-      <stop offset="1" stop-color="#17263D"/>
+      <stop offset="0" stop-color="#131416"/>
+      <stop offset="1" stop-color="#1B1C20"/>
     </linearGradient>
     <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#5B86C9" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#5B86C9" stop-opacity="0"/>
+      <stop offset="0" stop-color="#A6382A" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#A6382A" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <rect width="1440" height="560" rx="36" fill="url(#bg)"/>
+  <rect width="1440" height="560" rx="2" fill="url(#bg)"/>
   <circle cx="210" cy="230" r="250" fill="url(#glow)"/>
   <circle cx="1280" cy="80" r="170" fill="url(#glow)" opacity="0.65"/>
 
-  <rect x="28" y="28" width="1384" height="504" rx="30" fill="none" stroke="#31425D" stroke-width="2"/>
+  <rect x="28" y="28" width="1384" height="504" rx="2" fill="none" stroke="#3A3733" stroke-width="2"/>
 
   <!-- Brand mark -->
   <g transform="translate(86 90)">
-    <rect x="0" y="0" width="310" height="310" rx="76" fill="#151E2D" stroke="#587DB7" stroke-width="5"/>
-    <rect x="34" y="34" width="242" height="242" rx="54" fill="#1B293E" stroke="#263A58" stroke-width="2"/>
+    <rect x="0" y="0" width="310" height="310" rx="2" fill="#1B1C20" stroke="#6B6257" stroke-width="5"/>
+    <rect x="34" y="34" width="242" height="242" rx="2" fill="#25272D" stroke="#3A3733" stroke-width="2"/>
 
     <!-- CapsLock key mark -->
-    <path d="M92 154c0-44 31-74 74-74 28 0 51 10 67 30l-29 23c-10-11-21-16-36-16-22 0-37 15-37 37s15 37 37 37c15 0 26-5 36-16l29 23c-16 20-39 30-67 30-43 0-74-30-74-74Z" fill="#F0F4FF"/>
-    <path d="M194 130h48M194 178h48" fill="none" stroke="#6F9DE0" stroke-width="16" stroke-linecap="round"/>
-    <circle cx="226" cy="76" r="10" fill="#C4A95E"/>
-    <text x="155" y="332" text-anchor="middle" fill="#91A9CC" font-family="Cascadia Code, Consolas, monospace" font-size="11" font-weight="700" letter-spacing="2">SECOND CONTROL LAYER</text>
+    <path d="M92 154c0-44 31-74 74-74 28 0 51 10 67 30l-29 23c-10-11-21-16-36-16-22 0-37 15-37 37s15 37 37 37c15 0 26-5 36-16l29 23c-16 20-39 30-67 30-43 0-74-30-74-74Z" fill="#EDEAE2"/>
+    <path d="M194 130h48M194 178h48" fill="none" stroke="#E18C7C" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="226" cy="76" r="10" fill="#D5B576"/>
+    <text x="155" y="332" text-anchor="middle" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11" font-weight="700" letter-spacing="2">SECOND CONTROL LAYER</text>
   </g>
 
   <!-- Main message -->
   <g transform="translate(456 76)">
-    <text x="0" y="24" fill="#7FA8E2" font-family="Cascadia Code, Consolas, monospace" font-size="14" font-weight="700" letter-spacing="3">WINDOWS / AUTOHOTKEY V2</text>
-    <text x="0" y="82" fill="#F4F7FF" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="700">CapsLock Extended</text>
-    <text x="0" y="120" fill="#AEBBD0" font-family="Segoe UI, Arial, sans-serif" font-size="20">One modifier. A complete keyboard-first control layer.</text>
+    <text x="0" y="24" fill="#E18C7C" font-family="Cascadia Code, Consolas, monospace" font-size="14" font-weight="700" letter-spacing="3">WINDOWS / AUTOHOTKEY V2</text>
+    <text x="0" y="82" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="700">CapsLock Extended</text>
+    <text x="0" y="120" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="20">One modifier. A complete keyboard-first control layer.</text>
 
-    <rect x="0" y="150" width="700" height="2" fill="#2B3E5B"/>
+    <rect x="0" y="150" width="700" height="2" fill="#3A3733"/>
 
     <!-- Capability cards -->
     <g transform="translate(0 184)">
-      <rect width="326" height="104" rx="22" fill="#1A2739" stroke="#31435F"/>
-      <circle cx="34" cy="34" r="10" fill="#6F9DE0"/>
-      <text x="58" y="40" fill="#EAF0FB" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Text control</text>
-      <text x="24" y="72" fill="#94A7C3" font-family="Segoe UI, Arial, sans-serif" font-size="14">Words, lines, selection and deletion</text>
-      <text x="24" y="91" fill="#637895" font-family="Cascadia Code, Consolas, monospace" font-size="11">← →  ↑ ↓  Space  A / D</text>
+      <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
+      <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Text control</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Words, lines, selection and deletion</text>
+      <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">← →  ↑ ↓  Space  A / D</text>
     </g>
 
     <g transform="translate(344 184)">
-      <rect width="326" height="104" rx="22" fill="#1A2739" stroke="#31435F"/>
-      <circle cx="34" cy="34" r="10" fill="#6F9DE0"/>
-      <text x="58" y="40" fill="#EAF0FB" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Clipboard</text>
-      <text x="24" y="72" fill="#94A7C3" font-family="Segoe UI, Arial, sans-serif" font-size="14">Plain text, history and smart paste</text>
-      <text x="24" y="91" fill="#637895" font-family="Cascadia Code, Consolas, monospace" font-size="11">C  V  Shift+V  F</text>
+      <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
+      <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Clipboard</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Plain text, history and smart paste</text>
+      <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">C  V  Shift+V  F</text>
     </g>
 
     <g transform="translate(0 304)">
-      <rect width="326" height="104" rx="22" fill="#1A2739" stroke="#31435F"/>
-      <circle cx="34" cy="34" r="10" fill="#6F9DE0"/>
-      <text x="58" y="40" fill="#EAF0FB" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Window control</text>
-      <text x="24" y="72" fill="#94A7C3" font-family="Segoe UI, Arial, sans-serif" font-size="14">Topmost, maximize, minimize and opacity</text>
-      <text x="24" y="91" fill="#637895" font-family="Cascadia Code, Consolas, monospace" font-size="11">T  W / 8  S / 2  Mouse</text>
+      <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
+      <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Window control</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Topmost, maximize, minimize and opacity</text>
+      <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">T  W / 8  S / 2  Mouse</text>
     </g>
 
     <g transform="translate(344 304)">
-      <rect width="326" height="104" rx="22" fill="#1A2739" stroke="#31435F"/>
-      <circle cx="34" cy="34" r="10" fill="#6F9DE0"/>
-      <text x="58" y="40" fill="#EAF0FB" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Tabs &amp; documents</text>
-      <text x="24" y="72" fill="#94A7C3" font-family="Segoe UI, Arial, sans-serif" font-size="14">Browser tabs, taskbar and Pandoc workflows</text>
-      <text x="24" y="91" fill="#637895" font-family="Cascadia Code, Consolas, monospace" font-size="11">Q / E  Shift+Q/E  P</text>
+      <rect width="326" height="104" rx="2" fill="#25272D" stroke="#3A3733"/>
+      <circle cx="34" cy="34" r="10" fill="#E18C7C"/>
+      <text x="58" y="40" fill="#EDEAE2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650">Tabs &amp; documents</text>
+      <text x="24" y="72" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="14">Browser tabs, taskbar and Pandoc workflows</text>
+      <text x="24" y="91" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="11">Q / E  Shift+Q/E  P</text>
     </g>
 
     <g transform="translate(0 444)">
-      <rect width="700" height="42" rx="14" fill="#162236"/>
-      <text x="20" y="27" fill="#7C91AE" font-family="Cascadia Code, Consolas, monospace" font-size="12">CAPSLOCK ×2</text>
-      <text x="122" y="27" fill="#4F6685" font-family="Cascadia Code, Consolas, monospace" font-size="12">→</text>
-      <text x="144" y="27" fill="#B8C6DB" font-family="Segoe UI, Arial, sans-serif" font-size="13">native CapsLock remains available</text>
+      <rect width="700" height="42" rx="2" fill="#25272D"/>
+      <text x="20" y="27" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="12">CAPSLOCK ×2</text>
+      <text x="122" y="27" fill="#A39F95" font-family="Cascadia Code, Consolas, monospace" font-size="12">→</text>
+      <text x="144" y="27" fill="#A39F95" font-family="Segoe UI, Arial, sans-serif" font-size="13">native CapsLock remains available</text>
     </g>
   </g>
 </svg>

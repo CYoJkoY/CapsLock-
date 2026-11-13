@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 class DarkInputDialog {
     static Confirm(prompt, title, owner := "", width := 420) {
@@ -7,8 +7,8 @@ class DarkInputDialog {
         ownerOption := ownerHwnd ? " +Owner" ownerHwnd : ""
         myGui := Gui(ownerOption " -MaximizeBox -MinimizeBox", title)
         ThemeHelper.StyleGui(myGui)
-        ThemeHelper.AddTitle(myGui, "⚠ " title, width - 24)
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        ThemeHelper.AddTitle(myGui, " " title, width - 24)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "w" (width - 24) " y+10", prompt)
 
         confirmBtn := ThemeHelper.AddButton(myGui, "Default w100 y+18", Lang("GUI_OK", "OK"), "danger")
@@ -54,19 +54,19 @@ class DarkInputDialog {
 
         myGui := Gui("-MaximizeBox -MinimizeBox", title)
         ThemeHelper.StyleGui(myGui)
-        ThemeHelper.AddTitle(myGui, "⚙️ " title, width - 20)
+        ThemeHelper.AddTitle(myGui, " " title, width - 20)
 
-        myGui.SetFont("s10 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s10 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         myGui.Add("Text", "w" (width - 20) " y+8", prompt)
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         editCtrl := myGui.Add(
             "Edit",
             "w" (width - 20) " r1 y+12 " ThemeHelper.GetEditOptions(),
             default
         )
-        btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
-        btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+        btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", Lang("GUI_OK"), "primary")
+        btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", Lang("GUI_CANCEL"))
 
         OnOK(*) {
             result.Value := editCtrl.Value

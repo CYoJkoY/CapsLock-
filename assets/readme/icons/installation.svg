@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="title desc">
   <title id="title">Installation</title>
   <desc id="desc">A download arrow entering a tray for installation.</desc>
-  <rect x="2" y="2" width="20" height="20" rx="5" fill="#EAF2FF" stroke="#5B86C9" stroke-width="1.5"/>
-  <path d="M12 5.75v8.25M8.75 11.25 12 14.5l3.25-3.25" fill="none" stroke="#5B86C9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="2" y="2" width="20" height="20" rx="2" fill="#FAF9F5" stroke="#A6382A" stroke-width="1.5"/>
+  <path d="M12 5.75v8.25M8.75 11.25 12 14.5l3.25-3.25" fill="none" stroke="#A6382A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M6.5 16.5h11M7.5 18.5h9" fill="none" stroke="#15243A" stroke-width="1.5" stroke-linecap="round"/>
 </svg>

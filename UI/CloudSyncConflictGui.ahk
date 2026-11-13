@@ -1,13 +1,14 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 class CloudSyncConflictGui {
     static Show() {
         myGui := Gui("-MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"))
         ThemeHelper.StyleGui(myGui)
+        myGui.BackColor := Theme.Surface
 
         ThemeHelper.AddTitle(
             myGui,
-            "⚠ " Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"),
+            Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"),
             520
         )
         ThemeHelper.AddSubtitle(

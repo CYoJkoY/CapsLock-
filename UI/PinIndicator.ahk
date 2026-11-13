@@ -385,16 +385,15 @@ class PinIndicator {
             return ""
         }
 
-        badge.BackColor := Theme.Primary
+        badge.BackColor := Theme.Cinnabar
         badge.MarginX := 0
         badge.MarginY := 0
 
-        ; Segoe UI Emoji renders the pin glyph as a coloured bitmap on every
-        ; supported Windows build, which keeps the badge readable without a
-        ; second colour to maintain.
+        ; A square cinnabar seal with a serif bracket mark.
         try {
-            badge.SetFont("s11 c" Theme.OnPrimary, "Segoe UI Emoji")
-            badge.Add("Text", "x0 y0 w" size " h" size " Center +0x200", "📌")
+            badge.SetFont("s" Max(8, Round(8 * scale)) " c" Theme.OnPrimary, ThemeHelper.SerifStack())
+            seal := badge.Add("Text", "x0 y0 w" size " h" size " Center +0x200", "止")
+            ThemeHelper.MarkSurface(seal, Theme.OnPrimary, Theme.Cinnabar)
         } catch {
         }
 

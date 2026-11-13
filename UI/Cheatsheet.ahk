@@ -50,22 +50,21 @@ class HotkeyReferenceGui {
         myGui.OnEvent("Escape", (*) => HotkeyReferenceGui.Close())
         myGui.OnEvent("Size", (g, minmax, w, h) => HotkeyReferenceGui.Resize(g, w, h))
 
-        ThemeHelper.AddTitle(myGui, "⌨️ " Lang("CHEAT_TITLE"), 640)
+        ThemeHelper.AddTitle(myGui, "⌨ " Lang("CHEAT_TITLE"), 640)
         ThemeHelper.AddSubtitle(myGui, Lang("CHEAT_HINT"), 640)
         ThemeHelper.AddSeparator(myGui, 640)
 
-        myGui.SetFont("s10 c" Theme.TextMuted, Theme.Font)
-        searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.TextMuted, ThemeHelper.ReadingStack())
         search := myGui.Add(
             "Edit",
-            "x" (margin + 22) " y" (searchY - 2) " w560 " ThemeHelper.GetEditOptions("r1")
+            "x" margin " y" (searchY - 2) " w640 " ThemeHelper.GetEditOptions("r1")
         )
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         search.OnEvent("Change", (*) => HotkeyReferenceGui.Refresh())
 
         lv := myGui.Add(
             "ListView",
-            "x" margin " y" lvY " r16 w640 Grid " ThemeHelper.GetLVOptions(),
+            "x" margin " y" lvY " r16 w640 " ThemeHelper.GetLVOptions(),
             [Lang("CHEAT_COL_CATEGORY"), Lang("CHEAT_COL_SHORTCUT"), Lang("CHEAT_COL_ACTION")]
         )
         lv.ModifyCol(1, 110)
@@ -74,15 +73,14 @@ class HotkeyReferenceGui {
         lv.OnEvent("DoubleClick", (lvObj, row) => HotkeyReferenceGui.RunEntry(row))
         ThemeHelper.StyleListView(lv)
 
-        myGui.SetFont("s8 c" Theme.TextMuted, Theme.Font)
+        myGui.SetFont("s8 c" Theme.TextMuted, ThemeHelper.ReadingStack())
         status := myGui.Add("Text", "x" margin " y+10 w640", "")
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         this.gui := myGui
         this.listView := lv
         this.searchBox := search
         this.statusBar := status
-        this.searchIcon := searchIcon
 
         ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
         myGui.Show("w672 h560")
@@ -161,7 +159,7 @@ class HotkeyReferenceGui {
             lvH := 120
 
         if IsObject(this.searchBox)
-            this.searchBox.Move(margin + 22, searchY - 2, w - margin * 2 - 22)
+            this.searchBox.Move(margin, searchY - 2, w - margin * 2)
 
         this.listView.Move(margin, lvY, w - margin * 2, lvH)
 

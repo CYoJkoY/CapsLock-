@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 SetPasteMode(mode) {
     AppState.PasteMode := mode
@@ -114,27 +114,27 @@ SetImPath(*) {
 SetIgnorePatterns(*) {
     myGui := Gui("+MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
     ThemeHelper.AddSeparator(myGui, 500)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.FontMono)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.MonoStack())
     myEdit := myGui.Add(
         "Edit",
         "Multi VScroll w500 h200 y+12 " ThemeHelper.GetEditOptions(),
         ""
     )
     ThemeHelper.StyleEdit(myEdit)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     current := ""
     for pattern in AppState.IgnorePatterns
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
-    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", "✓ " Lang("GUI_OK"), "primary")
-    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", Lang("GUI_CANCEL"))
     btnOK.OnEvent("Click", (*) => SaveIgnoreRules(myEdit.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
@@ -202,11 +202,11 @@ _SortStrings(arr) {
 SetPandocOutput(*) {
     myGui := Gui(, Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "📤 " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
+    ThemeHelper.AddTitle(myGui, Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
     ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
     ThemeHelper.AddSeparator(myGui, 420)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
     formats := AppState.PandocOutputFormats.Clone()
     _SortStrings(formats)
 
@@ -225,8 +225,8 @@ SetPandocOutput(*) {
         }
     }
 
-    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
-    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", Lang("GUI_CANCEL"))
 
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
@@ -336,7 +336,7 @@ ToggleWindowHoleFallback(*) {
 SetWindowHoleRules(*) {
     myGui := Gui("+MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "⚙️ " Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang(
@@ -347,7 +347,7 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.AddSeparator(myGui, 560)
 
-    myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
 
     myGui.AddText(
         "x30 y+10 w560",
@@ -393,18 +393,18 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.StyleEdit(excludeClass)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     btnOK := ThemeHelper.AddButton(
         myGui,
         "Default w100 x30 y+18",
-        "✓ " Lang("GUI_OK"),
+        Lang("GUI_OK"),
         "primary"
     )
     btnCancel := ThemeHelper.AddButton(
         myGui,
         "x+8 w100",
-        "✕ " Lang("GUI_CANCEL")
+        Lang("GUI_CANCEL")
     )
 
     btnOK.OnEvent(

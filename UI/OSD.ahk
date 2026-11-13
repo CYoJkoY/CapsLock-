@@ -17,30 +17,34 @@ class OSD {
             this.currentHwnd := 0
         }
 
-        accentColor := Theme.Primary
-        icon := "💡"
+        accentColor := Theme.Focus
+        glyph := "·"
 
         switch mytype {
-            case "success": accentColor := Theme.Success, icon := "✅"
-            case "warning": accentColor := Theme.Warning, icon := "⚠️"
-            case "error":   accentColor := Theme.Error,  icon := "❌"
-            default:        accentColor := Theme.Primary,  icon := "💡"
+            case "success": accentColor := Theme.Moss,     glyph := "✓"
+            case "warning": accentColor := Theme.Ochre,    glyph := "!"
+            case "error":   accentColor := Theme.Cinnabar, glyph := "×"
+            default:        accentColor := Theme.Focus,    glyph := "·"
         }
 
         myOSD := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +Border")
         myOSD.BackColor := Theme.Surface
 
-        ; Left semantic status indicator bar
-        myOSD.Add("Text", "x0 y3 w4 h59 Background" accentColor)
+        ; A hairline frame and a short status rail: the glyph carries the
+        ; state and the rail is a pigment mark, not a solid color block.
+        myOSD.Add("Text", "x0 y14 w2 h40 Background" accentColor)
 
-        myOSD.SetFont("s16", "Segoe UI Emoji")
-        myOSD.Add("Text", "x16 y14 Background" Theme.Surface, icon)
+        myOSD.SetFont("s13 c" accentColor, ThemeHelper.SerifStack())
+        glyphCtrl := myOSD.Add("Text", "x14 y18 w24 h24 Center Background" Theme.Surface, glyph)
+        ThemeHelper.MarkSurface(glyphCtrl, accentColor, Theme.Surface)
 
-        myOSD.SetFont("s11 Bold c" Theme.Text, Theme.Font)
-        myOSD.Add("Text", "x48 y15 Background" Theme.Surface, text)
+        myOSD.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+        body := myOSD.Add("Text", "x44 y15 Background" Theme.Surface, text)
+        ThemeHelper.MarkSurface(body, Theme.Text, Theme.Surface)
 
-        myOSD.SetFont("s8 c" Theme.TextMuted, Theme.Font)
-        myOSD.Add("Text", "x48 y39 Background" Theme.Surface, "CapsLock-  ·  " FormatTime(, "HH:mm:ss"))
+        myOSD.SetFont("s8 c" Theme.TextMuted, ThemeHelper.MonoStack())
+        meta := myOSD.Add("Text", "x44 y39 Background" Theme.Surface, "CapsLock-   " FormatTime(, "HH:mm:ss"))
+        ThemeHelper.MarkSurface(meta, Theme.TextMuted, Theme.Surface)
 
         myOSD.Show("Hide")
         myOSD.GetPos(, , &ow, &oh)
@@ -74,8 +78,8 @@ class OSD {
     ; PinIndicator; this only has to be unambiguous while it is on screen.
     static ShowTopMostOSD(targetHwnd, isOnTop) {
         text := isOnTop
-            ? "📌 " Lang("UI_ALWAYS_TOP") . "  ·  " . this._WindowLabel(targetHwnd)
-            : "○ " Lang("UI_UNPINNED") . "  ·  " . this._WindowLabel(targetHwnd)
+            ? Lang("UI_ALWAYS_TOP") . "  ·  " . this._WindowLabel(targetHwnd)
+            : Lang("UI_UNPINNED") . "  ·  " . this._WindowLabel(targetHwnd)
         mytype := isOnTop ? "success" : "info"
         this.ShowNotification(text, 1500, mytype)
     }
@@ -119,13 +123,13 @@ class OSD {
     }
 }
 
-; A minimal top-edge timer for the sequential CapsLock + Shift layer. The blue
+; A minimal top-edge timer for the sequential CapsLock + Shift layer. The
 ; segment retracts from right to left as the remaining activation time expires.
 class ShiftLayerToast {
     static DefaultDuration := 2000
     static UpdateInterval := 16
     static Width := 220
-    static Height := 4
+    static Height := 2
 
     static Gui := ""
     static Fill := ""
@@ -238,7 +242,7 @@ class ShiftLayerToast {
             )
             fill := toastGui.Add(
                 "Text",
-                "x0 y0 w" this.Width " h" this.Height " Background" Theme.Primary
+                "x0 y0 w" this.Width " h" this.Height " Background" Theme.Cinnabar
             )
 
             this.Gui := toastGui

@@ -21,9 +21,9 @@ class CustomMenu {
     static menuAnchorY := ""
     static menuAnchorRadius := 24
     static itemH := 34
-    static sepH := 9
-    static menuW := 420
-    static topPad := 16
+    static sepH := 7
+    static menuW := 380
+    static topPad := 8
     static subMenuGap := 1
 
     ; Sub-menu support
@@ -90,7 +90,7 @@ class CustomMenu {
             callback := entry.HasProp("callback") ? entry.callback : ""
             hasChildren := entry.HasProp("children") && IsObject(entry.children) && entry.children.Length > 0
 
-            displayLabel := hasChildren ? this.ClipLabel(label, 46) . "  ▶" : this.ClipLabel(label, 52)
+            displayLabel := hasChildren ? this.ClipLabel(label, 46) . "   ›" : this.ClipLabel(label, 52)
 
             outEntry := {
                 isSep: false,
@@ -223,14 +223,15 @@ class CustomMenu {
 
         myGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         myGui.BackColor := Theme.Surface
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+        myGui.Add("Text", "x0 y0 w" menuW " h1 Background" Theme.CardLine)
 
         curY := topPad // 2
         for entry in this.items {
             if entry.isSep {
                 myGui.Add(
                     "Text",
-                    "x12 y" (curY + 3) " w" (menuW - 24) " h1 Background" Theme.Outline
+                    "x16 y" (curY + 3) " w" (menuW - 32) " h1 Background" Theme.CardLine
                 )
                 curY += sepH
                 continue
@@ -245,7 +246,7 @@ class CustomMenu {
 
             txtCtrl := myGui.Add(
                 "Text",
-                "x16 y" (curY + (itemH - 20) // 2) " w" (menuW - 40) " h20 +0x0100 Background" Theme.Surface,
+                "x20 y" (curY + (itemH - 20) // 2) " w" (menuW - 44) " h20 +0x0100 Background" Theme.Surface,
                 entry.label
             )
 
@@ -458,9 +459,9 @@ class CustomMenu {
 
         subItemH := this.itemH + 4
         subSepH := this.sepH
-        subTopPad := 16
+        subTopPad := 8
         subBottomPad := 10
-        subMenuW := 380
+        subMenuW := this.menuW
 
         subTotalH := subTopPad + subBottomPad
         for entry in subItems
@@ -468,14 +469,15 @@ class CustomMenu {
 
         subMyGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         subMyGui.BackColor := Theme.Surface
-        subMyGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        subMyGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+        subMyGui.Add("Text", "x0 y0 w" subMenuW " h1 Background" Theme.CardLine)
 
         subCurY := subTopPad // 2
         for entry in subItems {
             if entry.isSep {
                 subMyGui.Add(
                     "Text",
-                    "x12 y" (subCurY + 3) " w" (subMenuW - 24) " h1 Background" Theme.Outline
+                    "x16 y" (subCurY + 3) " w" (subMenuW - 32) " h1 Background" Theme.CardLine
                 )
                 subCurY += subSepH
                 continue
@@ -488,7 +490,7 @@ class CustomMenu {
 
             txtCtrl := subMyGui.Add(
                 "Text",
-                "x16 y" (subCurY + (subItemH - 20) // 2) " w" (subMenuW - 40) " h20 +0x0100 Background" Theme.Surface,
+                "x20 y" (subCurY + (subItemH - 20) // 2) " w" (subMenuW - 44) " h20 +0x0100 Background" Theme.Surface,
                 entry.label
             )
 
@@ -565,7 +567,7 @@ class CustomMenu {
                 && entry.children.Length > 0
 
             displayLabel := hasChildren
-                ? this.ClipLabel(label, 42) . "  ▶"
+                ? this.ClipLabel(label, 42) . "   ›"
                 : this.ClipLabel(label, 44)
 
             outEntry := {
@@ -629,7 +631,7 @@ class CustomMenu {
 
         nestedGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         nestedGui.BackColor := Theme.Surface
-        nestedGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        nestedGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         curY := nestedTopPad // 2
         for entry in nestedItems {
