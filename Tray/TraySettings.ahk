@@ -112,7 +112,7 @@ SetImPath(*) {
 }
 
 SetIgnorePatterns(*) {
-    myGui := Gui("+AlwaysOnTop +MinSize540x380", Lang("GUI_IGNORE_TITLE"))
+    myGui := Gui("+MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
@@ -200,7 +200,7 @@ _SortStrings(arr) {
 }
 
 SetPandocOutput(*) {
-    myGui := Gui("+AlwaysOnTop", Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
+    myGui := Gui(, Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "📤 " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
     ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
@@ -242,28 +242,22 @@ SavePandocOutput(newFormat, myGui) {
     }
 
     if (!_IsOutputFormatSupported(newFormat)) {
-        hwnd := myGui.Hwnd
-        WinSetAlwaysOnTop(0, "ahk_id " hwnd)
         MsgBox(
             Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", newFormat),
             Lang("MSG_ERROR"),
             "Iconx T"
         )
-        WinSetAlwaysOnTop(1, "ahk_id " hwnd)
         myGui.Destroy()
         return
     }
 
     AppState.PandocOutputFormat := newFormat
     ConfigManager.Save()
-    hwnd := myGui.Hwnd
-    WinSetAlwaysOnTop(0, "ahk_id " hwnd)
     MsgBox(
         Lang("MSG_PANDOC_OUTPUT_SET", , newFormat),
         Lang("MSG_SUCCESS"),
         "Iconi T2"
     )
-    WinSetAlwaysOnTop(1, "ahk_id " hwnd)
     myGui.Destroy()
 }
 
@@ -340,7 +334,7 @@ ToggleWindowHoleFallback(*) {
 }
 
 SetWindowHoleRules(*) {
-    myGui := Gui("+AlwaysOnTop +MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
+    myGui := Gui("+MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "⚙️ " Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
     ThemeHelper.AddSubtitle(

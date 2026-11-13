@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 
 ShowPreviewGui(text) {
-    myGui := Gui("+AlwaysOnTop +Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
+    myGui := Gui("+Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "👁️ " Lang("GUI_PREVIEW_TITLE"), 600)
 

@@ -44,7 +44,7 @@ class HotkeyReferenceGui {
         searchY := margin + this.TITLE_AREA_H + this.SEPARATOR_H + this.GAP
         lvY := searchY + this.SEARCH_AREA_H + this.GAP
 
-        myGui := Gui("+Resize +AlwaysOnTop +DPIScale +MinSize620x360", Lang("CHEAT_TITLE"))
+        myGui := Gui("+Resize +DPIScale +MinSize620x360", Lang("CHEAT_TITLE"))
         ThemeHelper.StyleGui(myGui)
         myGui.OnEvent("Close", (*) => HotkeyReferenceGui.Close())
         myGui.OnEvent("Escape", (*) => HotkeyReferenceGui.Close())

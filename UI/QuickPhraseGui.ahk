@@ -17,8 +17,11 @@ ShowQuickPhraseSelector() {
         }
     }
 
+    ownerOption := IsObject(AppState.QuickPhraseGui)
+        ? " +Owner" AppState.QuickPhraseGui.Hwnd
+        : ""
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        ownerOption " -MaximizeBox -MinimizeBox",
         Lang("GUI_QUICK_PHRASE_TITLE", "Quick Phrases")
     )
     ThemeHelper.StyleGui(myGui)
@@ -32,7 +35,8 @@ ShowQuickPhraseSelector() {
 
     search := myGui.Add("Edit", "w420 r1 y+12 xm " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
-    groupFilter := myGui.Add("DropDownList", "x+10 yp w210 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    groupOptions := QuickPhraseCategoryOptions()
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w210 Choose1 c" Theme.Text " Background" Theme.Control, groupOptions)
     ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
@@ -52,6 +56,7 @@ ShowQuickPhraseSelector() {
 
     myGui.SearchBox := search
     myGui.GroupFilter := groupFilter
+    myGui.GroupFilterOptionCount := groupOptions.Length
     myGui.ListView := list
     myGui.Status := status
     myGui.OnEvent("Escape", (*) => CloseQuickPhraseSelector(myGui))
@@ -489,7 +494,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     }
 
     myGui := Gui(
-        "+AlwaysOnTop -MaximizeBox -MinimizeBox",
+        "-MaximizeBox -MinimizeBox",
         Lang(
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
@@ -1064,7 +1069,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
         }
     }
 
-    myGui := Gui("+Resize +AlwaysOnTop +MinSize720x470", Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"))
+    myGui := Gui("+Resize +MinSize720x470", Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "📝 " Lang("GUI_QUICK_PHRASE_MANAGER_TITLE", "Quick Phrase Manager"), 700)
     ThemeHelper.AddSubtitle(
@@ -1076,7 +1081,8 @@ ShowQuickPhraseManager(returnToSelector := false) {
 
     search := myGui.Add("Edit", "w470 r1 y+12 xm " ThemeHelper.GetEditOptions(), "")
     ThemeHelper.StyleEdit(search)
-    groupFilter := myGui.Add("DropDownList", "x+10 yp w220 Choose1 c" Theme.Text " Background" Theme.Control, QuickPhraseCategoryOptions())
+    groupOptions := QuickPhraseCategoryOptions()
+    groupFilter := myGui.Add("DropDownList", "x+10 yp w220 Choose1 c" Theme.Text " Background" Theme.Control, groupOptions)
     ThemeHelper.StyleComboBox(groupFilter)
     list := myGui.Add(
         "ListView",
@@ -1100,6 +1106,7 @@ ShowQuickPhraseManager(returnToSelector := false) {
 
     myGui.SearchBox := search
     myGui.GroupFilter := groupFilter
+    myGui.GroupFilterOptionCount := groupOptions.Length
     myGui.ListView := list
     myGui.ReturnToSelector := returnToSelector
     search.OnEvent("Change", (*) => QuickPhraseRefreshManager(myGui))
@@ -1149,11 +1156,11 @@ QuickPhraseImport(myGui) {
     if path == ""
         return
 
-    if MsgBox(
+    if !DarkInputDialog.Confirm(
         Lang("CONFIRM_QUICK_PHRASE_IMPORT", "Importing will replace the current quick phrases. Continue?"),
         Lang("GUI_QUICK_PHRASE_IMPORT", "Import Quick Phrases"),
-        "YN Icon!"
-    ) != "Yes"
+        myGui
+    )
         return
 
     if !QuickPhraseStore.ImportFromFile(path) {
@@ -1185,18 +1192,14 @@ QuickPhraseRefreshManager(myGui) {
 QuickPhraseRefreshOpenViews() {
     manager := AppState.QuickPhraseManagerGui
     if IsObject(manager) {
-        try {
-            QuickPhraseRefreshGroupFilter(manager)
-            QuickPhraseRefreshManager(manager)
-        }
+        try QuickPhraseRefreshGroupFilter(manager)
+        try QuickPhraseRefreshManager(manager)
     }
 
     selector := AppState.QuickPhraseGui
     if IsObject(selector) {
-        try {
-            QuickPhraseRefreshGroupFilter(selector)
-            QuickPhraseRefreshSelector(selector)
-        }
+        try QuickPhraseRefreshGroupFilter(selector)
+        try QuickPhraseRefreshSelector(selector)
     }
 }
 
@@ -1215,10 +1218,10 @@ QuickPhraseRefreshGroupFilter(myGui) {
         selectedIndexBeforeRefresh := groupFilter.Value
         selectedGroup := Trim(groupFilter.Text)
         options := QuickPhraseCategoryOptions()
-        while groupFilter.GetCount() > 0
+        Loop myGui.GroupFilterOptionCount
             groupFilter.Delete(1)
-        for option in options
-            groupFilter.Add(option)
+        groupFilter.Add(options)
+        myGui.GroupFilterOptionCount := options.Length
 
         selectedIndex := 1
         if selectedIndexBeforeRefresh > 1 {
@@ -1268,12 +1271,11 @@ QuickPhraseDeleteSelected(myGui) {
         return
     }
 
-    answer := MsgBox(
+    if !DarkInputDialog.Confirm(
         Lang("CONFIRM_QUICK_PHRASE_DELETE", 'Delete quick phrase "{1}"?', phrase.name),
         Lang("MSG_CONFIRM", "Please confirm"),
-        "YesNo Icon?"
+        myGui
     )
-    if answer != "Yes"
         return
 
     if !QuickPhraseStore.Delete(phrase.id)
@@ -1300,7 +1302,10 @@ ShowQuickPhraseEditor(id := 0) {
     titleKey := isEdit ? "GUI_QUICK_PHRASE_EDITOR_EDIT" : "GUI_QUICK_PHRASE_EDITOR_NEW"
     titleDefault := isEdit ? "Edit Quick Phrase" : "New Quick Phrase"
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang(titleKey, titleDefault))
+    ownerOption := IsObject(AppState.QuickPhraseManagerGui)
+        ? " +Owner" AppState.QuickPhraseManagerGui.Hwnd
+        : ""
+    myGui := Gui(ownerOption " -MaximizeBox -MinimizeBox", Lang(titleKey, titleDefault))
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(myGui, "📝 " Lang(titleKey, titleDefault), 640)
     ThemeHelper.AddSeparator(myGui, 640)

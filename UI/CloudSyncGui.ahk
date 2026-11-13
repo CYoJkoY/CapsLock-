@@ -13,7 +13,7 @@ ShowCloudSyncSettings(*) {
         }
     }
 
-    myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"))
+    myGui := Gui("-MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"))
     currentGui := myGui
     ThemeHelper.StyleGui(myGui)
     ThemeHelper.AddTitle(

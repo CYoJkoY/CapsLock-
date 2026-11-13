@@ -2,7 +2,7 @@
 
 class CloudSyncConflictGui {
     static Show() {
-        myGui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"))
+        myGui := Gui("-MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_CONFLICT_TITLE", "Cloud Sync Conflict"))
         ThemeHelper.StyleGui(myGui)
 
         ThemeHelper.AddTitle(
