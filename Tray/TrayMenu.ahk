@@ -155,7 +155,7 @@ RebuildLangCache(*) {
     csvPath := A_ScriptDir "\lang.csv"
 
     if !FileExist(csvPath) {
-        MsgBox(Lang("MSG_LANG_CSV_NOT_FOUND", "", csvPath), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_LANG_CSV_NOT_FOUND", "", csvPath), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
@@ -170,12 +170,12 @@ RebuildLangCache(*) {
         LanguagePack.Init()
         LanguagePack.Load(Language.GetCurrent())
         count := Language.GetLanguages().Length
-        MsgBox(
+        WabiMessageBox(
             Lang("MSG_LANG_REBUILT", "", count),
             Lang("MSG_SUCCESS"), "Iconi T2"
         )
     } else {
-        MsgBox(Lang("MSG_LANG_REBUILD_FAIL"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_LANG_REBUILD_FAIL"), Lang("MSG_ERROR"), "Iconx")
     }
 }
 
@@ -185,10 +185,10 @@ ToggleAutoStart(*) {
     AppName := "CapsLock-"
     if IsAutoStartEnabled() {
         RegDelete("HKEY_CURRENT_USER\" RegPath, AppName)
-        MsgBox(Lang("MSG_AUTOSTART_OFF"), Lang("MSG_SUCCESS"), "Iconi T2")
+        WabiMessageBox(Lang("MSG_AUTOSTART_OFF"), Lang("MSG_SUCCESS"), "Iconi T2")
     } else {
         RegWrite('"' A_ScriptFullPath '"', "REG_SZ", "HKEY_CURRENT_USER\" RegPath, AppName)
-        MsgBox(Lang("MSG_AUTOSTART_ON"), Lang("MSG_SUCCESS"), "Iconi T2")
+        WabiMessageBox(Lang("MSG_AUTOSTART_ON"), Lang("MSG_SUCCESS"), "Iconi T2")
     }
 }
 

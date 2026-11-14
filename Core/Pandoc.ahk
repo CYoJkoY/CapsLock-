@@ -151,7 +151,7 @@ ConvertWithPandoc() {
             "Pandoc could not convert:`n{1}`n`nCheck that the selected output format supports this input type.",
             Join(failedFiles, "`n")
         )
-        MsgBox(failedMsg, Lang("MSG_ERROR", "Error"), "Iconx")
+        WabiMessageBox(failedMsg, Lang("MSG_ERROR", "Error"), "Iconx")
     }
 
     if (outputFiles.Length == 0) {

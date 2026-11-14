@@ -33,7 +33,7 @@ SetMaxHistory(*) {
 
     if newMax == 0 {
         if AppState.History.Length > 0 {
-            confirm := MsgBox(Lang("CONFIRM_DISABLE_HISTORY", , AppState.History.Length), Lang("MSG_CONFIRM"), "YesNo Icon?")
+            confirm := WabiMessageBox(Lang("CONFIRM_DISABLE_HISTORY", , AppState.History.Length), Lang("MSG_CONFIRM"), "YesNo Icon?")
             if confirm != "Yes"
                 return
         }
@@ -48,7 +48,7 @@ SetMaxHistory(*) {
 
     pendingRemoval := AppState.History.Length - newMax
     if pendingRemoval > 0 {
-        confirm := MsgBox(Lang("CONFIRM_TRIM_HISTORY", , AppState.History.Length, newMax, pendingRemoval), Lang("MSG_CONFIRM"), "YesNo Icon?")
+        confirm := WabiMessageBox(Lang("CONFIRM_TRIM_HISTORY", , AppState.History.Length, newMax, pendingRemoval), Lang("MSG_CONFIRM"), "YesNo Icon?")
         if confirm != "Yes"
             return
     }
@@ -94,21 +94,21 @@ SetImPath(*) {
     if SelectedFile == ""
         return
     if !InStr(StrLower(SelectedFile), "magick.exe") {
-        MsgBox(Lang("MSG_IM_SELECT_ERROR"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_SELECT_ERROR"), Lang("MSG_ERROR"), "Iconx")
         return
     }
     if !FileExist(SelectedFile) {
-        MsgBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
         return
     }
     AppState.ImageMagickExe := SelectedFile
     try {
         ConfigManager.Save()
     } catch {
-        MsgBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-    MsgBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
+    WabiMessageBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
 SetIgnorePatterns(*) {
@@ -165,18 +165,18 @@ SetPandocPath(*) {
         return
 
     if !InStr(StrLower(SelectedFile), "pandoc.exe") {
-        MsgBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
     if !FileExist(SelectedFile) {
-        MsgBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
     AppState.PandocExe := SelectedFile
     ConfigManager.Save()
-    MsgBox(Lang("MSG_PANDOC_PATH_SET", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
+    WabiMessageBox(Lang("MSG_PANDOC_PATH_SET", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
 _SortStrings(arr) {
@@ -242,7 +242,7 @@ SavePandocOutput(newFormat, myGui) {
     }
 
     if (!_IsOutputFormatSupported(newFormat)) {
-        MsgBox(
+        WabiMessageBox(
             Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", newFormat),
             Lang("MSG_ERROR"),
             "Iconx T"
@@ -253,7 +253,7 @@ SavePandocOutput(newFormat, myGui) {
 
     AppState.PandocOutputFormat := newFormat
     ConfigManager.Save()
-    MsgBox(
+    WabiMessageBox(
         Lang("MSG_PANDOC_OUTPUT_SET", , newFormat),
         Lang("MSG_SUCCESS"),
         "Iconi T2"

@@ -629,7 +629,7 @@ ShowCloudSyncSettings(*) {
     }
 
     Reset(*) {
-        answer := MsgBox(
+        answer := WabiMessageBox(
             Lang(
                 "CONFIRM_CLOUD_SYNC_RESET",
                 "Remove the saved credential, target, and synchronization metadata for the current provider?"

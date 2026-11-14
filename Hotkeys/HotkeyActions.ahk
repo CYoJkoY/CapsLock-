@@ -382,7 +382,7 @@ TerminateProcessByPid() {
         )
         return
     }
-    answer := MsgBox(
+    answer := WabiMessageBox(
         Lang(
             "CONFIRM_KILL_PROCESS",
             "Force-terminate this process?\nPID: {1}\nProcess: {2}\nUnsaved data may be lost.",

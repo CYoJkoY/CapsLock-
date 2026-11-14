@@ -647,7 +647,7 @@ class WindowSwitcherGui {
 
         answer := ""
         try
-            answer := MsgBox(
+            answer := WabiMessageBox(
                 Lang(
                     "MSG_WS_FORCE_CONFIRM",
                     "{1} did not close. End its process? Unsaved work may be lost.",
