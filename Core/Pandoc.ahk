@@ -79,9 +79,9 @@ ConvertWithPandoc() {
     if showProgress {
         progressGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border")
         ThemeHelper.StyleGui(progressGui)
-        ThemeHelper.AddTitle(progressGui, "⏳ " Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
+        ThemeHelper.AddTitle(progressGui, Lang("MSG_PANDOC_PROGRESS_TITLE", "Converting Files"), 420)
         ThemeHelper.AddSubtitle(progressGui, Lang("MSG_PANDOC_PROGRESS_SUBTITLE", "Please wait..."), 420)
-        progressGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        progressGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         progressText := progressGui.Add("Text", "x16 y+8 w380 center", "")
         progressBar := progressGui.Add("Progress", "x16 y+8 w380 h20 c" Theme.Primary " Background" Theme.Control,
             0)
@@ -151,7 +151,7 @@ ConvertWithPandoc() {
             "Pandoc could not convert:`n{1}`n`nCheck that the selected output format supports this input type.",
             Join(failedFiles, "`n")
         )
-        MsgBox(failedMsg, Lang("MSG_ERROR", "Error"), "Iconx")
+        WabiMessageBox(failedMsg, Lang("MSG_ERROR", "Error"), "Iconx")
     }
 
     if (outputFiles.Length == 0) {

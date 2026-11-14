@@ -1,28 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
   <title id="title">CapsLock Extended application icon</title>
-  <desc id="desc">A minimal CapsLock key symbol with a distinct secondary-layer cue.</desc>
-
-  <defs>
-    <linearGradient id="surface" x1="180" y1="120" x2="820" y2="900" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#243754"/>
-      <stop offset="1" stop-color="#142136"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Soft outer tile -->
-  <rect x="28" y="28" width="968" height="968" rx="220" fill="#0F1623"/>
-  <rect x="52" y="52" width="920" height="920" rx="202" fill="url(#surface)" stroke="#4C6C9E" stroke-width="10"/>
-
-  <!-- Keycap body -->
-  <rect x="154" y="190" width="716" height="644" rx="152" fill="#101A2A" stroke="#79A4E5" stroke-width="24"/>
-  <rect x="190" y="226" width="644" height="572" rx="120" fill="#18263B"/>
-
-  <!-- CapsLock-inspired C glyph -->
-  <path d="M650 350c-42-53-103-82-177-82-126 0-213 101-213 244s87 244 213 244c74 0 135-29 177-82l-55-48c-30 34-67 50-112 50-77 0-130-63-130-164s53-164 130-164c45 0 82 16 112 50l55-48Z" fill="#F2F6FF"/>
-
-  <!-- Secondary control-layer cue -->
-  <path d="M606 374h130M606 650h130" fill="none" stroke="#79A4E5" stroke-width="34" stroke-linecap="round"/>
-
-  <!-- Small status point -->
-  <circle cx="758" cy="286" r="22" fill="#D0B565"/>
+  <desc id="desc">A cinnabar CapsLock mark impressed on warm paper and dark ink.</desc>
+  <rect x="48" y="48" width="928" height="928" fill="#131416"/>
+  <rect x="96" y="96" width="832" height="832" fill="#1B1C20" stroke="#3A3733" stroke-width="12"/>
+  <path d="M96 96h210v18H96z" fill="#E18C7C"/>
+  <rect x="180" y="218" width="664" height="588" fill="#25272D" stroke="#6B6257" stroke-width="10"/>
+  <path d="M650 350c-42-53-103-82-177-82-126 0-213 101-213 244s87 244 213 244c74 0 135-29 177-82l-55-48c-30 34-67 50-112 50-77 0-130-63-130-164s53-164 130-164c45 0 82 16 112 50l55-48Z" fill="#EDEAE2"/>
+  <path d="M606 374h130M606 650h130" fill="none" stroke="#E18C7C" stroke-width="26"/>
+  <rect x="746" y="274" width="32" height="32" fill="#D5B576"/>
 </svg>

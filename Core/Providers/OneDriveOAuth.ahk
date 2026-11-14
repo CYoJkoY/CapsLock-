@@ -57,7 +57,7 @@ class OneDriveOAuth {
         if verificationUrl != ""
             Run(verificationUrl)
 
-        MsgBox(
+        WabiMessageBox(
             message,
             "OneDrive authorization",
             "Iconi T1"

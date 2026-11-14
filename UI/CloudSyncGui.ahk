@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ShowCloudSyncSettings(*) {
     static currentGui := ""
@@ -16,9 +16,10 @@ ShowCloudSyncSettings(*) {
     myGui := Gui("-MaximizeBox -MinimizeBox", Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"))
     currentGui := myGui
     ThemeHelper.StyleGui(myGui)
+    myGui.BackColor := Theme.Surface
     ThemeHelper.AddTitle(
         myGui,
-        "☁ " Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"),
+        Lang("GUI_CLOUD_SYNC_TITLE", "Cloud Sync"),
         620
     )
     ThemeHelper.AddSubtitle(
@@ -38,14 +39,14 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleCheckBox(enabled)
 
-    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+    myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
     providerLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_PROVIDER", "Provider"))
     ThemeHelper.MarkDim(providerLabel)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     provider := myGui.Add(
         "ComboBox",
-        "w620 y+6 Choose1 c" Theme.Text,
+        "w620 y+6 Choose1 c" Theme.Text " Background" Theme.Control,
         [
             "GitHub Gist",
             "GitHub Private Repository",
@@ -85,7 +86,7 @@ ShowCloudSyncSettings(*) {
         )
     }
 
-    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+    myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
     credentialHint := myGui.AddText(
         "w620 y+8",
         Lang(
@@ -94,7 +95,7 @@ ShowCloudSyncSettings(*) {
         )
     )
     ThemeHelper.MarkDim(credentialHint)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     ; --- Provider-specific fields ---
     gistTargetLabel := myGui.AddText("w620 y+12", Lang("GUI_CLOUD_SYNC_TARGET", "Target") " (Gist ID; leave blank to create automatically)")
@@ -138,7 +139,7 @@ ShowCloudSyncSettings(*) {
     googleAuthorize := ThemeHelper.AddButton(
         myGui,
         "w150 y+10",
-        "🔐 " Lang("GUI_CLOUD_SYNC_GOOGLE_AUTHORIZE", "Authorize Google"),
+        Lang("GUI_CLOUD_SYNC_GOOGLE_AUTHORIZE", "Authorize Google"),
         "primary"
     )
 
@@ -157,7 +158,7 @@ ShowCloudSyncSettings(*) {
     oneDriveAuthorize := ThemeHelper.AddButton(
         myGui,
         "w160 y+10",
-        "🔐 " Lang("GUI_CLOUD_SYNC_ONEDRIVE_AUTHORIZE", "Authorize OneDrive"),
+        Lang("GUI_CLOUD_SYNC_ONEDRIVE_AUTHORIZE", "Authorize OneDrive"),
         "primary"
     )
 
@@ -198,10 +199,10 @@ ShowCloudSyncSettings(*) {
     )
     ThemeHelper.StyleEdit(interval)
 
-    myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+    myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
     minutesLabel := myGui.AddText("x504 yp+3", Lang("GUI_CLOUD_SYNC_MINUTES", "minutes"))
     ThemeHelper.MarkDim(minutesLabel)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     status := myGui.Add(
         "Text",
@@ -219,7 +220,7 @@ ShowCloudSyncSettings(*) {
     saveBtn := ThemeHelper.AddButton(
         myGui,
         "Default x16 y+14 w90 h30",
-        "✓ " Lang("GUI_SAVE", "Save"),
+        Lang("GUI_SAVE", "Save"),
         "primary"
     )
     connectBtn := ThemeHelper.AddButton(
@@ -230,7 +231,7 @@ ShowCloudSyncSettings(*) {
     syncBtn := ThemeHelper.AddButton(
         myGui,
         "x222 yp w95 h30",
-        "☁ " Lang("GUI_CLOUD_SYNC_SYNC_NOW", "Sync now")
+        Lang("GUI_CLOUD_SYNC_SYNC_NOW", "Sync now")
     )
     resetBtn := ThemeHelper.AddButton(
         myGui,
@@ -628,7 +629,7 @@ ShowCloudSyncSettings(*) {
     }
 
     Reset(*) {
-        answer := MsgBox(
+        answer := WabiMessageBox(
             Lang(
                 "CONFIRM_CLOUD_SYNC_RESET",
                 "Remove the saved credential, target, and synchronization metadata for the current provider?"

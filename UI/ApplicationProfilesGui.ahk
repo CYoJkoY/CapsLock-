@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ; Settings dialog for per-executable CapsLock-layer exclusions.
 class ApplicationProfilesGui {
@@ -28,11 +28,11 @@ class ApplicationProfilesGui {
             Lang("GUI_APP_PROFILES_TITLE")
         )
         ThemeHelper.StyleGui(myGui)
-        ThemeHelper.AddTitle(myGui, "🪟 " Lang("GUI_APP_PROFILES_TITLE"), 688)
+        ThemeHelper.AddTitle(myGui, Lang("GUI_APP_PROFILES_TITLE"), 688)
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_APP_PROFILES_HINT"), 688)
         ThemeHelper.AddSeparator(myGui, 688)
 
-        myGui.SetFont("s10 Bold c" Theme.Primary, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Primary, ThemeHelper.ReadingStack())
         runningHeading := myGui.Add(
             "Text",
             "x16 y94 w688 h20 Background" Theme.Background,
@@ -40,7 +40,7 @@ class ApplicationProfilesGui {
         )
         ThemeHelper.MarkSurface(runningHeading, Theme.Primary, Theme.Background)
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         runningList := myGui.Add(
             "ListView",
             "x16 y116 w688 h132 -Multi " ThemeHelper.GetLVOptions(),
@@ -63,7 +63,7 @@ class ApplicationProfilesGui {
             Lang("GUI_APP_PROFILES_CONFIGURE_GROUPS")
         )
 
-        myGui.SetFont("s10 Bold c" Theme.Primary, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Primary, ThemeHelper.ReadingStack())
         rulesHeading := myGui.Add(
             "Text",
             "x16 y300 w688 h20 Background" Theme.Background,
@@ -71,7 +71,7 @@ class ApplicationProfilesGui {
         )
         ThemeHelper.MarkSurface(rulesHeading, Theme.Primary, Theme.Background)
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         rulesList := myGui.Add(
             "ListView",
             "x16 y322 w688 h112 -Multi " ThemeHelper.GetLVOptions(),
@@ -93,7 +93,7 @@ class ApplicationProfilesGui {
             Lang("GUI_APP_PROFILES_CLOSE")
         )
 
-        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s8 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         status := myGui.Add("Text", "x216 y449 w386 h22", "")
         ThemeHelper.MarkDim(status)
 
@@ -332,7 +332,7 @@ class ApplicationProfilesGroupGui {
         ThemeHelper.StyleGui(myGui)
         ThemeHelper.AddTitle(
             myGui,
-            "⌘ " Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName),
+            Lang("GUI_APP_PROFILES_GROUPS_TITLE", "", executableName),
             640
         )
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_APP_PROFILES_GROUPS_HINT"), 640)

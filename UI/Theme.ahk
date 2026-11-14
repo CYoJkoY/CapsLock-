@@ -1,7 +1,8 @@
 #Requires AutoHotkey v2.0
 
-; Material 3-inspired color system. Neutral surfaces establish hierarchy;
-; blue is reserved for primary actions, selection, and keyboard focus.
+; Wabi Press color system. Paper, ink, and a few mineral pigments carry the
+; hierarchy; cinnabar is reserved for primary actions, selection, and seals.
+; Legacy semantic names stay in place so every consumer keeps one vocabulary.
 class Theme {
     static Dark := "dark"
     static Light := "light"
@@ -9,62 +10,96 @@ class Theme {
     static Modes := ["dark", "light"]
     static Current := "dark"
 
-    ; Semantic tokens consumed by all UI modules. Keep component code expressed
-    ; in roles (Surface, PrimaryContainer, TextSecondary), not palette values.
-    static Background := "0x202124"
-    static Surface := "0x292A2D"
-    static PrimaryContainer := "0x394B64"
-    static Control := "0x303134"
-    static ControlHover := "0x3C4043"
-    static Outline := "0x3C4043"
-    static Text := "0xE8EAED"
-    static TextSecondary := "0x9AA0A6"
-    static TextMuted := "0x92979B"
-    static Primary := "0xA8C7FA"
-    static OnPrimaryContainer := "0xD3E3FD"
-    static OnPrimary := "0x202124"
-    static Success := "0x81C995"
-    static Warning := "0xFDD663"
-    static Error := "0xF28B82"
+    ; Semantic tokens consumed by all UI modules. Component code speaks in
+    ; roles (Surface, PrimaryContainer, TextSecondary), never palette values.
+    static Background := "0x131416"
+    static Surface := "0x1B1C20"
+    static Overlay := "0x25272D"
+    static PrimaryContainer := "0x352A27"
+    static Control := "0x25272D"
+    static ControlHover := "0x2D3036"
+    static Outline := "0x3A3733"
+    static CardLine := "0x3A3733"
+    static Text := "0xEDEAE2"
+    static TextSecondary := "0xA39F95"
+    static TextMuted := "0xAAA397"
+    static Primary := "0xE18C7C"
+    static OnPrimaryContainer := "0xEDEAE2"
+    static OnPrimary := "0x1B1311"
+    static Ink := "0xEDEAE2"
+    static Cinnabar := "0xE18C7C"
+    static Moss := "0x9AB49E"
+    static Focus := "0x9EBBCB"
+    static Ochre := "0xD5B576"
+    static Clay := "0xCEA38E"
+    static Success := "0x9AB49E"
+    static Warning := "0xD5B576"
+    static Error := "0xE18C7C"
 
     static Font := "Segoe UI"
+    static FontSerif := "Source Han Serif SC"
     static FontMono := "Cascadia Code"
-    static Radius := 12
+    static Radius := 2
+    ; Spacing follows a 4px paper grid: margins, gutters, and rail offsets all
+    ; derive from these, so dense windows and roomy pages keep one rhythm.
+    static SpaceXS := 4
+    static SpaceS := 8
+    static SpaceM := 12
+    static SpaceL := 16
+    static SpaceXL := 24
+    static Hairline := 1
+    static RailWidth := 2
 
     static Palettes := Map(
         "dark", Map(
-            "Background", "0x202124",
-            "Surface", "0x292A2D",
-            "PrimaryContainer", "0x394B64",
-            "Control", "0x303134",
-            "ControlHover", "0x3C4043",
-            "Outline", "0x3C4043",
-            "Text", "0xE8EAED",
-            "TextSecondary", "0x9AA0A6",
-            "TextMuted", "0x92979B",
-            "Primary", "0xA8C7FA",
-            "OnPrimaryContainer", "0xD3E3FD",
-            "OnPrimary", "0x202124",
-            "Success", "0x81C995",
-            "Warning", "0xFDD663",
-            "Error", "0xF28B82"
+            "Background", "0x131416",
+            "Surface", "0x1B1C20",
+            "Overlay", "0x25272D",
+            "PrimaryContainer", "0x352A27",
+            "Control", "0x25272D",
+            "ControlHover", "0x2D3036",
+            "Outline", "0x3A3733",
+            "CardLine", "0x3A3733",
+            "Text", "0xEDEAE2",
+            "TextSecondary", "0xA39F95",
+            "TextMuted", "0xAAA397",
+            "Primary", "0xE18C7C",
+            "OnPrimaryContainer", "0xEDEAE2",
+            "OnPrimary", "0x1B1311",
+            "Ink", "0xEDEAE2",
+            "Cinnabar", "0xE18C7C",
+            "Moss", "0x9AB49E",
+            "Focus", "0x9EBBCB",
+            "Ochre", "0xD5B576",
+            "Clay", "0xCEA38E",
+            "Success", "0x9AB49E",
+            "Warning", "0xD5B576",
+            "Error", "0xE18C7C"
         ),
         "light", Map(
-            "Background", "0xF8F9FA",
-            "Surface", "0xFFFFFF",
-            "PrimaryContainer", "0xE8F0FE",
-            "Control", "0xF1F3F4",
-            "ControlHover", "0xE8EAED",
-            "Outline", "0xDADCE0",
-            "Text", "0x202124",
-            "TextSecondary", "0x5F6368",
-            "TextMuted", "0x6B7075",
-            "Primary", "0x0B57D0",
-            "OnPrimaryContainer", "0x174EA6",
-            "OnPrimary", "0xFFFFFF",
-            "Success", "0x188038",
-            "Warning", "0xB06000",
-            "Error", "0xB3261E"
+            "Background", "0xF5F3EC",
+            "Surface", "0xFAF9F5",
+            "Overlay", "0xECE8DC",
+            "PrimaryContainer", "0xEEE2DA",
+            "Control", "0xECE8DC",
+            "ControlHover", "0xE4DED0",
+            "Outline", "0xD8D2C4",
+            "CardLine", "0xDDD6C7",
+            "Text", "0x1C1A17",
+            "TextSecondary", "0x524C44",
+            "TextMuted", "0x6E675D",
+            "Primary", "0xA6382A",
+            "OnPrimaryContainer", "0x1C1A17",
+            "OnPrimary", "0xFBF9F2",
+            "Ink", "0x1C1A17",
+            "Cinnabar", "0xA6382A",
+            "Moss", "0x3B5848",
+            "Focus", "0x405F73",
+            "Ochre", "0x795B28",
+            "Clay", "0x855747",
+            "Success", "0x3B5848",
+            "Warning", "0x795B28",
+            "Error", "0xA6382A"
         )
     )
 
@@ -90,16 +125,24 @@ class Theme {
 
         this.Background        := palette["Background"]
         this.Surface           := palette["Surface"]
+        this.Overlay           := palette["Overlay"]
         this.PrimaryContainer  := palette["PrimaryContainer"]
         this.Control            := palette["Control"]
         this.ControlHover       := palette["ControlHover"]
         this.Outline            := palette["Outline"]
+        this.CardLine           := palette["CardLine"]
         this.Text               := palette["Text"]
         this.TextSecondary      := palette["TextSecondary"]
         this.TextMuted          := palette["TextMuted"]
         this.Primary            := palette["Primary"]
         this.OnPrimaryContainer := palette["OnPrimaryContainer"]
         this.OnPrimary          := palette["OnPrimary"]
+        this.Ink                := palette["Ink"]
+        this.Cinnabar           := palette["Cinnabar"]
+        this.Moss               := palette["Moss"]
+        this.Focus              := palette["Focus"]
+        this.Ochre              := palette["Ochre"]
+        this.Clay               := palette["Clay"]
         this.Success            := palette["Success"]
         this.Warning            := palette["Warning"]
         this.Error              := palette["Error"]
@@ -152,7 +195,7 @@ class Theme {
         ShowToolTip(
             Lang(mode == this.Light ? "MSG_THEME_LIGHT_SET" : "MSG_THEME_DARK_SET",
                 mode == this.Light ? "Light theme enabled." : "Dark theme enabled.")
-            . " " . Lang("MSG_THEME_REOPEN", "Reopen open windows to apply the change."),
+            . Lang("MSG_THEME_REOPEN", "Reopen open windows to apply the change."),
             2600
         )
     }

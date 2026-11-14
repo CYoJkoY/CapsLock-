@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 SetPasteMode(mode) {
     AppState.PasteMode := mode
@@ -33,7 +33,7 @@ SetMaxHistory(*) {
 
     if newMax == 0 {
         if AppState.History.Length > 0 {
-            confirm := MsgBox(Lang("CONFIRM_DISABLE_HISTORY", , AppState.History.Length), Lang("MSG_CONFIRM"), "YesNo Icon?")
+            confirm := WabiMessageBox(Lang("CONFIRM_DISABLE_HISTORY", , AppState.History.Length), Lang("MSG_CONFIRM"), "YesNo Icon?")
             if confirm != "Yes"
                 return
         }
@@ -48,7 +48,7 @@ SetMaxHistory(*) {
 
     pendingRemoval := AppState.History.Length - newMax
     if pendingRemoval > 0 {
-        confirm := MsgBox(Lang("CONFIRM_TRIM_HISTORY", , AppState.History.Length, newMax, pendingRemoval), Lang("MSG_CONFIRM"), "YesNo Icon?")
+        confirm := WabiMessageBox(Lang("CONFIRM_TRIM_HISTORY", , AppState.History.Length, newMax, pendingRemoval), Lang("MSG_CONFIRM"), "YesNo Icon?")
         if confirm != "Yes"
             return
     }
@@ -94,47 +94,47 @@ SetImPath(*) {
     if SelectedFile == ""
         return
     if !InStr(StrLower(SelectedFile), "magick.exe") {
-        MsgBox(Lang("MSG_IM_SELECT_ERROR"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_SELECT_ERROR"), Lang("MSG_ERROR"), "Iconx")
         return
     }
     if !FileExist(SelectedFile) {
-        MsgBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_FILE_NOT_EXIST"), Lang("MSG_ERROR"), "Iconx")
         return
     }
     AppState.ImageMagickExe := SelectedFile
     try {
         ConfigManager.Save()
     } catch {
-        MsgBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_IM_SAVE_FAIL"), Lang("MSG_ERROR"), "Iconx")
         return
     }
-    MsgBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
+    WabiMessageBox(Lang("MSG_IM_SET_SUCCESS", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
 SetIgnorePatterns(*) {
     myGui := Gui("+MinSize540x380", Lang("GUI_IGNORE_TITLE"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "🚫 " Lang("GUI_IGNORE_TITLE"), 500)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_IGNORE_TITLE"), 500)
     ThemeHelper.AddSubtitle(myGui,
         Lang("GUI_IGNORE_PROMPT", , "One pattern per line. Supports gitignore syntax."), 500)
     ThemeHelper.AddSeparator(myGui, 500)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.FontMono)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.MonoStack())
     myEdit := myGui.Add(
         "Edit",
         "Multi VScroll w500 h200 y+12 " ThemeHelper.GetEditOptions(),
         ""
     )
     ThemeHelper.StyleEdit(myEdit)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     current := ""
     for pattern in AppState.IgnorePatterns
         current .= pattern "`n"
     myEdit.Value := RTrim(current, "`n")
 
-    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", "✓ " Lang("GUI_OK"), "primary")
-    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+12", Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", Lang("GUI_CANCEL"))
     btnOK.OnEvent("Click", (*) => SaveIgnoreRules(myEdit.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
 
@@ -165,18 +165,18 @@ SetPandocPath(*) {
         return
 
     if !InStr(StrLower(SelectedFile), "pandoc.exe") {
-        MsgBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_PANDOC_SELECT_ERROR", "Please select pandoc.exe"), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
     if !FileExist(SelectedFile) {
-        MsgBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
+        WabiMessageBox(Lang("MSG_PANDOC_FILE_NOT_EXIST", "File does not exist"), Lang("MSG_ERROR"), "Iconx")
         return
     }
 
     AppState.PandocExe := SelectedFile
     ConfigManager.Save()
-    MsgBox(Lang("MSG_PANDOC_PATH_SET", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
+    WabiMessageBox(Lang("MSG_PANDOC_PATH_SET", , SelectedFile), Lang("MSG_SUCCESS"), "Iconi T2")
 }
 
 _SortStrings(arr) {
@@ -202,11 +202,11 @@ _SortStrings(arr) {
 SetPandocOutput(*) {
     myGui := Gui(, Lang("INPUT_PANDOC_OUTPUT_TITLE", "Select Pandoc Output Format"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "📤 " Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
+    ThemeHelper.AddTitle(myGui, Lang("INPUT_PANDOC_OUTPUT_TITLE"), 420)
     ThemeHelper.AddSubtitle(myGui, Lang("INPUT_PANDOC_OUTPUT_PROMPT", "Choose output format:"), 420)
     ThemeHelper.AddSeparator(myGui, 420)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
     formats := AppState.PandocOutputFormats.Clone()
     _SortStrings(formats)
 
@@ -225,8 +225,8 @@ SetPandocOutput(*) {
         }
     }
 
-    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", "✓ " Lang("GUI_OK"), "primary")
-    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", "✕ " Lang("GUI_CANCEL"))
+    btnOK := ThemeHelper.AddButton(myGui, "Default w90 y+16", Lang("GUI_OK"), "primary")
+    btnCancel := ThemeHelper.AddButton(myGui, "x+8 w90", Lang("GUI_CANCEL"))
 
     btnOK.OnEvent("Click", (*) => SavePandocOutput(cbo.Text, myGui))
     btnCancel.OnEvent("Click", (*) => myGui.Destroy())
@@ -242,7 +242,7 @@ SavePandocOutput(newFormat, myGui) {
     }
 
     if (!_IsOutputFormatSupported(newFormat)) {
-        MsgBox(
+        WabiMessageBox(
             Lang("MSG_PANDOC_INVALID_OUTPUT", "Invalid output format: {1}", newFormat),
             Lang("MSG_ERROR"),
             "Iconx T"
@@ -253,7 +253,7 @@ SavePandocOutput(newFormat, myGui) {
 
     AppState.PandocOutputFormat := newFormat
     ConfigManager.Save()
-    MsgBox(
+    WabiMessageBox(
         Lang("MSG_PANDOC_OUTPUT_SET", , newFormat),
         Lang("MSG_SUCCESS"),
         "Iconi T2"
@@ -336,7 +336,7 @@ ToggleWindowHoleFallback(*) {
 SetWindowHoleRules(*) {
     myGui := Gui("+MinSize620x700", Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "⚙️ " Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_WINDOW_HOLE_RULES", "Window Hole Rules"), 560)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang(
@@ -347,7 +347,7 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.AddSeparator(myGui, 560)
 
-    myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
 
     myGui.AddText(
         "x30 y+10 w560",
@@ -393,18 +393,18 @@ SetWindowHoleRules(*) {
     )
     ThemeHelper.StyleEdit(excludeClass)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
     btnOK := ThemeHelper.AddButton(
         myGui,
         "Default w100 x30 y+18",
-        "✓ " Lang("GUI_OK"),
+        Lang("GUI_OK"),
         "primary"
     )
     btnCancel := ThemeHelper.AddButton(
         myGui,
         "x+8 w100",
-        "✕ " Lang("GUI_CANCEL")
+        Lang("GUI_CANCEL")
     )
 
     btnOK.OnEvent(

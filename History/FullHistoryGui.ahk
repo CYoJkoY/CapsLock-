@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     AppState.TargetWindow := WinExist("A")
@@ -33,7 +33,7 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     searchY := sep1Y + separatorH + gap
     lvY := searchY + searchAreaH + gap
 
-    ThemeHelper.AddTitle(myGui, "📋 " Lang("GUI_FULL_TITLE"), 640)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_FULL_TITLE"), 640)
     ThemeHelper.AddSubtitle(
         myGui,
         Lang("GUI_FULL_SUBTITLE", "", Lang("GUI_FULL_SUBTITLE_0")),
@@ -41,9 +41,9 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     )
     ThemeHelper.AddSeparator(myGui, 640)
 
-    myGui.SetFont("s10 c" Theme.TextMuted, Theme.Font)
-    searchIcon := myGui.Add("Text", "x" margin " y" searchY, "🔍")
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.TextMuted, ThemeHelper.ReadingStack())
+    searchIcon := myGui.Add("Text", "x" margin " y" searchY, "")
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
     searchBox := myGui.Add(
         "Edit",
         "x" (margin + 22) " y" (searchY - 2) " w604 " ThemeHelper.GetEditOptions("r1")
@@ -74,11 +74,11 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
 
     ThemeHelper.AddSeparator(myGui, 640)
 
-    btnPaste := ThemeHelper.AddButton(myGui, "Default w120", "📄 " Lang("GUI_FULL_PASTE_FILE"), "primary")
+    btnPaste := ThemeHelper.AddButton(myGui, "Default w120", Lang("GUI_FULL_PASTE_FILE"), "primary")
     btnPaste.OnEvent("Click", (*) => PasteSelectedFromFullHistory())
     myGui.btnPaste := btnPaste
 
-    btnPasteText := ThemeHelper.AddButton(myGui, "x+8 yp w120", "📝 " Lang("GUI_FULL_PASTE_TEXT"))
+    btnPasteText := ThemeHelper.AddButton(myGui, "x+8 yp w120", Lang("GUI_FULL_PASTE_TEXT"))
     btnPasteText.OnEvent("Click", (*) => PasteSelectedFromFullHistoryText())
     myGui.btnPasteText := btnPasteText
 
@@ -94,22 +94,22 @@ ShowFullHistoryGui(ItemName?, ItemPos?, MyMenu?) {
     chkSelectAll.OnEvent("Click", OnSelectAllClicked)
     myGui.chkSelectAll := chkSelectAll
 
-    btnDelete := ThemeHelper.AddButton(myGui, "x+12 yp w100", "🗑️ " Lang("GUI_FULL_DELETE_SELECTED"), "danger")
+    btnDelete := ThemeHelper.AddButton(myGui, "x+12 yp w100", Lang("GUI_FULL_DELETE_SELECTED"), "danger")
     btnDelete.OnEvent("Click", OnDeleteSelected)
     myGui.btnDeleteSelected := btnDelete
 
-    btnLoadMore := ThemeHelper.AddButton(myGui, "x+12 yp w100", "⬇️ " Lang("GUI_FULL_LOAD_MORE", "", "Load More"))
+    btnLoadMore := ThemeHelper.AddButton(myGui, "x+12 yp w100", Lang("GUI_FULL_LOAD_MORE", "", "Load More"))
     btnLoadMore.OnEvent("Click", LoadMoreFullHistoryEntries)
     myGui.btnLoadMore := btnLoadMore
 
-    myGui.SetFont("s8 c" Theme.TextMuted, Theme.Font)
+    myGui.SetFont("s8 c" Theme.TextMuted, ThemeHelper.ReadingStack())
     statusBar := myGui.Add(
         "Text",
         "x16 y+12 w640",
-        " " Lang("GUI_FULL_STATUS", "", "Ready") " | "
+        Lang("GUI_FULL_STATUS", "", "Ready") " | "
         . Lang("GUI_FULL_TIP", "", "Tip: Use checkboxes to select multiple items")
     )
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
     myGui.StatusBar := statusBar
 
     AppState.FullHistoryGui := myGui

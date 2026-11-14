@@ -14,10 +14,13 @@ class ThemeHelper {
     static _brushCache      := Map()
     static _penCache        := Map()
     static _dcBrush         := 0
+    static _dcHollowBrush   := 0
     static _hooked          := false
     static _dimControls     := Map()
     static _surfaceControls := Map()
     static _headerSubclasses := Map()
+    static _fontCache       := Map()
+    static _fontProbe       := Map()
 
     ; True while the dark palette is active. Shared helpers use this instead of
     ; hard-coding dark-only behaviour so both themes stay consistent.
@@ -50,9 +53,128 @@ class ThemeHelper {
 
     static StyleGui(myGui) {
         myGui.BackColor := Theme.Background
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
-        myGui.MarginX := 16
-        myGui.MarginY := 16
+        myGui.SetFont("s10 c" Theme.Text, this.UIStack())
+        myGui.MarginX := Theme.SpaceL
+        myGui.MarginY := Theme.SpaceL
+    }
+
+    ; Resolve the first installed reading face. AHK passes the whole list to
+    ; GDI only for the first name, so pick one concrete family per render.
+    static ReadingStack() {
+        for face in ["Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", "Segoe UI"]
+            if this.HasFont(face)
+                return face
+        return "Segoe UI"
+    }
+
+    static SerifStack() {
+        for face in ["Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "Georgia"]
+            if this.HasFont(face)
+                return face
+        return this.ReadingStack()
+    }
+
+    static MonoStack() {
+        for face in ["JetBrains Mono", "Cascadia Code", "Consolas"]
+            if this.HasFont(face)
+                return face
+        return this.ReadingStack()
+    }
+
+    static UIStack() => this.ReadingStack()
+
+    static HasFont(name) {
+        if this._fontProbe.Has(name)
+            return this._fontProbe[name]
+
+        found := false
+        hdc := 0
+        font := 0
+        try {
+            hdc := DllCall("gdi32\CreateCompatibleDC", "ptr", 0, "ptr")
+            if hdc {
+                font := DllCall(
+                    "gdi32\CreateFontW",
+                    "int", -Round(16 * A_ScreenDPI / 96),
+                    "int", 0, "int", 0, "int", 0, "int", 400,
+                    "uint", 0, "uint", 0, "uint", 0, "uint", -1,
+                    "uint", 0, "uint", 0, "uint", 5, "uint", 0,
+                    "str", name, "ptr"
+                )
+                if font {
+                    old := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", font, "ptr")
+                    buf := Buffer(64, 0)
+                    got := DllCall(
+                        "gdi32\GetTextFaceW",
+                        "ptr", hdc, "int", 32, "ptr", buf, "int"
+                    )
+                    found := got > 0 && StrGet(buf, "UTF-16") == name
+                    DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", old, "ptr")
+                }
+            }
+        } catch {
+            found := false
+        }
+        if font
+            DllCall("gdi32\DeleteObject", "ptr", font)
+        if hdc
+            DllCall("gdi32\DeleteDC", "ptr", hdc)
+
+        this._fontProbe[name] := found
+        return found
+    }
+
+    ; Lazily create one serif face for owner-drawn labels (buttons, menu rows).
+    static DrawFont(size, weight := 400) {
+        key := "ui:" . size . ":" . weight
+        if !this._fontCache.Has(key) {
+            face := this.ReadingStack()
+            this._fontCache[key] := DllCall(
+                "gdi32\CreateFontW",
+                "int", -Round(size * A_ScreenDPI / 96),
+                "int", 0,
+                "int", 0,
+                "int", 0,
+                "int", weight,
+                "uint", 0,
+                "uint", 0,
+                "uint", 0,
+                "uint", -1,
+                "uint", 0,
+                "uint", 0,
+                "uint", 5,
+                "uint", 0,
+                "str", face,
+                "ptr"
+            )
+        }
+        return this._fontCache[key]
+    }
+
+    static SerifFont(size, weight := 600) {
+        key := "serif:" . size . ":" . weight
+        if !this._fontCache.Has(key) {
+            face := this.SerifStack()
+            this._fontCache[key] := DllCall(
+                "gdi32\CreateFontW",
+                "int", -Round(size * A_ScreenDPI / 96),
+                "int", 0,
+                "int", 0,
+                "int", 0,
+                "int", weight,
+                "uint", 0,
+                "uint", 0,
+                "uint", 0,
+                "uint", -1,
+                "uint", 0,
+                "uint", 0,
+                "uint", 5,
+                "uint", 0,
+                "str", face,
+                "ptr"
+            )
+        }
+        return this._fontCache[key]
     }
 
     static _EnsureHooks() {
@@ -135,10 +257,10 @@ class ThemeHelper {
 
     static ButtonColor(style := "secondary") {
         switch style {
-            case "primary":    return Theme.Primary
+            case "primary":    return Theme.Cinnabar
             case "tonal", "nav-active": return Theme.PrimaryContainer
             case "nav":        return Theme.Background
-            default:           return Theme.Control
+            default:           return Theme.Surface
         }
     }
 
@@ -164,22 +286,20 @@ class ThemeHelper {
         g := (cref >> 8) & 0xFF
         b := (cref >> 16) & 0xFF
         if (state & _ODS_SELECTED) {
-            factor := this.IsDark() ? 0.84 : 0.88
+            factor := this.IsDark() ? 0.88 : 0.93
             r := Integer(r * factor)
             g := Integer(g * factor)
             b := Integer(b * factor)
         } else if (state & _ODS_HOTLIGHT) {
-            ; Light up on dark surfaces, shade down on light surfaces so the
-            ; hover state stays visible in both palettes.
-            if this.IsDark() {
-                r := Integer(Min(r + 18, 255))
-                g := Integer(Min(g + 18, 255))
-                b := Integer(Min(b + 18, 255))
-            } else {
-                r := Integer(Max(r - 12, 0))
-                g := Integer(Max(g - 12, 0))
-                b := Integer(Max(b - 12, 0))
-            }
+            ; A light ink wash keeps hover legible without moving the paper.
+            wash := this.IsDark() ? Theme.ControlHover : Theme.Overlay
+            wr := wash & 0xFF
+            wg := (wash >> 8) & 0xFF
+            wb := (wash >> 16) & 0xFF
+            mix := this.IsDark() ? 0.45 : 0.55
+            r := Integer(r * (1 - mix) + wr * mix)
+            g := Integer(g * (1 - mix) + wg * mix)
+            b := Integer(b * (1 - mix) + wb * mix)
         }
         return ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF)
     }
@@ -284,7 +404,7 @@ class ThemeHelper {
         static DWMWA_CAPTION_COLOR := 35
         static DWMWA_TEXT_COLOR := 36
         static DWMWA_TRANSITIONS_FORCEDISABLED := 3
-        static DWMWCP_ROUND := 2
+        static DWMWCP_DONOTROUND := 1
 
         try DllCall(
             "dwmapi\DwmSetWindowAttribute",
@@ -304,7 +424,7 @@ class ThemeHelper {
             "dwmapi\DwmSetWindowAttribute",
             "ptr", hwnd,
             "int", DWMWA_WINDOW_CORNER_PREFERENCE,
-            "int*", DWMWCP_ROUND,
+            "int*", DWMWCP_DONOTROUND,
             "int", 4
         )
         try DllCall(
@@ -367,14 +487,15 @@ class ThemeHelper {
 
     ; Draw a restrained neutral divider without introducing decorative color.
     static AddSeparator(myGui, width := 600) {
-        return myGui.Add("Text", "w" width " h2 Background" Theme.Outline)
+        return myGui.Add("Text", "w" width " h1 Background" Theme.Outline)
     }
 
-    ; Add a neutral, outlined container for related controls.
+    ; Add a paper-cut container: a hairline rule around the surface, with a
+    ; short cinnabar corner tick that reads as a seal without filling space.
     static AddSurfaceCard(myGui, x, y, width, height) {
         borderCtrl := myGui.Add(
             "Text",
-            "x" x " y" y " w" width " h" height " Background" Theme.Outline
+            "x" x " y" y " w" width " h" height " Background" Theme.CardLine
         )
         fillCtrl := myGui.Add(
             "Text",
@@ -382,7 +503,11 @@ class ThemeHelper {
         )
         this._ApplyRoundedCorners(borderCtrl, Theme.Radius)
         this._ApplyRoundedCorners(fillCtrl, Theme.Radius - 1)
-        return [borderCtrl, fillCtrl]
+        mark := myGui.Add(
+            "Text",
+            "x" (x + 1) " y" (y + 1) " w14 h2 Background" Theme.Cinnabar
+        )
+        return [borderCtrl, fillCtrl, mark]
     }
 
     ; Clips a control to a rounded rectangle so cards read as surfaces instead
@@ -450,16 +575,16 @@ class ThemeHelper {
     }
 
     static AddTitle(myGui, text, width := 600) {
-        myGui.SetFont("s14 Bold c" Theme.Text, Theme.Font)
-        ctrl := myGui.Add("Text", "w" width " Background" Theme.Background, text)
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s16 c" Theme.Text, this.SerifStack())
+        ctrl := myGui.Add("Text", "w" width, text)
+        myGui.SetFont("s10 c" Theme.Text, this.ReadingStack())
         return ctrl
     }
 
     static AddSubtitle(myGui, text, width := 600) {
-        myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
-        ctrl := myGui.Add("Text", "w" width " Background" Theme.Background, text)
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.TextSecondary, this.ReadingStack())
+        ctrl := myGui.Add("Text", "w" width, text)
+        myGui.SetFont("s10 c" Theme.Text, this.ReadingStack())
         this.MarkDim(ctrl)
         return ctrl
     }
@@ -497,11 +622,14 @@ class ThemeHelper {
             DllCall("gdi32\DeleteObject", "ptr", pen)
         for cref, brush in this._brushCache
             DllCall("gdi32\DeleteObject", "ptr", brush)
+        for key, font in this._fontCache
+            DllCall("gdi32\DeleteObject", "ptr", font)
 
         this._dimControls := Map()
         this._surfaceControls := Map()
         this._brushCache := Map()
         this._penCache := Map()
+        this._fontCache := Map()
     }
 
     ; Drop everything derived from the previously active palette. Rebuild
@@ -588,12 +716,11 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
             : ThemeHelper.RgbToColorRef(Theme.Outline)
     }
 
-    ; 3. Draw rounded pill / button shape using GDI RoundRect.
-    radius := (style == "nav" || style == "nav-active" || style == "tonal")
-        ? Theme.Radius + 4
-        : Theme.Radius
+    ; 3. Draw a paper-cut rectangle. A 2px corner keeps the silhouette soft at
+    ; high DPI while preserving straight rules around content.
+    radius := Theme.Radius
     fillBrush := ThemeHelper.GetBrush(fillColor)
-    borderPen := ThemeHelper.GetPen(borderColor, 1)
+    borderPen := ThemeHelper.GetPen(borderColor, Theme.Hairline)
 
     oldBrush := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", fillBrush, "ptr")
     oldPen   := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", borderPen, "ptr")
@@ -610,8 +737,40 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldBrush, "ptr")
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldPen, "ptr")
 
-    ; 4. Draw button label. The active nav item is identified by its tonal
-    ; container and primary-colored text, not a separate decorative stripe.
+    ; Paper-cut rules: focus gets an indigo inner rule, the active navigation
+    ; page gets a cinnabar rail on its leading edge.
+    if !ThemeHelper._dcHollowBrush
+        ThemeHelper._dcHollowBrush := DllCall("GetStockObject", "Int", 5, "Ptr")
+
+    if (itemState & _ODS_FOCUS) {
+        focusPen := ThemeHelper.GetPen(ThemeHelper.RgbToColorRef(Theme.Focus), 1)
+        oldPen := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", focusPen, "ptr")
+        oldBrush := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", ThemeHelper._dcHollowBrush, "ptr")
+        DllCall(
+            "gdi32\RoundRect",
+            "ptr", hdc,
+            "int", rcLeft + 2, "int", rcTop + 2,
+            "int", rcRight - 2, "int", rcBot - 2,
+            "int", 2, "int", 2
+        )
+        DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldBrush, "ptr")
+        DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldPen, "ptr")
+    }
+
+    if (style == "nav" || style == "nav-active") {
+        if (style == "nav-active" || (itemState & _ODS_SELECTED)) {
+            rail := Buffer(16, 0)
+            NumPut("Int", rcLeft + 1, rail, 0)
+            NumPut("Int", rcTop + 6, rail, 4)
+            NumPut("Int", rcLeft + 1 + Theme.RailWidth, rail, 8)
+            NumPut("Int", rcBot - 6, rail, 12)
+            DllCall("gdi32\SetDCBrushColor", "ptr", hdc, "uint", ThemeHelper.RgbToColorRef(Theme.Cinnabar))
+            DllCall("FillRect", "ptr", hdc, "ptr", rail, "ptr", ThemeHelper._dcBrush)
+        }
+    }
+
+    ; 4. Draw the label with the UI face; navigation labels stay slightly
+    ; quiet, actionable buttons use the ink color.
     if (itemState & _ODS_DISABLED) {
         txtColor := ThemeHelper.RgbToColorRef(Theme.TextMuted)
     } else if (style == "nav" && (itemState & _ODS_HOTLIGHT)) {
@@ -623,18 +782,23 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
     DllCall("gdi32\SetTextColor", "ptr", hdc, "uint", txtColor)
     DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)
 
-    hFont   := DllCall("gdi32\GetStockObject", "int", 17, "ptr")
+    hFont   := ThemeHelper.DrawFont(10, 400)
     oldFont := DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", hFont, "ptr")
 
     if (style == "nav" || style == "nav-active") {
         txtRect := Buffer(16, 0)
-        NumPut("Int", rcLeft + 16, txtRect, 0)
+        NumPut("Int", rcLeft + 18, txtRect, 0)
         NumPut("Int", rcTop,       txtRect, 4)
         NumPut("Int", rcRight - 8, txtRect, 8)
         NumPut("Int", rcBot,       txtRect, 12)
         DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text, "int", -1, "ptr", txtRect, "uint", 0x24)
     } else {
-        DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text, "int", -1, "ptr", rcPtr, "uint", 0x25)
+        textRect := Buffer(16, 0)
+        NumPut("Int", rcLeft + 14, textRect, 0)
+        NumPut("Int", rcTop, textRect, 4)
+        NumPut("Int", rcRight - 14, textRect, 8)
+        NumPut("Int", rcBot, textRect, 12)
+        DllCall("user32\DrawTextW", "ptr", hdc, "str", data.text, "int", -1, "ptr", textRect, "uint", 0x25)
     }
 
     DllCall("gdi32\SelectObject", "ptr", hdc, "ptr", oldFont, "ptr")

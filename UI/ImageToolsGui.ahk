@@ -48,9 +48,9 @@ class ImageToolsGui {
         ThemeHelper.AddSubtitle(myGui, Lang("GUI_IMAGE_TOOLS_SUBTITLE", "Compress, merge vertically, horizontally or as a grid, or convert images. Drop images onto this window. Source files are kept unchanged."), 590)
         ThemeHelper.AddSeparator(myGui, 590)
 
-        myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "xm y+12 w590", Lang("GUI_IMAGE_TOOLS_INPUT", "Input images"))
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         ; Source paths form a single-column list, so a header and grid are unnecessary.
         list := myGui.Add("ListView", "xm y+6 w590 h150 " ThemeHelper.GetLVOptionsPlain("-Hdr"), [Lang("GUI_IMAGE_TOOLS_SOURCE_FILE", "Source file")])
         list.ModifyCol(1, 574)
@@ -60,11 +60,11 @@ class ImageToolsGui {
         removeButton := ThemeHelper.AddButton(myGui, "x+8 yp w112 h32", Lang("GUI_IMAGE_TOOLS_REMOVE", "Remove selected"), "secondary")
         clearButton := ThemeHelper.AddButton(myGui, "x+8 yp w80 h32", Lang("GUI_IMAGE_TOOLS_CLEAR", "Clear"), "secondary")
 
-        myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "xm y+16 w110", Lang("GUI_IMAGE_TOOLS_OPERATION", "Operation"))
         myGui.Add("Text", "x+10 yp w110", Lang("GUI_IMAGE_TOOLS_FORMAT", "Output format"))
         myGui.Add("Text", "x+10 yp w110", Lang("GUI_IMAGE_TOOLS_QUALITY", "Quality (10-100)"))
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         operationLabels := [
             Lang("GUI_IMAGE_TOOLS_OPERATION_COMPRESS", "Compress"),
             Lang("GUI_IMAGE_TOOLS_OPERATION_MERGE", "Merge vertically"),
@@ -79,12 +79,12 @@ class ImageToolsGui {
         ThemeHelper.StyleComboBox(format)
         ThemeHelper.StyleEdit(quality)
 
-        myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "xm y+14 w130", Lang("GUI_IMAGE_TOOLS_GRID_COLUMNS", "Grid columns (1-20)"))
         myGui.Add("Text", "x+16 yp w130", Lang("GUI_IMAGE_TOOLS_BACKGROUND", "Merge background"))
         ; Keep the opacity caption above the slider it describes.
         myGui.Add("Text", "x368 yp w180", Lang("GUI_IMAGE_TOOLS_OPACITY", "Opacity"))
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         gridColumns := myGui.Add("Edit", "xm y+6 w84 Number " ThemeHelper.GetEditOptions(), "2")
         ThemeHelper.StyleEdit(gridColumns)
         swatch := myGui.Add("Text", "x+16 yp w96 h26 Border Background" Theme.Control " Center", this.BackgroundColor)
@@ -93,15 +93,15 @@ class ImageToolsGui {
         alphaSlider := myGui.Add("Slider", "x+16 yp w180 Range0-100 ToolTip", this.BackgroundAlpha)
         alphaLabel := myGui.Add("Text", "x+8 yp+8 w44", this.BackgroundAlpha "%")
 
-        myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "xm y+14 w590", Lang("GUI_IMAGE_TOOLS_OUTPUT_NAME", "Output name (optional)"))
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         outputName := myGui.Add("Edit", "xm y+6 w590 " ThemeHelper.GetEditOptions(), "")
         ThemeHelper.StyleEdit(outputName)
 
-        myGui.SetFont("s9 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         myGui.Add("Text", "xm y+14 w590", Lang("GUI_IMAGE_TOOLS_OUTPUT_FOLDER", "Output folder"))
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         outputDirectory := myGui.Add("Edit", "xm y+6 w478 " ThemeHelper.GetEditOptions(), "")
         ThemeHelper.StyleEdit(outputDirectory)
         browseButton := ThemeHelper.AddButton(myGui, "x+8 yp w104 h30", Lang("GUI_IMAGE_TOOLS_BROWSE", "Browse..."), "secondary")
@@ -380,7 +380,7 @@ class ImageToolsGui {
         green := Integer("0x" SubStr(color, 4, 2))
         blue := Integer("0x" SubStr(color, 6, 2))
         luminance := 0.299 * red + 0.587 * green + 0.114 * blue
-        return (luminance >= 140) ? "0x202124" : "0xE8EAED"
+        return (luminance >= 140) ? Theme.OnPrimaryContainer : Theme.Text
     }
 
     ; COLORREF stores bytes as BGR, the opposite of the hexadecimal form.

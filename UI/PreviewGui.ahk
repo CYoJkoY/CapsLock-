@@ -1,9 +1,9 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ShowPreviewGui(text) {
     myGui := Gui("+Resize +MinSize500x350", Lang("GUI_PREVIEW_TITLE"))
     ThemeHelper.StyleGui(myGui)
-    ThemeHelper.AddTitle(myGui, "👁️ " Lang("GUI_PREVIEW_TITLE"), 600)
+    ThemeHelper.AddTitle(myGui, Lang("GUI_PREVIEW_TITLE"), 600)
 
     lineCount := StrSplit(text, "`n").Length
     charCount := StrLen(text)
@@ -11,16 +11,17 @@ ShowPreviewGui(text) {
         Lang("GUI_PREVIEW_STATS", "", lineCount, charCount), 600)
     ThemeHelper.AddSeparator(myGui, 600)
 
-    myGui.SetFont("s10 c" Theme.Text, Theme.FontMono)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.MonoStack())
     myEdit := myGui.Add(
         "Edit",
-        "ReadOnly VScroll Wrap w600 h350 " ThemeHelper.GetEditOptions(),
+        "ReadOnly VScroll Wrap w600 h350 Background" Theme.Background
+            . " c" Theme.Text . " Border",
         text
     )
     ThemeHelper.StyleEdit(myEdit)
-    myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
-    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", "📋 " Lang("GUI_PREVIEW_COPY"), "primary")
+    btnCopy := ThemeHelper.AddButton(myGui, "Default w100", Lang("GUI_PREVIEW_COPY"), "primary")
     btnCopy.OnEvent("Click", (*) => (
         AppState.IgnoreNextClipChange := true,
         A_Clipboard := text,

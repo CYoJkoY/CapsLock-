@@ -6,9 +6,9 @@
   <p>
     <a href="https://github.com/CYoJkoY/CapsLock-/releases"><img src="https://img.shields.io/github/v/release/CYoJkoY/CapsLock-?style=flat-square&label=latest" alt="Latest release"></a>
     <a href="https://github.com/CYoJkoY/CapsLock-/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/CYoJkoY/CapsLock-/release.yml?style=flat-square&label=build" alt="Build status"></a>
-    <img src="https://img.shields.io/badge/AutoHotkey-v2-5B86C9?style=flat-square" alt="AutoHotkey v2">
-    <img src="https://img.shields.io/badge/platform-Windows-3A5A8C?style=flat-square" alt="Windows">
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-C4A95E?style=flat-square" alt="GPL-3.0"></a>
+    <img src="https://img.shields.io/badge/AutoHotkey-v2-352A27?style=flat-square&labelColor=E18C7C&logoColor=1B1311" alt="AutoHotkey v2">
+    <img src="https://img.shields.io/badge/platform-Windows-352A27?style=flat-square&labelColor=9AB49E&logoColor=1B1311" alt="Windows">
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-352A27?style=flat-square&labelColor=D5B576&logoColor=1B1311" alt="GPL-3.0"></a>
   </p>
   <p>
     <a href="#readme-overview">Overview</a> ·
@@ -105,7 +105,7 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 ### Mouse control mode
 
-While the native CapsLock light is on, tapping `Shift` twice within 450 ms enters a modal mouse control mode. A persistent blue bar at the top center of the active monitor stays at full width instead of counting down. Press `Shift` or `Esc` to exit.
+While the native CapsLock light is on, tapping `Shift` twice within 450 ms enters a modal mouse control mode. A persistent cinnabar bar on an ink ground at the top center of the active monitor stays at full width instead of counting down. Press `Shift` or `Esc` to exit.
 
 - `W`, `A`, `S`, and `D` move the cursor up, left, down, and right at a constant speed. Combining two directions produces diagonal movement with the same total speed as one direction. The Settings center has a cursor speed field that accepts 20 to 300 percent, with 100 percent as the default.
 - `J`, `K`, and `L` hold the left, middle, and right mouse buttons. Keep a key pressed to drag with that button.
@@ -331,10 +331,10 @@ Two interface themes ship with the application and are selectable from the tray 
 
 | Theme | Notes |
 | :---- | :---- |
-| Dark  | Neutral charcoal canvas, layered graphite surfaces, and soft blue tonal selection/action states. |
-| Light | Cool off-white canvas, white cards, subtle gray outlines, and restrained blue emphasis. |
+| Dark  | Ink canvas, layered graphite paper surfaces, hairline rules, and muted cinnabar for selection and primary actions. |
+| Light | Warm paper canvas, off-white cards, clay-tinted outlines, and deep cinnabar for selection and primary actions. |
 
-The interface follows Material 3 principles rather than using the four Google brand colors as decoration: neutral surface roles establish hierarchy, blue marks primary emphasis and active/focus states, while red/green/amber are limited to semantic status. Rounded surface cards and controls, compact spacing, readable secondary text, and consistent state feedback are shared across the settings center, menus, OSD, history, and Quick Phrase windows. The palettes and roles live centrally in `UI/Theme.ahk`; controls consume semantic tokens instead of defining local colors.
+The interface follows Wabi Press: paper and ink establish hierarchy, cinnabar marks primary actions and active rails, and moss, ochre, and indigo distinguish status and focus. Square-edged paper surfaces, hairline rules, restrained seals, readable typography, and consistent state feedback carry through the settings center, menus, OSD, history, and Quick Phrase windows. The dark and light palettes live centrally in `UI/Theme.ahk`; controls consume semantic tokens instead of defining local colors.
 
 <a name="readme-quick-start"></a>
 

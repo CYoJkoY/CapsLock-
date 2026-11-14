@@ -1,8 +1,8 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Multi-page settings center built from shared Material 3 semantic tokens and
-; reusable navigation, card, field, and action components.
+; Multi-page settings center on the Wabi Press system: paper surfaces, hairline
+; rules, a cinnabar seal, and serif page titles.
 ; ---------------------------------------------------------------------------
 
 ShowSettingsGui(initialTab := 1, *) {
@@ -80,48 +80,50 @@ class SettingsGui {
         myGui.MarginY := 0
 
         ; --- Left Navigation Rail ---
-        myGui.SetFont("s16 Bold c" Theme.Primary, Theme.Font)
-        brandTitle := myGui.Add("Text", "x20 y20 w184 h28 Background" Theme.Background, "CapsLock-")
-        ThemeHelper.MarkSurface(brandTitle, Theme.Primary, Theme.Background)
+        myGui.SetFont("s18 c" Theme.Text, ThemeHelper.SerifStack())
+        brandTitle := myGui.Add("Text", "x20 y18 w184 h30 Background" Theme.Background, "CapsLock-")
+        ThemeHelper.MarkSurface(brandTitle, Theme.Text, Theme.Background)
 
-        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+        myGui.Add("Text", "x20 y48 w28 h3 Background" Theme.Cinnabar)
+
+        myGui.SetFont("s8 c" Theme.TextSecondary, ThemeHelper.MonoStack())
         brandSub := myGui.Add(
             "Text",
-            "x20 y48 w184 h18 Background" Theme.Background,
+            "x20 y56 w184 h18 Background" Theme.Background,
             Lang("GUI_SETTINGS_SUBTITLE")
         )
         ThemeHelper.MarkSurface(brandSub, Theme.TextSecondary, Theme.Background)
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         navLabels := [
-            "⚙️   " . Lang("SET_NAV_GENERAL"),
-            "📋   " . Lang("SET_NAV_CLIPBOARD"),
-            "🪟   " . Lang("SET_NAV_WINDOW"),
-            "🔦   " . Lang("SET_NAV_VISUAL"),
-            "☁   " . Lang("SET_NAV_INTEGRATION"),
-            "⌨️   " . Lang("SET_NAV_TOOLS")
+            "一  " . Lang("SET_NAV_GENERAL"),
+            "二  " . Lang("SET_NAV_CLIPBOARD"),
+            "三  " . Lang("SET_NAV_WINDOW"),
+            "四  " . Lang("SET_NAV_VISUAL"),
+            "五  " . Lang("SET_NAV_INTEGRATION"),
+            "六  " . Lang("SET_NAV_TOOLS")
         ]
 
-        navY := 78
+        navY := 88
         Loop navLabels.Length {
             idx := A_Index
             style := (idx == this.activeTab) ? "nav-active" : "nav"
             btn := ThemeHelper.AddButton(
                 myGui,
-                "x12 y" navY " w196 h38",
+                "x12 y" navY " w196 h36",
                 navLabels[idx],
                 style,
                 Theme.Background
             )
             btn.OnEvent("Click", this._MakeTabCallback(idx))
             this.navButtons.Push(btn)
-            navY += 44
+            navY += 40
         }
 
         ; --- Sidebar Footer Quick Theme Switcher Card ---
         ThemeHelper.AddSurfaceCard(myGui, 12, 560, 196, 64)
-        myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s8 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         themeHint := myGui.Add(
             "Text",
             "x24 y568 w172 h16 Background" Theme.Surface,
@@ -129,11 +131,11 @@ class SettingsGui {
         )
         ThemeHelper.MarkSurface(themeHint, Theme.TextSecondary, Theme.Surface)
 
-        myGui.SetFont("s9 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s9 c" Theme.Text, ThemeHelper.ReadingStack())
         quickThemeBtn := ThemeHelper.AddButton(
             myGui,
             "x22 y586 w176 h30",
-            "🌓  " . Lang("MENU_THEME_DARK") . " / " . Lang("MENU_THEME_LIGHT"),
+            Lang("MENU_THEME_DARK") . " / " . Lang("MENU_THEME_LIGHT"),
             "tonal",
             Theme.Surface
         )
@@ -143,15 +145,15 @@ class SettingsGui {
         myGui.Add("Text", "x" this.NAV_W " y3 w1 h637 Background" Theme.Outline)
 
         ; --- Content Page Header ---
-        myGui.SetFont("s15 Bold c" Theme.Text, Theme.Font)
+        myGui.SetFont("s17 c" Theme.Text, ThemeHelper.SerifStack())
         this.headerTitle := myGui.Add(
             "Text",
-            "x" this.CONTENT_X " y20 w" this.CONTENT_W " h28 Background" Theme.Background,
+            "x" this.CONTENT_X " y16 w" this.CONTENT_W " h30 Background" Theme.Background,
             ""
         )
         ThemeHelper.MarkSurface(this.headerTitle, Theme.Text, Theme.Background)
 
-        myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         this.headerDesc := myGui.Add(
             "Text",
             "x" this.CONTENT_X " y50 w" this.CONTENT_W " h20 Background" Theme.Background,
@@ -161,7 +163,7 @@ class SettingsGui {
 
         myGui.Add("Text", "x" this.CONTENT_X " y76 w" this.CONTENT_W " h1 Background" Theme.Outline)
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
 
         ; --- Build All 6 Settings Pages ---
         this._BuildPageGeneral(myGui)
@@ -175,7 +177,7 @@ class SettingsGui {
         myGui.Add("Text", "x221 y574 w679 h1 Background" Theme.Outline)
         myGui.Add("Text", "x221 y575 w679 h65 Background" Theme.Surface)
 
-        myGui.SetFont("s9 c" Theme.TextSecondary, Theme.Font)
+        myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         this.statusText := myGui.Add(
             "Text",
             "x" this.CONTENT_X " y598 w350 h20 Background" Theme.Surface,
@@ -183,18 +185,18 @@ class SettingsGui {
         )
         ThemeHelper.MarkSurface(this.statusText, Theme.TextSecondary, Theme.Surface)
 
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         saveBtn := ThemeHelper.AddButton(
             myGui,
             "Default x616 y590 w140 h34",
-            "✓ " . Lang("SET_BTN_APPLY_ALL"),
+            Lang("SET_BTN_APPLY_ALL"),
             "primary",
             Theme.Surface
         )
         closeBtn := ThemeHelper.AddButton(
             myGui,
             "x766 y590 w106 h34",
-            "✕ " . Lang("GUI_FULL_CLOSE"),
+            Lang("GUI_FULL_CLOSE"),
             "secondary",
             Theme.Surface
         )
@@ -231,24 +233,24 @@ class SettingsGui {
     }
 
     static _AddSectionTitle(myGui, pageIdx, x, y, text) {
-        myGui.SetFont("s10 Bold c" Theme.Primary, Theme.Font)
+        myGui.SetFont("s10 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
         ctrl := myGui.Add("Text", "x" x " y" y " w" this.CONTENT_W " h20 Background" Theme.Background, text)
-        ThemeHelper.MarkSurface(ctrl, Theme.Primary, Theme.Background)
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        ThemeHelper.MarkSurface(ctrl, Theme.TextSecondary, Theme.Background)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         return this._Reg(pageIdx, ctrl)
     }
 
     static _AddCardLabel(myGui, pageIdx, x, y, w, text, isDim := false) {
         if isDim {
-            myGui.SetFont("s8 c" Theme.TextSecondary, Theme.Font)
+            myGui.SetFont("s8 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
             ctrl := myGui.Add("Text", "x" x " y" y " w" w " h18 Background" Theme.Surface, text)
             ThemeHelper.MarkSurface(ctrl, Theme.TextSecondary, Theme.Surface)
         } else {
-            myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+            myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
             ctrl := myGui.Add("Text", "x" x " y" y " w" w " h22 Background" Theme.Surface, text)
             ThemeHelper.MarkSurface(ctrl, Theme.Text, Theme.Surface)
         }
-        myGui.SetFont("s10 c" Theme.Text, Theme.Font)
+        myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
         return this._Reg(pageIdx, ctrl)
     }
 
@@ -306,7 +308,7 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 116, cw, 128))
 
         ; Row 1: Theme
-        this._AddCardLabel(myGui, p, cx + 18, 132, 340, "🌓  " . Lang("MENU_THEME"))
+        this._AddCardLabel(myGui, p, cx + 18, 132, 340, Lang("MENU_THEME"))
         themeItems := [Lang("MENU_THEME_DARK"), Lang("MENU_THEME_LIGHT")]
         themeIdx := Theme.IsDark() ? 1 : 2
         cboTheme := this._AddCardCombo(myGui, p, cx + 410, 130, 194, themeItems, themeIdx)
@@ -316,7 +318,7 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 178, cw))
 
         ; Row 2: Language
-        this._AddCardLabel(myGui, p, cx + 18, 194, 260, "🌐  " . Lang("MENU_LANGUAGE"))
+        this._AddCardLabel(myGui, p, cx + 18, 194, 260, Lang("MENU_LANGUAGE"))
         this.langCodes := Language.GetLanguages()
         langLabels := []
         currLang := Language.GetCurrent()
@@ -337,7 +339,7 @@ class SettingsGui {
 
         btnRebuildLang := this._AddCardButton(
             myGui, p, cx + 456, 190, 148, 28,
-            "🔧 " . Lang("MENU_REBUILD_LANG")
+            Lang("MENU_REBUILD_LANG")
         )
         btnRebuildLang.OnEvent("Click", (*) => RebuildLangCache())
 
@@ -348,7 +350,7 @@ class SettingsGui {
         ; Row 1: AutoStart
         chkAutoStart := this._AddCardCheckBox(
             myGui, p, cx + 18, 304, 560,
-            "🚀  " . Lang("MENU_AUTOSTART"),
+            Lang("MENU_AUTOSTART"),
             IsAutoStartEnabled()
         )
         this.controls["autoStart"] := chkAutoStart
@@ -357,13 +359,13 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 344, cw))
         btnOpenTemp := this._AddCardButton(
             myGui, p, cx + 18, 362, 220, 34,
-            "📂 " . Lang("MENU_OPEN_TEMP")
+            Lang("MENU_OPEN_TEMP")
         )
         btnOpenTemp.OnEvent("Click", (*) => OpenTempFolder())
 
         btnOpenCfg := this._AddCardButton(
             myGui, p, cx + 250, 362, 220, 34,
-            "📁 " . Lang("SET_BTN_OPEN_CONFIG")
+            Lang("SET_BTN_OPEN_CONFIG")
         )
         btnOpenCfg.OnEvent("Click", (*) => Run("explorer.exe " . Chr(34) . A_ScriptDir . "\configs" . Chr(34)))
 
@@ -373,7 +375,7 @@ class SettingsGui {
 
         this._AddCardLabel(
             myGui, p, cx + 18, 482, 360,
-            "🖱️  " . Lang("SET_LBL_MOUSE_SPEED")
+            Lang("SET_LBL_MOUSE_SPEED")
         )
         edMouseSpeed := this._AddCardEdit(
             myGui, p, cx + 410, 480, 96,
@@ -399,7 +401,7 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 116, cw, 228))
 
         ; Row 1: Paste Mode
-        this._AddCardLabel(myGui, p, cx + 18, 132, 320, "📋  " . Lang("MENU_PASTE_MODE"))
+        this._AddCardLabel(myGui, p, cx + 18, 132, 320, Lang("MENU_PASTE_MODE"))
         pasteIdx := (AppState.PasteMode == 2) ? 2 : 1
         cboPaste := this._AddCardCombo(
             myGui, p, cx + 354, 130, 250,
@@ -411,13 +413,13 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 174, cw))
 
         ; Row 2: Max History + Open Full History
-        this._AddCardLabel(myGui, p, cx + 18, 190, 290, "📝  " . Lang("INPUT_MAX_HISTORY_TITLE"))
+        this._AddCardLabel(myGui, p, cx + 18, 190, 290, Lang("INPUT_MAX_HISTORY_TITLE"))
         edMaxHist := this._AddCardEdit(myGui, p, cx + 354, 188, 96, AppState.MaxHistory, "Number")
         this.controls["maxHistory"] := edMaxHist
 
         btnFullHist := this._AddCardButton(
             myGui, p, cx + 460, 186, 144, 28,
-            "📋 " . Lang("GUI_FULL_TITLE")
+            Lang("GUI_FULL_TITLE")
         )
         btnFullHist.OnEvent("Click", (*) => ShowFullHistoryGui())
 
@@ -440,11 +442,11 @@ class SettingsGui {
         ; Row 4: Ignore Rules
         this._AddCardLabel(
             myGui, p, cx + 18, 302, 360,
-            "🚫  " . Lang("GUI_IGNORE_TITLE") . " (" . AppState.IgnorePatterns.Length . ")"
+            Lang("GUI_IGNORE_TITLE") . " (" . AppState.IgnorePatterns.Length . ")"
         )
         btnIgnore := this._AddCardButton(
             myGui, p, cx + 410, 298, 194, 30,
-            "🚫 " . Lang("MENU_IGNORE_RULES")
+            Lang("MENU_IGNORE_RULES")
         )
         btnIgnore.OnEvent("Click", (*) => SetIgnorePatterns())
 
@@ -453,7 +455,7 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 386, cw, 128))
 
         ; Row 1: Delete Mode
-        this._AddCardLabel(myGui, p, cx + 18, 402, 320, "🧹  " . Lang("MENU_DELETE_MODE"))
+        this._AddCardLabel(myGui, p, cx + 18, 402, 320, Lang("MENU_DELETE_MODE"))
         delIdx := Clamp(Integer(AppState.DeleteMode), 1, 3)
         cboDelete := this._AddCardCombo(
             myGui, p, cx + 354, 400, 250,
@@ -465,11 +467,11 @@ class SettingsGui {
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 446, cw))
 
         ; Row 2: Delete Delay & Cleanup Interval
-        this._AddCardLabel(myGui, p, cx + 18, 464, 190, "⏱️  " . Lang("SET_LBL_DELAY_SEC"))
+        this._AddCardLabel(myGui, p, cx + 18, 464, 190, Lang("SET_LBL_DELAY_SEC"))
         edDelay := this._AddCardEdit(myGui, p, cx + 214, 462, 80, AppState.DeleteDelay, "Number")
         this.controls["deleteDelay"] := edDelay
 
-        this._AddCardLabel(myGui, p, cx + 318, 464, 196, "🔄  " . Lang("SET_LBL_INTERVAL_SEC"))
+        this._AddCardLabel(myGui, p, cx + 318, 464, 196, Lang("SET_LBL_INTERVAL_SEC"))
         edInterval := this._AddCardEdit(myGui, p, cx + 524, 462, 80, AppState.CleanupInterval, "Number")
         this.controls["cleanupInterval"] := edInterval
     }
@@ -488,14 +490,14 @@ class SettingsGui {
 
         chkPinBadge := this._AddCardCheckBox(
             myGui, p, cx + 18, 134, 370,
-            "📌  " . Lang("MENU_TOPMOST_INDICATOR"),
+            Lang("MENU_TOPMOST_INDICATOR"),
             AppState.AlwaysOnTopIndicator
         )
         this.controls["topmostIndicator"] := chkPinBadge
 
         btnRestoreHidden := this._AddCardButton(
             myGui, p, cx + 404, 131, 200, 30,
-            "🫥 " . Lang("MENU_HIDDEN_RESTORE_ALL") . " (" . TrayHider.Count() . ")"
+            Lang("MENU_HIDDEN_RESTORE_ALL") . " (" . TrayHider.Count() . ")"
         )
         btnRestoreHidden.OnEvent("Click", (*) => TrayHider.RestoreAll(true))
 
@@ -554,7 +556,7 @@ class SettingsGui {
         this._AddSectionTitle(myGui, p, cx, 370, Lang("MENU_WINDOW_HOLE") . " (CapsLock + X)")
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 394, cw, 158))
 
-        this._AddCardLabel(myGui, p, cx + 18, 410, 170, "📏  " . Lang("MENU_WINDOW_HOLE_SIZE") . " (px)")
+        this._AddCardLabel(myGui, p, cx + 18, 410, 170, Lang("MENU_WINDOW_HOLE_SIZE") . " (px)")
         edHoleSize := this._AddCardEdit(myGui, p, cx + 196, 408, 84, AppState.WindowHoleDiameter, "Number")
         this.controls["holeDiameter"] := edHoleSize
 
@@ -575,7 +577,7 @@ class SettingsGui {
 
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 450, cw))
 
-        this._AddCardLabel(myGui, p, cx + 18, 466, 170, "⌨️  " . Lang("MENU_WINDOW_HOLE_ACTIVATION"))
+        this._AddCardLabel(myGui, p, cx + 18, 466, 170, Lang("MENU_WINDOW_HOLE_ACTIVATION"))
         holeActIdx := (AppState.WindowHoleActivation == "toggle") ? 2 : 1
         cboHoleAct := this._AddCardCombo(
             myGui, p, cx + 196, 462, 190,
@@ -586,7 +588,7 @@ class SettingsGui {
 
         btnHoleRules := this._AddCardButton(
             myGui, p, cx + 440, 460, 164, 30,
-            "⚙️ " . Lang("MENU_WINDOW_HOLE_RULES")
+            Lang("MENU_WINDOW_HOLE_RULES")
         )
         btnHoleRules.OnEvent("Click", (*) => SetWindowHoleRules())
 
@@ -609,20 +611,20 @@ class SettingsGui {
         cw := this.CONTENT_W
 
         ; Section 1: Spotlight (CapsLock + O)
-        this._AddSectionTitle(myGui, p, cx, 92, "🔦  " . Lang("MENU_SPOTLIGHT") . " (CapsLock + O)")
+        this._AddSectionTitle(myGui, p, cx, 92, Lang("MENU_SPOTLIGHT") . " (CapsLock + O)")
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 116, cw, 184))
 
-        this._AddCardLabel(myGui, p, cx + 18, 134, 180, "📏  " . Lang("MENU_SPOTLIGHT_RADIUS") . " (40-900)")
+        this._AddCardLabel(myGui, p, cx + 18, 134, 180, Lang("MENU_SPOTLIGHT_RADIUS") . " (40-900)")
         edSpotRadius := this._AddCardEdit(myGui, p, cx + 206, 132, 84, AppState.SpotlightRadius, "Number")
         this.controls["spotRadius"] := edSpotRadius
 
-        this._AddCardLabel(myGui, p, cx + 314, 134, 190, "🌫  " . Lang("MENU_SPOTLIGHT_SOFTNESS") . " (0-250)")
+        this._AddCardLabel(myGui, p, cx + 314, 134, 190, Lang("MENU_SPOTLIGHT_SOFTNESS") . " (0-250)")
         edSpotSoft := this._AddCardEdit(myGui, p, cx + 520, 132, 84, AppState.SpotlightSoftness, "Number")
         this.controls["spotSoftness"] := edSpotSoft
 
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 176, cw))
 
-        this._AddCardLabel(myGui, p, cx + 18, 194, 180, "🌙  " . Lang("MENU_SPOTLIGHT_DARKNESS") . " (5-95%)")
+        this._AddCardLabel(myGui, p, cx + 18, 194, 180, Lang("MENU_SPOTLIGHT_DARKNESS") . " (5-95%)")
         edSpotDark := this._AddCardEdit(myGui, p, cx + 206, 192, 84, AppState.SpotlightDarkness, "Number")
         this.controls["spotDarkness"] := edSpotDark
 
@@ -643,7 +645,7 @@ class SettingsGui {
 
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 236, cw))
 
-        this._AddCardLabel(myGui, p, cx + 18, 254, 180, "⌨️  " . Lang("MENU_SPOTLIGHT_ACTIVATION"))
+        this._AddCardLabel(myGui, p, cx + 18, 254, 180, Lang("MENU_SPOTLIGHT_ACTIVATION"))
         spotActIdx := (AppState.SpotlightActivation == "hold") ? 1 : 2
         cboSpotAct := this._AddCardCombo(
             myGui, p, cx + 206, 250, 190,
@@ -654,22 +656,22 @@ class SettingsGui {
 
         btnTestSpot := this._AddCardButton(
             myGui, p, cx + 420, 248, 184, 30,
-            "🔦 " . Lang("MENU_SPOTLIGHT_TOGGLE"),
+            Lang("MENU_SPOTLIGHT_TOGGLE"),
             "tonal"
         )
         btnTestSpot.OnEvent("Click", (*) => (this.ApplyAll(true), Spotlight.Toggle()))
 
         ; Section 2: Dynamic Zoom (CapsLock + Z)
-        this._AddSectionTitle(myGui, p, cx, 322, "🔎  " . Lang("MENU_ZOOM") . " (CapsLock + Z)")
+        this._AddSectionTitle(myGui, p, cx, 322, Lang("MENU_ZOOM") . " (CapsLock + Z)")
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 346, cw, 124))
 
-        this._AddCardLabel(myGui, p, cx + 18, 364, 240, "🔍  " . Lang("MENU_ZOOM_FACTOR") . " (2x - 16x)")
+        this._AddCardLabel(myGui, p, cx + 18, 364, 240, Lang("MENU_ZOOM_FACTOR") . " (2x - 16x)")
         edZoomFactor := this._AddCardEdit(myGui, p, cx + 270, 362, 84, AppState.ZoomFactor, "Number")
         this.controls["zoomFactor"] := edZoomFactor
 
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 406, cw))
 
-        this._AddCardLabel(myGui, p, cx + 18, 424, 180, "⌨️  " . Lang("MENU_ZOOM_ACTIVATION"))
+        this._AddCardLabel(myGui, p, cx + 18, 424, 180, Lang("MENU_ZOOM_ACTIVATION"))
         zoomActIdx := (AppState.ZoomActivation == "hold") ? 1 : 2
         cboZoomAct := this._AddCardCombo(
             myGui, p, cx + 206, 420, 190,
@@ -680,7 +682,7 @@ class SettingsGui {
 
         btnTestZoom := this._AddCardButton(
             myGui, p, cx + 420, 418, 184, 30,
-            "🔎 " . Lang("MENU_ZOOM_TOGGLE"),
+            Lang("MENU_ZOOM_TOGGLE"),
             "tonal"
         )
         btnTestZoom.OnEvent("Click", (*) => (this.ApplyAll(true), Zoom.Toggle()))
@@ -695,7 +697,7 @@ class SettingsGui {
         cw := this.CONTENT_W
 
         ; Section 1: Quick Phrases (CapsLock + Shift + P)
-        this._AddSectionTitle(myGui, p, cx, 92, "💬  " . Lang("MENU_QUICK_PHRASE") . " (CapsLock + Shift + P)")
+        this._AddSectionTitle(myGui, p, cx, 92, Lang("MENU_QUICK_PHRASE") . " (CapsLock + Shift + P)")
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 116, cw, 124))
 
         chkQp := this._AddCardCheckBox(
@@ -714,13 +716,13 @@ class SettingsGui {
         )
         btnManageQp := this._AddCardButton(
             myGui, p, cx + 410, 188, 194, 30,
-            "📝 " . Lang("MENU_QUICK_PHRASE_MANAGE"),
+            Lang("MENU_QUICK_PHRASE_MANAGE"),
             "primary"
         )
         btnManageQp.OnEvent("Click", (*) => ShowQuickPhraseManager())
 
         ; Section 2: Cloud Sync
-        this._AddSectionTitle(myGui, p, cx, 260, "☁  " . Lang("GUI_CLOUD_SYNC_TITLE"))
+        this._AddSectionTitle(myGui, p, cx, 260, Lang("GUI_CLOUD_SYNC_TITLE"))
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 284, cw, 194))
 
         chkCloud := this._AddCardCheckBox(
@@ -753,21 +755,21 @@ class SettingsGui {
 
         btnCloudCfg := this._AddCardButton(
             myGui, p, cx + 18, 424, 210, 32,
-            "⚙️ " . Lang("MENU_CLOUD_SYNC_SETTINGS"),
+            Lang("MENU_CLOUD_SYNC_SETTINGS"),
             "primary"
         )
         btnCloudCfg.OnEvent("Click", (*) => ShowCloudSyncSettings())
 
         btnCloudNow := this._AddCardButton(
             myGui, p, cx + 238, 424, 180, 32,
-            "☁ " . Lang("MENU_CLOUD_SYNC_NOW"),
+            Lang("MENU_CLOUD_SYNC_NOW"),
             "tonal"
         )
         btnCloudNow.OnEvent("Click", (*) => CloudSyncCoordinator.SyncNow())
 
         btnCloudDisc := this._AddCardButton(
             myGui, p, cx + 428, 424, 176, 32,
-            "🔌 " . Lang("MENU_CLOUD_SYNC_DISCONNECT")
+            Lang("MENU_CLOUD_SYNC_DISCONNECT")
         )
         btnCloudDisc.OnEvent("Click", (*) => CloudSyncCoordinator.Disconnect())
     }
@@ -788,14 +790,14 @@ class SettingsGui {
         imValid := AppState.ImageMagickExe != ""
             && InStr(StrLower(AppState.ImageMagickExe), "magick.exe")
             && FileExist(AppState.ImageMagickExe)
-        imTitle := imValid ? "📦  " . Lang("MENU_IM_STATUS_SET") : "📦  " . Lang("MENU_IM_STATUS_NOTSET")
+        imTitle := imValid ? Lang("MENU_IM_STATUS_SET") : Lang("MENU_IM_STATUS_NOTSET")
         this._AddCardLabel(myGui, p, cx + 18, 130, 580, imTitle)
 
         edImPath := this._AddCardEdit(myGui, p, cx + 18, 154, 462, AppState.ImageMagickExe, "ReadOnly")
         this.controls["imPath"] := edImPath
         btnImBrowse := this._AddCardButton(
             myGui, p, cx + 490, 152, 114, 28,
-            "📂 " . Lang("SET_BTN_BROWSE")
+            Lang("SET_BTN_BROWSE")
         )
         btnImBrowse.OnEvent("Click", (*) => (SetImPath(), edImPath.Value := AppState.ImageMagickExe))
 
@@ -803,21 +805,21 @@ class SettingsGui {
 
         ; Row 2: Pandoc Path
         pandocValid := AppState.PandocExe != "" && FileExist(AppState.PandocExe)
-        pandocTitle := pandocValid ? "📄  " . Lang("MENU_PANDOC_STATUS_SET") : "📄  " . Lang("MENU_PANDOC_STATUS_NOTSET")
+        pandocTitle := pandocValid ? Lang("MENU_PANDOC_STATUS_SET") : Lang("MENU_PANDOC_STATUS_NOTSET")
         this._AddCardLabel(myGui, p, cx + 18, 204, 580, pandocTitle)
 
         edPandocPath := this._AddCardEdit(myGui, p, cx + 18, 228, 462, AppState.PandocExe, "ReadOnly")
         this.controls["pandocPath"] := edPandocPath
         btnPandocBrowse := this._AddCardButton(
             myGui, p, cx + 490, 226, 114, 28,
-            "📂 " . Lang("SET_BTN_BROWSE")
+            Lang("SET_BTN_BROWSE")
         )
         btnPandocBrowse.OnEvent("Click", (*) => (SetPandocPath(), edPandocPath.Value := AppState.PandocExe))
 
         this._Reg(p, ThemeHelper.AddCardDivider(myGui, cx, 266, cw))
 
         ; Row 3: Pandoc Output Format
-        this._AddCardLabel(myGui, p, cx + 18, 278, 360, "📤  " . Lang("INPUT_PANDOC_OUTPUT_TITLE"))
+        this._AddCardLabel(myGui, p, cx + 18, 278, 360, Lang("INPUT_PANDOC_OUTPUT_TITLE"))
         this.pandocFormats := AppState.PandocOutputFormats.Clone()
         _SortStrings(this.pandocFormats)
         fmtIdx := 1
@@ -834,10 +836,10 @@ class SettingsGui {
         this._AddSectionTitle(myGui, p, cx, 330, Lang("SET_SEC_SHORTCUTS"))
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 354, cw, 124))
 
-        this._AddCardLabel(myGui, p, cx + 18, 372, 360, "⌨️  " . Lang("CHEAT_TITLE") . " (CapsLock + H / F1)")
+        this._AddCardLabel(myGui, p, cx + 18, 372, 360, Lang("CHEAT_TITLE") . " (CapsLock + H / F1)")
         btnCheat := this._AddCardButton(
             myGui, p, cx + 410, 368, 194, 30,
-            "⌨️ " . Lang("MENU_CHEATSHEET"),
+            Lang("MENU_CHEATSHEET"),
             "primary"
         )
         btnCheat.OnEvent("Click", (*) => OpenCheatsheetFromTray())
@@ -846,20 +848,20 @@ class SettingsGui {
 
         btnReload := this._AddCardButton(
             myGui, p, cx + 18, 430, 190, 32,
-            "🔄 " . Lang("MENU_RELOAD")
+            Lang("MENU_RELOAD")
         )
         btnReload.OnEvent("Click", (*) => ReloadWithRestore())
 
         btnExit := this._AddCardButton(
             myGui, p, cx + 220, 430, 190, 32,
-            "❌ " . Lang("MENU_EXIT"),
+            Lang("MENU_EXIT"),
             "danger"
         )
         btnExit.OnEvent("Click", (*) => ExitWithRestore())
 
         btnAppProfiles := this._AddCardButton(
             myGui, p, cx + 420, 430, 184, 32,
-            "🪟 " . Lang("GUI_APP_PROFILES_TITLE")
+            Lang("GUI_APP_PROFILES_TITLE")
         )
         btnAppProfiles.OnEvent("Click", (*) => ApplicationProfilesGui.Show())
     }
@@ -1123,7 +1125,7 @@ class SettingsGui {
 
         if !silent {
             if IsObject(this.statusText)
-                this.statusText.Text := "✓ " . Lang("SET_STATUS_SAVED")
+                this.statusText.Text := Lang("SET_STATUS_SAVED")
             OSD.ShowNotification(Lang("SET_STATUS_SAVED"), 1600, "success")
         }
     }
