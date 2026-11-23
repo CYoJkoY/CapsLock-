@@ -466,32 +466,19 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         }
     }
 
-    normalRows := 0
-    if normalVariables.Length > 0
-        normalRows := Integer((normalVariables.Length + 1) / 2)
+    CONTENT_WIDTH := 640
+    COLUMN_WIDTH := 300
+    COLUMN_X := [16, 336]
+    LABEL_GAP := 6
+    SECTION_GAP := 16
+    BOTTOM_GAP := 12
+    BOTTOM_MARGIN := 16
+    BUTTON_H := 32
 
-    ; Row budget: label 18 + gap 6 + input 62 + row spacing 14 = 100
-    LABEL_H := 18
-    EDIT_H := 62
-    ROW_GAP := 14
-    normalRowH := LABEL_H + 6 + EDIT_H + ROW_GAP
-    ; Every variable can contain structured/multiline text (for example YAML).
-    ; Keep the compact two-column layout, but make each input a true multiline
-    ; Edit control so pasted line breaks are preserved.
-    normalEditOptions := "Multi WantReturn VScroll " ThemeHelper.GetEditOptions()
-    normalBottomY := 96 + normalRows * normalRowH
-
-    if etxtName != "" {
-        etxtLabelY := normalBottomY + 8
-        etxtEditY := etxtLabelY + LABEL_H + 6
-        etxtEditH := 96
-        previewY := etxtEditY + etxtEditH + 16
-    } else {
-        etxtLabelY := 0
-        etxtEditY := 0
-        etxtEditH := 0
-        previewY := normalBottomY + 16
-    }
+    ; A variable name can wrap over several lines, so every label is measured
+    ; before the input below it is positioned. The old fixed label height left
+    ; wrapped names covered by their own input field.
+    rowCount := Integer(Ceil(normalVariables.Length / 2))
 
     myGui := Gui(
         "-MaximizeBox -MinimizeBox",
@@ -509,7 +496,7 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "GUI_QUICK_PHRASE_VARIABLE_TITLE",
             "Fill phrase variables"
         ),
-        640
+        CONTENT_WIDTH
     )
 
     ThemeHelper.AddSubtitle(
@@ -518,81 +505,276 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
             "GUI_QUICK_PHRASE_VARIABLE_HINT",
             "Fields follow first appearance order; repeated names are requested once."
         ),
-        640
+        CONTENT_WIDTH
     )
 
-    ThemeHelper.AddSeparator(myGui, 640)
+    separator := ThemeHelper.AddSeparator(myGui, CONTENT_WIDTH)
+
+    ; The header grows with the active font and text scaling, so the content
+    ; start is taken from where the separator actually landed.
+    separator.GetPos(&separatorX, &separatorY, &separatorWidth, &separatorHeight)
+    contentTop := separatorY + separatorHeight + SECTION_GAP
+
+    ; Labels are created first and left at y0 until the whole layout is known.
+    myGui.SetFont("s9 c" Theme.TextSecondary, ThemeHelper.ReadingStack())
+
+    variableLabels := []
+    variableLabelH := []
+    rowLabelH := []
+
+    for index, name in normalVariables {
+        column := index <= rowCount ? 0 : 1
+        variableLabels.Push(
+            myGui.Add("Text", "x" COLUMN_X[column + 1] " y0 w" COLUMN_WIDTH, name)
+        )
+    }
+
+    for label in variableLabels {
+        label.GetPos(&labelX, &labelY, &labelWidth, &labelHeight)
+        variableLabelH.Push(labelHeight)
+    }
+
+    ; Rows pair the two columns, so a row is as tall as its tallest label.
+    Loop rowCount {
+        row := A_Index
+        paired := row + rowCount
+        rowLabelH.Push(
+            paired <= normalVariables.Length
+                ? Max(variableLabelH[row], variableLabelH[paired])
+                : variableLabelH[row]
+        )
+    }
+
+    ; etxt keeps its own full-width row, and the preview label is measured here
+    ; because the fit test below needs the real heights.
+    etxtLabel := ""
+    etxtLabelH := 0
+    if etxtName != "" {
+        etxtLabel := myGui.Add("Text", "x16 y0 w" CONTENT_WIDTH, etxtName)
+        etxtLabel.GetPos(&etxtLabelX, &etxtLabelY, &etxtLabelWidth, &etxtLabelHeight)
+        etxtLabelH := etxtLabelHeight
+    }
+
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+
+    previewLabel := myGui.Add(
+        "Text",
+        "x16 y0",
+        Lang(
+            "GUI_QUICK_PHRASE_PREVIEW",
+            "Preview"
+        )
+    )
+    previewLabel.GetPos(&previewLabelX, &previewLabelY0, &previewLabelWidth, &previewLabelHeight)
+
+    ; Layout tiers from roomy to compact: a taller dialog is preferred, and the
+    ; later tiers trade input height for vertical room on short screens.
+    layoutTiers := [
+        {editH: 62, rowGap: 14, previewH: 120, etxtH: 96},
+        {editH: 52, rowGap: 12, previewH: 110, etxtH: 88},
+        {editH: 42, rowGap: 10, previewH: 100, etxtH: 80},
+        {editH: 34, rowGap: 8, previewH: 90, etxtH: 72},
+        {editH: 26, rowGap: 6, previewH: 80, etxtH: 64}
+    ]
+
+    ; Gui coordinates are DPI-scaled logical units while the screen metrics are
+    ; physical pixels, so the work area has to be converted before it can bound
+    ; the layout. Comparing them directly made every size test too generous on
+    ; scaled displays and the dialog was drawn taller than the screen.
+    dipScale := 96 / A_ScreenDPI
+    monitor := MonitorGetPrimary()
+    if !MonitorGetWorkArea(monitor, &workLeft, &workTop, &workRight, &workBottom) {
+        workTop := 0
+        workBottom := A_ScreenHeight
+    }
+    ; Room for the caption and frame AHK adds around the client area.
+    WINDOW_CHROME_H := 44
+    availableH := Round((workBottom - workTop) * dipScale) - WINDOW_CHROME_H
+
+    GetVarsHeight(candidate) {
+        total := 0
+        for labelHeight in rowLabelH
+            total += labelHeight + LABEL_GAP + candidate.editH + candidate.rowGap
+        return total
+    }
+
+    GetEtxtHeight(candidate) {
+        if etxtName == ""
+            return 0
+        return 8 + etxtLabelH + LABEL_GAP + candidate.etxtH
+    }
+
+    ; Section gap, preview label, preview field, a gap, the buttons and the
+    ; bottom margin. This mirrors the construction below exactly so the fit
+    ; test and the window height agree.
+    GetBottomHeight(candidate) {
+        return SECTION_GAP + previewLabelHeight + LABEL_GAP + candidate.previewH
+            + BOTTOM_GAP + BUTTON_H + BOTTOM_MARGIN
+    }
+
+    tier := ""
+    for candidate in layoutTiers {
+        total := contentTop + GetVarsHeight(candidate) + GetEtxtHeight(candidate)
+            + GetBottomHeight(candidate)
+        if total <= availableH {
+            tier := candidate
+            break
+        }
+    }
+
+    ; When even the most compact tier overflows, the rows are split over pages.
+    ; Clamping the window height while keeping fixed positions (the old
+    ; behaviour) hid the lower inputs together with the preview and buttons.
+    paginate := false
+    pagerH := 0
+    if !IsObject(tier) {
+        tier := layoutTiers[layoutTiers.Length]
+        paginate := true
+        pagerH := BOTTOM_GAP + BUTTON_H
+    }
+
+    rowPage := []
+    rowOffset := []
+    pageBudget := availableH - (contentTop + GetEtxtHeight(tier) + pagerH + GetBottomHeight(tier))
+
+    ; A plain greedy fill leaves the last page almost empty (for example
+    ; 9 + 9 + 2 rows), so the greedy pass only decides how many pages are
+    ; needed and the rows are then spread evenly over them.
+    minimumPages := 1
+    offset := 0
+
+    for row, labelHeight in rowLabelH {
+        rowH := labelHeight + LABEL_GAP + tier.editH + tier.rowGap
+        if (paginate && offset > 0 && offset + rowH > pageBudget) {
+            minimumPages += 1
+            offset := 0
+        }
+        offset += rowH
+    }
+
+    ; Each page takes its share of the rows still unplaced, so 100 rows over
+    ; 12 pages become 4 x 9 + 8 x 8 rows instead of 11 x 9 + 1.
+    rowsLeft := rowLabelH.Length
+    pagesLeft := minimumPages
+    rowsPerPage := paginate
+        ? Integer(Ceil(rowsLeft / pagesLeft))
+        : rowLabelH.Length
+
+    currentPageNumber := 1
+    rowsOnPage := 0
+    offset := 0
+
+    for row, labelHeight in rowLabelH {
+        rowH := labelHeight + LABEL_GAP + tier.editH + tier.rowGap
+        if (
+            paginate
+            && offset > 0
+            && (offset + rowH > pageBudget || rowsOnPage >= rowsPerPage)
+        ) {
+            currentPageNumber += 1
+            offset := 0
+            rowsOnPage := 0
+            pagesLeft := Max(pagesLeft - 1, 1)
+            rowsPerPage := Integer(Ceil(rowsLeft / pagesLeft))
+        }
+        rowPage.Push(currentPageNumber)
+        rowOffset.Push(offset)
+        offset += rowH
+        rowsOnPage += 1
+        rowsLeft -= 1
+    }
+    pageCount := paginate ? currentPageNumber : 1
+
+    varsHeight := 0
+    if paginate {
+        pageBottom := Map()
+        for row, labelHeight in rowLabelH {
+            rowH := labelHeight + LABEL_GAP + tier.editH + tier.rowGap
+            bottom := rowOffset[row] + rowH
+            known := pageBottom.Has(rowPage[row]) ? pageBottom[rowPage[row]] : 0
+            if bottom > known
+                pageBottom[rowPage[row]] := bottom
+        }
+        for pageIndex, bottom in pageBottom
+            varsHeight := Max(varsHeight, bottom)
+    } else {
+        varsHeight := offset
+    }
 
     controls := []
-    etxtControl := ""
+    variableEdits := []
+    variablePages := []
 
-    ; Ordinary variables stay compact while supporting multiline input.
+    ; Every variable can contain structured/multiline text (for example YAML).
+    ; Keep the compact two-column layout, but make each input a true multiline
+    ; Edit control so pasted line breaks are preserved.
+    normalEditOptions := "Multi WantReturn VScroll " ThemeHelper.GetEditOptions()
+
+    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+
     for index, name in normalVariables {
-        column := index <= normalRows ? 0 : 1
-        row := column ? index - normalRows : index
-
-        x := 16 + column * 320
-        y := 96 + (row - 1) * normalRowH
-
-        myGui.SetFont(
-            "s9 c" Theme.TextSecondary,
-            ThemeHelper.ReadingStack()
-        )
-
-        myGui.Add(
-            "Text",
-            "x" x " y" y " w300",
-            name
-        )
-
-        myGui.SetFont(
-            "s10 c" Theme.Text,
-            ThemeHelper.ReadingStack()
-        )
+        column := index <= rowCount ? 0 : 1
+        row := column ? index - rowCount : index
+        labelY := contentTop + rowOffset[row]
+        editY := labelY + variableLabelH[index] + LABEL_GAP
 
         editControl := myGui.Add(
             "Edit",
-            "x" x
-            " y" (y + LABEL_H + 6)
-            " w300"
-            " h" EDIT_H
+            "x" COLUMN_X[column + 1]
+            " y" editY
+            " w" COLUMN_WIDTH
+            " h" tier.editH
             " " normalEditOptions,
             ""
         )
 
         ThemeHelper.StyleEdit(editControl)
+        variableLabels[index].Move(COLUMN_X[column + 1], labelY)
 
+        variableEdits.Push(editControl)
+        variablePages.Push(rowPage[row])
         controls.Push({
             name: name,
-            edit: editControl
+            edit: editControl,
+            page: rowPage[row]
         })
+    }
+
+    cursorY := contentTop + varsHeight
+
+    pagerLabel := ""
+    prevBtn := ""
+    nextBtn := ""
+
+    if paginate {
+        ; Centred against the pager buttons rather than the row top.
+        pagerLabel := myGui.Add("Text", "x16 y" (cursorY + BOTTOM_GAP + 7) " w300", "")
+        prevBtn := ThemeHelper.AddButton(
+            myGui,
+            "x456 y" cursorY + BOTTOM_GAP " w90",
+            Lang("GUI_QUICK_PHRASE_PREV", "Previous")
+        )
+        nextBtn := ThemeHelper.AddButton(
+            myGui,
+            "x+8 yp w90",
+            Lang("GUI_QUICK_PHRASE_NEXT", "Next")
+        )
+        cursorY += pagerH
     }
 
     ; etxt is intentionally multiline and full width so Enter inserts
     ; real line breaks instead of accepting the dialog.
+    etxtControl := ""
     if etxtName != "" {
-        myGui.SetFont(
-            "s9 c" Theme.TextSecondary,
-            ThemeHelper.ReadingStack()
-        )
-
-        myGui.Add(
-            "Text",
-            "x16 y" etxtLabelY " w640",
-            etxtName
-        )
-
-        myGui.SetFont(
-            "s10 c" Theme.Text,
-            ThemeHelper.ReadingStack()
-        )
+        etxtLabelY := cursorY + 8
+        etxtEditY := etxtLabelY + etxtLabelH + LABEL_GAP
 
         etxtEdit := myGui.Add(
             "Edit",
             "x16"
             " y" etxtEditY
-            " w640"
-            " h"
+            " w" CONTENT_WIDTH
+            " h" tier.etxtH
             " VScroll"
             " WantReturn "
             ThemeHelper.GetEditOptions(),
@@ -600,6 +782,9 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         )
 
         ThemeHelper.StyleEdit(etxtEdit)
+
+        etxtLabel.Move(16, etxtLabelY)
+        cursorY := etxtEditY + tier.etxtH
 
         etxtControl := {
             name: etxtName,
@@ -609,23 +794,17 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         controls.Push(etxtControl)
     }
 
-    myGui.SetFont("s10 c" Theme.Text, ThemeHelper.ReadingStack())
+    previewLabelY := cursorY + SECTION_GAP
+    previewEditY := previewLabelY + previewLabelHeight + LABEL_GAP
 
-    myGui.Add(
-        "Text",
-        "x16 y" previewY,
-        Lang(
-            "GUI_QUICK_PHRASE_PREVIEW",
-            "Preview"
-        )
-    )
+    previewLabel.Move(16, previewLabelY)
 
     preview := myGui.Add(
         "Edit",
         "x16"
-        " y" (previewY + 20)
-        " w640"
-        " h120"
+        " y" previewEditY
+        " w" CONTENT_WIDTH
+        " h" tier.previewH
         " ReadOnly"
         " VScroll"
         " Wrap "
@@ -635,9 +814,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
 
     ThemeHelper.StyleEdit(preview)
 
+    buttonY := previewEditY + tier.previewH + BOTTOM_GAP
+
     okBtn := ThemeHelper.AddButton(
         myGui,
-        "Default w90 x456 y+12",
+        "Default w90 x456 y" buttonY,
         Lang("GUI_OK", "OK"),
         "primary"
     )
@@ -697,6 +878,55 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         return true
     }
 
+    ; Paging keeps every input usable when the list does not fit at once; the
+    ; values of controls on other pages are preserved because the controls
+    ; themselves stay alive, only their visibility changes.
+    showPage := 1
+
+    ApplyPage() {
+        for index, label in variableLabels
+            label.Visible := (variablePages[index] == showPage)
+
+        for index, editControl in variableEdits
+            editControl.Visible := (variablePages[index] == showPage)
+
+        if IsObject(pagerLabel)
+            pagerLabel.Value := Lang(
+                "GUI_QUICK_PHRASE_VARIABLE_PAGE",
+                "Page {1} of {2}",
+                showPage,
+                pageCount
+            )
+
+        if IsObject(prevBtn) {
+            prevBtn.Enabled := showPage > 1
+            nextBtn.Enabled := showPage < pageCount
+        }
+    }
+
+    GoToPage(target) {
+        if (target < 1 || target > pageCount || target == showPage)
+            return
+
+        showPage := target
+        ApplyPage()
+
+        for index, editControl in variableEdits {
+            if (variablePages[index] == target) {
+                editControl.Focus()
+                break
+            }
+        }
+    }
+
+    PrevPage(*) {
+        GoToPage(showPage - 1)
+    }
+
+    NextPage(*) {
+        GoToPage(showPage + 1)
+    }
+
     for item in controls
         item.edit.OnEvent(
             "Change",
@@ -713,6 +943,11 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
         Cancel
     )
 
+    if paginate {
+        prevBtn.OnEvent("Click", PrevPage)
+        nextBtn.OnEvent("Click", NextPage)
+    }
+
     myGui.OnEvent(
         "Escape",
         Cancel
@@ -726,9 +961,16 @@ ShowQuickPhraseVariableDialog(phrase, variables) {
     ThemeHelper.ApplyWindowTheme(myGui.Hwnd)
     AppState.QuickPhraseVariableGui := myGui
 
+    ApplyPage()
+
     ; Gui.Show() activates the variable-input window.
     ; The original external target is restored only by the final paste path.
-    myGui.Show("w680 h" Min(previewY + 200, A_ScreenHeight - 120))
+    okBtn.GetPos(&okBtnX, &okBtnY, &okBtnWidth, &okBtnHeight)
+    totalHeight := okBtnY + okBtnHeight + BOTTOM_MARGIN
+    if (totalHeight > availableH)
+        totalHeight := availableH
+
+    myGui.Show("w680 h" totalHeight)
 
     if (
         variables.Length > 0
