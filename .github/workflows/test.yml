@@ -47,3 +47,13 @@ jobs:
         shell: pwsh
         timeout-minutes: 2
         run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HistoryGuiPaging.ahk -TimeoutSeconds 90
+
+      - name: Permanent file deletion checks
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\FileDeleterSmoke.ahk -TimeoutSeconds 90
+
+      - name: Configurable hotkey checks
+        shell: pwsh
+        timeout-minutes: 2
+        run: .\scripts\ci\Invoke-Ahk.ps1 .\scripts\HotkeyRegistrySmoke.ahk -TimeoutSeconds 90

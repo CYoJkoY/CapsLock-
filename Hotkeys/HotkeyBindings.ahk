@@ -13,6 +13,8 @@
 
 CapsLockHotkeysAvailable() {
     return GetKeyState("CapsLock", "P")
+        && !HotkeySettingsGui.IsCapturing()
+        && !FileDeleter.Busy
         && !AppState.QuickPhraseTransactionActive
         && !MouseControl.Active
         && ApplicationProfiles.IsHotkeysEnabledForActiveWindow()
@@ -20,6 +22,8 @@ CapsLockHotkeysAvailable() {
 
 CapsLockShortcutGroupAvailable(groupId) {
     return GetKeyState("CapsLock", "P")
+        && !HotkeySettingsGui.IsCapturing()
+        && !FileDeleter.Busy
         && !AppState.QuickPhraseTransactionActive
         && !MouseControl.Active
         && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow(groupId)
@@ -28,7 +32,7 @@ CapsLockShortcutGroupAvailable(groupId) {
 WindowOpacityHotkeysAvailable() {
     ; Check the hole and physical X before the foreground application profile.
     return !WindowHole.IsActive()
-        && !GetKeyState("x", "P")
+        && !HotkeyRegistry.IsHeld("windowHole")
         && CapsLockShortcutGroupAvailable("window")
 }
 
@@ -156,12 +160,6 @@ End:: MoveFullHistorySelectionToBoundary(true)
 Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
-#HotIf GetKeyState("CapsLock", "P") && !MouseControl.Active && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("text")
-j:: JumpToLine()
-#HotIf GetKeyState("CapsLock", "P") && !MouseControl.Active && ApplicationProfiles.IsShortcutGroupEnabledForActiveWindow("window")
-k:: TerminateProcessByPid()
-#HotIf
-
 ; Shift arms the existing sequential modifier layer; the action hotkeys below
 ; apply their own per-application group policy. The layer is unavailable while
 ; the native CapsLock light is on because Shift then controls the mouse layer.
@@ -209,103 +207,18 @@ k:: TerminateProcessByPid()
 *e up:: MouseControl.StopHorizontalScroll("right")
 #HotIf
 
-#HotIf CapsLockShortcutGroupAvailable("text")
-+Left:: Send("^+{Left}")
-+Right:: Send("^+{Right}")
-+Up:: Send("+{Home}")
-+Down:: Send("+{End}")
-Space:: Send("^{Left}^+{Right}")
-a:: Send("{Backspace}")
-d:: Send("{Delete}")
-+a:: Send("^{Backspace}")
-+d:: Send("^{Delete}")
-Backspace:: Send("{Home}+{End}{Delete}")
-Delete:: Send("{Home}+{End}{Delete}")
-#HotIf
-
-#HotIf CapsLockShortcutGroupAvailable("tabs")
-q:: Send("^{PgUp}")
-e:: Send("^{PgDn}")
-#HotIf
-
-; Mouse opacity shortcuts must stay off while X is held or Window Hole is active. The hole
-; reveals the layer underneath, so clicks inside it have to reach that layer
-; instead of being consumed here. The shortcuts return once X is released and
-; the hole closes; keyboard window shortcuts are unaffected.
-#HotIf WindowOpacityHotkeysAvailable()
-LButton:: {
-    AdjustOpacity(20)
-    if KeyWait("LButton", "T0.3")
-        return
-    while WindowOpacityHotkeysAvailable() && GetKeyState("LButton", "P") {
-        AdjustOpacity(5)
-        Sleep(50)
-    }
-}
-RButton:: {
-    AdjustOpacity(-20)
-    if KeyWait("RButton", "T0.3")
-        return
-    while WindowOpacityHotkeysAvailable() && GetKeyState("RButton", "P") {
-        AdjustOpacity(-5)
-        Sleep(50)
-    }
-}
-MButton:: {
-    hwnd := WinExist("A")
-    current := WinGetTransparent(hwnd)
-    if current == "" || current == 255
-        WinSetTransparent(10, hwnd)
-    else
-        WinSetTransparent(255, hwnd)
-}
-#HotIf
-
-#HotIf CapsLockShortcutGroupAvailable("window")
-; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------
-; Ctrl / Alt / Win combinations are forwarded untouched.
-*w:: WindowWildcardMaximize()
-*8:: WindowWildcardMaximize()
-*Numpad8:: WindowWildcardMaximize()
-*s:: WindowWildcardMinimize()
-*2:: WindowWildcardMinimize()
-*Numpad2:: WindowWildcardMinimize()
-t:: ToggleAlwaysOnTopWithOSD()
-l:: WindowSwitcherGui.Show()
-#HotIf
-
-#HotIf CapsLockShortcutGroupAvailable("clipboard")
-c:: CopyAsPlainTextAndAddToHistory()
-v:: PasteWithCurrentMode()
-+v:: ShowHistoryMenu()
-f:: ChangeCaseOfLastCopy()
-#HotIf
-
-#HotIf CapsLockShortcutGroupAvailable("tools")
-p:: ConvertWithPandoc()
-!q:: OpenTempFolder()
-r:: CommandPaletteGui.Show()
-h:: HotkeyReferenceGui.Toggle()
-F1:: HotkeyReferenceGui.Toggle()
-,:: SettingsGui.Toggle()
-i:: ImageToolsGui.Toggle()
-#HotIf
-
-#HotIf CapsLockShortcutGroupAvailable("visual")
-o:: Spotlight.HandleDown()
-z:: Zoom.HandleDown()
-x:: WindowHole.HandleXDown()
-#HotIf
-
-; X-up, O-up and Z-up are intentionally global so releasing the key still stops hold
-; mode even when CapsLock is released first. The tilde keeps the key-up event
-; visible to the active application.
-~x up:: WindowHole.HandleXUp()
-~o up:: Spotlight.HandleUp()
-~z up:: Zoom.HandleUp()
-
-#HotIf QuickPhraseHotkeyAvailable() && AppState.QuickPhraseEnabled
-+p:: QuickPhraseHandleHotkey()
+; While the shortcut editor is capturing, mouse buttons and the wheel become
+; replacement keys instead of running their normal CapsLock actions.
+#HotIf HotkeySettingsGui.IsCapturing()
+*LButton:: HotkeySettingsGui.CaptureMouse("LButton")
+*RButton:: HotkeySettingsGui.CaptureMouse("RButton")
+*MButton:: HotkeySettingsGui.CaptureMouse("MButton")
+*XButton1:: HotkeySettingsGui.CaptureMouse("XButton1")
+*XButton2:: HotkeySettingsGui.CaptureMouse("XButton2")
+*WheelUp:: HotkeySettingsGui.CaptureMouse("WheelUp")
+*WheelDown:: HotkeySettingsGui.CaptureMouse("WheelDown")
+*WheelLeft:: HotkeySettingsGui.CaptureMouse("WheelLeft")
+*WheelRight:: HotkeySettingsGui.CaptureMouse("WheelRight")
 #HotIf
 
 ; Window Hole second-level penetration is registered as a global hotkey and

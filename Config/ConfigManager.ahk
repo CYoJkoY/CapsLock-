@@ -217,6 +217,9 @@ class ConfigManager {
         disabledGroups := IniRead(cfg, "AppProfiles", "disabledGroups", "")
         AppState.DisabledHotkeyGroups := ApplicationProfiles.NormalizeDisabledGroups(disabledGroups)
 
+        hotkeyData := IniRead(cfg, "Hotkeys", "bindings", "")
+        AppState.HotkeyBindings := HotkeyRegistry.Deserialize(hotkeyData)
+
     }
 
     static Save(markCloudSyncDirty := true) {
@@ -253,6 +256,8 @@ class ConfigManager {
         IniWrite(ignoreStr, cfg, "Ignore", "Rules")
         IniWrite(Join(AppState.DisabledHotkeyProcesses, "|"), cfg, "AppProfiles", "disabledExecutables")
         IniWrite(ApplicationProfiles.SerializeDisabledGroups(AppState.DisabledHotkeyGroups), cfg, "AppProfiles", "disabledGroups")
+
+        IniWrite(HotkeyRegistry.Serialize(), cfg, "Hotkeys", "bindings")
 
         ; ---- Always-on-top indicator ----
         IniWrite(AppState.AlwaysOnTopIndicator ? "1" : "0", cfg, "Window", "topmostIndicator")

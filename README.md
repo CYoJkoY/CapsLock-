@@ -74,6 +74,7 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Quick Phrase | `Shift + P`                | Open the Quick Phrase selector                                                                                |
 | Documents    | `P`                        | Convert clipboard file paths with Pandoc                                                                      |
 | Files        | `Alt + Q`                  | Open the temporary folder used by file workflows                                                              |
+| Files        | `Shift + D`                | Confirm, then permanently delete the selected Explorer or desktop files without using the Recycle Bin         |
 | Window       | `T`                        | Toggle always-on-top with a persistent pin badge                                                              |
 | Window       | `K`                        | Terminate a process by PID after confirmation                                                                 |
 | Window       | `L`                        | Search and activate an open window                                                                            |
@@ -102,6 +103,12 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Mouse        | `Alt + Q / E`              | Scroll horizontally faster                                                                                    |
 
 The built-in reference is also available from the tray UI and is intended to stay aligned with `Hotkeys/HotkeyReference.ahk`.
+
+### Shortcut settings
+
+Open Settings → Tools → Keyboard shortcuts to change the key after `CapsLock` for every shortcut. Select a row, press the replacement key combination, and release it to save. `CapsLock` remains required and cannot be assigned as the replacement key. The **Restore defaults** button removes custom bindings and returns every shortcut to its original key.
+
+`CapsLock + Shift + D` works in File Explorer and on the desktop. It first shows a confirmation dialog; only **Delete permanently** starts the deletion. Confirmed items bypass the Recycle Bin and cannot be restored through it.
 
 ### Mouse control mode
 

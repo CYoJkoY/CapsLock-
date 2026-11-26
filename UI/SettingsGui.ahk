@@ -836,7 +836,10 @@ class SettingsGui {
         this._AddSectionTitle(myGui, p, cx, 330, Lang("SET_SEC_SHORTCUTS"))
         this._Reg(p, ThemeHelper.AddSurfaceCard(myGui, cx, 354, cw, 124))
 
-        this._AddCardLabel(myGui, p, cx + 18, 372, 360, Lang("CHEAT_TITLE") . " (CapsLock + H / F1)")
+        btnEditShortcuts := this._AddCardButton(
+            myGui, p, cx + 18, 368, 360, 30, Lang("HOTKEY_SETTINGS_TITLE"), "primary"
+        )
+        btnEditShortcuts.OnEvent("Click", (*) => HotkeySettingsGui.Show())
         btnCheat := this._AddCardButton(
             myGui, p, cx + 410, 368, 194, 30,
             Lang("MENU_CHEATSHEET"),

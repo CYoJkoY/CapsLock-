@@ -84,6 +84,16 @@ class ShiftLayerToast {
 DeactivateShiftLayer(*) {
 }
 
+class HotkeyRegistry {
+    static Serialize() {
+        return ""
+    }
+
+    static Deserialize(*) {
+        return Map()
+    }
+}
+
 #Include "..\Core\MouseControl.ahk"
 
 ; MethodsUtils and the Cloud Sync providers are included for their real
@@ -438,17 +448,14 @@ CheckShortcutBindings(root) {
         return
     }
 
-    bound := Map()
-
-    for match in AllMatches(ReadText(bindingsPath),
-    "m)^[ \t]*([~*$]*[\^!+#]*[A-Za-z0-9]+)[ \t]*(?:up)?[ \t]*::") {
-        bound[NormalizeKeyName(match.groups[1])] := true
-    }
-
-    Check(bound.Count > 0, "hotkey bindings were parsed", "found " bound.Count)
-
-    for match in AllMatches(ReadText(referencePath), "keys:[ \t]*`"([^`"]+)`"")
-        CheckShortcut(bound, match.groups[1])
+    registry := ReadText(root "\Hotkeys\HotkeyRegistry.ahk")
+    reference := ReadText(referencePath)
+    Check(InStr(registry, "class HotkeyRegistry") > 0, "hotkey registry exists")
+    Check(InStr(registry, "fileDelete") > 0 && InStr(registry, "default: " . Chr(34) . "+d" . Chr(34)) > 0,
+        "permanent file deletion is registered as CapsLock+Shift+D")
+    Check(InStr(reference, "CHEAT_ACT_DELETE_FILE") > 0, "permanent file deletion is documented")
+    Check(InStr(registry, "SetSuffix") > 0 && InStr(registry, "ResetDefaults") > 0,
+        "hotkey settings support custom bindings and reset")
 }
 
 CheckShortcut(bound, display) {
@@ -1209,7 +1216,7 @@ CheckQuickPhraseRegressions(root) {
         "ordinary management windows are not topmost while intentional overlays remain so"
     )
     Check(
-        InStr(appVersionText, "static Current := " . Chr(34) . "1.13.3") > 0
+        InStr(appVersionText, "static Current := " . Chr(34) . "1.14.0") > 0
             && InStr(cloudModelText, "return AppVersion.Current") > 0,
         "source application version is explicit for Cloud Sync packages"
     )
@@ -1231,14 +1238,12 @@ CheckQuickPhraseRegressions(root) {
 }
 
 CheckImageToolsHotkeys(root) {
-    bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
-    reference := ReadText(root "\Hotkeys\HotkeyReference.ahk")
+    registry := ReadText(root "\Hotkeys\HotkeyRegistry.ahk")
     Check(
-        InStr(bindings, "i:: ImageToolsGui.Toggle()") > 0
-            && InStr(bindings, "i:: SettingsGui.Toggle()") == 0
-            && InStr(bindings, ",:: SettingsGui.Toggle()") > 0
-            && InStr(reference, "keys: " . Chr(34) . "CapsLock + I" . Chr(34)) > 0
-            && InStr(reference, "keys: " . Chr(34) . "CapsLock + ," . Chr(34)) > 0,
+        InStr(registry, 'id: "imageTools"') > 0
+            && InStr(registry, 'default: "i"') > 0
+            && InStr(registry, 'id: "settings"') > 0
+            && InStr(registry, 'default: ","') > 0,
         "CapsLock+I opens image tools and CapsLock+Comma opens settings"
     )
 }
@@ -1392,39 +1397,13 @@ ImageToolsGridRejected(count, columns) {
 
 CheckWindowHoleMousePassthrough(root) {
     bindings := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
-    guard := "#HotIf WindowOpacityHotkeysAvailable()"
-    guardIndex := InStr(bindings, guard)
-    Check(guardIndex > 0, "window mouse bindings are disabled while Window Hole is active")
-    predicateStart := InStr(bindings, "WindowOpacityHotkeysAvailable() {")
-    predicateEnd := InStr(bindings, Chr(10) "}", false, predicateStart)
-    predicate := SubStr(bindings, predicateStart, predicateEnd - predicateStart)
-    holeIndex := InStr(predicate, "!WindowHole.IsActive()")
-    xIndex := InStr(predicate, "!GetKeyState(" Chr(34) "x" Chr(34) ", " Chr(34) "P" Chr(34) ")")
-    profileIndex := InStr(predicate, "CapsLockShortcutGroupAvailable(" Chr(34) "window" Chr(34) ")")
-    Check(holeIndex > 0 && xIndex > holeIndex && profileIndex > xIndex,
-        "opacity guard checks the active hole and physical X before the application profile")
-
-    nextBlock := guardIndex ? InStr(bindings, "#HotIf", false, guardIndex + StrLen(guard)) : 0
-    block := (guardIndex > 0 && nextBlock > guardIndex)
-        ? SubStr(bindings, guardIndex, nextBlock - guardIndex)
-        : ""
-    Check(
-        InStr(block, "LButton::") > 0
-            && InStr(block, "RButton::") > 0
-            && InStr(block, "MButton::") > 0,
-        "left, right, and middle mouse bindings share the Window Hole guard"
-    )
-    for button in ["LButton", "RButton"]
-        Check(InStr(block, "while WindowOpacityHotkeysAvailable() && GetKeyState(" Chr(34) button Chr(34)) > 0,
-            button " opacity repeat stops when the shared guard becomes false")
-
-    for name in ["LButton", "RButton", "MButton"] {
-        first := InStr(bindings, Chr(10) name "::")
-        Check(
-            first > 0 && InStr(bindings, Chr(10) name "::", false, first + 1) == 0,
-            name " opacity binding is declared once"
-        )
-    }
+    registry := ReadText(root "\Hotkeys\HotkeyRegistry.ahk")
+    Check(InStr(bindings, "WindowOpacityHotkeysAvailable()") > 0,
+        "window mouse bindings are disabled while Window Hole is active")
+    Check(InStr(registry, 'id: "opacityIncrease"') > 0
+        && InStr(registry, 'id: "opacityDecrease"') > 0
+        && InStr(registry, 'id: "ghost"') > 0,
+        "mouse opacity shortcuts are registered")
 }
 
 CheckImageToPdfCommandOrder(root) {

@@ -28,7 +28,7 @@ class HotkeyReference {
             },
             {
                 cat: "CHEAT_CAT_NAV",
-                keys: "CapsLock + J",
+                keys: HotkeyRegistry.GetDisplayKey("gotoLine"),
                 desc: "CHEAT_ACT_GOTO_LINE",
                 action: ((*) => JumpToLine())
             },
@@ -36,19 +36,19 @@ class HotkeyReference {
             ; Text selection
             {
                 cat: "CHEAT_CAT_SELECTION",
-                keys: "CapsLock + Shift + ← / →",
+                keys: HotkeyRegistry.GetDisplayKeys(["selectWordLeft", "selectWordRight"]),
                 desc: "CHEAT_ACT_SEL_WORD",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_SELECTION",
-                keys: "CapsLock + Shift + ↑ / ↓",
+                keys: HotkeyRegistry.GetDisplayKeys(["selectLineUp", "selectLineDown"]),
                 desc: "CHEAT_ACT_SEL_LINE",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_SELECTION",
-                keys: "CapsLock + Space",
+                keys: HotkeyRegistry.GetDisplayKey("selectCurrent"),
                 desc: "CHEAT_ACT_SEL_CURRENT",
                 action: ""
             },
@@ -56,19 +56,19 @@ class HotkeyReference {
             ; Text editing
             {
                 cat: "CHEAT_CAT_EDIT",
-                keys: "CapsLock + A / D",
+                keys: HotkeyRegistry.GetDisplayKeys(["deletePreviousChar", "deleteNextChar"]),
                 desc: "CHEAT_ACT_DEL_CHAR",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_EDIT",
-                keys: "CapsLock + Shift + A / D",
+                keys: HotkeyRegistry.GetDisplayKeys(["deletePreviousWord", "deleteNextWord"]),
                 desc: "CHEAT_ACT_DEL_WORD",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_EDIT",
-                keys: "CapsLock + Backspace / Delete",
+                keys: HotkeyRegistry.GetDisplayKeys(["deleteLineBackspace", "deleteLine"]),
                 desc: "CHEAT_ACT_DEL_LINE",
                 action: ""
             },
@@ -76,25 +76,25 @@ class HotkeyReference {
             ; Clipboard operations
             {
                 cat: "CHEAT_CAT_CLIPBOARD",
-                keys: "CapsLock + C",
+                keys: HotkeyRegistry.GetDisplayKey("copyPlain"),
                 desc: "CHEAT_ACT_COPY_PLAIN",
                 action: ((*) => CopyAsPlainTextAndAddToHistory())
             },
             {
                 cat: "CHEAT_CAT_CLIPBOARD",
-                keys: "CapsLock + V",
+                keys: HotkeyRegistry.GetDisplayKey("paste"),
                 desc: "CHEAT_ACT_PASTE",
                 action: ((*) => PasteWithCurrentMode())
             },
             {
                 cat: "CHEAT_CAT_CLIPBOARD",
-                keys: "CapsLock + Shift + V",
+                keys: HotkeyRegistry.GetDisplayKey("historyMenu"),
                 desc: "CHEAT_ACT_HISTORY",
                 action: ((*) => ShowHistoryMenu())
             },
             {
                 cat: "CHEAT_CAT_CLIPBOARD",
-                keys: "CapsLock + F",
+                keys: HotkeyRegistry.GetDisplayKey("changeCase"),
                 desc: "CHEAT_ACT_CASE",
                 action: ((*) => ChangeCaseOfLastCopy())
             },
@@ -102,7 +102,7 @@ class HotkeyReference {
             ; Document conversion
             {
                 cat: "CHEAT_CAT_DOCUMENTS",
-                keys: "CapsLock + P",
+                keys: HotkeyRegistry.GetDisplayKey("pandoc"),
                 desc: "CHEAT_ACT_PANDOC",
                 action: ((*) => ConvertWithPandoc())
             },
@@ -110,7 +110,7 @@ class HotkeyReference {
             ; Quick Phrase
             {
                 cat: "CHEAT_CAT_CLIPBOARD",
-                keys: "CapsLock + Shift + P",
+                keys: HotkeyRegistry.GetDisplayKey("quickPhrase"),
                 desc: "CHEAT_ACT_QUICK_PHRASE",
                 descDefault: "Open the Quick Phrase selector",
                 action: ((*) => QuickPhraseHandleHotkey())
@@ -119,69 +119,75 @@ class HotkeyReference {
             ; File tools
             {
                 cat: "CHEAT_CAT_FILES",
-                keys: "CapsLock + Alt + Q",
+                keys: HotkeyRegistry.GetDisplayKey("tempFolder"),
                 desc: "CHEAT_ACT_TEMP",
                 action: ((*) => OpenTempFolder())
+            },
+            {
+                cat: "CHEAT_CAT_FILES",
+                keys: HotkeyRegistry.GetDisplayKey("fileDelete"),
+                desc: "CHEAT_ACT_DELETE_FILE",
+                action: ((*) => FileDeleter.ConfirmDelete())
             },
 
             ; Window management
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + T",
+                keys: HotkeyRegistry.GetDisplayKey("alwaysOnTop"),
                 desc: "CHEAT_ACT_TOPMOST",
                 action: ((*) => ToggleAlwaysOnTopWithOSD())
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + K",
+                keys: HotkeyRegistry.GetDisplayKey("killProcess"),
                 desc: "CHEAT_ACT_KILL_PROCESS",
                 action: ((*) => TerminateProcessByPid())
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + L",
+                keys: HotkeyRegistry.GetDisplayKey("windowSwitcher"),
                 desc: "CHEAT_ACT_WINDOW_SWITCH",
                 action: ((*) => WindowSwitcherGui.Show())
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + W / 8",
+                keys: HotkeyRegistry.GetDisplayKeys(["maximize", "maximize8", "maximizeNum8"]),
                 desc: "CHEAT_ACT_MAXIMIZE",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + S / 2",
+                keys: HotkeyRegistry.GetDisplayKeys(["minimize", "minimize2", "minimizeNum2"]),
                 desc: "CHEAT_ACT_MINIMIZE",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + Shift + W / 8",
+                keys: HotkeyRegistry.GetDisplayKeys(["fullscreen", "fullscreen8", "fullscreenNum8"]),
                 desc: "CHEAT_ACT_BORDERLESS",
                 action: ((*) => WindowFullScreen.Toggle())
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + Shift + S / 2",
+                keys: HotkeyRegistry.GetDisplayKeys(["hideTray", "hideTray2", "hideTrayNum2"]),
                 desc: "CHEAT_ACT_HIDE_TRAY",
                 action: ((*) => TrayHider.HideActive())
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + Left / Right Button",
+                keys: HotkeyRegistry.GetDisplayKeys(["opacityIncrease", "opacityDecrease"]),
                 desc: "CHEAT_ACT_OPACITY",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + Middle Button",
+                keys: HotkeyRegistry.GetDisplayKey("ghost"),
                 desc: "CHEAT_ACT_GHOST",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_WINDOW",
-                keys: "CapsLock + X",
+                keys: HotkeyRegistry.GetDisplayKey("windowHole"),
                 desc: "CHEAT_ACT_WINDOW_HOLE",
                 action: ((*) => WindowHole.Toggle())
             },
@@ -245,13 +251,13 @@ class HotkeyReference {
             ; Visual effects
             {
                 cat: "CHEAT_CAT_VISUAL",
-                keys: "CapsLock + O",
+                keys: HotkeyRegistry.GetDisplayKey("spotlight"),
                 desc: "CHEAT_ACT_SPOTLIGHT",
                 action: ((*) => Spotlight.Toggle())
             },
             {
                 cat: "CHEAT_CAT_VISUAL",
-                keys: "CapsLock + Z",
+                keys: HotkeyRegistry.GetDisplayKey("zoom"),
                 desc: "CHEAT_ACT_ZOOM",
                 action: ((*) => Zoom.Toggle())
             },
@@ -259,7 +265,7 @@ class HotkeyReference {
             ; Browser tabs
             {
                 cat: "CHEAT_CAT_TABS",
-                keys: "CapsLock + Q / E",
+                keys: HotkeyRegistry.GetDisplayKeys(["previousTab", "nextTab"]),
                 desc: "CHEAT_ACT_TAB_PREV_NEXT",
                 action: ""
             },
@@ -267,25 +273,25 @@ class HotkeyReference {
             ; Help and settings
             {
                 cat: "CHEAT_CAT_HELP",
-                keys: "CapsLock + H / F1",
+                keys: HotkeyRegistry.GetDisplayKeys(["cheatsheet", "cheatsheetF1"]),
                 desc: "CHEAT_ACT_CHEATSHEET",
                 action: ""
             },
             {
                 cat: "CHEAT_CAT_HELP",
-                keys: "CapsLock + R",
+                keys: HotkeyRegistry.GetDisplayKey("commandPalette"),
                 desc: "CHEAT_ACT_COMMAND_PALETTE",
                 action: ((*) => CommandPaletteGui.Show())
             },
             {
                 cat: "CHEAT_CAT_HELP",
-                keys: "CapsLock + ,",
+                keys: HotkeyRegistry.GetDisplayKey("settings"),
                 desc: "CHEAT_ACT_SETTINGS",
                 action: ((*) => SettingsGui.Show())
             },
             {
                 cat: "CHEAT_CAT_FILES",
-                keys: "CapsLock + I",
+                keys: HotkeyRegistry.GetDisplayKey("imageTools"),
                 desc: "CHEAT_ACT_IMAGE_TOOLS",
                 descDefault: "Open ImageMagick image tools",
                 action: ((*) => ImageToolsGui.Toggle())

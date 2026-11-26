@@ -10,6 +10,7 @@ class ApplicationProfiles {
         {id: "tabs", labelKey: "GUI_APP_PROFILES_GROUP_TABS"},
         {id: "visual", labelKey: "GUI_APP_PROFILES_GROUP_VISUAL"},
         {id: "tools", labelKey: "GUI_APP_PROFILES_GROUP_TOOLS"},
+        {id: "files", labelKey: "GUI_APP_PROFILES_GROUP_FILES"},
         {id: "quickphrase", labelKey: "GUI_APP_PROFILES_GROUP_QUICK_PHRASE"}
     ]
 

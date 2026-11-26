@@ -15,6 +15,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 
 #Include "Core\MouseControl.ahk"
 #Include "Hotkeys\HotkeyBindings.ahk"
+#Include "Hotkeys\HotkeyRegistry.ahk"
 #Include "Hotkeys\HotkeyActions.ahk"
 #Include "Hotkeys\PasteHandler.ahk"
 #Include "Hotkeys\HotkeyReference.ahk"
@@ -52,6 +53,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "Core\ClipboardPaste.ahk"
 #Include "Core\FileValidation.ahk"
 #Include "Core\FileOperations.ahk"
+#Include "Core\FileDeleter.ahk"
 #Include "Core\ImageToPdf.ahk"
 #Include "Core\ImageTools.ahk"
 #Include "Core\Cleanup.ahk"
@@ -89,6 +91,7 @@ FileInstall("lang.csv", A_ScriptDir "\lang.csv", 1)
 #Include "UI\QuickPhraseOrder.ahk"
 #Include "UI\QuickPhraseGui.ahk"
 #Include "UI\ApplicationProfilesGui.ahk"
+#Include "UI\HotkeySettingsGui.ahk"
 #Include "UI\SettingsGui.ahk"
 #Include "UI\ImageToolsGui.ahk"
 #Include "UI\CommandPaletteGui.ahk"
@@ -97,6 +100,7 @@ Language.SetCloudSyncDirtyCallback(ObjBindMethod(CloudSyncCoordinator, "MarkLoca
 
 Language.Load()
 ConfigManager.Load()
+HotkeyRegistry.Initialize()
 Theme.Init()
 HistoryManager.Load()
 QuickPhraseStore.SetOnChange(QuickPhraseRefreshOpenViews)

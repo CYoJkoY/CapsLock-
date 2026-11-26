@@ -17,6 +17,14 @@ class CommandPaletteGui {
     static RecentCommandsLoaded := false
     static MaxRecentCommands := 5
 
+    static Shortcut(id) {
+        return HotkeyRegistry.GetDisplayKey(id)
+    }
+
+    static Shortcuts(ids) {
+        return HotkeyRegistry.GetDisplayKeys(ids)
+    }
+
     static Show() {
         if IsObject(this.Instance) {
             try {
@@ -97,7 +105,7 @@ class CommandPaletteGui {
             label: Lang("MENU_SETTINGS"),
             category: Lang("SET_NAV_GENERAL"),
             description: Lang("GUI_SETTINGS_TITLE"),
-            shortcut: "CapsLock + ,",
+            shortcut: this.Shortcut("settings"),
             keywords: "settings preferences configuration controls",
             restoreTarget: false,
             action: (*) => ShowSettingsGui()
@@ -107,7 +115,7 @@ class CommandPaletteGui {
             label: Lang("GUI_IMAGE_TOOLS_TITLE", "ImageMagick Image Tools"),
             category: Lang("CHEAT_CAT_FILES"),
             description: Lang("GUI_IMAGE_TOOLS_SUBTITLE", "Compress, merge vertically, or convert images. Source files are kept unchanged."),
-            shortcut: "CapsLock + I",
+            shortcut: this.Shortcut("imageTools"),
             keywords: "image imagemagick compress combine merge convert format",
             restoreTarget: false,
             action: (*) => ImageToolsGui.Toggle()
@@ -127,7 +135,7 @@ class CommandPaletteGui {
             label: Lang("GUI_WINDOW_SWITCHER_TITLE"),
             category: Lang("CHEAT_CAT_WINDOW"),
             description: Lang("CHEAT_ACT_WINDOW_SWITCH"),
-            shortcut: "CapsLock + L",
+            shortcut: this.Shortcut("windowSwitcher"),
             keywords: "window app application activate switch focus",
             restoreTarget: false,
             action: (*) => WindowSwitcherGui.Show()
@@ -137,7 +145,7 @@ class CommandPaletteGui {
             label: Lang("CHEAT_TITLE"),
             category: Lang("CHEAT_CAT_HELP"),
             description: Lang("CHEAT_HINT"),
-            shortcut: "CapsLock + H / F1",
+            shortcut: this.Shortcuts(["cheatsheet", "cheatsheetF1"]),
             keywords: "hotkey shortcut help reference cheatsheet",
             restoreTarget: false,
             action: (*) => OpenCheatsheetFromTray()
@@ -157,7 +165,7 @@ class CommandPaletteGui {
             label: Lang("MENU_OPEN_TEMP"),
             category: Lang("CHEAT_CAT_FILES"),
             description: Lang("CHEAT_ACT_TEMP"),
-            shortcut: "CapsLock + Alt + Q",
+            shortcut: this.Shortcut("tempFolder"),
             keywords: "temporary temp folder files",
             restoreTarget: false,
             action: (*) => OpenTempFolder()
@@ -178,7 +186,7 @@ class CommandPaletteGui {
             label: Lang("CHEAT_ACT_SPOTLIGHT"),
             category: Lang("CHEAT_CAT_VISUAL"),
             description: Lang("CHEAT_ACT_SPOTLIGHT"),
-            shortcut: "CapsLock + O",
+            shortcut: this.Shortcut("spotlight"),
             keywords: "mouse spotlight focus dim screen",
             restoreTarget: false,
             action: (*) => Spotlight.Toggle()
@@ -188,7 +196,7 @@ class CommandPaletteGui {
             label: Lang("CHEAT_ACT_ZOOM"),
             category: Lang("CHEAT_CAT_VISUAL"),
             description: Lang("CHEAT_ACT_ZOOM"),
-            shortcut: "CapsLock + Z",
+            shortcut: this.Shortcut("zoom"),
             keywords: "magnify zoom screen cursor",
             restoreTarget: false,
             action: (*) => Zoom.Toggle()
@@ -199,7 +207,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_HISTORY"),
                 category: Lang("CHEAT_CAT_CLIPBOARD"),
                 description: Lang("GUI_FULL_TITLE"),
-                shortcut: "CapsLock + Shift + V",
+                shortcut: this.Shortcut("historyMenu"),
                 keywords: "clipboard recent history paste",
                 restoreTarget: true,
                 action: (*) => ShowHistoryMenu()
@@ -219,7 +227,7 @@ class CommandPaletteGui {
                 label: Lang("GUI_QUICK_PHRASE_TITLE"),
                 category: Lang("SET_NAV_INTEGRATION"),
                 description: Lang("CHEAT_ACT_QUICK_PHRASE"),
-                shortcut: "CapsLock + Shift + P",
+                shortcut: this.Shortcut("quickPhrase"),
                 keywords: "quick phrase snippets template insert text",
                 restoreTarget: false,
                 action: (*) => CommandPaletteGui.OpenQuickPhraseSelector(target)
@@ -229,7 +237,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_COPY_PLAIN"),
                 category: Lang("CHEAT_CAT_CLIPBOARD"),
                 description: Lang("CHEAT_ACT_COPY_PLAIN"),
-                shortcut: "CapsLock + C",
+                shortcut: this.Shortcut("copyPlain"),
                 keywords: "copy plain text selection clipboard",
                 restoreTarget: true,
                 action: (*) => CopyAsPlainTextAndAddToHistory()
@@ -239,7 +247,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_CASE"),
                 category: Lang("CHEAT_CAT_EDIT"),
                 description: Lang("CHEAT_ACT_CASE"),
-                shortcut: "CapsLock + F",
+                shortcut: this.Shortcut("changeCase"),
                 keywords: "uppercase lowercase case transform text",
                 restoreTarget: true,
                 action: (*) => ChangeCaseOfLastCopy()
@@ -249,7 +257,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_PANDOC"),
                 category: Lang("CHEAT_CAT_DOCUMENTS"),
                 description: Lang("CHEAT_ACT_PANDOC"),
-                shortcut: "CapsLock + P",
+                shortcut: this.Shortcut("pandoc"),
                 keywords: "document convert file path pandoc",
                 restoreTarget: true,
                 action: (*) => ConvertWithPandoc()
@@ -259,7 +267,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_TOPMOST"),
                 category: Lang("CHEAT_CAT_WINDOW"),
                 description: Lang("CHEAT_ACT_TOPMOST"),
-                shortcut: "CapsLock + T",
+                shortcut: this.Shortcut("alwaysOnTop"),
                 keywords: "pin topmost keep visible window",
                 restoreTarget: true,
                 action: (*) => ToggleAlwaysOnTopWithOSD()
@@ -269,7 +277,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_BORDERLESS"),
                 category: Lang("CHEAT_CAT_WINDOW"),
                 description: Lang("CHEAT_ACT_BORDERLESS"),
-                shortcut: "CapsLock + Shift + W / 8",
+                shortcut: this.Shortcuts(["fullscreen", "fullscreen8", "fullscreenNum8"]),
                 keywords: "window fullscreen borderless full screen",
                 restoreTarget: true,
                 action: (*) => WindowFullScreen.Toggle()
@@ -279,7 +287,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_HIDE_TRAY"),
                 category: Lang("CHEAT_CAT_WINDOW"),
                 description: Lang("CHEAT_ACT_HIDE_TRAY"),
-                shortcut: "CapsLock + Shift + S / 2",
+                shortcut: this.Shortcuts(["hideTray", "hideTray2", "hideTrayNum2"]),
                 keywords: "hide window tray restore",
                 restoreTarget: true,
                 action: (*) => TrayHider.HideActive()
@@ -289,7 +297,7 @@ class CommandPaletteGui {
                 label: Lang("CHEAT_ACT_WINDOW_HOLE"),
                 category: Lang("CHEAT_CAT_WINDOW"),
                 description: Lang("CHEAT_ACT_WINDOW_HOLE"),
-                shortcut: "CapsLock + X",
+                shortcut: this.Shortcut("windowHole"),
                 keywords: "window hole penetrate underlying window",
                 restoreTarget: true,
                 action: (*) => WindowHole.Toggle()

@@ -114,8 +114,26 @@ WildcardForwardKey(fallback) {
     catch {
     }
     name := RegExReplace(name, "^[*$~]+")
+    name := RegExReplace(name, "i)^CapsLock\s*&\s*")
     name := RegExReplace(name, "^[<>]*[\^!+#]*")
     return name == "" ? fallback : name
+}
+
+AdjustOpacityShortcut(id, amount) {
+    AdjustOpacity(amount)
+    key := RegExReplace(HotkeyRegistry.GetSuffix(id), "^[\^!+#]+")
+    if InStr(key, "Wheel") || KeyWait(key, "T0.3")
+        return
+    while WindowOpacityHotkeysAvailable() && HotkeyRegistry.IsHeld(id) {
+        AdjustOpacity(amount > 0 ? 5 : -5)
+        Sleep(50)
+    }
+}
+
+ToggleGhostOpacity() {
+    hwnd := WinExist("A")
+    current := WinGetTransparent(hwnd)
+    WinSetTransparent(current == "" || current == 255 ? 10 : 255, hwnd)
 }
 
 ToggleMaximizeActive() {

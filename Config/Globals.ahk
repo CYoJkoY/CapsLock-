@@ -19,6 +19,7 @@ class AppState {
     ; --- Settings ---
     static DisabledHotkeyProcesses := []
     static DisabledHotkeyGroups := Map()
+    static HotkeyBindings := Map()
     static PasteMode := 1
     static DeleteMode := 1
     static DeleteDelay := 10
