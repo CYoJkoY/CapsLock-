@@ -18,6 +18,11 @@ class AppState {
     static TextInputControls := ["Edit", "RichEdit", "RichEdit20W", "Scintilla"]
 }
 
+class Theme {
+    static Text := "EDEAE2"
+    static Control := "25272D"
+}
+
 IsTextInputControlClass(controlClass) {
     if controlClass == ""
         return false

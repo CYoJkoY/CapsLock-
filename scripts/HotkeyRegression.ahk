@@ -698,6 +698,7 @@ CheckThemeTokenArchitecture(root) {
     helperText := ReadText(root "\UI\ThemeHelper.ahk")
     settingsText := ReadText(root "\UI\SettingsGui.ahk")
     stateText := ReadText(root "\Config\Globals.ahk")
+    fileDeleterText := ReadText(root "\Core\FileDeleter.ahk")
 
     Check(
         InStr(themeText, "static Palettes := Map(") > 0
@@ -736,6 +737,20 @@ CheckThemeTokenArchitecture(root) {
                     . ", 6)"
             ) > 0,
         "header colouring is installed only for dark lists with a header control"
+    )
+    Check(
+        InStr(helperText, "try state := ThemeHelper._headerSubclasses[hwnd]") > 0
+            && InStr(helperText, "if IsObject(state)") > 0
+            && InStr(helperText, "callback := data") > 0
+            && InStr(helperText, Chr(34) "uptr" Chr(34) ", callback") > 0,
+        "ListView header callbacks tolerate missing subclass state"
+    )
+    Check(
+        InStr(fileDeleterText, "ListBox") > 0
+            && InStr(fileDeleterText, "Theme.Text") > 0
+            && InStr(fileDeleterText, "Theme.Control") > 0
+            && InStr(fileDeleterText, "ThemeHelper.ThemeClass") > 0,
+        "file-delete confirmation list uses active theme colours"
     )
 }
 
@@ -1248,7 +1263,7 @@ CheckQuickPhraseRegressions(root) {
         "ordinary management windows are not topmost while intentional overlays remain so"
     )
     Check(
-        InStr(appVersionText, "static Current := " . Chr(34) . "1.15.0") > 0
+        InStr(appVersionText, "static Current := " . Chr(34) . "1.15.1") > 0
             && InStr(cloudModelText, "return AppVersion.Current") > 0,
         "source application version is explicit for Cloud Sync packages"
     )

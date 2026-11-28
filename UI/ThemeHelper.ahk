@@ -335,7 +335,7 @@ class ThemeHelper {
                 "ptr", hwnd,
                 "ptr", callback,
                 "uptr", 1,
-                "uptr", 0,
+                "uptr", callback,
                 "int"
             )
         } catch {
@@ -810,43 +810,45 @@ _ThemeHelper_DrawItem(wParam, lParam, msg, hwnd) {
 ; Returning CDRF_NOTIFYITEMDRAW here opts into the per-column draw stage, where
 ; the header text colour can be set before the system draws the label.
 _ThemeHelper_DrawListViewHeader(hwnd, msg, wParam, lParam, id, data) {
-    if (msg == 0x0082 && ThemeHelper._headerSubclasses.Has(hwnd)) {
-        callback := ThemeHelper._headerSubclasses[hwnd].callback
-        ThemeHelper._headerSubclasses.Delete(hwnd)
-        try DllCall(
-            "comctl32\RemoveWindowSubclass",
-            "ptr", hwnd,
-            "ptr", callback,
-            "uptr", id
-        )
-        ; CallbackFree must not run while its callback is still on the stack.
-        SetTimer(() => _ThemeHelper_ReleaseHeaderCallback(callback), -1)
+    if (msg == 0x0082) {
+        callback := data
+        try callback := ThemeHelper._headerSubclasses[hwnd].callback
+        if callback {
+            try ThemeHelper._headerSubclasses.Delete(hwnd)
+            try DllCall(
+                "comctl32\RemoveWindowSubclass",
+                "ptr", hwnd,
+                "ptr", callback,
+                "uptr", id
+            )
+            ; CallbackFree must not run while its callback is still on the stack.
+            SetTimer(() => _ThemeHelper_ReleaseHeaderCallback(callback), -1)
+        }
     }
 
-    if (
-        msg == 0x004E
-        && ThemeHelper.IsDark()
-        && ThemeHelper._headerSubclasses.Has(hwnd)
-    ) {
-        state := ThemeHelper._headerSubclasses[hwnd]
-        if (
-            NumGet(lParam + 0, "Ptr") == state.header
-            && NumGet(lParam + A_PtrSize * 2, "Int") == -12
-        ) {
-            stage := NumGet(lParam + A_PtrSize * 3, "UInt")
-            if stage == 1
-                return 0x20
+    if (msg == 0x004E && ThemeHelper.IsDark()) {
+        state := ""
+        try state := ThemeHelper._headerSubclasses[hwnd]
+        if IsObject(state) {
+            if (
+                NumGet(lParam + 0, "Ptr") == state.header
+                && NumGet(lParam + A_PtrSize * 2, "Int") == -12
+            ) {
+                stage := NumGet(lParam + A_PtrSize * 3, "UInt")
+                if stage == 1
+                    return 0x20
 
-            if stage == 0x10001 {
-                hdcOffset := A_PtrSize * 3 + (A_PtrSize == 8 ? 8 : 4)
-                hdc := NumGet(lParam + hdcOffset, "Ptr")
-                DllCall(
-                    "gdi32\SetTextColor",
-                    "ptr", hdc,
-                    "uint", ThemeHelper.RgbToColorRef(Theme.Text)
-                )
-                DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)
-                return 0x2
+                if stage == 0x10001 {
+                    hdcOffset := A_PtrSize * 3 + (A_PtrSize == 8 ? 8 : 4)
+                    hdc := NumGet(lParam + hdcOffset, "Ptr")
+                    DllCall(
+                        "gdi32\SetTextColor",
+                        "ptr", hdc,
+                        "uint", ThemeHelper.RgbToColorRef(Theme.Text)
+                    )
+                    DllCall("gdi32\SetBkMode", "ptr", hdc, "int", 1)
+                    return 0x2
+                }
             }
         }
     }

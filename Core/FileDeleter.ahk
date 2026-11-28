@@ -135,7 +135,12 @@ class FileDeleter {
         ThemeHelper.StyleGui(dialog)
         ThemeHelper.AddTitle(dialog, Lang("GUI_FILE_DELETE_TITLE"), 530)
         dialog.Add("Text", "x18 y+12 w530", Lang("MSG_FILE_DELETE_CONFIRM", "", paths.Length))
-        dialog.Add("ListBox", "x18 y+12 w530 r8", paths)
+        pathList := dialog.Add(
+            "ListBox",
+            "x18 y+12 w530 r8 c" Theme.Text " Background" Theme.Control,
+            paths
+        )
+        ThemeHelper._SetWindowTheme(pathList.Hwnd, ThemeHelper.ThemeClass("explorer"))
         confirm := ThemeHelper.AddButton(dialog, "x310 y+16 w112 h32", Lang("FILE_DELETE_CONFIRM"), "danger")
         cancel := ThemeHelper.AddButton(dialog, "Default x+12 yp w112 h32", Lang("GUI_CANCEL"))
         confirm.OnEvent("Click", (*) => Finish(true))
