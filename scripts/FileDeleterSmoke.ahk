@@ -144,5 +144,53 @@ if !FileDeleter._FocusedControlIsTextInput(probeGui.Hwnd)
     Fail("the focused Edit control should be treated as a text input")
 probeGui.Destroy()
 
+; 7) The kernel fast path removes a whole folder tree, including read-only
+;    entries, without queuing one shell item per file.
+treeDir := A_Temp "\CapsLockDeleteSmokeTree_" A_TickCount
+Loop 3 {
+    sub := treeDir "\sub" A_Index
+    DirCreate(sub)
+    Loop 5
+        FileAppend("smoke", sub "\victim" A_Index ".txt")
+}
+FileSetAttrib("+R", treeDir "\sub1\victim1.txt")
+if !FileDeleter.DeletePaths([treeDir])
+    Fail("DeletePaths failed on a folder tree")
+if DirExist(treeDir)
+    Fail("the native tree walk left a folder behind: " treeDir)
+
+; 8) A reparse point is removed as a link; its target must survive.
+linkTarget := A_Temp "\CapsLockDeleteSmokeTarget_" A_TickCount
+DirCreate(linkTarget)
+FileAppend("keep", linkTarget "\keep.txt")
+linkPath := A_Temp "\CapsLockDeleteSmokeLink_" A_TickCount
+RunWait(A_ComSpec ' /c mklink /J "' linkPath '" "' linkTarget '"', , "Hide")
+if DirExist(linkPath) {
+    if !FileDeleter.DeletePaths([linkPath])
+        Fail("DeletePaths failed on a junction")
+    if DirExist(linkPath)
+        Fail("the junction itself was not removed")
+    if !FileExist(linkTarget "\keep.txt")
+        Fail("deleting a junction removed its target contents")
+}
+try DirDelete(linkTarget, true)
+
+; 9) Paths that must never be accepted: relative names and volume roots.
+if FileDeleter.DeletePaths([SubStr(A_ScriptDir, 1, 2) "\"])
+    Fail("DeletePaths accepted a volume root")
+
+; 10) A file held open without delete sharing cannot be removed; the failure
+;     must be reported instead of being swallowed.
+lockedPath := A_Temp "\CapsLockDeleteSmokeLocked_" A_TickCount ".txt"
+FileAppend("smoke", lockedPath)
+lockedHandle := DllCall("CreateFileW", "WStr", lockedPath, "UInt", 0x80000000,
+    "UInt", 0, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
+lockedResult := FileDeleter.DeletePaths([lockedPath])
+if (lockedHandle != -1)
+    DllCall("CloseHandle", "Ptr", lockedHandle)
+if lockedResult
+    Fail("DeletePaths reported success for a file locked without delete sharing")
+try FileDelete(lockedPath)
+
 FileAppend("PASS: permanent delete, flags, and COM enumeration checks succeeded`n", "*")
 ExitApp(0)

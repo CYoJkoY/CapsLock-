@@ -108,7 +108,7 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 Open Settings → Tools → Keyboard shortcuts to change the key after `CapsLock` for every shortcut. Select a row, press the replacement key combination, and release it to save. `CapsLock` remains required and cannot be assigned as the replacement key. The **Restore defaults** button removes custom bindings and returns every shortcut to its original key.
 
-`CapsLock + Shift + D` works in File Explorer and on the desktop. It first shows a confirmation dialog; only **Delete permanently** starts the deletion. Confirmed items bypass the Recycle Bin and cannot be restored through it. While the Explorer address bar, search box, or an inline rename is focused, the same shortcut keeps its text meaning and deletes the next word instead.
+`CapsLock + Shift + D` works in File Explorer and on the desktop. It first shows a confirmation dialog; only **Delete permanently** starts the deletion. Confirmed items bypass the Recycle Bin and cannot be restored through it. The deletion goes straight to the filesystem: each selected item is unlinked in one kernel call and each folder is walked once, instead of queuing a separate shell item per file, so even a large selection is gone in milliseconds. Only items the kernel refuses (cloud placeholders, files held open by another program) are retried through the shell operation. While the Explorer address bar, search box, or an inline rename is focused, the same shortcut keeps its text meaning and deletes the next word instead.
 
 ### Mouse control mode
 
