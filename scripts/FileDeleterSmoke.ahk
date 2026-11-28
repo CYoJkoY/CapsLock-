@@ -12,6 +12,22 @@ Lang(key, default := "", params*) {
 ShowToolTip(*) {
 }
 
+; IsFileBrowserActive() reuses the application-wide text-input list, so the
+; smoke test provides the same lookup without pulling in the whole app.
+class AppState {
+    static TextInputControls := ["Edit", "RichEdit", "RichEdit20W", "Scintilla"]
+}
+
+IsTextInputControlClass(controlClass) {
+    if controlClass == ""
+        return false
+    normalized := StrLower(controlClass)
+    for knownClass in AppState.TextInputControls
+        if normalized == StrLower(knownClass)
+            return true
+    return false
+}
+
 class ThemeHelper {
     static StyleGui(*) {
     }
@@ -86,6 +102,42 @@ try DirDelete(tempDir)
 relative := FileDeleter.DeletePaths(["relative\path.txt"])
 if relative
     Fail("DeletePaths accepted a relative path")
+
+; 5) Focus resolution: the old code compared the ControlGetFocus result (an
+;    HWND) against a class name, which never matched. The class helper must
+;    recognise text inputs by class name or ClassNN, and must not mistake the
+;    shell view for a text input.
+if !FileDeleter._IsTextInputClassValue("Edit")
+    Fail("Edit should be recognised as a text input")
+if !FileDeleter._IsTextInputClassValue("Edit1")
+    Fail("the ClassNN Edit1 should be recognised as a text input")
+if !FileDeleter._IsTextInputClassValue("RichEdit20W2")
+    Fail("the ClassNN RichEdit20W2 should be recognised as a text input")
+if FileDeleter._IsTextInputClassValue("DirectUIHWND3")
+    Fail("the Explorer shell view must not be treated as a text input")
+if FileDeleter._IsTextInputClassValue("SysListView322")
+    Fail("SysListView32 must not be mistaken for a text input")
+if !FileDeleter._IsTextInputClassValue("InputSiteWindowClass")
+    Fail("the Windows 11 address-bar host must be treated as a text input")
+if FileDeleter._IsTextInputClassValue("")
+    Fail("an empty class must not be treated as a text input")
+
+; 6) Runtime focus resolution: ControlGetFocus returns an HWND in this
+;    AutoHotkey build, so the helper has to resolve it to a class name before
+;    the text-input test can work.
+probeGui := Gui("+AlwaysOnTop", "CapsLock delete focus probe")
+probeEdit := probeGui.Add("Edit", "w200", "probe")
+probeGui.Show("x-3000 y-3000 w260 h80")
+WinWait("ahk_id " probeGui.Hwnd, , 2)
+WinActivate("ahk_id " probeGui.Hwnd)
+probeEdit.Focus()
+Sleep(120)
+focusedClass := FileDeleter._FocusedControlClass(probeGui.Hwnd)
+if focusedClass != "Edit"
+    Fail("focused control class should resolve to Edit, got: " focusedClass)
+if !FileDeleter._FocusedControlIsTextInput(probeGui.Hwnd)
+    Fail("the focused Edit control should be treated as a text input")
+probeGui.Destroy()
 
 FileAppend("PASS: permanent delete, flags, and COM enumeration checks succeeded`n", "*")
 ExitApp(0)

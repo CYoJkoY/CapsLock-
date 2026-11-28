@@ -69,10 +69,10 @@ OpenTempFolder(*) {
 QuickPhraseHandleHotkey(*) {
 }
 
-WindowWildcardMaximize(*) {
+ToggleMaximizeActive(*) {
 }
 
-WindowWildcardMinimize(*) {
+MinimizeActive(*) {
 }
 
 DeactivateShiftLayer(*) {
@@ -188,6 +188,12 @@ Check(HotkeyRegistry.DisplaySuffix("!lbutton") == "CapsLock + Alt + Left Button"
 groupedMaximize := HotkeyRegistry.GetDisplayKeys(["maximize", "maximize8", "maximizeNum8"])
 Check(groupedMaximize == "CapsLock + W / 8 / Numpad8",
     "grouped displays should share modifiers but keep distinct key names, got: " groupedMaximize)
+groupedFullscreen := HotkeyRegistry.GetDisplayKeys(["fullscreen", "fullscreen8", "fullscreenNum8"])
+Check(groupedFullscreen == "CapsLock + Shift + W / 8 / Numpad8",
+    "borderless fullscreen should be a genuine CapsLock + Shift chord, got: " groupedFullscreen)
+groupedHideTray := HotkeyRegistry.GetDisplayKeys(["hideTray", "hideTray2", "hideTrayNum2"])
+Check(groupedHideTray == "CapsLock + Shift + S / 2 / Numpad2",
+    "hide-to-tray should be a genuine CapsLock + Shift chord, got: " groupedHideTray)
 
 ; Canonical modifier order and case folding.
 Check(HotkeyRegistry.NormalizeSuffix("Shift+Ctrl+d") == "",

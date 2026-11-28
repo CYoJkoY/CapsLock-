@@ -1,19 +1,18 @@
 ﻿#Requires AutoHotkey v2.0
 
 ; ---------------------------------------------------------------------------
-; Shift Layer — sequential trigger state management
+; Shift layer indicator
 ;
-; Activated by CapsLock + Shift. Lasts 2000ms before auto-expiry.
-; While active, the next S / W / 2 / 8 press executes the Shift-layer
-; action (hide-to-tray / borderless fullscreen) instead of the default
-; minimize / maximize.
+; CapsLock + Shift raises a short top-edge progress bar. The bar is a visual
+; hint only: the Shift shortcuts are genuine chords (CapsLock + Shift + W/S and
+; their number-key aliases) that fire whether or not the bar is on screen, so
+; the bar never gates the action and simply expires on its own after 2000ms.
 ; ---------------------------------------------------------------------------
 ActivateShiftLayer(*) {
     if AppState.ShiftLayerTimer != ""
         SetTimer(AppState.ShiftLayerTimer, 0)
 
     duration := ShiftLayerToast.DefaultDuration
-    AppState.ShiftLayerActive := true
     AppState.ShiftLayerTimer := DeactivateShiftLayer
     SetTimer(AppState.ShiftLayerTimer, -duration)
     ShiftLayerToast.Show(duration, WinExist("A"))
@@ -25,7 +24,6 @@ DeactivateShiftLayer(*) {
         AppState.ShiftLayerTimer := ""
     }
 
-    AppState.ShiftLayerActive := false
     ShiftLayerToast.Hide()
 }
 
@@ -66,58 +64,15 @@ ChangeCaseOfLastCopy() {
 
 ; --- CapsLock + W / 8 / Num8 and CapsLock + S / 2 / Num2 ------------------
 ;
-; Every key of the two groups reaches these handlers through a wildcard hotkey,
-; because a separate "+w" / "+8" / "+s" / "+2" binding next to the stacked
-; "w / 8 / Numpad8" and "s / 2 / Numpad2" definitions is never registered: the
-; stacked head owns the key and the Shift variant is dropped. Resolving the
-; modifier state here keeps one reliable entry point per key.
+; These are plain, unmodified bindings ("w", "8", ...), so they fire only for
+; the bare CapsLock chord. Ctrl / Alt / Win combinations are not part of the
+; layer and reach the active window natively (Ctrl + S saves, Ctrl + W closes a
+; tab) without any forwarding.
 ;
 ;   CapsLock + W / 8 / Num8             maximize / restore
 ;   CapsLock + Shift + W / 8 / Num8     borderless fullscreen
 ;   CapsLock + S / 2 / Num2             minimize
 ;   CapsLock + Shift + S / 2 / Num2     hide to tray
-;
-; Ctrl / Alt / Win combinations belong to the active window (Ctrl + S saves,
-; Ctrl + W closes a tab), so they are forwarded untouched.
-WindowWildcardMaximize() {
-    if ForwardModifierKey(WildcardForwardKey("w"))
-        return
-    if AppState.ShiftLayerActive {
-        DeactivateShiftLayer()
-        WindowFullScreen.Toggle()
-        return
-    }
-    ToggleMaximizeActive()
-}
-
-WindowWildcardMinimize() {
-    if ForwardModifierKey(WildcardForwardKey("s"))
-        return
-    if AppState.ShiftLayerActive {
-        DeactivateShiftLayer()
-        TrayHider.HideActive()
-        return
-    }
-    WinMinimize("A")
-}
-
-; Bare key name of the wildcard hotkey that is currently running. One handler
-; serves "w / 8 / Numpad8" and "s / 2 / Numpad2", so the key that has to be
-; re-sent when a Ctrl / Alt / Win combination is forwarded can only come from
-; A_ThisHotkey ("*w", "*8", "*Numpad8", ...): the wildcard prefix and any
-; modifier symbols are stripped, and fallback keeps the handler usable when it
-; is called outside a hotkey (for example from the built-in reference).
-WildcardForwardKey(fallback) {
-    name := ""
-    try
-        name := A_ThisHotkey
-    catch {
-    }
-    name := RegExReplace(name, "^[*$~]+")
-    name := RegExReplace(name, "i)^CapsLock\s*&\s*")
-    name := RegExReplace(name, "^[<>]*[\^!+#]*")
-    return name == "" ? fallback : name
-}
 
 AdjustOpacityShortcut(id, amount) {
     AdjustOpacity(amount)
@@ -143,33 +98,8 @@ ToggleMaximizeActive() {
         WinMaximize("A")
 }
 
-; True when Ctrl / Alt / Win is held. The keystroke is not part of the
-; CapsLock layer in that case, so it is re-sent to the active window.
-;
-; The Win key has no neutral name in AutoHotkey v2: GetKeyState() accepts
-; "Ctrl", "Alt" and "Shift" as neutral modifiers, but only "LWin" / "RWin" for
-; the Windows key. Passing the bare Win name throws "Parameter #1 of
-; GetKeyState is invalid", so both physical keys are queried individually.
-ForwardModifierKey(key) {
-    if !AnyModifierHeld()
-        return false
-    Send("{Blind}{" key "}")
-    return true
-}
-
-; Ctrl / Alt / Win state, tolerant of naming differences between AutoHotkey
-; builds. Each query is guarded, so an unsupported name degrades to "not held"
-; instead of throwing inside a hotkey handler.
-AnyModifierHeld() {
-    static neutralNames := ["Ctrl", "Alt", "LWin", "RWin"]
-    for name in neutralNames {
-        try {
-            if GetKeyState(name, "P")
-                return true
-        } catch {
-        }
-    }
-    return false
+MinimizeActive() {
+    WinMinimize("A")
 }
 
 ; Open the folder that holds the temporary files created by file workflows.

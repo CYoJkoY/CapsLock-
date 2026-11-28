@@ -3,6 +3,15 @@
 class FileDeleter {
     static Busy := false
     static OperationFlags := 0x00000400 | 0x00000010 | 0x00000004
+    static ExplorerWindowClass := "CabinetWClass"
+    static DesktopWindowClass := "Progman"
+    static DesktopFallbackClass := "WorkerW"
+    static ShellViewClass := "SHELLDLL_DefView"
+    static ShellViewControl := "SHELLDLL_DefView1"
+    ; Windows 11 hosts the address bar, the search box and the inline rename
+    ; editor in this class instead of a plain Edit. Focus on it therefore means
+    ; "the user is typing", not "the file list is active".
+    static ExplorerTextInputClasses := ["InputSiteWindowClass"]
 
     static IsFileBrowserActive(windowHwnd := 0) {
         if !windowHwnd
@@ -11,20 +20,84 @@ class FileDeleter {
             return false
         try {
             cls := WinGetClass("ahk_id " windowHwnd)
-            if cls == "CabinetWClass"
-                return this._HasShellViewFocus(windowHwnd)
-            if cls == "Progman" || cls == "WorkerW"
-                return ControlGetHwnd("SHELLDLL_DefView", "ahk_id " windowHwnd) != 0
+            ; In an Explorer window the file listing usually owns focus, so the
+            ; shortcut means "permanently delete the selected files". The
+            ; address bar, the search box and inline renaming are text inputs,
+            ; where the same key has to keep deleting the next word instead.
+            if cls == this.ExplorerWindowClass
+                return !this._FocusedControlIsTextInput(windowHwnd)
+            if cls == this.DesktopWindowClass || cls == this.DesktopFallbackClass
+                return this._DesktopHasShellView(windowHwnd)
         }
         return false
     }
 
-    static _HasShellViewFocus(windowHwnd) {
-        try {
-            focused := ControlGetFocus("ahk_id " windowHwnd)
-            return InStr(focused, "DirectUIHWND") || InStr(focused, "SysListView32")
+    ; Resolve the focused control of windowHwnd to a Win32 class name.
+    ;
+    ; ControlGetFocus returns the control's HWND in this AutoHotkey build, so
+    ; the old code compared an integer against a class name and always failed -
+    ; that was why the delete shortcut stopped working in Explorer. A ClassNN
+    ; string ("DirectUIHWND3") is accepted too, keeping the check independent of
+    ; the return type.
+    static _FocusedControlClass(windowHwnd) {
+        focused := 0
+        try focused := ControlGetFocus("ahk_id " windowHwnd)
+        catch
+            return ""
+        if !focused
+            return ""
+        if IsInteger(focused) {
+            try return WinGetClass("ahk_id " focused)
+            catch
+                return ""
         }
+        text := String(focused)
+        if RegExMatch(text, "^\d+$") {
+            try return WinGetClass("ahk_id " Integer(text))
+            catch
+                return ""
+        }
+        return text
+    }
+
+    static _FocusedControlIsTextInput(windowHwnd) {
+        return this._IsTextInputClassValue(this._FocusedControlClass(windowHwnd))
+    }
+
+    ; True when a class name with an optional ClassNN instance suffix names a
+    ; text input. "Edit1" and "Edit" both qualify; a shell-view ClassNN such as
+    ; "SysListView322" does not, because the stripped name is not a text input.
+    ; Explorer-specific input hosts are included, so the address bar, the search
+    ; box and inline renaming keep the text-editing meaning of the shortcut.
+    static _IsTextInputClassValue(classValue) {
+        if classValue == ""
+            return false
+        if IsTextInputControlClass(classValue)
+            return true
+        stripped := RegExReplace(classValue, "\d+$")
+        if stripped == ""
+            return false
+        if IsTextInputControlClass(stripped)
+            return true
+        for knownClass in this.ExplorerTextInputClasses
+            if StrLower(stripped) == StrLower(knownClass)
+                return true
         return false
+    }
+
+    static _DesktopHasShellView(windowHwnd) {
+        try {
+            controls := WinGetControls("ahk_id " windowHwnd)
+        } catch {
+            controls := []
+        }
+        for control in controls
+            if RegExMatch(control, "i)^" this.ShellViewClass)
+                return true
+        try
+            return ControlGetHwnd(this.ShellViewControl, "ahk_id " windowHwnd) != 0
+        catch
+            return false
     }
 
     static ConfirmDelete() {

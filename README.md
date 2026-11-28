@@ -55,7 +55,7 @@ AutoHotkey v1 is not supported.
 
 All bindings below use `CapsLock` as the modifier unless noted otherwise.
 
-Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigger: press `CapsLock + Shift` first to arm the layer, then press the target key within 2 seconds. This layer is available while the native CapsLock light is off. While the light is on, tapping `Shift` twice enters mouse control mode, and one `Shift` or `Esc` leaves it.
+Shift shortcuts (`Shift + W` / `Shift + S`) are genuine chords: hold `CapsLock + Shift` and press the target key together. Pressing `CapsLock + Shift` shows a short progress bar as a hint, but it does not gate any action. This layer is available while the native CapsLock light is off. While the light is on, tapping `Shift` twice enters mouse control mode, and one `Shift` or `Esc` leaves it.
 
 | Category     | Shortcut                   | Action                                                                                                        |
 | :----------- | :------------------------- | :------------------------------------------------------------------------------------------------------------ |
@@ -81,8 +81,8 @@ Shift-layer shortcuts (`Shift, then W` / `Shift, then S`) use a sequential trigg
 | Commands     | `R`                        | Search and execute built-in actions from the command palette                                                  |
 | Window       | `W / 8 / Num8`             | Maximize / restore                                                                                            |
 | Window       | `S / 2 / Num2`             | Minimize                                                                                                      |
-| Window       | `Shift, then W / 8 / Num8` | Toggle borderless fullscreen                                                                                  |
-| Window       | `Shift, then S / 2 / Num2` | Hide the active window to the tray                                                                            |
+| Window       | `Shift + W / 8 / Num8`     | Toggle borderless fullscreen                                                                                  |
+| Window       | `Shift + S / 2 / Num2`     | Hide the active window to the tray                                                                            |
 | Window       | `Left Button`              | Increase active-window opacity                                                                                |
 | Window       | `Right Button`             | Decrease active-window opacity                                                                                |
 | Window       | `Middle Button`            | Toggle 10% / 100% ghost mode                                                                                  |
@@ -108,7 +108,7 @@ The built-in reference is also available from the tray UI and is intended to sta
 
 Open Settings → Tools → Keyboard shortcuts to change the key after `CapsLock` for every shortcut. Select a row, press the replacement key combination, and release it to save. `CapsLock` remains required and cannot be assigned as the replacement key. The **Restore defaults** button removes custom bindings and returns every shortcut to its original key.
 
-`CapsLock + Shift + D` works in File Explorer and on the desktop. It first shows a confirmation dialog; only **Delete permanently** starts the deletion. Confirmed items bypass the Recycle Bin and cannot be restored through it.
+`CapsLock + Shift + D` works in File Explorer and on the desktop. It first shows a confirmation dialog; only **Delete permanently** starts the deletion. Confirmed items bypass the Recycle Bin and cannot be restored through it. While the Explorer address bar, search box, or an inline rename is focused, the same shortcut keeps its text meaning and deletes the next word instead.
 
 ### Mouse control mode
 
@@ -295,9 +295,9 @@ CapsLock also acts as a compact window-control layer:
   turned off from the same sub-menu.
 - `W`, `8`, and `Num8` maximize or restore the active window.
 - `S`, `2`, and `Num2` minimize the active window.
-- `Shift`, then `W`, `8`, or `Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same sequence again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
-- `Shift`, then `S`, `2`, or `Num2` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under Hidden windows in the CapsLock- tray menu, where one click restores a window and Restore all hidden windows brings every hidden window back.
-- Both shift-layer actions use a sequential trigger: press and hold `CapsLock + Shift` to activate the shift layer (a 2-second window), then press the target key. This avoids key-conflict issues on certain keyboard layouts where simultaneous `CapsLock + Shift + letter` combinations could not be detected reliably. The layer is unavailable while the native CapsLock light is on, because tapping `Shift` twice then enters mouse control mode.
+- `Shift + W`, `Shift + 8`, or `Shift + Num8` removes the window frame and resizes the active window to the full rectangle of its monitor, which also covers the taskbar. Pressing the same combination again restores the recorded style, position, size, maximize state, and top-most state, so the switch is always reversible.
+- `Shift + S`, `Shift + 2`, or `Shift + Num2` hides the active window to the tray. The application keeps running and stays reachable: hidden windows are listed under Hidden windows in the CapsLock- tray menu, where one click restores a window and Restore all hidden windows brings every hidden window back.
+- These window actions are genuine chords, not a sequential armed layer. `CapsLock + Shift` still shows a 2-second progress bar, but it is only a hint and does not gate or consume the next key. The layer is unavailable while the native CapsLock light is on, because tapping `Shift` twice then enters mouse control mode.
 - The mouse-button bindings adjust active-window opacity; the middle button switches between normal and 10% ghost mode. They pause while X is held or Window Hole is active, including an adjustment already repeating, so clicks reach the revealed content.
 - `Q` and `E` switch browser tabs using the corresponding `Ctrl+PgUp` / `Ctrl+PgDn` actions.
 - `L` opens a searchable window switcher that lists application icons, window titles, and process names.

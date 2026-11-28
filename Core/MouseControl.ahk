@@ -105,8 +105,8 @@ class MouseControl {
         if this.Active || !this.EntryAvailable()
             return false
 
-        ; The sequential Shift layer owns the same top-edge toast. Deactivate
-        ; it first so its Hide() cannot remove the persistent indicator.
+        ; The CapsLock + Shift indicator owns the same top-edge toast. Clear it
+        ; first so its pending timer cannot hide the persistent mouse-mode bar.
         DeactivateShiftLayer()
 
         this.Active := true

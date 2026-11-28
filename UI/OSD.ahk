@@ -123,8 +123,8 @@ class OSD {
     }
 }
 
-; A minimal top-edge timer for the sequential CapsLock + Shift layer. The
-; segment retracts from right to left as the remaining activation time expires.
+; A minimal top-edge timer for the CapsLock + Shift indicator. The segment
+; retracts from right to left as the remaining hint time expires.
 class ShiftLayerToast {
     static DefaultDuration := 2000
     static UpdateInterval := 16

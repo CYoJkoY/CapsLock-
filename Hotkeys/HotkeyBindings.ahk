@@ -160,9 +160,11 @@ End:: MoveFullHistorySelectionToBoundary(true)
 Delete:: DeleteFocusedFullHistoryEntry()
 #HotIf
 
-; Shift arms the existing sequential modifier layer; the action hotkeys below
-; apply their own per-application group policy. The layer is unavailable while
-; the native CapsLock light is on because Shift then controls the mouse layer.
+; CapsLock + Shift raises the top-edge progress bar as a short visual hint. The
+; Shift shortcuts are real chords (CapsLock + Shift + W/S and the number-key
+; aliases) and fire on their own, so this indicator never gates an action. It
+; is unavailable while the native CapsLock light is on because Shift then
+; controls the mouse layer.
 #HotIf CapsLockHotkeysAvailable() && !MouseControl.EntryAvailable()
 ~Shift:: ActivateShiftLayer()
 #HotIf

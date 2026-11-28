@@ -35,12 +35,12 @@ class HotkeyRegistry {
         {id: "deleteNextWord", group: "text", default: "+d", labelKey: "HOTKEY_DELETE_NEXT_WORD", action: ((*) => Send("^{Delete}")), excludeFileBrowser: true},
         {id: "deleteLineBackspace", group: "text", default: "Backspace", labelKey: "HOTKEY_DELETE_LINE_BACKSPACE", action: ((*) => Send("{Home}+{End}{Delete}"))},
         {id: "deleteLine", group: "text", default: "Delete", labelKey: "HOTKEY_DELETE_LINE", action: ((*) => Send("{Home}+{End}{Delete}"))},
-        {id: "maximize", group: "window", default: "w", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => WindowWildcardMaximize()), wildcard: true},
-        {id: "maximize8", group: "window", default: "8", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => WindowWildcardMaximize()), wildcard: true},
-        {id: "maximizeNum8", group: "window", default: "Numpad8", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => WindowWildcardMaximize()), wildcard: true},
-        {id: "minimize", group: "window", default: "s", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => WindowWildcardMinimize()), wildcard: true},
-        {id: "minimize2", group: "window", default: "2", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => WindowWildcardMinimize()), wildcard: true},
-        {id: "minimizeNum2", group: "window", default: "Numpad2", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => WindowWildcardMinimize()), wildcard: true},
+        {id: "maximize", group: "window", default: "w", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => ToggleMaximizeActive())},
+        {id: "maximize8", group: "window", default: "8", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => ToggleMaximizeActive())},
+        {id: "maximizeNum8", group: "window", default: "Numpad8", labelKey: "CHEAT_ACT_MAXIMIZE", action: ((*) => ToggleMaximizeActive())},
+        {id: "minimize", group: "window", default: "s", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => MinimizeActive())},
+        {id: "minimize2", group: "window", default: "2", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => MinimizeActive())},
+        {id: "minimizeNum2", group: "window", default: "Numpad2", labelKey: "CHEAT_ACT_MINIMIZE", action: ((*) => MinimizeActive())},
         {id: "fullscreen", group: "window", default: "+w", labelKey: "CHEAT_ACT_BORDERLESS", action: ((*) => (DeactivateShiftLayer(), WindowFullScreen.Toggle()))},
         {id: "fullscreen8", group: "window", default: "+8", labelKey: "CHEAT_ACT_BORDERLESS", action: ((*) => (DeactivateShiftLayer(), WindowFullScreen.Toggle()))},
         {id: "fullscreenNum8", group: "window", default: "+Numpad8", labelKey: "CHEAT_ACT_BORDERLESS", action: ((*) => (DeactivateShiftLayer(), WindowFullScreen.Toggle()))},
@@ -307,7 +307,7 @@ class HotkeyRegistry {
             this._conditions[definition.id] := (*) => this._IsAvailable(definition)
         condition := this._conditions[definition.id]
         HotIf(condition)
-        hotkeyName := "$" (definition.HasProp("wildcard") && definition.wildcard ? "*" : "") suffix
+        hotkeyName := "$" suffix
         Hotkey(hotkeyName, (*) => this.Run(definition), "On")
         this._active[definition.id] := {suffix: hotkeyName, condition: condition}
         if !definition.HasProp("release")
