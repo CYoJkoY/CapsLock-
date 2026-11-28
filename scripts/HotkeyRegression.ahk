@@ -651,6 +651,9 @@ CheckPinIndicatorRegressions(root) {
 CheckShiftLayerToastRegressions(root) {
     actionText := ReadText(root "\Hotkeys\HotkeyActions.ahk")
     osdText := ReadText(root "\UI\OSD.ahk")
+    fileDeleterText := ReadText(root "\Core\FileDeleter.ahk")
+    registryText := ReadText(root "\Hotkeys\HotkeyRegistry.ahk")
+    bindingsText := ReadText(root "\Hotkeys\HotkeyBindings.ahk")
 
     Check(
         InStr(actionText, "ShiftLayerToast.Show(duration") > 0
@@ -658,6 +661,35 @@ CheckShiftLayerToastRegressions(root) {
             && InStr(osdText, "class ShiftLayerToast") > 0
             && InStr(osdText, "remainingWidth := Max(1, Round(this.Width * remaining / this.Duration))") > 0,
         "Shift-layer activation shows a timed top-edge progress bar"
+    )
+
+    ; The progress bar is only a hint: the Shift shortcuts are real chords that
+    ; fire on their own, so CapsLock + Shift + D / W / S work without first
+    ; arming a timed layer.
+    Check(
+        InStr(bindingsText, "~Shift:: ActivateShiftLayer()") > 0,
+        "CapsLock + Shift still raises the progress bar"
+    )
+    Check(
+        InStr(registryText, "default: " . Chr(34) . "+w" . Chr(34)) > 0
+            && InStr(registryText, "default: " . Chr(34) . "+s" . Chr(34)) > 0
+            && InStr(registryText, "default: " . Chr(34) . "+d" . Chr(34)) > 0
+            && InStr(registryText, "wildcard: true") == 0
+            && InStr(registryText, "WindowWildcard") == 0
+            && InStr(registryText, "ToggleMaximizeActive()") > 0
+            && InStr(registryText, "MinimizeActive()") > 0,
+        "Shift shortcuts are genuine chords, not a sequential wildcard layer"
+    )
+    Check(
+        InStr(fileDeleterText, "IsInteger(focused)") > 0
+            && InStr(fileDeleterText, "_IsTextInputClassValue") > 0
+            && InStr(fileDeleterText, "InStr(focused, " . Chr(34) . "DirectUIHWND" . Chr(34) . ")") == 0,
+        "Explorer delete resolves the focused control instead of comparing an HWND to a class name"
+    )
+    Check(
+        InStr(fileDeleterText, "ExplorerTextInputClasses") > 0
+            && InStr(fileDeleterText, "InputSiteWindowClass") > 0,
+        "Explorer address bar, search box and rename editor count as text inputs"
     )
 }
 
@@ -1216,7 +1248,7 @@ CheckQuickPhraseRegressions(root) {
         "ordinary management windows are not topmost while intentional overlays remain so"
     )
     Check(
-        InStr(appVersionText, "static Current := " . Chr(34) . "1.14.0") > 0
+        InStr(appVersionText, "static Current := " . Chr(34) . "1.15.0") > 0
             && InStr(cloudModelText, "return AppVersion.Current") > 0,
         "source application version is explicit for Cloud Sync packages"
     )
@@ -1611,7 +1643,7 @@ CheckMouseControlRegressions(root) {
     Check(
         InStr(bindings, "&& !MouseControl.Active") > 0
             && InStr(bindings, "#HotIf CapsLockHotkeysAvailable() && !MouseControl.EntryAvailable()") > 0,
-        "the normal CapsLock and sequential Shift layers are disabled in mouse mode"
+        "the CapsLock shortcuts and Shift indicator are disabled in mouse mode"
     )
 
     staticStart := InStr(osdText, "static ShowStatic(")

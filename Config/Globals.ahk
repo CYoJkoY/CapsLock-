@@ -35,8 +35,7 @@ class AppState {
     static MenuPosY := 0
     static ImageMagickExe := ""
 
-    ; --- Shift Layer ---
-    static ShiftLayerActive := false
+    ; --- Shift layer indicator ---
     static ShiftLayerTimer := ""
 
     ; --- Language ---
