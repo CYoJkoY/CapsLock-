@@ -1263,7 +1263,7 @@ CheckQuickPhraseRegressions(root) {
         "ordinary management windows are not topmost while intentional overlays remain so"
     )
     Check(
-        InStr(appVersionText, "static Current := " . Chr(34) . "1.15.1") > 0
+        InStr(appVersionText, "static Current := " . Chr(34) . "1.15.2") > 0
             && InStr(cloudModelText, "return AppVersion.Current") > 0,
         "source application version is explicit for Cloud Sync packages"
     )
