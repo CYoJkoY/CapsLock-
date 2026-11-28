@@ -2,6 +2,9 @@
 
 class FileDeleter {
     static Busy := false
+    ; Flags for the IFileOperation *fallback* only: no undo (permanent), no
+    ; confirmation dialog, no error UI. The fast path below deletes through
+    ; the kernel directly and does not consult them.
     static OperationFlags := 0x00000400 | 0x00000010 | 0x00000004
     static ExplorerWindowClass := "CabinetWClass"
     static DesktopWindowClass := "Progman"
@@ -12,6 +15,29 @@ class FileDeleter {
     ; editor in this class instead of a plain Edit. Focus on it therefore means
     ; "the user is typing", not "the file list is active".
     static ExplorerTextInputClasses := ["InputSiteWindowClass"]
+
+    ; --- Native deletion constants ------------------------------------------
+    ; IFileOperation queues one shell item per path, and building that item
+    ; (SHCreateItemFromParsingName) costs ~3ms per file: a 300-file selection
+    ; spends about one second before the operation even starts. Talking to the
+    ; filesystem directly removes that per-item cost entirely.
+    static INVALID_FILE_ATTRIBUTES := 0xFFFFFFFF
+    static FILE_ATTRIBUTE_READONLY := 0x00000001
+    static FILE_ATTRIBUTE_DIRECTORY := 0x00000010
+    static FILE_ATTRIBUTE_REPARSE_POINT := 0x00000400
+    static DELETE_ACCESS := 0x00010000
+    static SHARE_ALL := 0x00000007
+    static OPEN_EXISTING := 3
+    static FILE_FLAG_BACKUP_SEMANTICS := 0x02000000
+    static FILE_FLAG_OPEN_REPARSE_POINT := 0x00200000
+    ; FileDispositionInformationEx, i.e. FILE_INFORMATION_CLASS value 64.
+    static DispositionInformationEx := 64
+    ; FILE_DISPOSITION_FLAG_DELETE | _POSIX_SEMANTICS | _IGNORE_READONLY_ATTRIBUTE.
+    ; POSIX semantics unlinks the name immediately instead of deferring until
+    ; the last handle closes, and the read-only bit no longer needs clearing.
+    static DispositionFlags := 0x00000001 | 0x00000002 | 0x00000010
+    static WIN32_FIND_DATAW_SIZE := 592
+    static WIN32_FIND_NAME_OFFSET := 44
 
     static IsFileBrowserActive(windowHwnd := 0) {
         if !windowHwnd
@@ -205,6 +231,175 @@ class FileDeleter {
     static DeletePaths(paths) {
         if !(paths is Array) || paths.Length == 0
             return false
+        for path in paths
+            if !this._IsDeletablePath(path)
+                return false
+
+        ; Fast path: kernel deletion. Items that refuse to go this way (cloud
+        ; placeholder files, third-party filter drivers, some virtual folders)
+        ; are collected and retried through the shell, which knows about them.
+        remaining := []
+        for path in paths {
+            if !FileExist(path)
+                continue
+            if this._DeleteNative(path)
+                continue
+            remaining.Push(path)
+        }
+        if remaining.Length
+            this._DeleteShell(remaining)
+
+        for path in paths
+            if FileExist(path)
+                return false
+        return true
+    }
+
+    ; Accept absolute filesystem paths only, and never a volume or share root:
+    ; those are selection mistakes rather than something to delete.
+    static _IsDeletablePath(path) {
+        if !(path is String) || path == ""
+            return false
+        if !RegExMatch(path, "i)^(?:[a-z]:\\|\\\\)")
+            return false
+        trimmed := RTrim(path, "\")
+        if trimmed == ""
+            return false
+        if RegExMatch(trimmed, "i)^[a-z]:$")
+            return false
+        if RegExMatch(trimmed, "^\\\\[^\\\\]+$")
+            return false
+        if RegExMatch(trimmed, "^\\\\[^\\\\]+\\[^\\\\]+$")
+            return false
+        return true
+    }
+
+    ; \??\ style prefix that lets every Win32 call below address paths beyond
+    ; MAX_PATH without depending on the process-wide long-path opt-in.
+    static _ExtendedPath(path) {
+        if SubStr(path, 1, 4) == "\\?\"
+            return path
+        if SubStr(path, 1, 2) == "\\"
+            return "\\?\UNC\" SubStr(path, 3)
+        return "\\?\" path
+    }
+
+    static _Join(dir, name) {
+        return SubStr(dir, -1) == "\" ? dir name : dir "\" name
+    }
+
+    static _Exists(extPath) {
+        return DllCall("GetFileAttributesW", "WStr", extPath, "UInt")
+            != this.INVALID_FILE_ATTRIBUTES
+    }
+
+    ; True when the entry is gone afterwards, whether by our own call or
+    ; because it disappeared in the meantime.
+    static _DeleteNative(path) {
+        extPath := this._ExtendedPath(path)
+        attr := DllCall("GetFileAttributesW", "WStr", extPath, "UInt")
+        if (attr == this.INVALID_FILE_ATTRIBUTES)
+            return true
+        ; One POSIX delete covers plain files, empty folders, symlinks and
+        ; junctions, and ignores the read-only bit on the way out.
+        if this._PosixDelete(extPath)
+            return true
+        if (attr & this.FILE_ATTRIBUTE_DIRECTORY) {
+            ; A link is removed, never followed: only the reparse point goes.
+            if (attr & this.FILE_ATTRIBUTE_REPARSE_POINT)
+                return this._RemoveDirectory(extPath, attr)
+            this._DeleteTree(extPath, attr)
+            return !this._Exists(extPath)
+        }
+        return this._DeleteFile(extPath, attr)
+    }
+
+    ; NtSetInformationFile(FileDispositionInformationEx) with POSIX semantics:
+    ; the name is unlinked in one call, no shell item, no progress dialog.
+    static _PosixDelete(extPath, flags := 0) {
+        if (flags == 0)
+            flags := this.DispositionFlags
+        handle := DllCall("CreateFileW", "WStr", extPath,
+            "UInt", this.DELETE_ACCESS, "UInt", this.SHARE_ALL, "Ptr", 0,
+            "UInt", this.OPEN_EXISTING,
+            "UInt", this.FILE_FLAG_BACKUP_SEMANTICS | this.FILE_FLAG_OPEN_REPARSE_POINT,
+            "Ptr", 0, "Ptr")
+        if (handle == -1 || handle == 0)
+            return false
+        info := Buffer(4, 0)
+        NumPut("UInt", flags, info)
+        ioStatus := Buffer(16, 0)
+        status := DllCall("ntdll\NtSetInformationFile", "Ptr", handle, "Ptr", ioStatus,
+            "Ptr", info, "UInt", info.Size, "Int", this.DispositionInformationEx, "Int")
+        DllCall("CloseHandle", "Ptr", handle)
+        return status == 0
+    }
+
+    static _DeleteFile(extPath, attr) {
+        if (attr & this.FILE_ATTRIBUTE_READONLY)
+            this._ClearReadOnly(extPath)
+        if DllCall("DeleteFileW", "WStr", extPath, "Int")
+            return true
+        return !this._Exists(extPath)
+    }
+
+    static _RemoveDirectory(extPath, attr) {
+        if DllCall("RemoveDirectoryW", "WStr", extPath, "Int")
+            return true
+        if (attr & this.FILE_ATTRIBUTE_READONLY) {
+            this._ClearReadOnly(extPath)
+            if DllCall("RemoveDirectoryW", "WStr", extPath, "Int")
+                return true
+        }
+        return !this._Exists(extPath)
+    }
+
+    static _ClearReadOnly(extPath) {
+        attr := DllCall("GetFileAttributesW", "WStr", extPath, "UInt")
+        if (attr == this.INVALID_FILE_ATTRIBUTES)
+            return
+        DllCall("SetFileAttributesW", "WStr", extPath,
+            "UInt", attr & ~this.FILE_ATTRIBUTE_READONLY)
+    }
+
+    ; Depth-first walk with FindFirstFileW. Recursing here costs about 0.03ms
+    ; per entry, roughly ten times less than AutoHotkey's own recursive
+    ; DirDelete and far less than queuing every entry through the shell.
+    static _DeleteTree(extDir, dirAttr) {
+        findData := Buffer(this.WIN32_FIND_DATAW_SIZE, 0)
+        handle := DllCall("FindFirstFileW", "WStr", this._Join(extDir, "*"),
+            "Ptr", findData, "Ptr")
+        if (handle != -1) {
+            try {
+                loop {
+                    name := StrGet(findData.Ptr + this.WIN32_FIND_NAME_OFFSET, "UTF-16")
+                    if (name != "." && name != "..") {
+                        child := this._Join(extDir, name)
+                        attr := NumGet(findData.Ptr, 0, "UInt")
+                        if !this._PosixDelete(child) {
+                            if (attr & this.FILE_ATTRIBUTE_DIRECTORY) {
+                                if (attr & this.FILE_ATTRIBUTE_REPARSE_POINT)
+                                    this._RemoveDirectory(child, attr)
+                                else
+                                    this._DeleteTree(child, attr)
+                            } else
+                                this._DeleteFile(child, attr)
+                        }
+                    }
+                    if !DllCall("FindNextFileW", "Ptr", handle, "Ptr", findData, "Int")
+                        break
+                }
+            } finally {
+                DllCall("FindClose", "Ptr", handle)
+            }
+        }
+        this._RemoveDirectory(extDir, dirAttr)
+    }
+
+    ; Shell fallback for entries the kernel path could not remove: cloud
+    ; placeholder files, items held by a filter driver, or virtual folders.
+    ; Slower (one shell item per path) but it understands those namespaces.
+    static _DeleteShell(paths) {
         try {
             operation := ComObject("{3AD05575-8857-4850-9277-11B85BDB8E09}",
                 "{947AAB5F-0A5C-4C13-B4D6-4BF7836FC9F8}")
